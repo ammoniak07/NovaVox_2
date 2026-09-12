@@ -6,6 +6,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using NAudio.Wave;
 using NovaVox.App.Gemini;
@@ -120,6 +121,7 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
         InitializeGeminiChat();
         InitializeGameLog();
+        LoadPanelsBackgroundImage();
         AppendLog("NovaVox démarré.", "info");
         ThemeManager.Apply(_state.Ai.UiTheme);
         ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
@@ -1398,6 +1400,36 @@ public partial class MainWindow : Window
 
         RefreshGameLogStatus();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher();
+    }
+
+    /// <summary>
+    /// Image de fond affichée derrière les listes Commandes/Journal
+    /// (raccourcies pour la révéler, voir MainWindow.xaml) — lue directement
+    /// depuis un fichier local plutôt qu'embarquée dans l'appli, pour que
+    /// l'utilisateur puisse la changer en déposant simplement un fichier
+    /// "background.jpg" ou "background.png" à côté de NovaVox.exe, sans
+    /// recompiler. Absente : rien ne s'affiche.
+    /// </summary>
+    private void LoadPanelsBackgroundImage()
+    {
+        var path = new[] { "background.jpg", "background.jpeg", "background.png" }
+            .Select(name => Path.Combine(NovaVoxPaths.BaseDirectory, name))
+            .FirstOrDefault(File.Exists);
+        if (path is null) return;
+
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad; // charge tout de suite : ne garde pas le fichier verrouillé
+            bitmap.UriSource = new Uri(path);
+            bitmap.EndInit();
+            PanelsBackgroundImage.Source = bitmap;
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[Erreur] Image de fond illisible ({Path.GetFileName(path)}) : {ex.Message}", "error");
+        }
     }
 
     private void StartGameLogWatcher()

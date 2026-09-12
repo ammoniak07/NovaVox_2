@@ -105,11 +105,20 @@
                     <ColumnDefinition Width="2*" MinWidth="280" />
                 </Grid.ColumnDefinitions>
 
+                <!-- Image de fond : visible uniquement dans l'espace laissé
+                     libre sous les listes Commandes/Journal (raccourcies
+                     ci-dessous), qui la recouvrent ailleurs avec leur propre
+                     fond opaque. Chargée depuis un fichier local si présent
+                     (voir LoadBackgroundImage, MainWindow.xaml.cs) : absent,
+                     rien ne s'affiche. -->
+                <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="UniformToFill" IsHitTestVisible="False" />
+
                 <!-- Colonne gauche : commandes -->
                 <Grid Grid.Column="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -249,6 +258,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="2*" />
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
