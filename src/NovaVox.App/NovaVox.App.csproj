@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>..\..\..\icon.ico</ApplicationIcon>
     <AssemblyName>NovaVox</AssemblyName>
     <RootNamespace>NovaVox.App</RootNamespace>
@@ -21,6 +20,7 @@
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Vortice.DirectInput" Version="3.8.3" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
