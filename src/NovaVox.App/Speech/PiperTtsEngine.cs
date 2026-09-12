@@ -187,16 +187,19 @@ public sealed class PiperTtsEngine : IDisposable
     }
 
     /// <summary>
-    /// Lit le .wav généré via NAudio (DirectSoundOut, pour pouvoir choisir
-    /// le périphérique de sortie par nom — voir AudioDevices), interruptible
-    /// via <see cref="Interrupt"/> — équivalent de Api._play_wav_file, gain
+    /// Lit le .wav généré via NAudio — WaveOutEvent (MME) sur le
+    /// périphérique par défaut (chemin historique, le plus fiable),
+    /// DirectSoundOut uniquement quand l'utilisateur a choisi un
+    /// périphérique précis (voir AudioDevices, seul DirectSoundOut sait
+    /// cibler un périphérique par GUID) — interruptible via
+    /// <see cref="Interrupt"/>, équivalent de Api._play_wav_file, gain
     /// appliqué directement sur le PCM (comme apply_mic_gain côté Python)
     /// plutôt que via le volume logiciel de sortie. Le temps d'attente est
     /// borné (durée du clip + marge) : un périphérique de sortie choisi par
-    /// l'utilisateur mais mal supporté par DirectSound ne doit jamais
-    /// bloquer indéfiniment le fil de synthèse vocale — dans ce cas, on
-    /// retente une fois sur le périphérique par défaut plutôt que de rendre
-    /// toute lecture vocale silencieuse pour le reste de la session.
+    /// l'utilisateur mais mal supporté ne doit jamais bloquer indéfiniment
+    /// le fil de synthèse vocale — dans ce cas, on retente une fois sur le
+    /// périphérique par défaut plutôt que de rendre toute lecture vocale
+    /// silencieuse pour le reste de la session.
     /// </summary>
     private void PlayWavFile(string wavPath)
     {
@@ -220,17 +223,25 @@ public sealed class PiperTtsEngine : IDisposable
         var timeout = TimeSpan.FromSeconds(Math.Max(3.0, expectedSeconds + 3.0));
 
         var deviceGuid = AudioDevices.ResolveOutputDeviceGuid(OutputDeviceName);
-        Diagnostic?.Invoke(this, $"Lecture : périphérique={(deviceGuid == Guid.Empty ? "par défaut" : deviceGuid.ToString())}, format={format}, délai max={timeout.TotalSeconds:F1}s.");
-        var (success, error) = PlayOnDevice(deviceGuid, rawBytes, format, timeout);
-        if (!success)
+
+        // Périphérique par défaut : WaveOutEvent (MME), l'implémentation
+        // historique qui fonctionnait avant l'ajout du choix de
+        // périphérique — DirectSoundOut n'est utilisé QUE quand
+        // l'utilisateur a explicitement choisi un périphérique précis
+        // (seul DirectSoundOut sait cibler un périphérique par GUID).
+        (bool Success, string? Error) result = deviceGuid == Guid.Empty
+            ? PlayViaOutput(() => new WaveOutEvent(), "WaveOutEvent, périphérique par défaut", rawBytes, format, timeout)
+            : PlayViaOutput(() => new DirectSoundOut(deviceGuid), $"DirectSoundOut, périphérique={deviceGuid}", rawBytes, format, timeout);
+
+        if (!result.Success)
         {
-            ErrorOccurred?.Invoke(this, error ?? "Échec de lecture inconnu.");
+            ErrorOccurred?.Invoke(this, result.Error ?? "Échec de lecture inconnu.");
             if (deviceGuid != Guid.Empty)
             {
-                ErrorOccurred?.Invoke(this, "Nouvelle tentative sur le périphérique de sortie par défaut...");
-                var (fallbackSuccess, fallbackError) = PlayOnDevice(Guid.Empty, rawBytes, format, timeout);
-                if (!fallbackSuccess)
-                    ErrorOccurred?.Invoke(this, $"Échec aussi sur le périphérique par défaut : {fallbackError ?? "raison inconnue"}.");
+                ErrorOccurred?.Invoke(this, "Nouvelle tentative sur le périphérique par défaut (WaveOutEvent)...");
+                var fallback = PlayViaOutput(() => new WaveOutEvent(), "WaveOutEvent, périphérique par défaut (repli)", rawBytes, format, timeout);
+                if (!fallback.Success)
+                    ErrorOccurred?.Invoke(this, $"Échec aussi sur le périphérique par défaut : {fallback.Error ?? "raison inconnue"}.");
                 else
                     Diagnostic?.Invoke(this, "Lecture réussie sur le périphérique par défaut.");
             }
@@ -242,13 +253,14 @@ public sealed class PiperTtsEngine : IDisposable
     }
 
     /// <returns>(true, null) si la lecture s'est terminée normalement ou a été interrompue via <see cref="Interrupt"/> ; (false, raison) si elle a expiré (délai dépassé) ou a levé une exception — la raison est toujours renvoyée, jamais avalée silencieusement.</returns>
-    private (bool Success, string? Error) PlayOnDevice(Guid deviceGuid, byte[] rawBytes, WaveFormat format, TimeSpan timeout)
+    private (bool Success, string? Error) PlayViaOutput(Func<IWavePlayer> createOutput, string label, byte[] rawBytes, WaveFormat format, TimeSpan timeout)
     {
+        Diagnostic?.Invoke(this, $"Lecture ({label}) : format={format}, délai max={timeout.TotalSeconds:F1}s.");
         ManualResetEventSlim? stopRequested = null;
         try
         {
             using var sourceStream = new RawSourceWaveStream(rawBytes, 0, rawBytes.Length, format);
-            using var output = new DirectSoundOut(deviceGuid);
+            using var output = createOutput();
             output.Init(sourceStream);
 
             using var playbackFinished = new ManualResetEventSlim(false);
@@ -256,15 +268,25 @@ public sealed class PiperTtsEngine : IDisposable
             lock (_stopLock) _currentPlaybackStop = stopRequested;
 
             output.PlaybackStopped += (_, _) => playbackFinished.Set();
+            var stopwatch = Stopwatch.StartNew();
             output.Play();
+
+            var signaled = WaitHandle.WaitAny(new[] { playbackFinished.WaitHandle, stopRequested.WaitHandle }, timeout);
+            stopwatch.Stop();
+            var expectedMs = format.AverageBytesPerSecond > 0 ? rawBytes.Length * 1000.0 / format.AverageBytesPerSecond : 0;
+            Diagnostic?.Invoke(this, $"Lecture ({label}) : durée réelle mesurée={stopwatch.ElapsedMilliseconds}ms (durée attendue du clip≈{expectedMs:F0}ms).");
+
+            // Vérifié APRÈS l'attente plutôt que juste après Play() : la
+            // création du flux audio se fait sur un fil d'arrière-plan
+            // démarré par Play(), qui n'a pas forcément eu le temps de créer
+            // la session WASAPI sous-jacente au moment où Play() revient.
             var sessionTrace = AudioSessionVolume.ResetToFull();
             if (sessionTrace is not null) Diagnostic?.Invoke(this, sessionTrace);
 
-            var signaled = WaitHandle.WaitAny(new[] { playbackFinished.WaitHandle, stopRequested.WaitHandle }, timeout);
             if (signaled == WaitHandle.WaitTimeout)
             {
                 try { output.Stop(); } catch { /* best effort */ }
-                return (false, $"Délai dépassé ({timeout.TotalSeconds:F1}s) en attendant la fin de la lecture sur ce périphérique.");
+                return (false, $"Délai dépassé ({timeout.TotalSeconds:F1}s) en attendant la fin de la lecture ({label}).");
             }
             if (stopRequested.IsSet) { try { output.Stop(); } catch { /* best effort */ } }
             playbackFinished.Wait(TimeSpan.FromSeconds(2));

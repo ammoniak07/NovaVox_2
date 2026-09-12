@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------
+# NovaVoxNET — fichiers générés/locaux à ne jamais versionner
+# ---------------------------------------------------------------
+
+# Sorties de build .NET
+bin/
+obj/
+out/
+
+# Modèles/moteurs téléchargés localement par l'appli (trop volumineux pour Git)
+model/
+piper/
+
+# Éditeurs / OS
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
