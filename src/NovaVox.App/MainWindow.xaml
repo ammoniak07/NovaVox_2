@@ -12,21 +12,21 @@
              signes de ponctuation selon la police disponible — des formes
              dessinées ici s'affichent toujours correctement, quelle que
              soit la police installée. -->
-        <PathGeometry x:Key="CloseIconGeometry" Figures="M1,1 L11,11 M11,1 L1,11" />
-        <PathGeometry x:Key="ArrowUpGeometry" Figures="M6,1 L11,9 L1,9 Z" />
-        <PathGeometry x:Key="ArrowDownGeometry" Figures="M1,1 L11,1 L6,9 Z" />
-        <PathGeometry x:Key="PlayIconGeometry" Figures="M2,1 L2,11 L10,6 Z" />
-        <GeometryGroup x:Key="EditIconGeometry">
-            <PathGeometry Figures="M2,12 L4,14 L12,6 L10,4 Z" />
-            <PathGeometry Figures="M12,6 L10,4 L15,1 Z" />
-        </GeometryGroup>
+        <PathGeometry x:Key="CloseIconGeometry" Figures="M1,1 L13,13 M13,1 L1,13" />
+        <PathGeometry x:Key="ArrowUpGeometry" Figures="M7,1 L13,11 L1,11 Z" />
+        <PathGeometry x:Key="ArrowDownGeometry" Figures="M1,1 L13,1 L7,11 Z" />
+        <PathGeometry x:Key="PlayIconGeometry" Figures="M2,1 L2,13 L12,7 Z" />
+        <!-- Simple trait diagonal (bout en pointe) plutôt qu'une silhouette
+             de crayon détaillée : plus gros, plus net, sans risque de
+             rendu ambigu à la petite taille d'un bouton. -->
+        <PathGeometry x:Key="EditIconGeometry" Figures="M3,15 L15,3" />
         <GeometryGroup x:Key="DragHandleGeometry">
-            <EllipseGeometry Center="2,2" RadiusX="1.3" RadiusY="1.3" />
-            <EllipseGeometry Center="8,2" RadiusX="1.3" RadiusY="1.3" />
-            <EllipseGeometry Center="2,7" RadiusX="1.3" RadiusY="1.3" />
-            <EllipseGeometry Center="8,7" RadiusX="1.3" RadiusY="1.3" />
-            <EllipseGeometry Center="2,12" RadiusX="1.3" RadiusY="1.3" />
-            <EllipseGeometry Center="8,12" RadiusX="1.3" RadiusY="1.3" />
+            <EllipseGeometry Center="2,2" RadiusX="1.6" RadiusY="1.6" />
+            <EllipseGeometry Center="10,2" RadiusX="1.6" RadiusY="1.6" />
+            <EllipseGeometry Center="2,9" RadiusX="1.6" RadiusY="1.6" />
+            <EllipseGeometry Center="10,9" RadiusX="1.6" RadiusY="1.6" />
+            <EllipseGeometry Center="2,16" RadiusX="1.6" RadiusY="1.6" />
+            <EllipseGeometry Center="10,16" RadiusX="1.6" RadiusY="1.6" />
         </GeometryGroup>
     </Window.Resources>
     <Grid>
@@ -135,21 +135,23 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <Path Grid.Column="0" Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
-                                                      Width="10" Height="14" Stretch="Uniform" Cursor="SizeAll" VerticalAlignment="Center" Margin="0,0,10,0"
-                                                      ToolTip="Glisser pour réordonner" MouseLeftButtonDown="DragHandle_MouseLeftButtonDown" />
+                                                <Border Grid.Column="0" Width="30" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Stretch"
+                                                        ToolTip="Glisser pour réordonner" MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
+                                                    <Path Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
+                                                          Width="14" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
                                                 <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
                                                          Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                    <Button Width="24" Click="MoveUp_Click" ToolTip="Monter">
-                                                        <Path Data="{StaticResource ArrowUpGeometry}" Fill="{StaticResource TextBrush}" Width="11" Height="9" Stretch="Uniform" />
+                                                    <Button Width="30" Height="30" Click="MoveUp_Click" ToolTip="Monter">
+                                                        <Path Data="{StaticResource ArrowUpGeometry}" Fill="{StaticResource TextBrush}" Width="14" Height="12" Stretch="Uniform" />
                                                     </Button>
-                                                    <Button Width="24" Margin="2,0,0,0" Click="MoveDown_Click" ToolTip="Descendre">
-                                                        <Path Data="{StaticResource ArrowDownGeometry}" Fill="{StaticResource TextBrush}" Width="11" Height="9" Stretch="Uniform" />
+                                                    <Button Width="30" Height="30" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre">
+                                                        <Path Data="{StaticResource ArrowDownGeometry}" Fill="{StaticResource TextBrush}" Width="14" Height="12" Stretch="Uniform" />
                                                     </Button>
-                                                    <Button Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
-                                                        <Path Data="{StaticResource CloseIconGeometry}" Stroke="{StaticResource DangerBrush}" StrokeThickness="2"
-                                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="11" Height="11" Stretch="Uniform" />
+                                                    <Button Width="30" Height="30" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
+                                                        <Path Data="{StaticResource CloseIconGeometry}" Stroke="{StaticResource DangerBrush}" StrokeThickness="2.5"
+                                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="14" Height="14" Stretch="Uniform" />
                                                     </Button>
                                                 </StackPanel>
                                             </Grid>
@@ -169,9 +171,11 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <Path Grid.Column="0" Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
-                                                          Width="10" Height="14" Stretch="Uniform" Cursor="SizeAll" VerticalAlignment="Center" Margin="0,0,10,0"
-                                                          ToolTip="Glisser pour réordonner" MouseLeftButtonDown="DragHandle_MouseLeftButtonDown" />
+                                                    <Border Grid.Column="0" Width="30" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Stretch"
+                                                            ToolTip="Glisser pour réordonner" MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
+                                                        <Path Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
+                                                              Width="14" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
 
                                                     <Button Grid.Column="1" Content="{Binding KeysDisplayWithBadges}" FontFamily="Consolas" FontWeight="Bold"
                                                             Background="{StaticResource PanelBrush}" Foreground="{StaticResource AccentBrush}"
@@ -185,22 +189,23 @@
                                                             ToolTip="Afficher/masquer les synonymes" Click="ToggleSynonyms_Click" Margin="0,0,6,0" />
 
                                                     <StackPanel Grid.Column="4" Orientation="Horizontal">
-                                                        <Button Width="24" Click="MoveUp_Click" ToolTip="Monter">
-                                                            <Path Data="{StaticResource ArrowUpGeometry}" Fill="{StaticResource TextBrush}" Width="11" Height="9" Stretch="Uniform" />
+                                                        <Button Width="30" Height="30" Click="MoveUp_Click" ToolTip="Monter">
+                                                            <Path Data="{StaticResource ArrowUpGeometry}" Fill="{StaticResource TextBrush}" Width="14" Height="12" Stretch="Uniform" />
                                                         </Button>
-                                                        <Button Width="24" Margin="2,0,0,0" Click="MoveDown_Click" ToolTip="Descendre">
-                                                            <Path Data="{StaticResource ArrowDownGeometry}" Fill="{StaticResource TextBrush}" Width="11" Height="9" Stretch="Uniform" />
+                                                        <Button Width="30" Height="30" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre">
+                                                            <Path Data="{StaticResource ArrowDownGeometry}" Fill="{StaticResource TextBrush}" Width="14" Height="12" Stretch="Uniform" />
                                                         </Button>
-                                                        <Button Width="28" Margin="6,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase">
-                                                            <Path Data="{StaticResource PlayIconGeometry}" Fill="{StaticResource AccentBrush}" Width="10" Height="12" Stretch="Uniform" />
+                                                        <Button Width="32" Height="30" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase">
+                                                            <Path Data="{StaticResource PlayIconGeometry}" Fill="{StaticResource AccentBrush}" Width="13" Height="15" Stretch="Uniform" />
                                                         </Button>
-                                                        <Button Content="+ syn" Margin="4,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
-                                                        <Button Width="28" Margin="4,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition">
-                                                            <Path Data="{StaticResource EditIconGeometry}" Fill="{StaticResource AccentBrush}" Width="13" Height="13" Stretch="Uniform" />
+                                                        <Button Content="+ syn" Height="30" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
+                                                        <Button Width="32" Height="30" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition">
+                                                            <Path Data="{StaticResource EditIconGeometry}" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.5"
+                                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Triangle" Width="15" Height="15" Stretch="Uniform" />
                                                         </Button>
-                                                        <Button Width="24" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
-                                                            <Path Data="{StaticResource CloseIconGeometry}" Stroke="{StaticResource DangerBrush}" StrokeThickness="2"
-                                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="11" Height="11" Stretch="Uniform" />
+                                                        <Button Width="30" Height="30" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
+                                                            <Path Data="{StaticResource CloseIconGeometry}" Stroke="{StaticResource DangerBrush}" StrokeThickness="2.5"
+                                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="14" Height="14" Stretch="Uniform" />
                                                         </Button>
                                                     </StackPanel>
                                                 </Grid>
@@ -215,16 +220,17 @@
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
                                                                 <TextBlock Grid.Column="0" Text="{Binding}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                                                                <Button Grid.Column="1" Width="26"
+                                                                <Button Grid.Column="1" Width="30" Height="28"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="EditSynonym_Click" ToolTip="Modifier ce synonyme">
-                                                                    <Path Data="{StaticResource EditIconGeometry}" Fill="{StaticResource AccentBrush}" Width="12" Height="12" Stretch="Uniform" />
+                                                                    <Path Data="{StaticResource EditIconGeometry}" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.5"
+                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Triangle" Width="13" Height="13" Stretch="Uniform" />
                                                                 </Button>
-                                                                <Button Grid.Column="2" Width="22" Margin="2,0,0,0"
+                                                                <Button Grid.Column="2" Width="28" Height="28" Margin="4,0,0,0"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="DeleteSynonym_Click" ToolTip="Supprimer ce synonyme">
-                                                                    <Path Data="{StaticResource CloseIconGeometry}" Stroke="{StaticResource DangerBrush}" StrokeThickness="2"
-                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="10" Height="10" Stretch="Uniform" />
+                                                                    <Path Data="{StaticResource CloseIconGeometry}" Stroke="{StaticResource DangerBrush}" StrokeThickness="2.5"
+                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="12" Height="12" Stretch="Uniform" />
                                                                 </Button>
                                                             </Grid>
                                                         </DataTemplate>
