@@ -15,10 +15,20 @@
 
         <!-- En-tête -->
         <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Margin="16,10">
-                <TextBlock Text="NOVAVOX" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
-                <TextBlock x:Name="StatusText" Text="Système en veille" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-            </StackPanel>
+            <Grid Margin="16,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="NOVAVOX" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="StatusText" Text="Système en veille" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Démarrer l'écoute" Click="ListenToggleButton_Click" />
+                <Button x:Name="ThemeToggleButton" Grid.Column="2" Content="🌙" Margin="8,0,0,0" Width="36" Click="ThemeToggleButton_Click"
+                        ToolTip="Basculer jour/nuit" />
+            </Grid>
         </Border>
 
         <Grid Grid.Row="1" Margin="16">
@@ -31,6 +41,7 @@
             <!-- Colonne gauche : liste de commandes + profils -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -50,7 +61,12 @@
                     <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
                 </StackPanel>
 
-                <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                <Border Grid.Row="2" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8,4" Margin="0,0,0,8">
+                    <TextBlock x:Name="LastLogText" Text="Journal : —" TextTrimming="CharacterEllipsis" Foreground="{StaticResource MutedBrush}" />
+                </Border>
+
+                <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                     <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -121,7 +137,14 @@
             <TabControl Grid.Column="2" Background="Transparent">
                 <TabItem Header="🔊 Sons">
                     <StackPanel Margin="10">
-                        <TextBlock Text="Micro" FontWeight="Bold" Margin="0,0,0,6" />
+                        <TextBlock Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
+                        <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap" Margin="0,0,0,4" />
+                        <Button Content="Parcourir..." HorizontalAlignment="Left" Click="BrowseModel_Click" />
+                        <TextBlock Text="Pas de téléchargement automatique dans cette version : télécharge un modèle sur alphacephei.com/vosk/models, dézippe-le, puis sélectionne le dossier ici."
+                                   Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                        <TextBlock Text="Micro" FontWeight="Bold" Margin="0,16,0,6" />
                         <ComboBox x:Name="InputDeviceCombo" Margin="0,0,0,8" SelectionChanged="InputDeviceCombo_SelectionChanged" />
                         <TextBlock Text="Amplification micro" />
                         <Slider x:Name="MicGainSlider" Minimum="0.1" Maximum="3.0" ValueChanged="MicGainSlider_ValueChanged" />

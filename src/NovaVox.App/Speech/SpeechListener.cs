@@ -52,11 +52,16 @@ public sealed class SpeechListener : IDisposable
     public int MicGate { get; set; }
     public double MicGain { get; set; } = 1.0;
 
-    /// <summary>true pendant que l'appli lit une réponse à voix haute — anti-écho (voir _is_speaking côté Python).</summary>
-    public bool IsSpeaking { get; set; }
+    /// <summary>
+    /// Interrogé en continu depuis le thread de traitement (pas seulement
+    /// au moment d'une phrase reconnue) : true pendant que l'appli lit une
+    /// réponse à voix haute — anti-écho (voir _is_speaking côté Python).
+    /// À relier à PiperTtsEngine.IsSpeaking par l'appelant.
+    /// </summary>
+    public Func<bool> IsSpeakingProvider { get; set; } = () => false;
 
-    /// <summary>Ignore tout ce qui est reconnu jusqu'à cet instant (anti-écho, juste après une lecture).</summary>
-    public DateTime SpeechMuteUntil { get; set; } = DateTime.MinValue;
+    /// <summary>Ignore tout ce qui est reconnu tant que l'instant retourné n'est pas dépassé (anti-écho, juste après une lecture).</summary>
+    public Func<DateTime> SpeechMuteUntilProvider { get; set; } = () => DateTime.MinValue;
 
     public Func<string, bool>? IsStopPhrase { get; set; }
 
@@ -172,13 +177,14 @@ public sealed class SpeechListener : IDisposable
                 var (text, alternatives) = ParseResult(_recognizer.Result());
                 var textLower = text.ToLowerInvariant();
 
-                if (IsSpeaking || DateTime.UtcNow < SpeechMuteUntil)
+                var isSpeaking = IsSpeakingProvider();
+                if (isSpeaking || DateTime.UtcNow < SpeechMuteUntilProvider())
                 {
                     // Anti-écho : ce qui est reconnu pendant/juste après que
                     // l'appli a parlé n'est jamais traité comme commande ou
                     // question — SAUF le mot d'arrêt, toujours pris en compte
                     // pour pouvoir couper une réponse trop longue en cours.
-                    if (IsSpeaking && text.Length > 0 && (IsStopPhrase?.Invoke(textLower) ?? false))
+                    if (isSpeaking && text.Length > 0 && (IsStopPhrase?.Invoke(textLower) ?? false))
                         StopPhraseRecognized?.Invoke(this, EventArgs.Empty);
                     continue;
                 }

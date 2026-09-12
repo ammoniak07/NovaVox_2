@@ -1,0 +1,17 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Palette claire, reprise de html[data-theme="light"] dans gui/style.css. -->
+    <Color x:Key="BgColor">#EEF1F5</Color>
+    <Color x:Key="PanelColor">#FFFFFF</Color>
+    <Color x:Key="PanelAltColor">#F3F6F9</Color>
+    <Color x:Key="BorderColor">#D7DEE6</Color>
+    <Color x:Key="TextColor">#1B2430</Color>
+    <Color x:Key="MutedColor">#5B6A7C</Color>
+    <Color x:Key="AccentColor">#0891B2</Color>
+    <Color x:Key="AmberColor">#B45309</Color>
+    <Color x:Key="DangerColor">#B91C1C</Color>
+    <Color x:Key="SuccessColor">#047857</Color>
+    <Color x:Key="SelectionColor">#D6EEF5</Color>
+
+</ResourceDictionary>

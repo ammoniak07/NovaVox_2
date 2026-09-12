@@ -5,6 +5,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Palette de couleurs : remplacée à l'exécution pour le
+                     mode jour/nuit (voir ThemeManager). Doit rester en
+                     premier, avant Theme.xaml qui en dépend. -->
+                <ResourceDictionary Source="Resources/Theme.Dark.xaml" />
                 <ResourceDictionary Source="Resources/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

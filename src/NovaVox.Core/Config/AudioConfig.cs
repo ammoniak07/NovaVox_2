@@ -26,6 +26,9 @@ public sealed class AudioConfig
     public bool AecEnabled { get; set; } = DefaultAecEnabled;
     public string? OutputDevice { get; set; }
     public double TtsVolume { get; set; } = DefaultTtsVolume;
+
+    /// <summary>Dossier du modèle Vosk sélectionné (voir browse_model côté Python) — pas encore de flux de téléchargement automatique dans ce portage.</summary>
+    public string? ModelPath { get; set; }
 }
 
 /// <summary>
@@ -86,6 +89,7 @@ public sealed class AudioConfigStore
             }
             if (data["aec_enabled"] is { } aecNode) config.AecEnabled = GetBool(aecNode);
             if (data["output_device"] is { } outputNode) config.OutputDevice = GetStringOrNull(outputNode);
+            if (data["model_path"] is { } modelPathNode) config.ModelPath = GetStringOrNull(modelPathNode);
             if (data["tts_volume"] is { } volNode)
             {
                 var v = GetDouble(volNode);
@@ -113,6 +117,7 @@ public sealed class AudioConfigStore
             ["aec_enabled"] = config.AecEnabled,
             ["output_device"] = config.OutputDevice,
             ["tts_volume"] = config.TtsVolume,
+            ["model_path"] = config.ModelPath,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }

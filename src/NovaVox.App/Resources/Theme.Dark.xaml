@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Palette sombre reprise de gui/style.css. Toutes les couleurs sont
+         définies ici SEULEMENT (jamais dans Theme.Light.xaml sous un autre
+         nom) : basculer entre les deux ne fait que réassigner les mêmes
+         clés (BgBrush, TextBrush...), consommées ailleurs via
+         DynamicResource pour que le changement s'applique immédiatement,
+         sans redémarrer la fenêtre. -->
+    <Color x:Key="BgColor">#0A0E14</Color>
+    <Color x:Key="PanelColor">#121822</Color>
+    <Color x:Key="PanelAltColor">#1A2230</Color>
+    <Color x:Key="BorderColor">#263140</Color>
+    <Color x:Key="TextColor">#DBE4EE</Color>
+    <Color x:Key="MutedColor">#7C8A9C</Color>
+    <Color x:Key="AccentColor">#2DD4FF</Color>
+    <Color x:Key="AmberColor">#FFB020</Color>
+    <Color x:Key="DangerColor">#FF4D5E</Color>
+    <Color x:Key="SuccessColor">#35E0A1</Color>
+    <Color x:Key="SelectionColor">#1E3A4D</Color>
+
+</ResourceDictionary>

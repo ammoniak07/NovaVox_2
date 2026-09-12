@@ -1,10 +1,13 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using NAudio.Wave;
 using NovaVox.App.Overlay;
+using NovaVox.App.Speech;
 using NovaVox.App.ViewModels;
+using NovaVox.App.Voice;
 using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
@@ -17,6 +20,7 @@ public partial class MainWindow : Window
     private readonly WindowConfigStore _windowConfigStore = new(NovaVoxPaths.BaseDirectory);
     private readonly AppState _state = new(NovaVoxPaths.BaseDirectory);
     private readonly DispatcherTimer _commandsSaveTimer;
+    private VoiceOrchestrator? _voiceOrchestrator;
     private bool _restoring = true;
     private bool _loadingSettings;
 
@@ -70,6 +74,9 @@ public partial class MainWindow : Window
         InitializeProfiles();
         InitializeOverlay();
         LoadSettingsIntoControls();
+        InitializeVoiceOrchestrator();
+        ThemeManager.Apply(_state.Ai.UiTheme);
+        ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
 
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
         VersionText.Text = $"NovaVox v{version}";
@@ -242,7 +249,10 @@ public partial class MainWindow : Window
             // fermer l'application (voir _on_closing, app.py).
             e.Cancel = true;
             Hide();
+            return;
         }
+        _voiceOrchestrator?.Dispose();
+        _overlayWindow?.Close();
     }
 
     // ------------------------------------------------------------ Réglages
@@ -518,6 +528,59 @@ public partial class MainWindow : Window
             "La réinitialisation complète n'est pas encore disponible dans cette version .NET. " +
             "Supprime manuellement commands.json / ai_config.json / audio_config.json si besoin.",
             "NovaVox");
+    }
+
+    // --------------------------------------------------------------- Voix
+
+    private void InitializeVoiceOrchestrator()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        _voiceOrchestrator = new VoiceOrchestrator(_state, hwnd);
+        _voiceOrchestrator.Log += (_, message) => Dispatcher.BeginInvoke(() => LastLogText.Text = $"Journal : {message}");
+        _voiceOrchestrator.ListeningChanged += (_, listening) => Dispatcher.BeginInvoke(() =>
+        {
+            ListenToggleButton.Content = listening ? "■ Arrêter l'écoute" : "▶ Démarrer l'écoute";
+            StatusText.Text = listening ? "Écoute en cours" : "Système en veille";
+        });
+        _voiceOrchestrator.CommandExecuted += (_, keys) => Dispatcher.BeginInvoke(() => StatusText.Text = $"Commande : {keys}");
+
+        ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath)
+            ? "Aucun modèle sélectionné"
+            : _state.Audio.ModelPath;
+    }
+
+    private void ListenToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_voiceOrchestrator is null) return;
+        if (_voiceOrchestrator.IsListening)
+        {
+            _voiceOrchestrator.Stop();
+        }
+        else
+        {
+            _voiceOrchestrator.Start();
+        }
+    }
+
+    private void BrowseModel_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Sélectionne le dossier du modèle Vosk" };
+        if (dialog.ShowDialog(this) != true) return;
+
+        _state.Audio.ModelPath = dialog.FolderName;
+        _state.SaveAudio();
+        ModelPathText.Text = dialog.FolderName;
+    }
+
+    // ------------------------------------------------------------- Thème
+
+    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        var newTheme = _state.Ai.UiTheme == "light" ? "dark" : "light";
+        _state.Ai.UiTheme = newTheme;
+        _state.SaveAi();
+        ThemeManager.Apply(newTheme);
+        ThemeToggleButton.Content = newTheme == "light" ? "☀" : "🌙";
     }
 
     // ------------------------------------------------------------- Overlay

@@ -109,6 +109,22 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_UiThemeDefaultsToDarkAndRejectsUnknownValue()
+    {
+        File.WriteAllText(Path.Combine(_dir, "ai_config.json"), """{"ui_theme": "purple"}""");
+        var config = new AiConfigStore(_dir).Load();
+        Assert.Equal("dark", config.UiTheme);
+    }
+
+    [Fact]
+    public void AiConfig_UiThemeRoundTripsLight()
+    {
+        var store = new AiConfigStore(_dir);
+        store.Save(new AiConfig { UiTheme = "light" });
+        Assert.Equal("light", new AiConfigStore(_dir).Load().UiTheme);
+    }
+
+    [Fact]
     public void AiConfig_RoundTripsGameLogDictionaries()
     {
         var store = new AiConfigStore(_dir);

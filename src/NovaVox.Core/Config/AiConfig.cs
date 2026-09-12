@@ -14,8 +14,11 @@ public sealed class AiConfig
     public const string DefaultGeminiModel = "gemini-3.6-flash";
     public const string DefaultGeminiName = "Gemini";
     public const string DefaultResponseLength = "normal";
+    public const string DefaultUiTheme = "dark";
 
     public string UiLanguage { get; set; } = DefaultUiLanguage;
+    /// <summary>"dark" ou "light" — bascule jour/nuit de l'interface WPF (n'existait pas côté Python, ajout propre à ce portage).</summary>
+    public string UiTheme { get; set; } = DefaultUiTheme;
     public string? Voice { get; set; }
     public bool ConfirmCommands { get; set; }
     public double TriggerCooldown { get; set; } = DefaultTriggerCooldown;
@@ -70,6 +73,7 @@ public sealed class AiConfigStore
 
             config.UiLanguage = GetStringOrNull(data["ui_language"]) is { } lang && AiConfig.SupportedLanguages.Contains(lang)
                 ? lang : AiConfig.DefaultUiLanguage;
+            config.UiTheme = GetStringOrNull(data["ui_theme"]) is "light" ? "light" : AiConfig.DefaultUiTheme;
             config.Voice = GetStringOrNull(data["voice"]);
             config.ConfirmCommands = GetBool(data["confirm_commands"]);
             config.TriggerCooldown = GetDouble(data["trigger_cooldown"]) ?? AiConfig.DefaultTriggerCooldown;
@@ -122,6 +126,7 @@ public sealed class AiConfigStore
         var data = new JsonObject
         {
             ["ui_language"] = config.UiLanguage,
+            ["ui_theme"] = config.UiTheme,
             ["voice"] = config.Voice,
             ["confirm_commands"] = config.ConfirmCommands,
             ["trigger_cooldown"] = config.TriggerCooldown,
