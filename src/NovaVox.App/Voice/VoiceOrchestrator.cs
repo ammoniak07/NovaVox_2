@@ -31,8 +31,11 @@ public sealed class VoiceOrchestrator : IDisposable
 
     public bool IsListening { get; private set; }
 
-    /// <summary>Message à afficher dans le journal système (déjà formaté, préfixe [Erreur]/[Info] inclus si besoin).</summary>
-    public event EventHandler<string>? Log;
+    /// <summary>À appeler quand le périphérique de sortie change dans les réglages, même pendant que l'écoute tourne.</summary>
+    public void UpdateOutputDevice(string? deviceName) => _tts.OutputDeviceName = deviceName;
+
+    /// <summary>Message à afficher dans le journal système, avec son "kind" (info/success/error/warning) — voir appendLog (gui/script.js).</summary>
+    public event EventHandler<(string Message, string Kind)>? Log;
     public event EventHandler<bool>? ListeningChanged;
     public event EventHandler<long>? MicLevelChanged;
     public event EventHandler<string>? PhraseRecognized;
@@ -42,9 +45,9 @@ public sealed class VoiceOrchestrator : IDisposable
     {
         _state = state;
         _commandExecutor = new CommandExecutor(_keySimulator);
-        _keySimulator.OnError = (context, ex) => RaiseLog($"[Erreur touche] {context} : {ex.Message}");
-        _keySimulator.OnWarning = RaiseLog;
-        _tts.ErrorOccurred += (_, msg) => RaiseLog($"[Erreur voix] {msg}");
+        _keySimulator.OnError = (context, ex) => RaiseLog($"[Erreur touche] {context} : {ex.Message}", "error");
+        _keySimulator.OnWarning = msg => RaiseLog(msg, "warning");
+        _tts.ErrorOccurred += (_, msg) => RaiseLog($"[Erreur voix] {msg}", "error");
 
         try
         {
@@ -64,12 +67,13 @@ public sealed class VoiceOrchestrator : IDisposable
         _tts.NoiseScale = _state.Ai.PiperNoiseScale;
         _tts.RadioEffectEnabled = _state.Ai.RadioEffect;
         _tts.Volume = _state.Audio.TtsVolume;
+        _tts.OutputDeviceName = _state.Audio.OutputDevice;
 
         _geminiClient = new GeminiClient(_state.Ai, _state.AiConfigStore) { GameLogStateProvider = () => (GameLogState?)null };
-        _geminiClient.UserMessageAdded += (_, question) => RaiseLog($"Question pour {_state.Ai.GeminiName} : « {question} »");
+        _geminiClient.UserMessageAdded += (_, question) => RaiseLog($"Question pour {_state.Ai.GeminiName} : « {question} »", "info");
         _geminiClient.ReplyReceived += (_, e) =>
         {
-            RaiseLog(e.IsError ? e.Reply : $"{_state.Ai.GeminiName} : {e.Reply}");
+            RaiseLog(e.IsError ? e.Reply : $"{_state.Ai.GeminiName} : {e.Reply}", e.IsError ? "error" : "info");
             if (!e.IsError) _tts.Speak(e.Reply);
         };
     }
@@ -81,7 +85,7 @@ public sealed class VoiceOrchestrator : IDisposable
         var modelPath = _state.Audio.ModelPath;
         if (string.IsNullOrWhiteSpace(modelPath) || !Directory.Exists(modelPath))
         {
-            RaiseLog("[Erreur] Aucun modèle Vosk valide sélectionné (voir Réglages > 🔊 Sons > Parcourir).");
+            RaiseLog("[Erreur] Aucun modèle Vosk valide sélectionné (voir Réglages > 🔊 Sons > Parcourir).", "error");
             return false;
         }
 
@@ -101,9 +105,9 @@ public sealed class VoiceOrchestrator : IDisposable
         _speechListener.StopPhraseRecognized += (_, _) =>
         {
             _tts.Interrupt();
-            RaiseLog("⏹ Lecture vocale interrompue.");
+            RaiseLog("⏹ Lecture vocale interrompue.", "info");
         };
-        _speechListener.ErrorOccurred += (_, msg) => RaiseLog($"[Erreur micro] {msg}");
+        _speechListener.ErrorOccurred += (_, msg) => RaiseLog($"[Erreur micro] {msg}", "error");
 
         var deviceNumber = AudioDevices.ResolveInputDeviceNumber(_state.Audio.InputDevice);
 
@@ -113,7 +117,7 @@ public sealed class VoiceOrchestrator : IDisposable
         }
         catch (Exception ex)
         {
-            RaiseLog($"[Erreur] Impossible de démarrer l'écoute : {ex.Message}");
+            RaiseLog($"[Erreur] Impossible de démarrer l'écoute : {ex.Message}", "error");
             _speechListener = null;
             return false;
         }
@@ -128,13 +132,13 @@ public sealed class VoiceOrchestrator : IDisposable
             };
             _hotkeyMonitor.PushToTalkStateChanged += (_, held) => { if (_speechListener is not null) _speechListener.MicGateOpen = held; };
             _hotkeyMonitor.ToggleTriggered += (_, _) => { if (_speechListener is not null) _speechListener.MicGateOpen = !_speechListener.MicGateOpen; };
-            _hotkeyMonitor.UnmatchedJoystick += (_, label) => RaiseLog($"[Avertissement] Bouton {label} introuvable parmi les manettes connectées.");
+            _hotkeyMonitor.UnmatchedJoystick += (_, label) => RaiseLog($"[Avertissement] Bouton {label} introuvable parmi les manettes connectées.", "warning");
             _hotkeyMonitor.Start();
         }
 
         IsListening = true;
         ListeningChanged?.Invoke(this, true);
-        RaiseLog("Modèle chargé. Écoute en cours...");
+        RaiseLog("Modèle chargé. Écoute en cours...", "success");
         return true;
     }
 
@@ -149,12 +153,12 @@ public sealed class VoiceOrchestrator : IDisposable
 
         IsListening = false;
         ListeningChanged?.Invoke(this, false);
-        RaiseLog("Écoute arrêtée.");
+        RaiseLog("Écoute arrêtée.", "info");
     }
 
     private void OnTextRecognized(object? sender, SpeechRecognizedEventArgs e)
     {
-        RaiseLog($"Reconnu : « {e.Text} »");
+        RaiseLog($"Reconnu : « {e.Text} »", "info");
         PhraseRecognized?.Invoke(this, e.Text);
 
         var commands = _state.Commands.Select(row => row.ToModel()).ToList();
@@ -168,7 +172,7 @@ public sealed class VoiceOrchestrator : IDisposable
             case VoiceActionKind.ExecuteCommand:
                 var cmd = commands[result.CommandIndex];
                 CommandExecuted?.Invoke(this, CommandMatcher.CommandKeysLabel(cmd));
-                RaiseLog($"Commande : « {cmd.Phrase} » → {CommandMatcher.CommandKeysLabel(cmd)}");
+                RaiseLog($"Commande : « {cmd.Phrase} » → {CommandMatcher.CommandKeysLabel(cmd)}", "success");
                 Task.Run(() => _commandExecutor.Run(cmd));
                 break;
 
@@ -177,16 +181,16 @@ public sealed class VoiceOrchestrator : IDisposable
                 break;
 
             case VoiceActionKind.AwaitGeminiQuestion:
-                RaiseLog($"{_state.Ai.GeminiName} à l'écoute, pose ta question...");
+                RaiseLog($"{_state.Ai.GeminiName} à l'écoute, pose ta question...", "info");
                 break;
 
             case VoiceActionKind.GeminiTimeout:
-                RaiseLog($"({_state.Ai.GeminiName} : délai dépassé, annulé)");
+                RaiseLog($"({_state.Ai.GeminiName} : délai dépassé, annulé)", "warning");
                 break;
         }
     }
 
-    private void RaiseLog(string message) => Log?.Invoke(this, message);
+    private void RaiseLog(string message, string kind = "info") => Log?.Invoke(this, (message, kind));
 
     public void Dispose()
     {

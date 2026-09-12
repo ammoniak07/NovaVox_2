@@ -43,8 +43,9 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="2*" MinHeight="120" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="180" />
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
@@ -61,12 +62,7 @@
                     <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
                 </StackPanel>
 
-                <Border Grid.Row="2" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="4" Padding="8,4" Margin="0,0,0,8">
-                    <TextBlock x:Name="LastLogText" Text="Journal : —" TextTrimming="CharacterEllipsis" Foreground="{StaticResource MutedBrush}" />
-                </Border>
-
-                <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Margin="0,0,0,10">
                     <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -131,6 +127,45 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </Border>
+
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="Journal système" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
+                </StackPanel>
+
+                <Border Grid.Row="4" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                    <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="LogList" Margin="8,4" FontFamily="Consolas" FontSize="12">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <TextBlock Text="{Binding Time}" Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0" />
+                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="success">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="error">
+                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Kind}" Value="warning">
+                                                            <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
             </Grid>
 
             <!-- Colonne droite : réglages -->
@@ -181,6 +216,8 @@
                         </ComboBox>
 
                         <TextBlock Text="Voix (sortie)" FontWeight="Bold" Margin="0,16,0,6" />
+                        <TextBlock Text="Périphérique de sortie" />
+                        <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
                         <TextBlock Text="Volume de la voix" />
                         <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
                         <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />

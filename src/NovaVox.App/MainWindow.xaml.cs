@@ -32,6 +32,8 @@ public partial class MainWindow : Window
     private readonly PiperInstaller _piperInstaller = new();
     private readonly ObservableCollection<VoskModelRowVm> _voskModelRows = new();
     private readonly ObservableCollection<PiperVoiceRowVm> _piperVoiceRows = new();
+    private readonly ObservableCollection<LogEntryVm> _logEntries = new();
+    private const int MaxLogEntries = 300;
     private PiperTtsEngine? _testTts;
 
     /// <summary>
@@ -80,6 +82,7 @@ public partial class MainWindow : Window
         }
         _restoring = false;
 
+        LogList.ItemsSource = _logEntries;
         InitializeCommandsList();
         InitializeProfiles();
         InitializeOverlay();
@@ -87,6 +90,7 @@ public partial class MainWindow : Window
         InitializeVoiceOrchestrator();
         InitializeVoskCatalog();
         InitializePiperCatalog();
+        AppendLog("NovaVox démarré.", "info");
         ThemeManager.Apply(_state.Ai.UiTheme);
         ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
 
@@ -282,6 +286,12 @@ public partial class MainWindow : Window
                 InputDeviceCombo.Items.Add(WaveInEvent.GetCapabilities(i).ProductName);
             InputDeviceCombo.SelectedItem = audio.InputDevice ?? "Périphérique par défaut";
 
+            OutputDeviceCombo.Items.Clear();
+            OutputDeviceCombo.Items.Add("Périphérique par défaut");
+            foreach (var name in AudioDevices.ListOutputDeviceNames())
+                OutputDeviceCombo.Items.Add(name);
+            OutputDeviceCombo.SelectedItem = audio.OutputDevice ?? "Périphérique par défaut";
+
             MicGainSlider.Value = audio.MicGain;
             MicGateSlider.Value = audio.MicGate;
             ListenHotkeyBox.Text = audio.ListenHotkey ?? "";
@@ -363,6 +373,15 @@ public partial class MainWindow : Window
         var selected = InputDeviceCombo.SelectedItem as string;
         _state.Audio.InputDevice = selected == "Périphérique par défaut" ? null : selected;
         _state.SaveAudio();
+    }
+
+    private void OutputDeviceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        var selected = OutputDeviceCombo.SelectedItem as string;
+        _state.Audio.OutputDevice = selected == "Périphérique par défaut" ? null : selected;
+        _state.SaveAudio();
+        _voiceOrchestrator?.UpdateOutputDevice(_state.Audio.OutputDevice);
     }
 
     private void ListenMode_Checked(object sender, RoutedEventArgs e)
@@ -540,7 +559,7 @@ public partial class MainWindow : Window
     {
         var hwnd = new WindowInteropHelper(this).Handle;
         _voiceOrchestrator = new VoiceOrchestrator(_state, hwnd);
-        _voiceOrchestrator.Log += (_, message) => Dispatcher.BeginInvoke(() => LastLogText.Text = $"Journal : {message}");
+        _voiceOrchestrator.Log += (_, e) => Dispatcher.BeginInvoke(() => AppendLog(e.Message, e.Kind));
         _voiceOrchestrator.ListeningChanged += (_, listening) => Dispatcher.BeginInvoke(() =>
         {
             ListenToggleButton.Content = listening ? "■ Arrêter l'écoute" : "▶ Démarrer l'écoute";
@@ -552,6 +571,20 @@ public partial class MainWindow : Window
             ? "Aucun modèle sélectionné"
             : _state.Audio.ModelPath;
     }
+
+    // ------------------------------------------------------- Journal système
+
+    /// <summary>Port de appendLog(msg, kind) (gui/script.js) : kind = "info" | "success" | "error" | "warning".</summary>
+    private void AppendLog(string message, string kind = "info")
+    {
+        _logEntries.Add(new LogEntryVm { Time = DateTime.Now.ToString("HH:mm:ss"), Message = message, Kind = kind });
+        while (_logEntries.Count > MaxLogEntries) _logEntries.RemoveAt(0);
+        LogScrollViewer.ScrollToEnd();
+
+        if (kind == "error") ErrorLog.Append(NovaVoxPaths.BaseDirectory, message);
+    }
+
+    private void ClearLog_Click(object sender, RoutedEventArgs e) => _logEntries.Clear();
 
     private void ListenToggleButton_Click(object sender, RoutedEventArgs e)
     {
@@ -717,7 +750,10 @@ public partial class MainWindow : Window
         row.IsDownloading = true;
         row.StatusText = "Préparation...";
         void OnProgress(object? _, (int Percent, string Message) p) => row.StatusText = $"{p.Percent}% — {p.Message}";
+        string? failureMessage = null;
+        void OnDone(object? _, (bool Success, string Message) d) { if (!d.Success) failureMessage = d.Message; }
         _voskInstaller.Progress += OnProgress;
+        _voskInstaller.Done += OnDone;
         try
         {
             var installedPath = await _voskInstaller.InstallAsync(row.Model);
@@ -727,12 +763,18 @@ public partial class MainWindow : Window
                 _state.SaveAudio();
                 ModelPathText.Text = installedPath;
                 row.StatusText = "Installé.";
-                LastLogText.Text = $"Journal : Modèle Vosk « {row.Label} » installé.";
+                AppendLog($"Modèle Vosk « {row.Label} » installé.", "success");
+            }
+            else
+            {
+                row.StatusText = "Échec.";
+                AppendLog($"[Erreur] Modèle Vosk « {row.Label} » : {failureMessage}", "error");
             }
         }
         finally
         {
             _voskInstaller.Progress -= OnProgress;
+            _voskInstaller.Done -= OnDone;
             row.IsDownloading = false;
         }
     }
@@ -770,7 +812,10 @@ public partial class MainWindow : Window
     {
         InstallPiperEngineButton.IsEnabled = false;
         void OnProgress(object? _, string message) => PiperEngineStatusText.Text = message;
+        void OnDone(object? _, bool success) =>
+            AppendLog(success ? "Moteur Piper installé." : "[Erreur Piper] Échec de l'installation du moteur (voir détails ci-dessus).", success ? "success" : "error");
         _piperInstaller.EngineProgress += OnProgress;
+        _piperInstaller.EngineInstallDone += OnDone;
         try
         {
             await _piperInstaller.InstallEngineAsync();
@@ -778,6 +823,7 @@ public partial class MainWindow : Window
         finally
         {
             _piperInstaller.EngineProgress -= OnProgress;
+            _piperInstaller.EngineInstallDone -= OnDone;
             InstallPiperEngineButton.IsEnabled = true;
             RefreshPiperEngineStatus();
         }
@@ -810,6 +856,8 @@ public partial class MainWindow : Window
             await _piperInstaller.DownloadVoiceAsync(row.Id);
             row.IsInstalled = _piperInstaller.IsVoiceInstalled(row.Id);
             row.StatusText = row.IsInstalled ? "Téléchargée." : "Échec du téléchargement.";
+            AppendLog(row.IsInstalled ? $"Voix Piper « {row.Label} » téléchargée." : $"[Erreur Piper] Téléchargement de la voix « {row.Label} » échoué.",
+                row.IsInstalled ? "success" : "error");
             if (row.IsInstalled && _piperVoiceRows.All(r => !r.IsSelected))
             {
                 row.IsSelected = true;
@@ -848,12 +896,13 @@ public partial class MainWindow : Window
         if (_testTts is null)
         {
             _testTts = new PiperTtsEngine();
-            _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => MessageBox.Show(this, msg, "NovaVox"));
+            _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog($"[Erreur voix] {msg}", "error"));
         }
         _testTts.LengthScale = PiperLengthScaleSlider.Value;
         _testTts.NoiseScale = PiperNoiseScaleSlider.Value;
         _testTts.RadioEffectEnabled = RadioEffectCheckbox.IsChecked ?? false;
         _testTts.Volume = _state.Audio.TtsVolume;
+        _testTts.OutputDeviceName = _state.Audio.OutputDevice;
         _testTts.Speak("Ceci est un test de la voix sélectionnée.", row.Id);
     }
 }

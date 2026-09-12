@@ -171,12 +171,11 @@ public sealed class PiperTtsEngine : IDisposable
     }
 
     /// <summary>
-    /// Lit le .wav généré via NAudio (WaveOutEvent), interruptible via
-    /// <see cref="Interrupt"/> — équivalent de Api._play_wav_file, gain
+    /// Lit le .wav généré via NAudio (DirectSoundOut, pour pouvoir choisir
+    /// le périphérique de sortie par nom — voir AudioDevices), interruptible
+    /// via <see cref="Interrupt"/> — équivalent de Api._play_wav_file, gain
     /// appliqué directement sur le PCM (comme apply_mic_gain côté Python)
-    /// plutôt que via le volume logiciel de sortie. Le périphérique de
-    /// sortie par nom n'est pas encore câblé (voir AudioDevices) : lecture
-    /// toujours sur le périphérique par défaut pour l'instant.
+    /// plutôt que via le volume logiciel de sortie.
     /// </summary>
     private void PlayWavFile(string wavPath)
     {
@@ -195,7 +194,7 @@ public sealed class PiperTtsEngine : IDisposable
             rawBytes = AudioProcessing.ApplyMicGain(rawBytes, Volume);
 
         using var sourceStream = new RawSourceWaveStream(rawBytes, 0, rawBytes.Length, format);
-        using var output = new WaveOutEvent();
+        using var output = new DirectSoundOut(AudioDevices.ResolveOutputDeviceGuid(OutputDeviceName));
         output.Init(sourceStream);
 
         using var playbackFinished = new ManualResetEventSlim(false);

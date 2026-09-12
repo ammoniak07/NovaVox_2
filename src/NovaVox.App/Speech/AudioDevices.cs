@@ -20,16 +20,23 @@ public static class AudioDevices
         return -1;
     }
 
-    // NOTE : contrairement à l'entrée (WaveInEvent.DeviceCount/
-    // GetCapabilities, vérifiés ci-dessus), NAudio.WinMM 2.2.1 n'expose
-    // aucune énumération statique des périphériques de SORTIE pour
-    // WaveOutEvent (pas de classe WaveOut avec DeviceCount/GetCapabilities
-    // dans ce paquet — vérifié par réflexion sur l'assembly réelle). La
-    // sélection d'un périphérique de sortie par nom (équivalent de
-    // Api._resolve_output_device) nécessiterait soit l'énumération WASAPI
-    // (NAudio.CoreAudioApi.MMDeviceEnumerator, ordre non garanti
-    // correspondre aux index MME de WaveOutEvent), soit de passer par
-    // DirectSoundOut à la place. Laissé en TODO pour la tâche UI/réglages
-    // audio : la lecture se fait pour l'instant toujours sur le
-    // périphérique de sortie PAR DÉFAUT du système.
+    /// <summary>
+    /// Noms des périphériques de sortie disponibles, dans l'ordre où
+    /// DirectSoundOut les énumère — WaveOutEvent (MME) n'expose aucune
+    /// énumération statique des périphériques de sortie dans NAudio.WinMM
+    /// 2.2.1 (vérifié par réflexion sur l'assembly réelle), d'où l'usage de
+    /// DirectSoundOut à la place (voir aussi PiperTtsEngine.PlayWavFile) :
+    /// contrairement à WasapiOut en mode partagé, il ne demande pas au
+    /// flux d'égaler exactement le format de mixage du périphérique.
+    /// </summary>
+    public static IReadOnlyList<string> ListOutputDeviceNames() =>
+        DirectSoundOut.Devices.Select(d => d.Description).ToList();
+
+    /// <summary>Résout un nom de périphérique de sortie en GUID DirectSound — Guid.Empty (périphérique par défaut) si absent/non trouvé.</summary>
+    public static Guid ResolveOutputDeviceGuid(string? deviceName)
+    {
+        if (string.IsNullOrEmpty(deviceName)) return Guid.Empty;
+        var match = DirectSoundOut.Devices.FirstOrDefault(d => d.Description == deviceName);
+        return match?.Guid ?? Guid.Empty;
+    }
 }
