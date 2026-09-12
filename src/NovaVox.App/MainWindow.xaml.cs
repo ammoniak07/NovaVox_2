@@ -908,7 +908,12 @@ public partial class MainWindow : Window
     {
         _overlayWindow = new OverlayWindow(_state.OverlayConfigStore);
         _overlayWindow.LoadFromConfig();
-        if (_state.Overlay.Enabled) _overlayWindow.Show();
+        AppendLog($"Overlay : activé={_state.Overlay.Enabled}.", "info");
+        if (_state.Overlay.Enabled)
+        {
+            _overlayWindow.Show();
+            AppendLog($"Overlay : fenêtre affichée (position {_overlayWindow.Left},{_overlayWindow.Top}). Si le jeu tourne en plein écran EXCLUSIF (pas « fenêtré sans bordure »), aucune fenêtre topmost ne peut s'afficher par-dessus, quel que soit ce que fait NovaVox.", "info");
+        }
     }
 
     private void OverlayEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -917,8 +922,21 @@ public partial class MainWindow : Window
         var enabled = OverlayEnabledCheckbox.IsChecked ?? false;
         _state.Overlay.Enabled = enabled;
         _state.SaveOverlay();
-        if (_overlayWindow is null) return;
-        if (enabled) _overlayWindow.Show(); else _overlayWindow.Hide();
+        if (_overlayWindow is null)
+        {
+            AppendLog("Overlay : case cochée mais la fenêtre d'overlay n'existe pas (jamais initialisée).", "error");
+            return;
+        }
+        if (enabled)
+        {
+            _overlayWindow.Show();
+            AppendLog($"Overlay : affiché (position {_overlayWindow.Left},{_overlayWindow.Top}, visible={_overlayWindow.IsVisible}).", "info");
+        }
+        else
+        {
+            _overlayWindow.Hide();
+            AppendLog("Overlay : masqué.", "info");
+        }
     }
 
     private void ToggleOverlayEditButton_Click(object sender, RoutedEventArgs e)
