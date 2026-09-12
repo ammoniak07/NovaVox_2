@@ -1,23 +1,26 @@
 namespace NovaVox.Core;
 
 /// <summary>
-/// Journal texte persistant, un fichier par jour dans
-/// BaseDirectory/Log/novavox_AAAA-MM-JJ.txt — reçoit en direct tout ce
-/// qui s'affiche dans le journal système (info/succès/avertissement/
-/// erreur, voir AppendLog dans MainWindow.xaml.cs), plus toute exception
+/// Journal texte persistant, un nouveau fichier à chaque lancement de
+/// l'appli dans BaseDirectory/Log/novavox_AAAA-MM-JJ_HH-mm-ss.txt (fermer
+/// puis rouvrir l'appli crée un fichier distinct, plutôt qu'un seul
+/// fichier continu ou une rotation par jour) — reçoit en direct tout ce
+/// qui s'affiche dans le journal système, plus les messages "diagnostic"
+/// (détails techniques verbeux jamais affichés dans le journal système
+/// lui-même, voir AppendLog dans MainWindow.xaml.cs) et toute exception
 /// non gérée qui autrement disparaîtrait avec le plantage de l'appli
-/// (voir les gestionnaires globaux dans App.xaml.cs). Remplace
-/// l'ancien ErrorLog (limité aux seules erreurs déjà affichées, un
-/// seul fichier tronqué arbitrairement une fois trop gros) : la
-/// rotation quotidienne borne naturellement la taille de chaque
-/// fichier sans jamais effacer d'historique.
+/// (voir les gestionnaires globaux dans App.xaml.cs).
 /// </summary>
 public static class AppLog
 {
+    // Calculé une seule fois, à la première écriture de la session — pas à
+    // chaque appel — pour que tous les messages d'un même lancement
+    // atterrissent dans le même fichier.
+    private static readonly Lazy<string> SessionFileName = new(() => $"novavox_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.txt");
+
     public static string LogDirectory(string baseDir) => Path.Combine(baseDir, "Log");
 
-    private static string CurrentFilePath(string baseDir) =>
-        Path.Combine(LogDirectory(baseDir), $"novavox_{DateTime.Now:yyyy-MM-dd}.txt");
+    private static string CurrentFilePath(string baseDir) => Path.Combine(LogDirectory(baseDir), SessionFileName.Value);
 
     /// <summary>Ajoute une ligne horodatée — appelé pour chaque message du journal système, quel que soit son "kind".</summary>
     public static void Append(string baseDir, string message, string kind = "info")

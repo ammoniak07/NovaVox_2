@@ -1156,13 +1156,21 @@ public partial class MainWindow : Window
     // ------------------------------------------------------- Journal système
 
     /// <summary>
-    /// Port de appendLog(msg, kind) (gui/script.js) : kind = "info" | "success" | "error" | "warning".
+    /// Port de appendLog(msg, kind) (gui/script.js) : kind = "info" | "success" | "error" | "warning",
+    /// plus "diagnostic" (propre au port .NET) : écrit dans Log/*.txt comme
+    /// tout le reste, mais jamais affiché dans le journal système — pour
+    /// les détails techniques verbeux (génération/lecture Piper, position
+    /// de l'overlay...) utiles en cas de bug mais qui n'ont rien à faire
+    /// dans le journal visible au quotidien.
     /// RichTextBox plutôt qu'un ItemsControl lié à une collection : seul un
     /// contrôle de texte permet à l'utilisateur de sélectionner/copier le
     /// journal, tout en gardant la couleur par kind (via des Run colorés).
     /// </summary>
     private void AppendLog(string message, string kind = "info")
     {
+        AppLog.Append(NovaVoxPaths.BaseDirectory, message, kind);
+        if (kind == "diagnostic") return;
+
         var brush = kind switch
         {
             "success" => (Brush)FindResource("SuccessBrush"),
@@ -1178,8 +1186,6 @@ public partial class MainWindow : Window
         LogList.Document.Blocks.Add(paragraph);
         while (LogList.Document.Blocks.Count > MaxLogParagraphs) LogList.Document.Blocks.Remove(LogList.Document.Blocks.FirstBlock);
         LogList.ScrollToEnd();
-
-        AppLog.Append(NovaVoxPaths.BaseDirectory, message, kind);
     }
 
     private void ClearLog_Click(object sender, RoutedEventArgs e) => LogList.Document.Blocks.Clear();
@@ -1432,7 +1438,7 @@ public partial class MainWindow : Window
         if (_testTts is not null) return;
         _testTts = new PiperTtsEngine();
         _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog($"[Erreur voix] {msg}", "error"));
-        _testTts.Diagnostic += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog(msg, "info"));
+        _testTts.Diagnostic += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog(msg, "diagnostic"));
         _testTts.DefaultPiperVoice = _state.Ai.PiperVoice;
         _testTts.LengthScale = _state.Ai.PiperLengthScale;
         _testTts.NoiseScale = _state.Ai.PiperNoiseScale;
@@ -1457,7 +1463,7 @@ public partial class MainWindow : Window
         if (_state.Overlay.Enabled)
         {
             _overlayWindow.Show();
-            AppendLog($"Overlay : fenêtre affichée (position {_overlayWindow.Left},{_overlayWindow.Top}). Si le jeu tourne en plein écran EXCLUSIF (pas « fenêtré sans bordure »), aucune fenêtre topmost ne peut s'afficher par-dessus, quel que soit ce que fait NovaVox.", "info");
+            AppendLog($"Overlay : fenêtre affichée (position {_overlayWindow.Left},{_overlayWindow.Top}). Si le jeu tourne en plein écran EXCLUSIF (pas « fenêtré sans bordure »), aucune fenêtre topmost ne peut s'afficher par-dessus, quel que soit ce que fait NovaVox.", "diagnostic");
         }
     }
 
@@ -1475,7 +1481,7 @@ public partial class MainWindow : Window
         if (enabled)
         {
             _overlayWindow.Show();
-            AppendLog($"Overlay : affiché (position {_overlayWindow.Left},{_overlayWindow.Top}, visible={_overlayWindow.IsVisible}).", "info");
+            AppendLog($"Overlay : affiché (position {_overlayWindow.Left},{_overlayWindow.Top}, visible={_overlayWindow.IsVisible}).", "diagnostic");
         }
         else
         {
