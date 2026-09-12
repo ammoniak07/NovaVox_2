@@ -26,15 +26,6 @@ public sealed class VoiceCommand
     public double RepeatDelay { get; set; } = 0.1;
     public List<ExtraStep> ExtraSteps { get; set; } = new();
 
-    /// <summary>
-    /// Déclenchement manuel optionnel — combinaison clavier ou bouton
-    /// joystick (encodage "joy:{...}", voir JoystickHotkeyCodec) qui
-    /// exécute cette commande directement, indépendamment de la
-    /// reconnaissance vocale (fonctionnalité propre au port .NET, sans
-    /// équivalent côté app.py).
-    /// </summary>
-    public string? TriggerHotkey { get; set; }
-
     public bool IsTitle => Type == "title";
 }
 

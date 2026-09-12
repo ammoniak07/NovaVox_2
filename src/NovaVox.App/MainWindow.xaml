@@ -165,13 +165,6 @@
                                                     </StackPanel>
                                                 </Grid>
 
-                                                <StackPanel Orientation="Horizontal" Margin="26,4,0,0">
-                                                    <TextBlock Text="🕹 Déclenchement manette : " Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding TriggerHotkeyLabel}" Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                                    <Button Content="🕹" Width="24" Click="CommandTriggerCaptureButton_Click" ToolTip="Assigner un bouton joystick pour déclencher cette commande sans la voix" />
-                                                    <Button Content="✕" Width="22" Margin="2,0,0,0" Click="CommandTriggerClear_Click" ToolTip="Effacer le déclenchement manette" />
-                                                </StackPanel>
-
                                                 <ItemsControl ItemsSource="{Binding Synonyms}" Visibility="{Binding SynonymsExpanded, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>

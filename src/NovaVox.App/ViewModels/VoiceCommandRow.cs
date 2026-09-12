@@ -54,20 +54,6 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     private double _repeatDelay = 0.1;
     public double RepeatDelay { get => _repeatDelay; set { _repeatDelay = value; Raise(); } }
 
-    private string? _triggerHotkey;
-    public string? TriggerHotkey { get => _triggerHotkey; set { _triggerHotkey = value; Raise(); Raise(nameof(TriggerHotkeyLabel)); } }
-
-    /// <summary>Libellé lisible de TriggerHotkey pour l'affichage (jamais l'encodage brut "joy:{...}") — voir UpdateListenHotkeyDisplay (MainWindow.xaml.cs).</summary>
-    public string TriggerHotkeyLabel
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(TriggerHotkey)) return "—";
-            var joyInfo = NovaVox.Core.Hotkeys.JoystickHotkeyCodec.Decode(TriggerHotkey);
-            return joyInfo is not null ? $"🕹 Bouton {joyInfo.Button}" : TriggerHotkey;
-        }
-    }
-
     public ObservableCollection<string> Synonyms { get; } = new();
 
     public List<ExtraStep> ExtraSteps { get; set; } = new();
@@ -95,7 +81,6 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
             RepeatCount = cmd.RepeatCount,
             RepeatDelay = cmd.RepeatDelay,
             ExtraSteps = new List<ExtraStep>(cmd.ExtraSteps),
-            TriggerHotkey = cmd.TriggerHotkey,
         };
         foreach (var s in cmd.Synonyms) row.Synonyms.Add(s);
         return row;
@@ -111,6 +96,5 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
         RepeatDelay = RepeatDelay,
         Synonyms = Synonyms.ToList(),
         ExtraSteps = ExtraSteps,
-        TriggerHotkey = TriggerHotkey,
     };
 }

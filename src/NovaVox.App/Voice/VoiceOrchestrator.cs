@@ -27,7 +27,6 @@ public sealed class VoiceOrchestrator : IDisposable
 
     private SpeechListener? _speechListener;
     private HotkeyMonitor? _hotkeyMonitor;
-    private CommandTriggerWatcher? _commandTriggerWatcher;
     private GeminiClient? _geminiClient;
 
     public bool IsListening { get; private set; }
@@ -185,13 +184,6 @@ public sealed class VoiceOrchestrator : IDisposable
             _hotkeyMonitor.Start();
         }
 
-        // Déclenchement manuel par commande (touche/bouton manette assigné
-        // via TriggerHotkey) — même principe que le raccourci d'activation
-        // du micro ci-dessus, tourne pendant toute la durée de l'écoute.
-        _commandTriggerWatcher = new CommandTriggerWatcher(() => _state.Commands.Select(row => row.ToModel()).ToList(), _joystickManager);
-        _commandTriggerWatcher.CommandFired += (_, cmd) => FireCommand(cmd);
-        _commandTriggerWatcher.Start();
-
         IsListening = true;
         ListeningChanged?.Invoke(this, true);
         MicActiveChanged?.Invoke(this, _speechListener.MicGateOpen);
@@ -205,8 +197,6 @@ public sealed class VoiceOrchestrator : IDisposable
 
         _hotkeyMonitor?.Dispose();
         _hotkeyMonitor = null;
-        _commandTriggerWatcher?.Dispose();
-        _commandTriggerWatcher = null;
         _speechListener?.Dispose();
         _speechListener = null;
 
@@ -247,12 +237,7 @@ public sealed class VoiceOrchestrator : IDisposable
         }
     }
 
-    /// <summary>
-    /// Exécute une commande et notifie tout le monde (journal, overlay,
-    /// confirmation vocale) — partagé entre une commande reconnue à la
-    /// voix (OnTextRecognized) et une commande déclenchée manuellement via
-    /// TriggerHotkey (_commandTriggerWatcher).
-    /// </summary>
+    /// <summary>Exécute une commande reconnue à la voix et notifie tout le monde (journal, overlay, confirmation vocale).</summary>
     private void FireCommand(VoiceCommand cmd)
     {
         var keysLabel = CommandMatcher.CommandKeysLabel(cmd);

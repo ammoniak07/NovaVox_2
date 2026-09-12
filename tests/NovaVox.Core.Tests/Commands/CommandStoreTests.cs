@@ -29,7 +29,6 @@ public class CommandStoreTests : IDisposable
                 Phrase = "train d'atterrissage", Keys = "n", Hold = true, RepeatCount = 3, RepeatDelay = 0.25,
                 Synonyms = new() { "train d atterrissage" },
                 ExtraSteps = new() { new ExtraStep { Keys = "alt+n", DelayBefore = 0.5 } },
-                TriggerHotkey = "joy:{\"name\":\"VirPil\",\"guid\":\"abc\",\"button\":5}",
             },
         };
         store.SaveCommands(commands, mirrorToProfile: false);
@@ -46,17 +45,6 @@ public class CommandStoreTests : IDisposable
         Assert.Single(reloaded[1].ExtraSteps);
         Assert.Equal("alt+n", reloaded[1].ExtraSteps[0].Keys);
         Assert.Equal(0.5, reloaded[1].ExtraSteps[0].DelayBefore);
-        Assert.Equal("joy:{\"name\":\"VirPil\",\"guid\":\"abc\",\"button\":5}", reloaded[1].TriggerHotkey);
-    }
-
-    [Fact]
-    public void SaveThenLoad_TriggerHotkeyDefaultsToNullWhenUnset()
-    {
-        var store = new CommandStore(_dir);
-        store.SaveCommands(new List<VoiceCommand> { new() { Phrase = "x", Keys = "n" } }, mirrorToProfile: false);
-
-        var reloaded = new CommandStore(_dir).LoadCommands();
-        Assert.Null(reloaded[0].TriggerHotkey);
     }
 
     [Fact]
