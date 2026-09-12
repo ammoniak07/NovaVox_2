@@ -111,7 +111,8 @@
                      fond opaque. Chargée depuis un fichier local si présent
                      (voir LoadBackgroundImage, MainWindow.xaml.cs) : absent,
                      rien ne s'affiche. -->
-                <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="UniformToFill" IsHitTestVisible="False" />
+                <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="Uniform"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
 
                 <!-- Colonne gauche : commandes -->
                 <Grid Grid.Column="0">
