@@ -351,8 +351,23 @@
                                 <ComboBox x:Name="InputDeviceCombo" Margin="0,0,0,8" SelectionChanged="InputDeviceCombo_SelectionChanged" />
                                 <TextBlock Text="Amplification micro" />
                                 <Slider x:Name="MicGainSlider" Minimum="0.1" Maximum="3.0" ValueChanged="MicGainSlider_ValueChanged" />
-                                <TextBlock Text="Seuil de sensibilité (0 = désactivé)" Margin="0,8,0,0" />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="Seuil de sensibilité (couper le son sous ce niveau)" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="MicGateValueText" Text="Désactivé" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <!-- Mètre de niveau micro en direct : fond = piste, MicLevelFillBar = niveau
+                                     capté à l'instant (via MicLevelMonitor tant que les réglages sont ouverts
+                                     et que l'écoute complète ne tourne pas déjà, sinon via
+                                     VoiceOrchestrator.MicLevelChanged — voir StartMicLevelMonitorIfIdle,
+                                     MainWindow.xaml.cs), MicGateMarkerLine = position du seuil réglé ci-dessous. -->
+                                <Grid x:Name="MicLevelMeterTrack" Height="16" Margin="0,6,0,6" ClipToBounds="True" SizeChanged="MicLevelMeterTrack_SizeChanged">
+                                    <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" />
+                                    <Border x:Name="MicLevelFillBar" Background="{StaticResource AccentBrush}" CornerRadius="4" HorizontalAlignment="Left" Width="0" />
+                                    <Border x:Name="MicGateMarkerLine" Background="{StaticResource DangerBrush}" Width="2" HorizontalAlignment="Left" />
+                                </Grid>
                                 <Slider x:Name="MicGateSlider" Minimum="0" Maximum="4000" ValueChanged="MicGateSlider_ValueChanged" />
+                                <TextBlock Text="Lance l'écoute (ou ouvre simplement ces réglages), regarde la barre pendant que la vidéo/le bruit joue, puis pendant que tu parles normalement. Règle le curseur juste au-dessus du niveau du bruit de fond mais en-dessous du niveau de ta voix — tout ce qui reste sous le curseur sera ignoré par la reconnaissance."
+                                           Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
 
                                 <TextBlock Text="Mode d'écoute" FontWeight="Bold" Margin="0,16,0,6" />
                                 <RadioButton x:Name="ListenAlwaysRadio" Content="Toujours active" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="always" />

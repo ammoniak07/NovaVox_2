@@ -60,6 +60,9 @@ public partial class MainWindow : Window
     private GeminiClient? _chatGeminiClient;
     private readonly ObservableCollection<GeminiMessageVm> _geminiMessages = new();
 
+    private const int MicGateMax = 4000; // doit correspondre au Maximum de MicGateSlider
+    private readonly MicLevelMonitor _micLevelMonitor = new();
+
     private GameLogWatcher? _gameLogWatcher;
     private readonly ObservableCollection<GameLogPhraseRowVm> _gameLogPhraseRows = new();
     private readonly ObservableCollection<HudOverrideRowVm> _hudOverrideRows = new();
@@ -92,6 +95,9 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         SizeChanged += (_, _) => SaveWindowConfig();
         LocationChanged += (_, _) => SaveWindowConfig();
+
+        _micLevelMonitor.LevelChanged += (_, rms) => Dispatcher.BeginInvoke(() => UpdateMicLevelMeter(rms));
+        _micLevelMonitor.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog($"[Micro] Mètre de niveau indisponible : {msg}", "warning"));
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -831,6 +837,7 @@ public partial class MainWindow : Window
         }
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
+        _micLevelMonitor.Dispose();
         _gameLogWatcher?.Dispose();
         _overlayWindow?.Close();
     }
@@ -897,6 +904,7 @@ public partial class MainWindow : Window
         {
             _loadingSettings = false;
         }
+        UpdateMicGateMarker();
     }
 
     private static void SelectRadioForTag(RadioButton always, RadioButton toggle, RadioButton ptt, string mode)
@@ -930,6 +938,7 @@ public partial class MainWindow : Window
 
     private void MicGateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        UpdateMicGateMarker(); // même pendant le chargement des réglages, pour refléter la valeur restaurée
         if (_loadingSettings) return;
         _state.Audio.MicGate = (int)e.NewValue;
         _state.SaveAudio();
@@ -941,6 +950,41 @@ public partial class MainWindow : Window
         var selected = InputDeviceCombo.SelectedItem as string;
         _state.Audio.InputDevice = selected == "Périphérique par défaut" ? null : selected;
         _state.SaveAudio();
+        // Redémarre le mètre de niveau léger avec le nouveau périphérique
+        // (sans effet si l'écoute complète tourne déjà : elle alimente
+        // alors le mètre elle-même via VoiceOrchestrator.MicLevelChanged).
+        StartMicLevelMonitorIfIdle();
+    }
+
+    private void MicLevelMeterTrack_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateMicGateMarker();
+
+    /// <summary>Reflète en direct le niveau capté sur la piste du mètre — appelé depuis MicLevelMonitor (réglages ouverts, écoute complète arrêtée) ou VoiceOrchestrator.MicLevelChanged (écoute complète active).</summary>
+    private void UpdateMicLevelMeter(long rms)
+    {
+        var pct = Math.Clamp(rms / (double)MicGateMax, 0.0, 1.0);
+        MicLevelFillBar.Width = MicLevelMeterTrack.ActualWidth * pct;
+    }
+
+    /// <summary>Repositionne le repère rouge du seuil de sensibilité sur la piste du mètre et met à jour l'étiquette numérique.</summary>
+    private void UpdateMicGateMarker()
+    {
+        var pct = Math.Clamp(MicGateSlider.Value / MicGateMax, 0.0, 1.0);
+        MicGateMarkerLine.Margin = new Thickness(MicLevelMeterTrack.ActualWidth * pct, 0, 0, 0);
+        MicGateValueText.Text = MicGateSlider.Value > 0 ? ((int)MicGateSlider.Value).ToString() : "Désactivé";
+    }
+
+    /// <summary>
+    /// Démarre le mètre de niveau léger (MicLevelMonitor) tant que les
+    /// réglages sont ouverts ET que l'écoute complète ne tourne pas déjà
+    /// (elle alimente alors le même mètre via VoiceOrchestrator.MicLevelChanged
+    /// — les deux ne doivent jamais capter le micro en même temps).
+    /// </summary>
+    private void StartMicLevelMonitorIfIdle()
+    {
+        if (SettingsOverlay.Visibility != Visibility.Visible) return;
+        if (_voiceOrchestrator?.IsListening == true) return;
+        var deviceNumber = AudioDevices.ResolveInputDeviceNumber(_state.Audio.InputDevice);
+        _micLevelMonitor.Start(deviceNumber);
     }
 
     private void OutputDeviceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1232,7 +1276,13 @@ public partial class MainWindow : Window
             StatusText.Text = listening ? "Écoute en cours" : "Système en veille";
             StatusDot.Fill = listening ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("MutedBrush");
             _overlayWindow?.SetListening(listening);
+            // L'écoute complète et le mètre de niveau léger ne doivent jamais
+            // capter le micro en même temps : l'une alimente le mètre pendant
+            // que l'autre est à l'arrêt (voir StartMicLevelMonitorIfIdle).
+            if (listening) _micLevelMonitor.Stop();
+            else StartMicLevelMonitorIfIdle();
         });
+        _voiceOrchestrator.MicLevelChanged += (_, rms) => Dispatcher.BeginInvoke(() => UpdateMicLevelMeter(rms));
         _voiceOrchestrator.MicActiveChanged += (_, active) => Dispatcher.BeginInvoke(() => _overlayWindow?.SetMicActive(active));
         _voiceOrchestrator.CommandExecuted += (_, keys) => Dispatcher.BeginInvoke(() => StatusText.Text = $"Commande : {keys}");
         _voiceOrchestrator.CommandTriggered += (_, e) => Dispatcher.BeginInvoke(() =>
@@ -1320,9 +1370,17 @@ public partial class MainWindow : Window
 
     // ----------------------------------------------------------- Réglages
 
-    private void SettingsButton_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Visible;
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsOverlay.Visibility = Visibility.Visible;
+        StartMicLevelMonitorIfIdle();
+    }
 
-    private void CloseSettings_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Collapsed;
+    private void CloseSettings_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsOverlay.Visibility = Visibility.Collapsed;
+        _micLevelMonitor.Stop();
+    }
 
     // --------------------------------------------------- Assistant Gemini (discussion)
 
