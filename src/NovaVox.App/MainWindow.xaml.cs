@@ -7,6 +7,7 @@ using NovaVox.App.Overlay;
 using NovaVox.App.ViewModels;
 using NovaVox.Core;
 using NovaVox.Core.Config;
+using NovaVox.Core.Update;
 
 namespace NovaVox.App;
 
@@ -68,6 +69,9 @@ public partial class MainWindow : Window
         InitializeProfiles();
         InitializeOverlay();
         LoadSettingsIntoControls();
+
+        var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
+        VersionText.Text = $"NovaVox v{version}";
     }
 
     // ------------------------------------------------------------ Commandes
@@ -285,6 +289,8 @@ public partial class MainWindow : Window
             OverlayTextColorBox.Text = overlay.TextColor;
             OverlayTextOpacitySlider.Value = overlay.TextOpacity;
             SelectComboItemByTag(UiLanguageCombo, ai.UiLanguage);
+
+            AutolaunchCheckbox.IsChecked = NovaVox.App.Autolaunch.StarCitizenAutolaunch.IsEnabled();
         }
         finally
         {
@@ -485,6 +491,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private void AutolaunchCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        var enabled = AutolaunchCheckbox.IsChecked ?? false;
+        var ok = NovaVox.App.Autolaunch.StarCitizenAutolaunch.SetEnabled(enabled);
+        if (!ok)
+        {
+            AutolaunchCheckbox.IsChecked = !enabled; // échec (ex. session non compilée) : annule visuellement
+            MessageBox.Show(
+                this,
+                "Impossible d'activer le lancement automatique. Cette fonctionnalité n'est disponible que depuis la version installée.",
+                "NovaVox");
+        }
+    }
+
     private void ResetApplication_Click(object sender, RoutedEventArgs e)
     {
         // Réinitialisation complète (commandes/voix/micro...) : reportée à
@@ -540,4 +561,71 @@ public partial class MainWindow : Window
 
     private void OverlayAppearance_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) =>
         OverlayAppearance_Changed(sender, new RoutedEventArgs());
+
+    // ---------------------------------------------- Export/import config
+
+    private void ExportConfig_Click(object sender, RoutedEventArgs e) => ExportConfig(allProfiles: false);
+
+    private void ExportConfigAllProfiles_Click(object sender, RoutedEventArgs e) => ExportConfig(allProfiles: true);
+
+    private void ExportConfig(bool allProfiles)
+    {
+        var suffix = allProfiles ? "_profils" : "";
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = $"novavox_config{suffix}_{DateTime.Now:yyyyMMdd_HHmmss}.zip",
+            Filter = "Archives ZIP (*.zip)|*.zip",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            ConfigArchive.Export(NovaVoxPaths.BaseDirectory, dialog.FileName, allProfiles);
+            MessageBox.Show(this, $"Configuration exportée vers {dialog.FileName}.", "NovaVox");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Échec de l'export : {ex.Message}", "NovaVox");
+        }
+    }
+
+    private void ImportConfig_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Archives ZIP (*.zip)|*.zip" };
+        if (dialog.ShowDialog(this) != true) return;
+
+        var result = ConfigArchive.Import(NovaVoxPaths.BaseDirectory, dialog.FileName, _state.CommandStore);
+        if (!result.Ok)
+        {
+            MessageBox.Show(this, $"Échec de l'import : {result.Error}", "NovaVox");
+            return;
+        }
+
+        MessageBox.Show(
+            this,
+            "Configuration importée. Ferme puis rouvre NovaVox pour appliquer les changements.",
+            "NovaVox");
+    }
+
+    // --------------------------------------------------------- Mise à jour
+
+    private async void CheckForUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateStatusText.Text = "Vérification en cours...";
+        var patchNotesPath = Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt");
+        var result = await NovaVox.App.Update.UpdateChecker.CheckForUpdateAsync(patchNotesPath);
+
+        if (!result.Available)
+        {
+            UpdateStatusText.Text = "Déjà à jour, aucune mise à jour disponible.";
+            return;
+        }
+
+        UpdateStatusText.Text = $"Nouvelle version disponible : v{result.Version}.";
+        if (MessageBox.Show(this, $"Version {result.Version} disponible. Ouvrir la page de téléchargement ?", "NovaVox",
+                MessageBoxButton.YesNo) == MessageBoxResult.Yes && result.Url is not null)
+        {
+            NovaVox.App.Update.UpdateChecker.OpenUpdateUrl(result.Url);
+        }
+    }
 }

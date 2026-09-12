@@ -207,6 +207,9 @@
                             <Slider x:Name="OverlayTextOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
                         </StackPanel>
 
+                        <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
+                                  Margin="0,16,0,0" Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
+
                         <TextBlock Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
                         <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">
                             <ComboBoxItem Content="Français" Tag="fr" />
@@ -223,10 +226,21 @@
 
                 <TabItem Header="🙏 Crédits">
                     <StackPanel Margin="10">
-                        <TextBlock Text="NovaVox" FontSize="18" FontWeight="Bold" />
+                        <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
                         <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
                         <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
                         <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
+
+                        <TextBlock Text="Configuration" FontWeight="Bold" Margin="0,24,0,6" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Exporter la config" Click="ExportConfig_Click" />
+                            <Button Content="Exporter (avec tous les profils)" Margin="8,0,0,0" Click="ExportConfigAllProfiles_Click" />
+                        </StackPanel>
+                        <Button Content="Importer la config" Margin="0,6,0,0" HorizontalAlignment="Left" Click="ImportConfig_Click" />
+
+                        <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
+                        <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
+                        <TextBlock x:Name="UpdateStatusText" Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </TabItem>
             </TabControl>
