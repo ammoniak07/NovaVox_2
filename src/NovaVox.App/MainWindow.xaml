@@ -97,8 +97,13 @@
                 </Grid>
             </Border>
 
-            <!-- Commandes (gauche) + Journal système (droite), côte à côte -->
-            <Grid Grid.Row="2" Margin="16">
+            <!-- Commandes (gauche) + Journal système (droite), côte à côte.
+                 ClipToBounds : l'image de fond ci-dessous est affichée à sa
+                 taille native (non redimensionnée) et centrée — sans ce
+                 clip, elle déborderait par-dessus l'en-tête/la barre de
+                 statut au-dessus dès qu'elle dépasse la hauteur de cette
+                 zone. -->
+            <Grid Grid.Row="2" Margin="16" ClipToBounds="True">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" MinWidth="360" />
                     <ColumnDefinition Width="16" />
@@ -110,8 +115,11 @@
                      ci-dessous), qui la recouvrent ailleurs avec leur propre
                      fond opaque. Chargée depuis un fichier local si présent
                      (voir LoadBackgroundImage, MainWindow.xaml.cs) : absent,
-                     rien ne s'affiche. -->
-                <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="Uniform"
+                     rien ne s'affiche. Stretch="None" + centrée : gardée à
+                     sa taille native plutôt que redimensionnée, pour qu'agrandir
+                     la fenêtre révèle progressivement plus de l'image (comme
+                     une fenêtre sur une image fixe) au lieu de la rétrécir. -->
+                <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="None"
                        HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
 
                 <!-- Colonne gauche : commandes -->
