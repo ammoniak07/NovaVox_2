@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -182,6 +183,103 @@ public partial class MainWindow : Window
     {
         var row = RowFromSender(sender);
         if (row is not null) _state.Commands.Remove(row);
+    }
+
+    private void SpeakCommand_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null || string.IsNullOrWhiteSpace(row.Phrase)) return;
+        EnsureTestTts();
+        _testTts!.Speak(row.Phrase);
+    }
+
+    private void ToggleSynonyms_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is not null) row.SynonymsExpanded = !row.SynonymsExpanded;
+    }
+
+    private void AddSynonym_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null) return;
+        var value = InputDialog.Show(this, $"Texte mal entendu à associer à « {row.Phrase} » :");
+        if (string.IsNullOrWhiteSpace(value)) return;
+        var trimmed = value.Trim();
+        if (row.Synonyms.Any(s => string.Equals(s, trimmed, StringComparison.OrdinalIgnoreCase))) return;
+        row.Synonyms.Add(trimmed);
+        row.SynonymsExpanded = true;
+    }
+
+    /// <summary>Tag résolu via RelativeSource AncestorType=ListBoxItem (voir DataTemplate imbriqué du XAML) : la commande parente, alors que le DataContext du bouton lui-même est le synonyme (une simple chaîne).</summary>
+    private void EditSynonym_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: VoiceCommandRow row, DataContext: string current }) return;
+        var idx = row.Synonyms.IndexOf(current);
+        if (idx < 0) return;
+        var updated = InputDialog.Show(this, $"Modifier le synonyme de « {row.Phrase} » :", current);
+        if (string.IsNullOrWhiteSpace(updated)) return;
+        row.Synonyms[idx] = updated.Trim();
+    }
+
+    private void DeleteSynonym_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: VoiceCommandRow row, DataContext: string current }) return;
+        row.Synonyms.Remove(current);
+    }
+
+    // --------------------------------------- Réordonnancement par glisser
+
+    private Point _dragStartPoint;
+    private VoiceCommandRow? _dragCandidateRow;
+
+    private void DragHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _dragStartPoint = e.GetPosition(null);
+        _dragCandidateRow = (sender as FrameworkElement)?.DataContext as VoiceCommandRow;
+    }
+
+    private void CommandsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragCandidateRow is null) return;
+        var pos = e.GetPosition(null);
+        if (Math.Abs(pos.X - _dragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(pos.Y - _dragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        var row = _dragCandidateRow;
+        _dragCandidateRow = null; // évite de redéclencher DoDragDrop tant que le glisser en cours n'est pas terminé
+        DragDrop.DoDragDrop(CommandsList, row, DragDropEffects.Move);
+    }
+
+    private void CommandsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _dragCandidateRow = null;
+
+    private void CommandsList_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(typeof(VoiceCommandRow)) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void CommandsList_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(VoiceCommandRow)) is not VoiceCommandRow draggedRow) return;
+        var targetItem = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
+        if (targetItem?.DataContext is not VoiceCommandRow targetRow || ReferenceEquals(targetRow, draggedRow)) return;
+
+        var fromIndex = _state.Commands.IndexOf(draggedRow);
+        var toIndex = _state.Commands.IndexOf(targetRow);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return;
+        _state.Commands.Move(fromIndex, toIndex);
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match) return match;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     // ------------------------------------------------- Clavier interactif

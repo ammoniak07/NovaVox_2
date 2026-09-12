@@ -31,13 +31,25 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     public string Phrase { get => _phrase; set { _phrase = value; Raise(); } }
 
     private string _keys = "";
-    public string Keys { get => _keys; set { _keys = value; Raise(); } }
+    public string Keys { get => _keys; set { _keys = value; Raise(); Raise(nameof(KeysDisplayWithBadges)); } }
 
     private bool _hold;
-    public bool Hold { get => _hold; set { _hold = value; Raise(); } }
+    public bool Hold { get => _hold; set { _hold = value; Raise(); Raise(nameof(KeysDisplayWithBadges)); } }
 
     private int _repeatCount = 1;
-    public int RepeatCount { get => _repeatCount; set { _repeatCount = value; Raise(); } }
+    public int RepeatCount { get => _repeatCount; set { _repeatCount = value; Raise(); Raise(nameof(KeysDisplayWithBadges)); } }
+
+    /// <summary>Touche(s) + petits indicateurs maintien/répétition — port des badges ⏱/🔁N à côté du "keycap" (script.js).</summary>
+    public string KeysDisplayWithBadges
+    {
+        get
+        {
+            var suffix = "";
+            if (Hold) suffix += " ⏱";
+            if (RepeatCount > 1) suffix += $" 🔁{RepeatCount}";
+            return Keys + suffix;
+        }
+    }
 
     private double _repeatDelay = 0.1;
     public double RepeatDelay { get => _repeatDelay; set { _repeatDelay = value; Raise(); } }
@@ -60,16 +72,16 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
 
     public List<ExtraStep> ExtraSteps { get; set; } = new();
 
-    public string SynonymsText
+    private bool _synonymsExpanded;
+    /// <summary>État d'affichage (repliée/dépliée) de la liste de synonymes — jamais persisté, purement pour l'UI (voir toggle-syn, script.js).</summary>
+    public bool SynonymsExpanded { get => _synonymsExpanded; set { _synonymsExpanded = value; Raise(); Raise(nameof(SynonymsCountLabel)); } }
+
+    public bool HasSynonyms => Synonyms.Count > 0;
+    public string SynonymsCountLabel => $"{(SynonymsExpanded ? "▾" : "▸")} {Synonyms.Count} syn";
+
+    public VoiceCommandRow()
     {
-        get => string.Join(", ", Synonyms);
-        set
-        {
-            Synonyms.Clear();
-            foreach (var s in value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0))
-                Synonyms.Add(s);
-            Raise();
-        }
+        Synonyms.CollectionChanged += (_, _) => { Raise(nameof(HasSynonyms)); Raise(nameof(SynonymsCountLabel)); };
     }
 
     public static VoiceCommandRow FromModel(VoiceCommand cmd)

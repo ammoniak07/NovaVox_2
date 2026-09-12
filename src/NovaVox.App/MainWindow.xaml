@@ -98,7 +98,9 @@
                     </StackPanel>
 
                     <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
-                        <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AllowDrop="True" PreviewMouseMove="CommandsList_PreviewMouseMove" PreviewMouseLeftButtonUp="CommandsList_PreviewMouseLeftButtonUp"
+                                 DragOver="CommandsList_DragOver" Drop="CommandsList_Drop">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="4">
@@ -107,15 +109,19 @@
                                                 Background="{StaticResource PanelAltBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
+                                                <TextBlock Grid.Column="0" Text="⠿" Cursor="SizeAll" Foreground="{StaticResource MutedBrush}"
+                                                           VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Glisser pour réordonner"
+                                                           MouseLeftButtonDown="DragHandle_MouseLeftButtonDown" />
+                                                <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
                                                          Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                    <Button Content="↑" Width="24" Click="MoveUp_Click" />
-                                                    <Button Content="↓" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" />
-                                                    <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                    <Button Content="▲" Width="24" Click="MoveUp_Click" ToolTip="Monter" />
+                                                    <Button Content="▼" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" />
+                                                    <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -124,49 +130,69 @@
                                         <Border Visibility="{Binding IsCommand, Converter={StaticResource BoolToVis}}"
                                                 Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                                 CornerRadius="4" Padding="8" Margin="0,3">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="2*" />
-                                                    <ColumnDefinition Width="1.2*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-
-                                                <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
-                                                         ToolTip="Phrase à dire" Margin="0,0,4,0" />
-                                                <Button Grid.Row="0" Grid.Column="1" Content="{Binding Keys}" FontFamily="Consolas" Margin="0,0,4,0"
-                                                        ToolTip="Cliquer pour choisir la ou les touches (clavier interactif)" Click="CommandKeysButton_Click" />
-                                                <CheckBox Grid.Row="0" Grid.Column="2" Content="Maintenir" IsChecked="{Binding Hold}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" Margin="0,0,6,0">
-                                                    <TextBlock Text="×" VerticalAlignment="Center" />
-                                                    <TextBox Text="{Binding RepeatCount, UpdateSourceTrigger=PropertyChanged}" Width="30" Margin="2,0,0,0" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal">
-                                                    <Button Content="↑" Width="24" Click="MoveUp_Click" />
-                                                    <Button Content="↓" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" />
-                                                    <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
-                                                </StackPanel>
-
-                                                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0">
+                                            <StackPanel>
+                                                <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBox Grid.Column="0" Text="{Binding SynonymsText, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"
-                                                             ToolTip="Synonymes séparés par des virgules" Foreground="{StaticResource MutedBrush}" FontStyle="Italic" />
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding TriggerHotkeyLabel}" Foreground="{StaticResource MutedBrush}" FontSize="11"
-                                                                   VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Déclenchement manuel (manette) de cette commande, indépendant de la voix" />
-                                                        <Button Content="🕹" Width="26" Click="CommandTriggerCaptureButton_Click" ToolTip="Assigner un bouton joystick pour déclencher cette commande sans la voix" />
-                                                        <Button Content="✕" Width="22" Margin="2,0,0,0" Click="CommandTriggerClear_Click" ToolTip="Effacer le déclenchement manette" />
+
+                                                    <TextBlock Grid.Column="0" Text="⠿" Cursor="SizeAll" Foreground="{StaticResource MutedBrush}"
+                                                               VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Glisser pour réordonner"
+                                                               MouseLeftButtonDown="DragHandle_MouseLeftButtonDown" />
+
+                                                    <Button Grid.Column="1" Content="{Binding KeysDisplayWithBadges}" FontFamily="Consolas" FontWeight="Bold"
+                                                            Background="{StaticResource PanelBrush}" Foreground="{StaticResource AccentBrush}"
+                                                            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" Padding="8,3" Margin="0,0,8,0"
+                                                            ToolTip="Cliquer pour choisir la ou les touches (clavier interactif)" Click="CommandKeysButton_Click" />
+
+                                                    <TextBox Grid.Column="2" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="Phrase à dire" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                                                    <Button Grid.Column="3" Content="{Binding SynonymsCountLabel}" Visibility="{Binding HasSynonyms, Converter={StaticResource BoolToVis}}"
+                                                            ToolTip="Afficher/masquer les synonymes" Click="ToggleSynonyms_Click" Margin="0,0,6,0" />
+
+                                                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                                                        <Button Content="▲" Width="24" Click="MoveUp_Click" ToolTip="Monter" />
+                                                        <Button Content="▼" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" />
+                                                        <Button Content="▶" Width="26" Margin="6,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" />
+                                                        <Button Content="+ syn" Margin="4,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
+                                                        <Button Content="✏" Width="26" Margin="4,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" />
+                                                        <Button Content="✕" Width="24" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" />
                                                     </StackPanel>
                                                 </Grid>
-                                            </Grid>
+
+                                                <StackPanel Orientation="Horizontal" Margin="26,4,0,0">
+                                                    <TextBlock Text="🕹 Déclenchement manette : " Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding TriggerHotkeyLabel}" Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                    <Button Content="🕹" Width="24" Click="CommandTriggerCaptureButton_Click" ToolTip="Assigner un bouton joystick pour déclencher cette commande sans la voix" />
+                                                    <Button Content="✕" Width="22" Margin="2,0,0,0" Click="CommandTriggerClear_Click" ToolTip="Effacer le déclenchement manette" />
+                                                </StackPanel>
+
+                                                <ItemsControl ItemsSource="{Binding Synonyms}" Visibility="{Binding SynonymsExpanded, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="26,2,0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                                                                <Button Grid.Column="1" Content="✏" Width="24"
+                                                                        Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
+                                                                        Click="EditSynonym_Click" ToolTip="Modifier ce synonyme" />
+                                                                <Button Grid.Column="2" Content="✕" Width="22" Margin="2,0,0,0"
+                                                                        Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
+                                                                        Click="DeleteSynonym_Click" ToolTip="Supprimer ce synonyme" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
                                         </Border>
                                     </Grid>
                                 </DataTemplate>
