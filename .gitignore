@@ -7,6 +7,10 @@ bin/
 obj/
 out/
 
+# Publication autonome (build.bat) / installateur Inno Setup (installer.iss)
+dist/
+Output/
+
 # Modèles/moteurs téléchargés localement par l'appli (trop volumineux pour Git)
 model/
 piper/
