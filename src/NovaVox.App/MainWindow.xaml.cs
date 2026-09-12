@@ -108,11 +108,15 @@ public partial class MainWindow : Window
             if (args.NewItems is not null)
                 foreach (VoiceCommandRow row in args.NewItems) HookRow(row);
             ScheduleCommandsSave();
+            UpdateCommandCount();
         };
         CommandsList.ItemsSource = _state.Commands;
+        UpdateCommandCount();
     }
 
     private void HookRow(VoiceCommandRow row) => row.PropertyChanged += (_, _) => ScheduleCommandsSave();
+
+    private void UpdateCommandCount() => CommandCountText.Text = _state.Commands.Count(r => !r.IsTitle).ToString();
 
     private void ScheduleCommandsSave()
     {
@@ -562,8 +566,10 @@ public partial class MainWindow : Window
         _voiceOrchestrator.Log += (_, e) => Dispatcher.BeginInvoke(() => AppendLog(e.Message, e.Kind));
         _voiceOrchestrator.ListeningChanged += (_, listening) => Dispatcher.BeginInvoke(() =>
         {
-            ListenToggleButton.Content = listening ? "■ Arrêter l'écoute" : "▶ Démarrer l'écoute";
+            ListenToggleButton.Content = listening ? "■ Couper l'écoute" : "▶ Engager l'écoute";
+            StatusLabelText.Text = listening ? "Écoute active" : "Arrêté";
             StatusText.Text = listening ? "Écoute en cours" : "Système en veille";
+            StatusDot.Fill = listening ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("MutedBrush");
         });
         _voiceOrchestrator.CommandExecuted += (_, keys) => Dispatcher.BeginInvoke(() => StatusText.Text = $"Commande : {keys}");
 
@@ -625,6 +631,18 @@ public partial class MainWindow : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Visible;
 
     private void CloseSettings_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Collapsed;
+
+    private void OpenGeminiSettings_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsOverlay.Visibility = Visibility.Visible;
+        SettingsTabControl.SelectedItem = GeminiSettingsTab;
+    }
+
+    private void OpenGameLogSettings_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsOverlay.Visibility = Visibility.Visible;
+        SettingsTabControl.SelectedItem = GameLogSettingsTab;
+    }
 
     // ------------------------------------------------------------- Overlay
 

@@ -12,6 +12,7 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -21,23 +22,50 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="15" Background="{StaticResource PanelAltBrush}"
+                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5">
+                            <Path Fill="{StaticResource AccentBrush}" Stretch="Uniform" Width="13" Height="13"
+                                  Data="M 0.5,0 L 1,0.28 L 1,0.72 L 0.5,1 L 0,0.72 L 0,0.28 Z" />
+                        </Border>
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="NOVAVOX" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
+                            <TextBlock Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{StaticResource MutedBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiSettings_Click" />
+                        <Button Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLogSettings_Click" />
+                        <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
+                                ToolTip="Réglages" />
+                        <Button x:Name="ThemeToggleButton" Style="{StaticResource IconCircleButtonStyle}" Content="🌙" Margin="8,0,0,0" Click="ThemeToggleButton_Click"
+                                ToolTip="Basculer jour/nuit" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Barre de statut + bouton d'engagement -->
+            <Border Grid.Row="1" Margin="16,16,16,0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="18,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="NOVAVOX" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
-                        <TextBlock x:Name="StatusText" Text="Système en veille" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                        <Ellipse x:Name="StatusDot" Width="14" Height="14" Fill="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                        <StackPanel Margin="12,0,0,0">
+                            <TextBlock x:Name="StatusLabelText" Text="Arrêté" FontWeight="Bold" />
+                            <TextBlock x:Name="StatusText" Text="Système en veille" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0" />
+                        </StackPanel>
                     </StackPanel>
-                    <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Démarrer l'écoute" Click="ListenToggleButton_Click" />
-                    <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙️" Margin="8,0,0,0" Width="36" Click="SettingsButton_Click"
-                            ToolTip="Réglages" />
-                    <Button x:Name="ThemeToggleButton" Grid.Column="3" Content="🌙" Margin="8,0,0,0" Width="36" Click="ThemeToggleButton_Click"
-                            ToolTip="Basculer jour/nuit" />
+                    <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Engager l'écoute" Style="{StaticResource AccentPillButtonStyle}" Click="ListenToggleButton_Click" />
                 </Grid>
             </Border>
 
             <!-- Commandes (gauche) + Journal système (droite), côte à côte -->
-            <Grid Grid.Row="1" Margin="16">
+            <Grid Grid.Row="2" Margin="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" MinWidth="360" />
                     <ColumnDefinition Width="16" />
@@ -61,7 +89,10 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Commandes" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
+                            <TextBlock x:Name="CommandCountText" Text="0" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" FontSize="12" />
+                        </Border>
                         <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
                         <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
                     </StackPanel>
@@ -141,7 +172,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Journal système" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="JOURNAL SYSTÈME" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
                     </StackPanel>
 
@@ -201,7 +232,7 @@
                         <Button Grid.Column="1" Content="✕" Width="28" Click="CloseSettings_Click" />
                     </Grid>
 
-                    <TabControl Grid.Row="1" Background="Transparent" Margin="10,4,10,10">
+                    <TabControl x:Name="SettingsTabControl" Grid.Row="1" Background="Transparent" Margin="10,4,10,10">
                         <TabItem Header="🔊 Sons">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
@@ -257,7 +288,7 @@
                             </ScrollViewer>
                         </TabItem>
 
-                        <TabItem Header="🌟 IA Gemini">
+                        <TabItem x:Name="GeminiSettingsTab" Header="🌟 IA Gemini">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
@@ -314,7 +345,7 @@
                             </ScrollViewer>
                         </TabItem>
 
-                        <TabItem Header="🛰 Game.log">
+                        <TabItem x:Name="GameLogSettingsTab" Header="🛰 Game.log">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="GameLogEnabledCheckbox" Content="Surveiller le Game.log" Checked="GameLogEnabledCheckbox_Changed" Unchecked="GameLogEnabledCheckbox_Changed" />
                                 <CheckBox x:Name="GameLogAnnounceCheckbox" Content="Annoncer les changements de zone à voix haute" Margin="0,8,0,0"
