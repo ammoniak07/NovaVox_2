@@ -155,6 +155,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="3*" />
+                            <RowDefinition Height="20" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
@@ -167,7 +168,7 @@
                             <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
                         </StackPanel>
 
-                        <Border x:Name="CommandsCard" Grid.Row="1" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                        <Border x:Name="CommandsCard" Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  AllowDrop="True" PreviewMouseMove="CommandsList_PreviewMouseMove" PreviewMouseLeftButtonUp="CommandsList_PreviewMouseLeftButtonUp"
                                  DragOver="CommandsList_DragOver" DragLeave="CommandsList_DragLeave" Drop="CommandsList_Drop">
