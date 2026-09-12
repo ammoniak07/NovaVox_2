@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using NAudio.Wave;
 using NovaVox.App.Gemini;
+using NovaVox.App.Hotkeys;
 using NovaVox.App.Install;
 using NovaVox.App.Overlay;
 using NovaVox.App.Speech;
@@ -17,6 +18,7 @@ using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
 using NovaVox.Core.GameLog;
+using NovaVox.Core.Hotkeys;
 using NovaVox.Core.Speech;
 using NovaVox.Core.Tts;
 using NovaVox.Core.Update;
@@ -324,7 +326,11 @@ public partial class MainWindow : Window
 
             MicGainSlider.Value = audio.MicGain;
             MicGateSlider.Value = audio.MicGate;
-            ListenHotkeyBox.Text = audio.ListenHotkey ?? "";
+            // La case ne montre jamais l'encodage brut "joy:{...}" (illisible) :
+            // une touche joystick n'existe que via ListenHotkeyValueText / le
+            // bouton "🕹 Bouton joystick" ci-dessous (voir listenHotkeyDisplayLabel, script.js).
+            ListenHotkeyBox.Text = JoystickHotkeyCodec.Decode(audio.ListenHotkey) is null ? audio.ListenHotkey ?? "" : "";
+            UpdateListenHotkeyDisplay();
             SelectRadioForTag(ListenAlwaysRadio, ListenToggleRadio, ListenPttRadio, audio.ListenMode);
             SelectComboItemByTag(KbLayoutCombo, audio.KbLayout);
             TtsVolumeSlider.Value = audio.TtsVolume;
@@ -422,6 +428,7 @@ public partial class MainWindow : Window
         {
             _state.Audio.ListenMode = tag;
             _state.SaveAudio();
+            _voiceOrchestrator?.UpdateListenHotkeySettings();
         }
     }
 
@@ -429,8 +436,88 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         var value = ListenHotkeyBox.Text.Trim();
-        _state.Audio.ListenHotkey = value.Length == 0 ? null : value.ToLowerInvariant();
+        // Vider la case ne doit jamais effacer une touche déjà réglée (ex. un
+        // bouton joystick capturé, que cette case ne montre pas) : le seul
+        // moyen d'effacer est le bouton "Effacer" (voir onClearListenHotkey, script.js).
+        if (value.Length == 0) return;
+        _state.Audio.ListenHotkey = value.ToLowerInvariant();
         _state.SaveAudio();
+        UpdateListenHotkeyDisplay();
+        _voiceOrchestrator?.UpdateListenHotkeySettings();
+    }
+
+    private void UpdateListenHotkeyDisplay()
+    {
+        var hotkey = _state.Audio.ListenHotkey;
+        if (string.IsNullOrEmpty(hotkey)) { ListenHotkeyValueText.Text = "Non définie"; return; }
+        var joyInfo = JoystickHotkeyCodec.Decode(hotkey);
+        ListenHotkeyValueText.Text = joyInfo is not null ? $"🕹 Bouton {joyInfo.Button}" : hotkey;
+    }
+
+    private void ClearListenHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        _state.Audio.ListenHotkey = null;
+        _state.SaveAudio();
+        ListenHotkeyBox.Text = "";
+        UpdateListenHotkeyDisplay();
+        _voiceOrchestrator?.UpdateListenHotkeySettings();
+        AppendLog("Touche d'activation vocale effacée.", "info");
+    }
+
+    private CancellationTokenSource? _joystickCaptureCts;
+
+    /// <summary>Port de capture_joystick_button/onCaptureJoystick (app.py/script.js) : capture le prochain bouton pressé sur une manette (VirPil et autres périphériques DirectInput compris).</summary>
+    private async void CaptureJoystickButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_joystickCaptureCts is not null)
+        {
+            _joystickCaptureCts.Cancel();
+            return;
+        }
+        if (_voiceOrchestrator is null) return;
+
+        _joystickCaptureCts = new CancellationTokenSource();
+        CaptureJoystickButton.Content = "⏳ Appuie sur le bouton... (annuler)";
+        AppendLog("Appuie maintenant sur le bouton du joystick à assigner (15 secondes, ou clique à nouveau pour annuler)...", "info");
+        try
+        {
+            CaptureResult result;
+            try
+            {
+                result = await _voiceOrchestrator.CaptureJoystickButtonAsync(_joystickCaptureCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Task.Delay observe l'annulation immédiatement (avant la
+                // prochaine vérification en tête de boucle côté HotkeyCapture) :
+                // à traiter comme un résultat "annulé" normal, pas une erreur.
+                result = new CaptureResult(false, Reason: CaptureFailureReason.Cancelled);
+            }
+            if (result.Ok && result.JoystickHotkey is not null)
+            {
+                _state.Audio.ListenHotkey = result.JoystickHotkey;
+                _state.SaveAudio();
+                UpdateListenHotkeyDisplay();
+                _voiceOrchestrator?.UpdateListenHotkeySettings();
+                AppendLog($"Touche d'activation vocale réglée sur « {ListenHotkeyValueText.Text} ».", "success");
+            }
+            else
+            {
+                var message = result.Reason switch
+                {
+                    CaptureFailureReason.NoDevice => "Aucun joystick/manette détecté. Vérifie qu'il est bien branché et reconnu par Windows (le VirPil, par exemple, doit apparaître dans les périphériques de jeu Windows).",
+                    CaptureFailureReason.Timeout => "Aucun bouton détecté (15 secondes écoulées). Réessaie.",
+                    CaptureFailureReason.Cancelled => "Détection annulée.",
+                    _ => "Erreur pendant la détection du bouton.",
+                };
+                AppendLog(message, result.Reason == CaptureFailureReason.Cancelled ? "info" : "error");
+            }
+        }
+        finally
+        {
+            _joystickCaptureCts = null;
+            CaptureJoystickButton.Content = "🕹 Bouton joystick";
+        }
     }
 
     private void KbLayoutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

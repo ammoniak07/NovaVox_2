@@ -240,7 +240,13 @@
                                 <RadioButton x:Name="ListenAlwaysRadio" Content="Toujours active" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="always" />
                                 <RadioButton x:Name="ListenToggleRadio" Content="Touche bascule" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="toggle_key" Margin="0,4,0,0" />
                                 <RadioButton x:Name="ListenPttRadio" Content="Push-to-talk" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="push_to_talk" Margin="0,4,0,0" />
-                                <TextBlock Text="Touche assignée (capture au clavier/manette : voir réglages avancés)" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                <TextBlock Text="Touche assignée" FontWeight="SemiBold" Margin="0,6,0,2" />
+                                <TextBlock x:Name="ListenHotkeyValueText" Text="Non définie" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="CaptureJoystickButton" Content="🕹 Bouton joystick" Click="CaptureJoystickButton_Click" Margin="0,0,6,0" />
+                                    <Button Content="Effacer" Click="ClearListenHotkey_Click" />
+                                </StackPanel>
+                                <TextBlock Text="Ou saisis une combinaison clavier (ex : ctrl+f9) :" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
                                 <TextBox x:Name="ListenHotkeyBox" Margin="0,4,0,0" LostFocus="ListenHotkeyBox_LostFocus" />
 
                                 <TextBlock Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />

@@ -35,6 +35,31 @@ public sealed class VoiceOrchestrator : IDisposable
     public void UpdateOutputDevice(string? deviceName) => _tts.OutputDeviceName = deviceName;
 
     /// <summary>
+    /// Capture le prochain bouton pressé sur une manette connectée, pour
+    /// assigner ListenHotkey depuis les réglages — port de
+    /// capture_joystick_button (app.py). Réutilise le JoystickManager déjà
+    /// acquis par cette instance (créé au constructeur, indépendamment de
+    /// l'écoute), pour ne pas ouvrir une seconde acquisition DirectInput.
+    /// </summary>
+    public Task<CaptureResult> CaptureJoystickButtonAsync(CancellationToken cancellationToken) =>
+        _joystickManager is null
+            ? Task.FromResult(new CaptureResult(false, Reason: CaptureFailureReason.NoDevice))
+            : HotkeyCapture.CaptureJoystickButtonAsync(_joystickManager, cancellationToken);
+
+    /// <summary>
+    /// À appeler après avoir modifié ListenMode/ListenHotkey dans les
+    /// réglages, pour que le changement s'applique tout de suite si
+    /// l'écoute tourne déjà (équivalent partiel de _sync_hotkey_poll,
+    /// app.py) plutôt que d'exiger un arrêt/redémarrage de l'écoute.
+    /// </summary>
+    public void UpdateListenHotkeySettings()
+    {
+        if (_hotkeyMonitor is null) return;
+        _hotkeyMonitor.Hotkey = _state.Audio.ListenHotkey;
+        _hotkeyMonitor.ListenMode = _state.Audio.ListenMode;
+    }
+
+    /// <summary>
     /// Surveillance Game.log possédée par MainWindow (panneau "🛰 Game.log") —
     /// injectée ici pour que les questions posées à voix haute à Gemini
     /// bénéficient aussi du contexte de jeu courant (zone/vaisseau), comme
