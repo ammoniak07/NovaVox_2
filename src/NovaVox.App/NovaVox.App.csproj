@@ -41,6 +41,20 @@
          ressources embarquées, pour rester cohérente avec l'icône .exe
          elle-même sans dupliquer le fichier dans le dépôt. -->
     <Content Include="..\..\icon.ico" Link="icon.ico" CopyToOutputDirectory="PreserveNewest" />
+
+    <!-- Logo d'en-tête / image de fond des listes Commandes+Journal
+         (LoadAppLogoImage/LoadPanelsBackgroundImage, MainWindow.xaml.cs) :
+         optionnels, absents du dépôt tant que l'utilisateur n'en dépose pas
+         à la racine (à côté d'icon.ico) — Condition="Exists(...)" évite un
+         échec de build en leur absence. Copiés à côté de NovaVox.exe comme
+         icon.ico, plutôt que de rester seulement dans bin/ (ignoré par Git,
+         donc perdus au moindre clonage/dotnet clean ailleurs). -->
+    <Content Include="..\..\logo.png" Link="logo.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\logo.png')" />
+    <Content Include="..\..\logo.jpg" Link="logo.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\logo.jpg')" />
+    <Content Include="..\..\logo.jpeg" Link="logo.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\logo.jpeg')" />
+    <Content Include="..\..\background.jpg" Link="background.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background.jpg')" />
+    <Content Include="..\..\background.jpeg" Link="background.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background.jpeg')" />
+    <Content Include="..\..\background.png" Link="background.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background.png')" />
   </ItemGroup>
 
 </Project>
