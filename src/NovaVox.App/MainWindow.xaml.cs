@@ -261,6 +261,14 @@ public partial class MainWindow : Window
 
         var row = _dragCandidateRow;
         _dragCandidateRow = null; // évite de redéclencher DoDragDrop tant que le glisser en cours n'est pas terminé
+        _dragScrollViewer ??= FindVisualChild<ScrollViewer>(CommandsList);
+        var scrollViewer = _dragScrollViewer;
+        using var wheelHook = new DragWheelScrollHook(delta =>
+        {
+            // Même sens que le défilement standard d'un ScrollViewer : molette
+            // vers l'avant (delta > 0) fait remonter le contenu.
+            scrollViewer?.ScrollToVerticalOffset(scrollViewer.VerticalOffset - delta / 120.0 * DragAutoScrollStep);
+        });
         try
         {
             DragDrop.DoDragDrop(CommandsList, row, DragDropEffects.Move);
