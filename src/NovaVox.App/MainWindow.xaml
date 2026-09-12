@@ -36,134 +36,149 @@
                 </Grid>
             </Border>
 
-            <!-- Liste de commandes + journal (pleine largeur : les réglages s'ouvrent en recouvrement, voir SettingsOverlay plus bas) -->
+            <!-- Commandes (gauche) + Journal système (droite), côte à côte -->
             <Grid Grid.Row="1" Margin="16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="2*" MinHeight="120" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="180" />
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" MinWidth="360" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="2*" MinWidth="280" />
+                </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
-                    <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
-                    <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
-                    <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
-                </StackPanel>
+                <!-- Colonne gauche : commandes -->
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Commandes" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
-                    <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
-                </StackPanel>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
+                        <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
+                        <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
+                        <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
+                    </StackPanel>
 
-                <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Margin="0,0,0,10">
-                    <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="4">
-                                    <!-- Ligne "titre de groupe" -->
-                                    <Border Visibility="{Binding IsTitle, Converter={StaticResource BoolToVis}}"
-                                            Background="{StaticResource PanelAltBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
-                                                     Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                <Button Content="↑" Width="24" Click="MoveUp_Click" />
-                                                <Button Content="↓" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" />
-                                                <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Commandes" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
+                        <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
+                    </StackPanel>
 
-                                    <!-- Ligne "commande" -->
-                                    <Border Visibility="{Binding IsCommand, Converter={StaticResource BoolToVis}}"
-                                            Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                            CornerRadius="4" Padding="8" Margin="0,3">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*" />
-                                                <ColumnDefinition Width="1.2*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-
-                                            <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
-                                                     ToolTip="Phrase à dire" Margin="0,0,4,0" />
-                                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Keys, UpdateSourceTrigger=PropertyChanged}"
-                                                     ToolTip="Touche(s), ex. ctrl+n" Margin="0,0,4,0" FontFamily="Consolas" />
-                                            <CheckBox Grid.Row="0" Grid.Column="2" Content="Maintenir" IsChecked="{Binding Hold}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                            <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" Margin="0,0,6,0">
-                                                <TextBlock Text="×" VerticalAlignment="Center" />
-                                                <TextBox Text="{Binding RepeatCount, UpdateSourceTrigger=PropertyChanged}" Width="30" Margin="2,0,0,0" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal">
-                                                <Button Content="↑" Width="24" Click="MoveUp_Click" />
-                                                <Button Content="↓" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" />
-                                                <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
-                                            </StackPanel>
-
-                                            <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0"
-                                                     Text="{Binding SynonymsText, UpdateSourceTrigger=LostFocus}"
-                                                     ToolTip="Synonymes séparés par des virgules" Foreground="{StaticResource MutedBrush}" FontStyle="Italic" />
-                                        </Grid>
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Border>
-
-                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Journal système" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
-                </StackPanel>
-
-                <Border Grid.Row="4" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
-                    <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="LogList" Margin="8,4" FontFamily="Consolas" FontSize="12">
-                            <ItemsControl.ItemTemplate>
+                    <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                        <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2">
-                                        <TextBlock Text="{Binding Time}" Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0" />
-                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Kind}" Value="success">
-                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
-                                                            <Setter Property="FontWeight" Value="SemiBold" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Kind}" Value="error">
-                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                                            <Setter Property="FontWeight" Value="SemiBold" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Kind}" Value="warning">
-                                                            <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
+                                    <Grid Margin="4">
+                                        <!-- Ligne "titre de groupe" -->
+                                        <Border Visibility="{Binding IsTitle, Converter={StaticResource BoolToVis}}"
+                                                Background="{StaticResource PanelAltBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
+                                                         Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                    <Button Content="↑" Width="24" Click="MoveUp_Click" />
+                                                    <Button Content="↓" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" />
+                                                    <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Ligne "commande" -->
+                                        <Border Visibility="{Binding IsCommand, Converter={StaticResource BoolToVis}}"
+                                                Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                CornerRadius="4" Padding="8" Margin="0,3">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="1.2*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Phrase à dire" Margin="0,0,4,0" />
+                                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Keys, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="Touche(s), ex. ctrl+n" Margin="0,0,4,0" FontFamily="Consolas" />
+                                                <CheckBox Grid.Row="0" Grid.Column="2" Content="Maintenir" IsChecked="{Binding Hold}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" Margin="0,0,6,0">
+                                                    <TextBlock Text="×" VerticalAlignment="Center" />
+                                                    <TextBox Text="{Binding RepeatCount, UpdateSourceTrigger=PropertyChanged}" Width="30" Margin="2,0,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal">
+                                                    <Button Content="↑" Width="24" Click="MoveUp_Click" />
+                                                    <Button Content="↓" Width="24" Margin="2,0,0,0" Click="MoveDown_Click" />
+                                                    <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
+                                                </StackPanel>
+
+                                                <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0"
+                                                         Text="{Binding SynonymsText, UpdateSourceTrigger=LostFocus}"
+                                                         ToolTip="Synonymes séparés par des virgules" Foreground="{StaticResource MutedBrush}" FontStyle="Italic" />
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Border>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </Grid>
+
+                <!-- Colonne droite : journal système -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Journal système" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
+                    </StackPanel>
+
+                    <Border Grid.Row="1" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                        <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="LogList" Margin="8,4" FontFamily="Consolas" FontSize="12">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                            <TextBlock Text="{Binding Time}" Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="success">
+                                                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="error">
+                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="warning">
+                                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
             </Grid>
         </Grid>
 
