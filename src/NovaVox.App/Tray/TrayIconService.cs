@@ -28,6 +28,15 @@ public sealed class TrayIconService : IDisposable
         }
 
         var menu = new ContextMenu();
+        // Le thème de l'appli définit un style TextBlock implicite (texte
+        // clair, pensé pour ses propres fenêtres au fond sombre) qui
+        // s'applique globalement, y compris ici : ce menu contextuel du
+        // system tray est un popup Windows classique à fond clair, donc le
+        // texte de ses entrées (rendu via un TextBlock généré pour le
+        // Header string) en devenait quasi invisible (clair sur clair).
+        // Ce style vide, plus proche dans l'arbre logique, l'éclipse et
+        // laisse le rendu par défaut (texte sombre) s'appliquer.
+        menu.Resources.Add(typeof(TextBlock), new Style(typeof(TextBlock)));
 
         var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold };
         showItem.Click += (_, _) => onShow();
