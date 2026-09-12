@@ -359,6 +359,20 @@
         <Setter Property="Background" Value="Transparent" />
     </Style>
 
+    <!-- Sans ce style, l'infobulle (Button.ToolTip="...") retombe sur le
+         popup blanc par défaut de Windows tout en héritant du Foreground
+         clair de la fenêtre (Window.Foreground hérite jusque dans le
+         ToolTip, même si son popup s'affiche hors de l'arbre visuel) :
+         texte clair sur fond blanc, illisible. Fond/texte assortis au
+         thème sombre de l'appli. -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8,4" />
+    </Style>
+
     <!-- Barres de défilement : par défaut, le chrome blanc/clair de Windows
          tranche sur le thème sombre de l'appli (voir capture utilisateur).
          Remplacées par un mince trait discret (BorderBrush), qui s'éclaircit
