@@ -257,6 +257,8 @@ public sealed class PiperTtsEngine : IDisposable
 
             output.PlaybackStopped += (_, _) => playbackFinished.Set();
             output.Play();
+            var sessionTrace = AudioSessionVolume.ResetToFull();
+            if (sessionTrace is not null) Diagnostic?.Invoke(this, sessionTrace);
 
             var signaled = WaitHandle.WaitAny(new[] { playbackFinished.WaitHandle, stopRequested.WaitHandle }, timeout);
             if (signaled == WaitHandle.WaitTimeout)
