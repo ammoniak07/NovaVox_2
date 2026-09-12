@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using NAudio.Wave;
 using NovaVox.App.Gemini;
@@ -34,16 +36,16 @@ public partial class MainWindow : Window
     private readonly PiperInstaller _piperInstaller = new();
     private readonly ObservableCollection<VoskModelRowVm> _voskModelRows = new();
     private readonly ObservableCollection<PiperVoiceRowVm> _piperVoiceRows = new();
-    private readonly ObservableCollection<LogEntryVm> _logEntries = new();
-    private const int MaxLogEntries = 300;
+    private const int MaxLogParagraphs = 300;
     private PiperTtsEngine? _testTts;
 
     private GeminiClient? _chatGeminiClient;
     private readonly ObservableCollection<GeminiMessageVm> _geminiMessages = new();
 
     private GameLogWatcher? _gameLogWatcher;
-    private readonly ObservableCollection<GameLogEventVm> _gameLogEvents = new();
-    private const int MaxGameLogEvents = 300;
+    private readonly ObservableCollection<GameLogPhraseRowVm> _gameLogPhraseRows = new();
+    private readonly ObservableCollection<HudOverrideRowVm> _hudOverrideRows = new();
+    private readonly ObservableCollection<DestinationAliasRowVm> _destinationAliasRows = new();
 
     /// <summary>
     /// Mis à true uniquement par le "Quitter" du menu tray (voir
@@ -91,7 +93,6 @@ public partial class MainWindow : Window
         }
         _restoring = false;
 
-        LogList.ItemsSource = _logEntries;
         InitializeCommandsList();
         InitializeProfiles();
         InitializeOverlay();
@@ -594,17 +595,34 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------- Journal système
 
-    /// <summary>Port de appendLog(msg, kind) (gui/script.js) : kind = "info" | "success" | "error" | "warning".</summary>
+    /// <summary>
+    /// Port de appendLog(msg, kind) (gui/script.js) : kind = "info" | "success" | "error" | "warning".
+    /// RichTextBox plutôt qu'un ItemsControl lié à une collection : seul un
+    /// contrôle de texte permet à l'utilisateur de sélectionner/copier le
+    /// journal, tout en gardant la couleur par kind (via des Run colorés).
+    /// </summary>
     private void AppendLog(string message, string kind = "info")
     {
-        _logEntries.Add(new LogEntryVm { Time = DateTime.Now.ToString("HH:mm:ss"), Message = message, Kind = kind });
-        while (_logEntries.Count > MaxLogEntries) _logEntries.RemoveAt(0);
-        LogScrollViewer.ScrollToEnd();
+        var brush = kind switch
+        {
+            "success" => (Brush)FindResource("SuccessBrush"),
+            "error" => (Brush)FindResource("DangerBrush"),
+            "warning" => (Brush)FindResource("AmberBrush"),
+            _ => (Brush)FindResource("TextBrush"),
+        };
+
+        var paragraph = new Paragraph { Margin = new Thickness(0, 1, 0, 1) };
+        paragraph.Inlines.Add(new Run($"{DateTime.Now:HH:mm:ss}  ") { Foreground = (Brush)FindResource("MutedBrush") });
+        paragraph.Inlines.Add(new Run(message) { Foreground = brush, FontWeight = kind is "success" or "error" ? FontWeights.SemiBold : FontWeights.Normal });
+
+        LogList.Document.Blocks.Add(paragraph);
+        while (LogList.Document.Blocks.Count > MaxLogParagraphs) LogList.Document.Blocks.Remove(LogList.Document.Blocks.FirstBlock);
+        LogList.ScrollToEnd();
 
         if (kind == "error") ErrorLog.Append(NovaVoxPaths.BaseDirectory, message);
     }
 
-    private void ClearLog_Click(object sender, RoutedEventArgs e) => _logEntries.Clear();
+    private void ClearLog_Click(object sender, RoutedEventArgs e) => LogList.Document.Blocks.Clear();
 
     private void ListenToggleButton_Click(object sender, RoutedEventArgs e)
     {
@@ -698,7 +716,28 @@ public partial class MainWindow : Window
 
     private void InitializeGameLog()
     {
-        GameLogEventsList.ItemsSource = _gameLogEvents;
+        foreach (var key in GameLogPhraseCatalog.OrderedKeys)
+        {
+            var meta = GameLogPhraseCatalog.Meta[key];
+            var hint = meta.Placeholders.Count == 0 ? "" : $" — variables : {string.Join(", ", meta.Placeholders.Select(p => "{" + p + "}"))}";
+            _gameLogPhraseRows.Add(new GameLogPhraseRowVm
+            {
+                Key = key,
+                Label = meta.Label + hint,
+                PlaceholderHint = hint,
+                Text = _state.Ai.GameLogPhrases.GetValueOrDefault(key, GameLogPhraseCatalog.Defaults[key]),
+            });
+        }
+        GameLogPhrasesList.ItemsSource = _gameLogPhraseRows;
+
+        foreach (var (rawText, customText) in _state.Ai.GameLogHudOverrides)
+            _hudOverrideRows.Add(new HudOverrideRowVm { RawText = rawText, CustomText = customText });
+        GameLogHudOverridesList.ItemsSource = _hudOverrideRows;
+
+        foreach (var (rawKey, customName) in _state.Ai.GameLogDestinationAliases)
+            _destinationAliasRows.Add(new DestinationAliasRowVm { RawKey = rawKey, CustomName = customName });
+        GameLogDestinationAliasesList.ItemsSource = _destinationAliasRows;
+
         RefreshGameLogStatus();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher();
     }
@@ -729,27 +768,95 @@ public partial class MainWindow : Window
 
     private void OnGameLogEvent(GameLogEvent evt)
     {
-        var summary = evt.Type switch
+        if (evt.Type is GameLogEventTypes.WatcherStarted or GameLogEventTypes.WatcherError)
         {
-            GameLogEventTypes.ZoneChange => $"Changement de zone : {evt.Zone}",
-            GameLogEventTypes.RouteSet => $"Itinéraire défini vers {evt.Destination}",
-            GameLogEventTypes.JumpStart => "Saut quantique amorcé",
-            GameLogEventTypes.HudNotification => evt.Text ?? "Notification HUD",
-            GameLogEventTypes.NicknameDetected => $"Pseudo détecté : {evt.Nickname}",
-            GameLogEventTypes.WatcherStarted => evt.Message ?? "Surveillance démarrée",
-            GameLogEventTypes.WatcherError => $"[Erreur] {evt.Message}",
-            _ => evt.Message ?? evt.Type,
-        };
+            AppendLog(evt.Message ?? evt.Type, evt.Type == GameLogEventTypes.WatcherError ? "error" : "info");
+            return;
+        }
+        if (evt.Type == GameLogEventTypes.NicknameDetected)
+        {
+            if (string.IsNullOrEmpty(_state.Ai.GameLogPlayerHandle) && !string.IsNullOrEmpty(evt.Nickname))
+            {
+                _state.Ai.GameLogPlayerHandle = evt.Nickname;
+                _state.SaveAi();
+                Dispatcher.BeginInvoke(() => PlayerHandleBox.Text = evt.Nickname);
+                AppendLog($"Pseudo RSI détecté automatiquement : « {evt.Nickname} ».", "info");
+            }
+            return;
+        }
 
-        _gameLogEvents.Add(new GameLogEventVm { Time = DateTime.Now.ToString("HH:mm:ss"), Summary = summary });
-        while (_gameLogEvents.Count > MaxGameLogEvents) _gameLogEvents.RemoveAt(0);
-        GameLogEventsScrollViewer.ScrollToEnd();
+        var result = GameLogAnnouncer.Build(evt, _state.Ai);
+        if (result is null) return;
 
-        if (evt.Type == GameLogEventTypes.ZoneChange && _state.Ai.GameLogAnnounceEvents && !string.IsNullOrEmpty(evt.Zone))
+        AppendLog($"{result.Emoji} {result.Text}".Trim(), "info");
+        if (result.RawHudText is not null)
+            AppendLog($"   (texte détecté dans le jeu : « {result.RawHudText} »)", "info");
+        if (result.UnresolvedDestinationWarning)
+            AppendLog($"🛰 Nouvelle destination non reconnue dans le Game.log ({result.DestinationAliasKey}) — ajoutée à 🛰 Game.log > Alias de destinations, prête à être renommée.", "warning");
+
+        if (result.IsNewHudOverride && result.HudOverrideKey is not null)
+            _hudOverrideRows.Insert(0, new HudOverrideRowVm { RawText = result.HudOverrideKey, CustomText = _state.Ai.GameLogHudOverrides[result.HudOverrideKey], IsNew = true });
+        if (result.IsNewDestinationAlias && result.DestinationAliasKey is not null)
+            _destinationAliasRows.Insert(0, new DestinationAliasRowVm { RawKey = result.DestinationAliasKey, CustomName = _state.Ai.GameLogDestinationAliases[result.DestinationAliasKey], IsNew = true });
+        if (result.IsNewHudOverride || result.IsNewDestinationAlias) _state.SaveAi();
+
+        if (_state.Ai.GameLogAnnounceEvents && result.Text.Length > 0)
         {
             EnsureTestTts();
-            _testTts!.Speak($"Zone : {evt.Zone}");
+            _testTts!.Speak(result.Text);
         }
+    }
+
+    private void SaveGameLogPhrase_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not GameLogPhraseRowVm row) return;
+        var text = row.Text.Trim();
+        if (text.Length == 0)
+        {
+            _state.Ai.GameLogPhrases.Remove(row.Key);
+            row.Text = GameLogPhraseCatalog.Defaults[row.Key];
+        }
+        else
+        {
+            _state.Ai.GameLogPhrases[row.Key] = text;
+        }
+        _state.SaveAi();
+        AppendLog($"Phrase « {row.Label} » enregistrée.", "success");
+    }
+
+    private void SaveHudOverride_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
+        var custom = row.CustomText.Trim();
+        _state.Ai.GameLogHudOverrides[row.RawText] = custom.Length == 0 ? row.RawText : custom;
+        row.IsNew = false;
+        _state.SaveAi();
+        AppendLog("Correction de lecture enregistrée.", "success");
+    }
+
+    private void DeleteHudOverride_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
+        _state.Ai.GameLogHudOverrides.Remove(row.RawText);
+        _hudOverrideRows.Remove(row);
+        _state.SaveAi();
+    }
+
+    private void SaveDestinationAlias_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not DestinationAliasRowVm row) return;
+        _state.Ai.GameLogDestinationAliases[row.RawKey] = row.CustomName.Trim();
+        row.IsNew = false;
+        _state.SaveAi();
+        AppendLog("Alias de destination enregistré.", "success");
+    }
+
+    private void DeleteDestinationAlias_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not DestinationAliasRowVm row) return;
+        _state.Ai.GameLogDestinationAliases.Remove(row.RawKey);
+        _destinationAliasRows.Remove(row);
+        _state.SaveAi();
     }
 
     private void OpenGameLog_Click(object sender, RoutedEventArgs e)
