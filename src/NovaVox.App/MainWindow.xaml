@@ -47,6 +47,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- En-tête -->
@@ -309,6 +310,29 @@
                 </Grid>
                 </Grid>
             </Grid>
+
+            <!-- Pied de page : version (clic = notes de mise à jour), crédits, contact. -->
+            <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,8">
+                <StackPanel HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="NovaVox" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
+                        <Button x:Name="FooterVersionButton" Content="v…" Margin="6,0,0,0" Padding="6,1" FontSize="11" Click="FooterVersionButton_Click" ToolTip="Voir les notes de mise à jour" />
+                        <TextBlock Text=" · Développé par " Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
+                        <TextBlock Text="Ammoniak007" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" VerticalAlignment="Center" FontSize="11" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,3,0,0">
+                        <TextBlock FontSize="11">
+                            <Run Text="Support : 💬 " Foreground="{StaticResource MutedBrush}" />
+                            <Hyperlink NavigateUri="https://discord.gg/NhhhGKv7F" RequestNavigate="Hyperlink_RequestNavigate">Discord NovaVox</Hyperlink>
+                        </TextBlock>
+                        <TextBlock Text="   ·   " Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                        <TextBlock FontSize="11">
+                            <Run Text="📧 " Foreground="{StaticResource MutedBrush}" />
+                            <Hyperlink NavigateUri="mailto:appnovavox@outlook.fr" RequestNavigate="Hyperlink_RequestNavigate">appnovavox@outlook.fr</Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Recouvrement "Réglages", ouvert/fermé par le bouton ⚙️ de l'en-tête — pas une fenêtre séparée -->
@@ -519,8 +543,11 @@
                                 <Button Content="Importer la config" Margin="0,6,0,0" HorizontalAlignment="Left" Click="ImportConfig_Click" />
 
                                 <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
-                                <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
-                                <TextBlock x:Name="UpdateStatusText" Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" IsEnabled="False" Click="CheckForUpdate_Click"
+                                        ToolTip="En suspens : ce bouton pointe encore vers le serveur de mise à jour de l'ancienne version Python de NovaVox." />
+                                <TextBlock Text="En suspens pour le moment (le serveur de mise à jour actuel est celui de l'ancienne version Python)."
+                                           Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                <TextBlock x:Name="UpdateStatusText" Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
                             </StackPanel>
                         </TabItem>
 
@@ -530,21 +557,21 @@
                                 <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
                                 <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
                                 <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
-                                <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Margin="0,4,0,0"><Hyperlink NavigateUri="https://discord.gg/NhhhGKv7F" RequestNavigate="Hyperlink_RequestNavigate">https://discord.gg/NhhhGKv7F</Hyperlink></TextBlock>
 
                                 <TextBlock Text="Bibliothèques utilisées" FontWeight="Bold" Margin="0,24,0,6" />
                                 <TextBlock Text="Vosk — reconnaissance vocale hors-ligne" Margin="0,6,0,0" />
-                                <TextBlock Text="https://github.com/alphacep/vosk-api" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/alphacep/vosk-api" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/alphacep/vosk-api</Hyperlink></TextBlock>
                                 <TextBlock Text="Piper — synthèse vocale (TTS)" Margin="0,10,0,0" />
-                                <TextBlock Text="https://github.com/rhasspy/piper" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/rhasspy/piper" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/rhasspy/piper</Hyperlink></TextBlock>
                                 <TextBlock Text="NAudio — lecture/capture audio" Margin="0,10,0,0" />
-                                <TextBlock Text="https://github.com/naudio/NAudio" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/naudio/NAudio" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/naudio/NAudio</Hyperlink></TextBlock>
                                 <TextBlock Text="Vortice.Windows — accès aux manettes (DirectInput)" Margin="0,10,0,0" />
-                                <TextBlock Text="https://github.com/amerkoleci/Vortice.Windows" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/amerkoleci/Vortice.Windows" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/amerkoleci/Vortice.Windows</Hyperlink></TextBlock>
                                 <TextBlock Text="Hardcodet.NotifyIcon.Wpf — icône dans la zone de notification" Margin="0,10,0,0" />
-                                <TextBlock Text="https://github.com/hardcodet/wpf-notifyicon" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/hardcodet/wpf-notifyicon" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/hardcodet/wpf-notifyicon</Hyperlink></TextBlock>
                                 <TextBlock Text="System.Drawing.Common" Margin="0,10,0,0" />
-                                <TextBlock Text="https://www.nuget.org/packages/System.Drawing.Common" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock><Hyperlink NavigateUri="https://www.nuget.org/packages/System.Drawing.Common" RequestNavigate="Hyperlink_RequestNavigate">https://www.nuget.org/packages/System.Drawing.Common</Hyperlink></TextBlock>
                             </StackPanel>
                             </ScrollViewer>
                         </TabItem>

@@ -31,6 +31,12 @@
     <SolidColorBrush x:Key="PanelBrush50" Color="{DynamicResource PanelColor}" Opacity="0.5" />
     <SolidColorBrush x:Key="PanelAltBrush50" Color="{DynamicResource PanelAltColor}" Opacity="0.5" />
 
+    <!-- Style implicite : tout Hyperlink de l'appli (Crédits, pied de page...)
+         suit la couleur d'accent du thème au lieu du bleu système par défaut. -->
+    <Style TargetType="Hyperlink">
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+    </Style>
+
     <Style TargetType="Window" x:Key="BaseWindowStyle">
         <Setter Property="Background" Value="{StaticResource BgBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />

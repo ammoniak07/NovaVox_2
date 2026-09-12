@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -7,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 using NAudio.Wave;
 using NovaVox.App.Gemini;
@@ -135,6 +137,20 @@ public partial class MainWindow : Window
 
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
         VersionText.Text = $"NovaVox v{version}";
+        FooterVersionButton.Content = $"v{version}";
+    }
+
+    private void FooterVersionButton_Click(object sender, RoutedEventArgs e)
+    {
+        var notes = VersionUtil.GetPatchNotes(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
+        MessageBox.Show(this, notes, "Notes de mise à jour");
+    }
+
+    /// <summary>Ouvre un lien (Discord, mail...) dans le navigateur/l'application par défaut du système plutôt que dans l'appli elle-même.</summary>
+    private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
     }
 
     // ------------------------------------------------------------ Commandes
