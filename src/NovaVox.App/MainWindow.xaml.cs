@@ -142,8 +142,76 @@ public partial class MainWindow : Window
 
     private void FooterVersionButton_Click(object sender, RoutedEventArgs e)
     {
-        var notes = VersionUtil.GetPatchNotes(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
-        MessageBox.Show(this, notes, "Notes de mise à jour");
+        BuildPatchNotesContent();
+        PatchNotesOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void ClosePatchNotes_Click(object sender, RoutedEventArgs e) => PatchNotesOverlay.Visibility = Visibility.Collapsed;
+
+    /// <summary>Port du rendu de renderPatchNotes (script.js) : un bloc par version (badge "vX.Y.Z" + "ACTUELLE" pour la plus récente), puces et sous-puces.</summary>
+    private void BuildPatchNotesContent()
+    {
+        PatchNotesContent.Children.Clear();
+        var patchNotesPath = Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt");
+        var versions = VersionUtil.ParsePatchNotes(VersionUtil.GetPatchNotes(patchNotesPath));
+
+        if (versions.Count == 0)
+        {
+            PatchNotesContent.Children.Add(new TextBlock
+            {
+                Text = "Aucune note de mise à jour disponible.",
+                Foreground = (Brush)FindResource("MutedBrush"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return;
+        }
+
+        for (var i = 0; i < versions.Count; i++)
+        {
+            var version = versions[i];
+            var card = new Border
+            {
+                Background = (Brush)FindResource("PanelAltBrush"),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 0, 0, 12),
+            };
+            var content = new StackPanel();
+
+            var header = new StackPanel { Orientation = Orientation.Horizontal };
+            header.Children.Add(MakePatchNoteBadge($"v{version.Version}", (Brush)FindResource("AccentBrush")));
+            if (i == 0)
+            {
+                var latestBadge = MakePatchNoteBadge("ACTUELLE", (Brush)FindResource("SuccessBrush"));
+                latestBadge.Margin = new Thickness(8, 0, 0, 0);
+                header.Children.Add(latestBadge);
+            }
+            content.Children.Add(header);
+
+            foreach (var item in version.Items)
+            {
+                content.Children.Add(MakePatchNoteLine(item.Text, "•", (Brush)FindResource("AccentBrush"), (Brush)FindResource("TextBrush"), new Thickness(0, 8, 0, 0), 13));
+                foreach (var sub in item.Subs)
+                    content.Children.Add(MakePatchNoteLine(sub, "◦", (Brush)FindResource("MutedBrush"), (Brush)FindResource("MutedBrush"), new Thickness(24, 4, 0, 0), 12));
+            }
+
+            card.Child = content;
+            PatchNotesContent.Children.Add(card);
+        }
+    }
+
+    private static Border MakePatchNoteBadge(string text, Brush foreground) => new()
+    {
+        Style = (Style)Application.Current.FindResource("CountBadgeStyle"),
+        Child = new TextBlock { Text = text, Foreground = foreground, FontWeight = FontWeights.Bold, FontSize = 12 },
+    };
+
+    private static StackPanel MakePatchNoteLine(string text, string bullet, Brush bulletBrush, Brush textBrush, Thickness margin, double fontSize)
+    {
+        var line = new StackPanel { Orientation = Orientation.Horizontal, Margin = margin };
+        line.Children.Add(new TextBlock { Text = bullet, Foreground = bulletBrush, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top, FontSize = fontSize });
+        line.Children.Add(new TextBlock { Text = text, Foreground = textBrush, TextWrapping = TextWrapping.Wrap, FontSize = fontSize, MaxWidth = 540 });
+        return line;
     }
 
     /// <summary>Ouvre un lien (Discord, mail...) dans le navigateur/l'application par défaut du système plutôt que dans l'appli elle-même.</summary>

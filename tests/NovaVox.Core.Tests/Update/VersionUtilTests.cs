@@ -55,4 +55,47 @@ public class VersionUtilTests : IDisposable
         File.WriteAllText(path, "  v1.0.0 - notes  \n");
         Assert.Equal("v1.0.0 - notes", VersionUtil.GetPatchNotes(path));
     }
+
+    [Fact]
+    public void ParsePatchNotes_SplitsByVersionAndIgnoresHeaderAndSeparators()
+    {
+        var text = "NOVAVOX — Notes de mise à jour\n==============================\nv0.0.2\n------\n- Corrige un bug.\nv0.0.1\n------\n- Première version.\n";
+        var versions = VersionUtil.ParsePatchNotes(text);
+
+        Assert.Equal(2, versions.Count);
+        Assert.Equal("0.0.2", versions[0].Version);
+        Assert.Equal("Corrige un bug.", Assert.Single(versions[0].Items).Text);
+        Assert.Equal("0.0.1", versions[1].Version);
+        Assert.Equal("Première version.", Assert.Single(versions[1].Items).Text);
+    }
+
+    [Fact]
+    public void ParsePatchNotes_IndentedBulletBecomesSubItem()
+    {
+        var text = "v1.0.0\n------\n- Fonctionnalité principale\n   - détail secondaire\n   - autre détail\n- Deuxième point\n";
+        var versions = VersionUtil.ParsePatchNotes(text);
+
+        var items = versions[0].Items;
+        Assert.Equal(2, items.Count);
+        Assert.Equal("Fonctionnalité principale", items[0].Text);
+        Assert.Equal(new[] { "détail secondaire", "autre détail" }, items[0].Subs);
+        Assert.Equal("Deuxième point", items[1].Text);
+        Assert.Empty(items[1].Subs);
+    }
+
+    [Fact]
+    public void ParsePatchNotes_ContinuationLineIsAppendedToLastItem()
+    {
+        var text = "v1.0.0\n------\n- Une phrase assez longue qui\ncontinue sur la ligne suivante sans tiret.\n";
+        var versions = VersionUtil.ParsePatchNotes(text);
+
+        Assert.Equal("Une phrase assez longue qui continue sur la ligne suivante sans tiret.",
+            Assert.Single(versions[0].Items).Text);
+    }
+
+    [Fact]
+    public void ParsePatchNotes_EmptyTextReturnsNoVersions()
+    {
+        Assert.Empty(VersionUtil.ParsePatchNotes(""));
+    }
 }
