@@ -175,7 +175,12 @@ public sealed class PiperTtsEngine : IDisposable
     /// le périphérique de sortie par nom — voir AudioDevices), interruptible
     /// via <see cref="Interrupt"/> — équivalent de Api._play_wav_file, gain
     /// appliqué directement sur le PCM (comme apply_mic_gain côté Python)
-    /// plutôt que via le volume logiciel de sortie.
+    /// plutôt que via le volume logiciel de sortie. Le temps d'attente est
+    /// borné (durée du clip + marge) : un périphérique de sortie choisi par
+    /// l'utilisateur mais mal supporté par DirectSound ne doit jamais
+    /// bloquer indéfiniment le fil de synthèse vocale — dans ce cas, on
+    /// retente une fois sur le périphérique par défaut plutôt que de rendre
+    /// toute lecture vocale silencieuse pour le reste de la session.
     /// </summary>
     private void PlayWavFile(string wavPath)
     {
@@ -193,24 +198,64 @@ public sealed class PiperTtsEngine : IDisposable
         if (format.BitsPerSample == 16 && Math.Abs(Volume - 1.0) > 0.0001)
             rawBytes = AudioProcessing.ApplyMicGain(rawBytes, Volume);
 
-        using var sourceStream = new RawSourceWaveStream(rawBytes, 0, rawBytes.Length, format);
-        using var output = new DirectSoundOut(AudioDevices.ResolveOutputDeviceGuid(OutputDeviceName));
-        output.Init(sourceStream);
+        var expectedSeconds = format.AverageBytesPerSecond > 0
+            ? rawBytes.Length / (double)format.AverageBytesPerSecond
+            : 5.0;
+        var timeout = TimeSpan.FromSeconds(Math.Max(3.0, expectedSeconds + 3.0));
 
-        using var playbackFinished = new ManualResetEventSlim(false);
-        using var stopRequested = new ManualResetEventSlim(false);
-        lock (_stopLock) _currentPlaybackStop = stopRequested;
-
-        output.PlaybackStopped += (_, _) => playbackFinished.Set();
-        output.Play();
-
-        WaitHandle.WaitAny(new[] { playbackFinished.WaitHandle, stopRequested.WaitHandle });
-        if (stopRequested.IsSet) output.Stop();
-        playbackFinished.Wait(TimeSpan.FromSeconds(2));
-
-        lock (_stopLock)
+        var deviceGuid = AudioDevices.ResolveOutputDeviceGuid(OutputDeviceName);
+        if (!PlayOnDevice(deviceGuid, rawBytes, format, timeout))
         {
-            if (_currentPlaybackStop == stopRequested) _currentPlaybackStop = null;
+            if (deviceGuid != Guid.Empty)
+            {
+                ErrorOccurred?.Invoke(this, "Le périphérique de sortie choisi ne répond pas — lecture sur le périphérique par défaut à la place.");
+                PlayOnDevice(Guid.Empty, rawBytes, format, timeout);
+            }
+            else
+            {
+                ErrorOccurred?.Invoke(this, "La lecture audio ne répond pas (aucun son émis).");
+            }
+        }
+    }
+
+    /// <returns>true si la lecture s'est terminée normalement ou a été interrompue via <see cref="Interrupt"/> ; false si elle a expiré (délai dépassé) ou a levé une exception.</returns>
+    private bool PlayOnDevice(Guid deviceGuid, byte[] rawBytes, WaveFormat format, TimeSpan timeout)
+    {
+        ManualResetEventSlim? stopRequested = null;
+        try
+        {
+            using var sourceStream = new RawSourceWaveStream(rawBytes, 0, rawBytes.Length, format);
+            using var output = new DirectSoundOut(deviceGuid);
+            output.Init(sourceStream);
+
+            using var playbackFinished = new ManualResetEventSlim(false);
+            stopRequested = new ManualResetEventSlim(false);
+            lock (_stopLock) _currentPlaybackStop = stopRequested;
+
+            output.PlaybackStopped += (_, _) => playbackFinished.Set();
+            output.Play();
+
+            var signaled = WaitHandle.WaitAny(new[] { playbackFinished.WaitHandle, stopRequested.WaitHandle }, timeout);
+            if (signaled == WaitHandle.WaitTimeout)
+            {
+                try { output.Stop(); } catch { /* best effort */ }
+                return false;
+            }
+            if (stopRequested.IsSet) { try { output.Stop(); } catch { /* best effort */ } }
+            playbackFinished.Wait(TimeSpan.FromSeconds(2));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            lock (_stopLock)
+            {
+                if (stopRequested is not null && _currentPlaybackStop == stopRequested) _currentPlaybackStop = null;
+            }
+            stopRequested?.Dispose();
         }
     }
 
