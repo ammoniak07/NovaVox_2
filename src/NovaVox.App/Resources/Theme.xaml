@@ -23,6 +23,14 @@
     <SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource SelectionColor}" />
     <SolidColorBrush x:Key="AccentDimBrush" Color="{DynamicResource AccentColor}" Opacity="0.18" />
 
+    <!-- Variantes à 50% d'opacité : pour les fonds de carte qui doivent
+         laisser deviner l'image derrière (Commandes/Journal système), sans
+         rendre transparent le reste de la carte (bordure, texte, boutons —
+         d'où un Brush dédié plutôt qu'un Opacity sur le Border lui-même,
+         qui aurait fondu tout son contenu). -->
+    <SolidColorBrush x:Key="PanelBrush50" Color="{DynamicResource PanelColor}" Opacity="0.5" />
+    <SolidColorBrush x:Key="PanelAltBrush50" Color="{DynamicResource PanelAltColor}" Opacity="0.5" />
+
     <Style TargetType="Window" x:Key="BaseWindowStyle">
         <Setter Property="Background" Value="{StaticResource BgBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
