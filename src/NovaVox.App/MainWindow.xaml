@@ -355,7 +355,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="⚙️ Réglages" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="✕" Width="28" Click="CloseSettings_Click" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSettings_Click" />
                     </Grid>
 
                     <TabControl x:Name="SettingsTabControl" Grid.Row="1" Background="Transparent" Margin="10,4,10,10">
@@ -602,7 +602,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="🌟 Assistant Gemini" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="✕" Width="28" Click="CloseGeminiChat_Click" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseGeminiChat_Click" />
                     </Grid>
 
                     <TextBlock x:Name="GeminiWakeHintText" Grid.Row="1" Margin="0,6,0,10" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
@@ -676,7 +676,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="🛰 GAME.LOG — ENTRÉES" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="✕" Width="28" Click="CloseGameLog_Click" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseGameLog_Click" />
                     </Grid>
 
                     <TextBlock x:Name="GameLogStatusText" Grid.Row="1" Margin="0,6,0,10" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
@@ -805,7 +805,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="CHOISIR LA OU LES TOUCHES" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="✕" Width="28" Click="CloseKeyboard_Click" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseKeyboard_Click" />
                     </Grid>
 
                     <Border Grid.Row="1" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
@@ -890,7 +890,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="📰 Notes de mise à jour" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="✕" Width="28" Click="ClosePatchNotes_Click" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="ClosePatchNotes_Click" />
                     </Grid>
 
                     <ScrollViewer Grid.Row="1" Margin="16,4,16,16" VerticalScrollBarVisibility="Auto">
