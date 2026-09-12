@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Hardcodet.Wpf.TaskbarNotification;
 using NovaVox.Core;
 
@@ -31,20 +32,23 @@ public sealed class TrayIconService : IDisposable
         // Le thème de l'appli définit un style TextBlock implicite (texte
         // clair, pensé pour ses propres fenêtres au fond sombre) qui
         // s'applique globalement, y compris ici : ce menu contextuel du
-        // system tray est un popup Windows classique à fond clair, donc le
-        // texte de ses entrées (rendu via un TextBlock généré pour le
-        // Header string) en devenait quasi invisible (clair sur clair).
-        // Ce style vide, plus proche dans l'arbre logique, l'éclipse et
-        // laisse le rendu par défaut (texte sombre) s'appliquer.
+        // system tray est un popup Windows classique à fond clair. Le
+        // header d'un MenuItem n'est pas forcément rendu via un TextBlock
+        // (WPF y substitue un AccessText pour gérer le raccourci clavier
+        // souligné), donc masquer le style TextBlock seul ne suffisait pas
+        // partout (ex: "Quitter" restait illisible) — Foreground=Black en
+        // valeur locale directement sur chaque MenuItem, priorité maximale
+        // dans WPF, au-dessus de tout style/trigger, règle le problème
+        // dans tous les cas.
         menu.Resources.Add(typeof(TextBlock), new Style(typeof(TextBlock)));
 
-        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold };
+        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Foreground = Brushes.Black };
         showItem.Click += (_, _) => onShow();
         menu.Items.Add(showItem);
 
         menu.Items.Add(new Separator());
 
-        var quitItem = new MenuItem { Header = "Quitter" };
+        var quitItem = new MenuItem { Header = "Quitter", Foreground = Brushes.Black };
         quitItem.Click += (_, _) => onQuit();
         menu.Items.Add(quitItem);
 
