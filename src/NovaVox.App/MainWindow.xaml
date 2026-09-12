@@ -62,10 +62,10 @@
                              voir LoadAppLogoImage, MainWindow.xaml.cs) si
                              présente — même mécanisme que l'image de fond des
                              listes Commandes/Journal. -->
-                        <Grid Width="30" Height="30">
-                            <Border x:Name="DefaultLogoBadge" CornerRadius="15" Background="{StaticResource PanelAltBrush}"
-                                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5">
-                                <Path Fill="{StaticResource AccentBrush}" Stretch="Uniform" Width="13" Height="13"
+                        <Grid Width="60" Height="60" VerticalAlignment="Center">
+                            <Border x:Name="DefaultLogoBadge" CornerRadius="30" Background="{StaticResource PanelAltBrush}"
+                                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="3">
+                                <Path Fill="{StaticResource AccentBrush}" Stretch="Uniform" Width="26" Height="26"
                                       Data="M 0.5,0 L 1,0.28 L 1,0.72 L 0.5,1 L 0,0.72 L 0,0.28 Z" />
                             </Border>
                             <Image x:Name="AppLogoImage" Stretch="Uniform" Visibility="Collapsed" />
