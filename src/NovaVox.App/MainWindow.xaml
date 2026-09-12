@@ -148,7 +148,7 @@
                         <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
                     </StackPanel>
 
-                    <Border Grid.Row="2" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                    <Border x:Name="CommandsCard" Grid.Row="2" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  AllowDrop="True" PreviewMouseMove="CommandsList_PreviewMouseMove" PreviewMouseLeftButtonUp="CommandsList_PreviewMouseLeftButtonUp"
                                  DragOver="CommandsList_DragOver" DragLeave="CommandsList_DragLeave" Drop="CommandsList_Drop">
@@ -274,13 +274,15 @@
                         <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
                     </StackPanel>
 
-                    <!-- VerticalAlignment="Top" + Height posée en code (voir
-                         SyncJournalCardHeightToFirstCommandRow, MainWindow.xaml.cs) :
-                         cette carte doit faire exactement la même hauteur que
-                         la première ligne de la liste Commandes, pas une
-                         fraction fixe de l'espace disponible — le reste
-                         révèle l'image de fond, comme sous la liste Commandes. -->
-                    <Border x:Name="LogCard" Grid.Row="1" VerticalAlignment="Top" Background="{StaticResource PanelAltBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                    <!-- VerticalAlignment="Top" + Height liée à la hauteur
+                         RÉELLE de la carte Commandes (CommandsCard) : les
+                         deux cartes font exactement la même hauteur, toujours
+                         synchronisées automatiquement (la liaison se
+                         réévalue à chaque redimensionnement). Le reste de
+                         l'espace sous la carte révèle l'image de fond,
+                         comme sous la liste Commandes. -->
+                    <Border x:Name="LogCard" Grid.Row="1" VerticalAlignment="Top" Height="{Binding ActualHeight, ElementName=CommandsCard}"
+                            Background="{StaticResource PanelAltBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <!-- RichTextBox plutôt qu'un ItemsControl de TextBlock : permet de sélectionner/copier le texte du journal (IsReadOnly le protège en écriture). -->
                         <RichTextBox x:Name="LogList" IsReadOnly="True" IsDocumentEnabled="True" Background="Transparent" BorderThickness="0"
                                      FontFamily="Consolas" FontSize="12" Padding="8,4" VerticalScrollBarVisibility="Auto" />
