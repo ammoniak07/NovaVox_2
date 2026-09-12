@@ -46,6 +46,67 @@ public class GameLogAnnouncerTests
     }
 
     [Fact]
+    public void Build_HudNotification_CrimeReport_NormalizesPlayerNameIntoTemplate()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent
+        {
+            Type = GameLogEventTypes.HudNotification,
+            Text = "Brick_Century a commis Agression aggravée contre vous Appuyez sur 'Accepter' pour signaler le crime, sinon celui-ci sera pardonné.",
+        };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.True(result!.IsNewHudOverride);
+        Assert.Equal(
+            "{name} a commis Agression aggravée contre vous Appuyez sur 'Accepter' pour signaler le crime, sinon celui-ci sera pardonné.",
+            result.HudOverrideKey);
+        // La première rencontre reconstruit le texte brut exact (le nom est réinjecté) : rien de "différent" à signaler.
+        Assert.Null(result.RawHudText);
+        Assert.Contains("Brick_Century a commis Agression aggravée", result.Text);
+    }
+
+    [Fact]
+    public void Build_HudNotification_CrimeReport_SameCrimeDifferentPlayer_DoesNotRegisterNewOverride()
+    {
+        var config = NewConfig();
+        var first = new GameLogEvent
+        {
+            Type = GameLogEventTypes.HudNotification,
+            Text = "Brick_Century a commis Agression aggravée contre vous Appuyez sur 'Accepter' pour signaler le crime, sinon celui-ci sera pardonné.",
+        };
+        GameLogAnnouncer.Build(first, config);
+        Assert.Single(config.GameLogHudOverrides);
+
+        var second = new GameLogEvent
+        {
+            Type = GameLogEventTypes.HudNotification,
+            Text = "BonCloud a commis Agression aggravée contre vous Appuyez sur 'Accepter' pour signaler le crime, sinon celui-ci sera pardonné.",
+        };
+        var result = GameLogAnnouncer.Build(second, config);
+
+        Assert.NotNull(result);
+        Assert.False(result!.IsNewHudOverride);
+        Assert.Single(config.GameLogHudOverrides); // toujours une seule entrée, pas une par nom
+        Assert.Contains("BonCloud a commis Agression aggravée", result.Text);
+    }
+
+    [Fact]
+    public void Build_HudNotification_CrimeReport_CustomTemplateSubstitutesNewName()
+    {
+        var config = NewConfig();
+        config.GameLogHudOverrides["{name} a commis Vol contre vous."] = "Attention, {name} vous a volé quelque chose !";
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "MAEDAYMAEDAY a commis Vol contre vous." };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.False(result!.IsNewHudOverride);
+        Assert.Equal("Attention, MAEDAYMAEDAY vous a volé quelque chose !", result.Text);
+    }
+
+    [Fact]
     public void Build_HudNotification_EmptyAfterCleaning_ReturnsNull()
     {
         var config = NewConfig();

@@ -42,6 +42,14 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultiSpaceRegex();
 
+    /// <summary>
+    /// Rapports de délit du HUD ("X a commis Y contre vous...") : seul le
+    /// nom du joueur en tête de phrase change d'une rencontre à l'autre
+    /// pour un même type de délit.
+    /// </summary>
+    [GeneratedRegex(@"^(?<name>\S+) a commis (?<rest>.+)$")]
+    private static partial Regex CrimeReportRegex();
+
     /// <summary>Port de _clean_hud_notification_text.</summary>
     public static string CleanHudNotificationText(string? text)
     {
@@ -109,15 +117,18 @@ public static partial class GameLogAnnouncer
         var rawText = CleanHudNotificationText(evt.Text);
         if (rawText.Length == 0) return null;
 
-        var trimmedKey = rawText.Trim();
+        var (templateKey, playerName) = ExtractNameTemplate(rawText);
+
         var isNew = false;
-        if (!config.GameLogHudOverrides.ContainsKey(trimmedKey))
+        if (!config.GameLogHudOverrides.ContainsKey(templateKey))
         {
-            config.GameLogHudOverrides[trimmedKey] = rawText;
+            config.GameLogHudOverrides[templateKey] = templateKey;
             isNew = true;
         }
 
-        var spokenText = config.GameLogHudOverrides.GetValueOrDefault(trimmedKey, rawText);
+        var storedTemplate = config.GameLogHudOverrides.GetValueOrDefault(templateKey, templateKey);
+        var spokenText = playerName is not null ? storedTemplate.Replace("{name}", playerName) : storedTemplate;
+
         const string key = "hud_notification";
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
         var rawHudTextForLog = spokenText != rawText ? rawText : null;
@@ -125,7 +136,20 @@ public static partial class GameLogAnnouncer
         return new GameLogAnnouncement(
             key, text, GameLogPhraseCatalog.Emoji.GetValueOrDefault(key, ""), RawHudText: rawHudTextForLog,
             IsNewDestinationAlias: false, DestinationAliasKey: null,
-            IsNewHudOverride: isNew, HudOverrideKey: isNew ? trimmedKey : null,
+            IsNewHudOverride: isNew, HudOverrideKey: isNew ? templateKey : null,
             UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null);
+    }
+
+    /// <summary>
+    /// Remplace le nom de joueur en tête d'un rapport de délit ("X a commis
+    /// Y contre vous...") par l'espace réservé {name}, pour qu'une seule
+    /// correction de lecture couvre le même délit quel que soit le joueur.
+    /// Toute autre notification HUD n'a pas de nom détectable et reste
+    /// inchangée (clé = son propre texte, comme avant).
+    /// </summary>
+    private static (string TemplateKey, string? PlayerName) ExtractNameTemplate(string rawText)
+    {
+        var match = CrimeReportRegex().Match(rawText);
+        return match.Success ? ($"{{name}} a commis {match.Groups["rest"].Value}", match.Groups["name"].Value) : (rawText, null);
     }
 }
