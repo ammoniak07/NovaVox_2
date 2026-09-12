@@ -57,11 +57,19 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Border Width="30" Height="30" CornerRadius="15" Background="{StaticResource PanelAltBrush}"
-                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5">
-                            <Path Fill="{StaticResource AccentBrush}" Stretch="Uniform" Width="13" Height="13"
-                                  Data="M 0.5,0 L 1,0.28 L 1,0.72 L 0.5,1 L 0,0.72 L 0,0.28 Z" />
-                        </Border>
+                        <!-- Logo : badge vectoriel par défaut, remplacé par une
+                             image (logo.png/.jpg/.jpeg à côté de NovaVox.exe,
+                             voir LoadAppLogoImage, MainWindow.xaml.cs) si
+                             présente — même mécanisme que l'image de fond des
+                             listes Commandes/Journal. -->
+                        <Grid Width="30" Height="30">
+                            <Border x:Name="DefaultLogoBadge" CornerRadius="15" Background="{StaticResource PanelAltBrush}"
+                                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5">
+                                <Path Fill="{StaticResource AccentBrush}" Stretch="Uniform" Width="13" Height="13"
+                                      Data="M 0.5,0 L 1,0.28 L 1,0.72 L 0.5,1 L 0,0.72 L 0,0.28 Z" />
+                            </Border>
+                            <Image x:Name="AppLogoImage" Stretch="Uniform" Visibility="Collapsed" />
+                        </Grid>
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="NOVAVOX" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
                             <TextBlock Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{StaticResource MutedBrush}" />

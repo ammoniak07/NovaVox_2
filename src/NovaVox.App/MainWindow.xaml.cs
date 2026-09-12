@@ -128,6 +128,7 @@ public partial class MainWindow : Window
         InitializeGeminiChat();
         InitializeGameLog();
         LoadPanelsBackgroundImage();
+        LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
         ThemeManager.Apply(_state.Ai.UiTheme);
         ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
@@ -1470,10 +1471,31 @@ public partial class MainWindow : Window
     /// </summary>
     private void LoadPanelsBackgroundImage()
     {
-        var path = new[] { "background.jpg", "background.jpeg", "background.png" }
+        var bitmap = TryLoadLocalImage("background.jpg", "background.jpeg", "background.png");
+        if (bitmap is not null) PanelsBackgroundImage.Source = bitmap;
+    }
+
+    /// <summary>
+    /// Logo affiché dans l'en-tête, à la place du badge vectoriel par
+    /// défaut — même principe que LoadPanelsBackgroundImage : un fichier
+    /// "logo.png"/".jpg"/".jpeg" déposé à côté de NovaVox.exe, sans
+    /// recompiler. Absent : le badge vectoriel reste affiché.
+    /// </summary>
+    private void LoadAppLogoImage()
+    {
+        var bitmap = TryLoadLocalImage("logo.png", "logo.jpg", "logo.jpeg");
+        if (bitmap is null) return;
+        AppLogoImage.Source = bitmap;
+        AppLogoImage.Visibility = Visibility.Visible;
+        DefaultLogoBadge.Visibility = Visibility.Collapsed;
+    }
+
+    private BitmapImage? TryLoadLocalImage(params string[] fileNames)
+    {
+        var path = fileNames
             .Select(name => Path.Combine(NovaVoxPaths.BaseDirectory, name))
             .FirstOrDefault(File.Exists);
-        if (path is null) return;
+        if (path is null) return null;
 
         try
         {
@@ -1482,11 +1504,12 @@ public partial class MainWindow : Window
             bitmap.CacheOption = BitmapCacheOption.OnLoad; // charge tout de suite : ne garde pas le fichier verrouillé
             bitmap.UriSource = new Uri(path);
             bitmap.EndInit();
-            PanelsBackgroundImage.Source = bitmap;
+            return bitmap;
         }
         catch (Exception ex)
         {
-            AppendLog($"[Erreur] Image de fond illisible ({Path.GetFileName(path)}) : {ex.Message}", "error");
+            AppendLog($"[Erreur] Image illisible ({Path.GetFileName(path)}) : {ex.Message}", "error");
+            return null;
         }
     }
 
