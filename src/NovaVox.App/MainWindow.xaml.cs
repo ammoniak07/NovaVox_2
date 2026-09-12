@@ -144,6 +144,32 @@ public partial class MainWindow : Window
         };
         CommandsList.ItemsSource = _state.Commands;
         UpdateCommandCount();
+        Dispatcher.BeginInvoke(SyncJournalCardHeightToFirstCommandRow, DispatcherPriority.Loaded);
+        if (!_commandsListSizeHooked)
+        {
+            _commandsListSizeHooked = true;
+            // Un redimensionnement de la fenêtre peut changer le retour à la
+            // ligne du texte de la première commande, donc sa hauteur.
+            CommandsList.SizeChanged += (_, _) => Dispatcher.BeginInvoke(SyncJournalCardHeightToFirstCommandRow, DispatcherPriority.Loaded);
+        }
+    }
+
+    private bool _commandsListSizeHooked;
+
+    /// <summary>
+    /// Aligne la hauteur de la carte Journal système sur celle de la toute
+    /// première ligne affichée dans Commandes, plutôt qu'une fraction fixe
+    /// de l'espace disponible (demande explicite de l'utilisateur). Différé
+    /// à DispatcherPriority.Loaded : le conteneur du premier élément n'a sa
+    /// taille réelle qu'après le prochain passage de mise en page suivant
+    /// l'affectation d'ItemsSource, pas immédiatement.
+    /// </summary>
+    private void SyncJournalCardHeightToFirstCommandRow()
+    {
+        if (CommandsList.Items.Count == 0) return;
+        if (CommandsList.ItemContainerGenerator.ContainerFromIndex(0) is not FrameworkElement container) return;
+        if (container.ActualHeight <= 0) return;
+        LogCard.Height = container.ActualHeight;
     }
 
     private void HookRow(VoiceCommandRow row) => row.PropertyChanged += (_, _) => ScheduleCommandsSave();

@@ -267,7 +267,6 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
@@ -275,7 +274,13 @@
                         <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
                     </StackPanel>
 
-                    <Border Grid.Row="1" Background="{StaticResource PanelAltBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                    <!-- VerticalAlignment="Top" + Height posée en code (voir
+                         SyncJournalCardHeightToFirstCommandRow, MainWindow.xaml.cs) :
+                         cette carte doit faire exactement la même hauteur que
+                         la première ligne de la liste Commandes, pas une
+                         fraction fixe de l'espace disponible — le reste
+                         révèle l'image de fond, comme sous la liste Commandes. -->
+                    <Border x:Name="LogCard" Grid.Row="1" VerticalAlignment="Top" Background="{StaticResource PanelAltBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <!-- RichTextBox plutôt qu'un ItemsControl de TextBlock : permet de sélectionner/copier le texte du journal (IsReadOnly le protège en écriture). -->
                         <RichTextBox x:Name="LogList" IsReadOnly="True" IsDocumentEnabled="True" Background="Transparent" BorderThickness="0"
                                      FontFamily="Consolas" FontSize="12" Padding="8,4" VerticalScrollBarVisibility="Auto" />
