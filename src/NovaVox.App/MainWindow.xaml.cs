@@ -30,7 +30,20 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _commandsSaveTimer;
     private VoiceOrchestrator? _voiceOrchestrator;
     private bool _restoring = true;
-    private bool _loadingSettings;
+
+    /// <summary>
+    /// true jusqu'à la fin de LoadSettingsIntoControls (voir OnLoaded). Doit
+    /// démarrer à true, pas false : les Slider avec un Minimum &gt; 0 sans
+    /// Value= explicite dans le XAML (MicGainSlider, TtsVolumeSlider,
+    /// PiperLengthScaleSlider) coercent leur Value par défaut (0) au
+    /// Minimum dès InitializeComponent(), dans le constructeur — donc AVANT
+    /// que LoadSettingsIntoControls ait pu mettre ce garde-fou à true. Avec
+    /// un défaut à false, ce ValueChanged de coercition passait le garde et
+    /// écrasait aussitôt la vraie valeur chargée depuis le disque par le
+    /// Minimum du curseur (ex. le volume de la voix retombait à 0,1 à
+    /// chaque lancement, quel que soit le réglage précédent).
+    /// </summary>
+    private bool _loadingSettings = true;
 
     private readonly VoskModelInstaller _voskInstaller = new();
     private readonly PiperInstaller _piperInstaller = new();
