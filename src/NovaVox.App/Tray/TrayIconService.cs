@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
 using Hardcodet.Wpf.TaskbarNotification;
 using NovaVox.Core;
 
@@ -28,36 +29,50 @@ public sealed class TrayIconService : IDisposable
         }
 
         var menu = new ContextMenu();
-        // Le thème de l'appli définit un style TextBlock implicite (texte
-        // clair, pensé pour ses propres fenêtres au fond sombre) qui
-        // s'applique globalement, y compris ici : ce menu contextuel du
-        // system tray est un popup Windows classique à fond clair. Le
-        // header d'un MenuItem n'est pas forcément rendu via un TextBlock
-        // (WPF y substitue un AccessText pour gérer le raccourci clavier
-        // souligné), donc masquer le style TextBlock seul ne suffisait pas
-        // partout (ex: "Quitter" restait illisible) — Foreground=Black en
-        // valeur locale directement sur chaque MenuItem, priorité maximale
-        // dans WPF, au-dessus de tout style/trigger, règle le problème
-        // dans tous les cas.
-        menu.Resources.Add(typeof(TextBlock), new Style(typeof(TextBlock)));
-        // Fond opaque explicite en plus du texte forcé en noir : si le
-        // popup héritait d'un fond semi-transparent/sombre de quelque part,
-        // du texte noir dessus resterait tout aussi illisible que du texte
-        // clair sur fond clair.
-        menu.Background = System.Windows.Media.Brushes.White;
+        var itemTemplate = BuildOpaqueMenuItemTemplate();
 
-        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.Black, Background = System.Windows.Media.Brushes.White };
+        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Template = itemTemplate };
         showItem.Click += (_, _) => onShow();
         menu.Items.Add(showItem);
 
         menu.Items.Add(new Separator());
 
-        var quitItem = new MenuItem { Header = "Quitter", Foreground = System.Windows.Media.Brushes.Black, Background = System.Windows.Media.Brushes.White };
+        var quitItem = new MenuItem { Header = "Quitter", Template = itemTemplate };
         quitItem.Click += (_, _) => onQuit();
         menu.Items.Add(quitItem);
 
         _icon.ContextMenu = menu;
         _icon.TrayMouseDoubleClick += (_, _) => onShow();
+    }
+
+    /// <summary>
+    /// Un simple Foreground/Background en valeur locale (priorité maximale
+    /// en WPF) n'a pas suffi à rendre ce menu lisible en conditions
+    /// réelles : signe que le vrai coupable est probablement une opacité
+    /// réduite appliquée par un déclencheur du thème ambiant (état
+    /// "inactif"/désactivé du nouveau thème Fluent par défaut de .NET 8),
+    /// propriété qu'aucun Foreground/Background ne peut contrer. Ce
+    /// template dédié remplace entièrement le rendu de l'élément — plus
+    /// aucun déclencheur du thème d'origine ne s'applique, donc plus rien
+    /// ne peut discrètement réduire l'opacité du texte.
+    /// </summary>
+    private static ControlTemplate BuildOpaqueMenuItemTemplate()
+    {
+        const string xaml = """
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                              TargetType="MenuItem">
+                <Border x:Name="Bg" Background="White" Padding="16,7">
+                    <TextBlock Text="{TemplateBinding Header}" Foreground="Black" FontWeight="{TemplateBinding FontWeight}" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsHighlighted" Value="True">
+                        <Setter TargetName="Bg" Property="Background" Value="#CCE4F7" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+            """;
+        return (ControlTemplate)XamlReader.Parse(xaml);
     }
 
     public void Dispose() => _icon.Dispose();
