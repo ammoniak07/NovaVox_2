@@ -233,6 +233,18 @@ public partial class MainWindow : Window
     private Point _dragStartPoint;
     private VoiceCommandRow? _dragCandidateRow;
 
+    // Pendant un DragDrop.DoDragDrop, WPF ne défile plus la ListBox tout
+    // seul (ni molette, ni défilement automatique) : impossible d'atteindre
+    // une ligne hors de la zone visible en glissant. On simule donc un
+    // défilement automatique quand le curseur reste près du bord haut/bas
+    // pendant le survol, via un DispatcherTimer (molette normale hors
+    // glisser reste inchangée, gérée nativement par le ScrollViewer interne).
+    private const double DragAutoScrollEdge = 40;
+    private const double DragAutoScrollStep = 18;
+    private ScrollViewer? _dragScrollViewer;
+    private DispatcherTimer? _dragScrollTimer;
+    private int _dragScrollDirection;
+
     private void DragHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragStartPoint = e.GetPosition(null);
@@ -249,7 +261,14 @@ public partial class MainWindow : Window
 
         var row = _dragCandidateRow;
         _dragCandidateRow = null; // évite de redéclencher DoDragDrop tant que le glisser en cours n'est pas terminé
-        DragDrop.DoDragDrop(CommandsList, row, DragDropEffects.Move);
+        try
+        {
+            DragDrop.DoDragDrop(CommandsList, row, DragDropEffects.Move);
+        }
+        finally
+        {
+            StopDragAutoScroll();
+        }
     }
 
     private void CommandsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _dragCandidateRow = null;
@@ -260,11 +279,14 @@ public partial class MainWindow : Window
         {
             e.Effects = DragDropEffects.None;
             ClearDropIndicators();
+            StopDragAutoScroll();
             e.Handled = true;
             return;
         }
         e.Effects = DragDropEffects.Move;
         e.Handled = true;
+
+        UpdateDragAutoScroll(e.GetPosition(CommandsList));
 
         var targetItem = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
         ClearDropIndicators();
@@ -277,7 +299,56 @@ public partial class MainWindow : Window
         else targetRow.IsDropTargetBottom = true;
     }
 
-    private void CommandsList_DragLeave(object sender, DragEventArgs e) => ClearDropIndicators();
+    private void CommandsList_DragLeave(object sender, DragEventArgs e)
+    {
+        ClearDropIndicators();
+        StopDragAutoScroll();
+    }
+
+    /// <summary>Démarre/arrête/ajuste le défilement automatique selon la proximité du curseur avec le haut ou le bas de la liste visible.</summary>
+    private void UpdateDragAutoScroll(Point posInList)
+    {
+        _dragScrollViewer ??= FindVisualChild<ScrollViewer>(CommandsList);
+        var scrollViewer = _dragScrollViewer;
+        if (scrollViewer is null) return;
+
+        int direction;
+        if (posInList.Y < DragAutoScrollEdge) direction = -1;
+        else if (posInList.Y > CommandsList.ActualHeight - DragAutoScrollEdge) direction = 1;
+        else direction = 0;
+
+        if (direction == 0)
+        {
+            StopDragAutoScroll();
+            return;
+        }
+        if (_dragScrollTimer is not null && _dragScrollDirection == direction) return;
+
+        StopDragAutoScroll();
+        _dragScrollDirection = direction;
+        _dragScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
+        _dragScrollTimer.Tick += (_, _) =>
+            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset + _dragScrollDirection * DragAutoScrollStep);
+        _dragScrollTimer.Start();
+    }
+
+    private void StopDragAutoScroll()
+    {
+        _dragScrollTimer?.Stop();
+        _dragScrollTimer = null;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            var nested = FindVisualChild<T>(child);
+            if (nested is not null) return nested;
+        }
+        return null;
+    }
 
     private void ClearDropIndicators()
     {
@@ -291,6 +362,7 @@ public partial class MainWindow : Window
     private void CommandsList_Drop(object sender, DragEventArgs e)
     {
         ClearDropIndicators();
+        StopDragAutoScroll();
         if (e.Data.GetData(typeof(VoiceCommandRow)) is not VoiceCommandRow draggedRow) return;
         var targetItem = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
         if (targetItem?.DataContext is not VoiceCommandRow targetRow || ReferenceEquals(targetRow, draggedRow)) return;

@@ -9,11 +9,11 @@
 
         <!-- Poignée de glisser (grille de points) : dessinée en vecteur, pas
              d'emoji équivalent. Les autres boutons de la liste de commandes
-             (supprimer/modifier/monter/descendre/écouter) utilisent de
-             vrais emoji (❌✏️🔼🔽▶️) — les tracés vectoriels essayés
-             précédemment rendaient trop petits/peu lisibles, alors que ces
-             emoji s'affichent déjà correctement ailleurs dans l'appli
-             (en-tête, overlay, réglages...). -->
+             (modifier/monter/descendre/écouter) utilisent de vrais emoji
+             (✏️🔼🔽▶️) — les tracés vectoriels essayés précédemment
+             rendaient trop petits/peu lisibles, alors que ces emoji
+             s'affichent déjà correctement ailleurs dans l'appli (en-tête,
+             overlay, réglages...). -->
         <GeometryGroup x:Key="DragHandleGeometry">
             <EllipseGeometry Center="2,2" RadiusX="1.6" RadiusY="1.6" />
             <EllipseGeometry Center="10,2" RadiusX="1.6" RadiusY="1.6" />
@@ -22,6 +22,16 @@
             <EllipseGeometry Center="2,16" RadiusX="1.6" RadiusY="1.6" />
             <EllipseGeometry Center="10,16" RadiusX="1.6" RadiusY="1.6" />
         </GeometryGroup>
+
+        <!-- Bouton "supprimer" : glyphe Segoe MDL2 Assets (monochrome, donc
+             teintable via Foreground, contrairement à l'emoji ❌ couleur
+             utilisé avant) plutôt qu'un tracé vectoriel maison. -->
+        <Style x:Key="DeleteIconButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            <Setter Property="Content" Value="&#xE74D;" />
+        </Style>
     </Window.Resources>
     <Grid>
         <!-- Contenu principal -->
@@ -120,9 +130,10 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="4">
-                                        <!-- Ligne "titre de groupe" -->
+                                        <!-- Ligne "titre de groupe" : fond teinté (AccentDimBrush) pour bien
+                                             se distinguer des lignes de commande, texte centré. -->
                                         <Border Visibility="{Binding IsTitle, Converter={StaticResource BoolToVis}}"
-                                                Background="{StaticResource PanelAltBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
+                                                Background="{StaticResource AccentDimBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
@@ -134,12 +145,12 @@
                                                     <Path Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
                                                           Width="14" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
-                                                <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
+                                                <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}" TextAlignment="Center"
                                                          Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                                                     <Button Width="34" Height="34" Padding="0" FontSize="15" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
                                                     <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
-                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" Content="❌" />
+                                                    <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" FontSize="16" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -181,7 +192,7 @@
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
                                                         <Button Content="+ syn" Height="34" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="✏️" />
-                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" Content="❌" />
+                                                        <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" FontSize="16" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" />
                                                     </StackPanel>
                                                 </Grid>
 
@@ -198,9 +209,9 @@
                                                                 <Button Grid.Column="1" Width="32" Height="30" Padding="0" FontSize="14"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="EditSynonym_Click" ToolTip="Modifier ce synonyme" Content="✏️" />
-                                                                <Button Grid.Column="2" Width="32" Height="30" Padding="0" FontSize="14" Margin="4,0,0,0"
+                                                                <Button Grid.Column="2" Style="{StaticResource DeleteIconButtonStyle}" Width="32" Height="30" FontSize="14" Margin="4,0,0,0"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
-                                                                        Click="DeleteSynonym_Click" ToolTip="Supprimer ce synonyme" Content="❌" />
+                                                                        Click="DeleteSynonym_Click" ToolTip="Supprimer ce synonyme" />
                                                             </Grid>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
