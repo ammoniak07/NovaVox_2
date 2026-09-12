@@ -48,6 +48,9 @@ public sealed class PiperTtsEngine : IDisposable
 
     public event EventHandler<string>? ErrorOccurred;
 
+    /// <summary>Traces internes (pas des erreurs) pour diagnostiquer un problème de synthèse vocale silencieux — voir Réglages/journal système.</summary>
+    public event EventHandler<string>? Diagnostic;
+
     public PiperTtsEngine()
     {
         _workerTask = Task.Run(WorkerLoop);
@@ -105,11 +108,21 @@ public sealed class PiperTtsEngine : IDisposable
         var wavPath = Path.Combine(NovaVoxPaths.BaseDirectory, $"novavox_tts_{Guid.NewGuid():N}.wav");
         try
         {
+            Diagnostic?.Invoke(this, $"Piper : génération audio (voix « {voiceId} », {text.Length} caractère(s))...");
             RunPiperProcess(text, modelPath, wavPath);
             if (!File.Exists(wavPath))
                 throw new InvalidOperationException("La génération audio par Piper a échoué.");
 
-            if (RadioEffectEnabled) RadioEffect.ApplyToWavFile(wavPath);
+            var wavSize = new FileInfo(wavPath).Length;
+            Diagnostic?.Invoke(this, $"Piper : fichier audio généré ({wavSize} octet(s)).");
+            if (wavSize == 0)
+                throw new InvalidOperationException("Piper a produit un fichier audio vide.");
+
+            if (RadioEffectEnabled)
+            {
+                RadioEffect.ApplyToWavFile(wavPath);
+                Diagnostic?.Invoke(this, "Effet radio appliqué.");
+            }
 
             PlayWavFile(wavPath);
         }
@@ -167,7 +180,10 @@ public sealed class PiperTtsEngine : IDisposable
         }
 
         if (process.ExitCode != 0)
-            throw new InvalidOperationException("La génération audio par Piper a échoué.");
+        {
+            var stderr = process.StandardError.ReadToEnd();
+            throw new InvalidOperationException($"La génération audio par Piper a échoué (code {process.ExitCode}). {stderr}".Trim());
+        }
     }
 
     /// <summary>
@@ -204,22 +220,29 @@ public sealed class PiperTtsEngine : IDisposable
         var timeout = TimeSpan.FromSeconds(Math.Max(3.0, expectedSeconds + 3.0));
 
         var deviceGuid = AudioDevices.ResolveOutputDeviceGuid(OutputDeviceName);
-        if (!PlayOnDevice(deviceGuid, rawBytes, format, timeout))
+        Diagnostic?.Invoke(this, $"Lecture : périphérique={(deviceGuid == Guid.Empty ? "par défaut" : deviceGuid.ToString())}, format={format}, délai max={timeout.TotalSeconds:F1}s.");
+        var (success, error) = PlayOnDevice(deviceGuid, rawBytes, format, timeout);
+        if (!success)
         {
+            ErrorOccurred?.Invoke(this, error ?? "Échec de lecture inconnu.");
             if (deviceGuid != Guid.Empty)
             {
-                ErrorOccurred?.Invoke(this, "Le périphérique de sortie choisi ne répond pas — lecture sur le périphérique par défaut à la place.");
-                PlayOnDevice(Guid.Empty, rawBytes, format, timeout);
+                ErrorOccurred?.Invoke(this, "Nouvelle tentative sur le périphérique de sortie par défaut...");
+                var (fallbackSuccess, fallbackError) = PlayOnDevice(Guid.Empty, rawBytes, format, timeout);
+                if (!fallbackSuccess)
+                    ErrorOccurred?.Invoke(this, $"Échec aussi sur le périphérique par défaut : {fallbackError ?? "raison inconnue"}.");
+                else
+                    Diagnostic?.Invoke(this, "Lecture réussie sur le périphérique par défaut.");
             }
-            else
-            {
-                ErrorOccurred?.Invoke(this, "La lecture audio ne répond pas (aucun son émis).");
-            }
+        }
+        else
+        {
+            Diagnostic?.Invoke(this, "Lecture terminée normalement.");
         }
     }
 
-    /// <returns>true si la lecture s'est terminée normalement ou a été interrompue via <see cref="Interrupt"/> ; false si elle a expiré (délai dépassé) ou a levé une exception.</returns>
-    private bool PlayOnDevice(Guid deviceGuid, byte[] rawBytes, WaveFormat format, TimeSpan timeout)
+    /// <returns>(true, null) si la lecture s'est terminée normalement ou a été interrompue via <see cref="Interrupt"/> ; (false, raison) si elle a expiré (délai dépassé) ou a levé une exception — la raison est toujours renvoyée, jamais avalée silencieusement.</returns>
+    private (bool Success, string? Error) PlayOnDevice(Guid deviceGuid, byte[] rawBytes, WaveFormat format, TimeSpan timeout)
     {
         ManualResetEventSlim? stopRequested = null;
         try
@@ -239,15 +262,15 @@ public sealed class PiperTtsEngine : IDisposable
             if (signaled == WaitHandle.WaitTimeout)
             {
                 try { output.Stop(); } catch { /* best effort */ }
-                return false;
+                return (false, $"Délai dépassé ({timeout.TotalSeconds:F1}s) en attendant la fin de la lecture sur ce périphérique.");
             }
             if (stopRequested.IsSet) { try { output.Stop(); } catch { /* best effort */ } }
             playbackFinished.Wait(TimeSpan.FromSeconds(2));
-            return true;
+            return (true, null);
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return (false, $"{ex.GetType().Name} : {ex.Message}");
         }
         finally
         {

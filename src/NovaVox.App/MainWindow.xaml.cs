@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using NAudio.Wave;
+using NovaVox.App.Gemini;
 using NovaVox.App.Install;
 using NovaVox.App.Overlay;
 using NovaVox.App.Speech;
@@ -13,6 +14,7 @@ using NovaVox.App.Voice;
 using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
+using NovaVox.Core.GameLog;
 using NovaVox.Core.Speech;
 using NovaVox.Core.Tts;
 using NovaVox.Core.Update;
@@ -35,6 +37,13 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<LogEntryVm> _logEntries = new();
     private const int MaxLogEntries = 300;
     private PiperTtsEngine? _testTts;
+
+    private GeminiClient? _chatGeminiClient;
+    private readonly ObservableCollection<GeminiMessageVm> _geminiMessages = new();
+
+    private GameLogWatcher? _gameLogWatcher;
+    private readonly ObservableCollection<GameLogEventVm> _gameLogEvents = new();
+    private const int MaxGameLogEvents = 300;
 
     /// <summary>
     /// Mis à true uniquement par le "Quitter" du menu tray (voir
@@ -90,6 +99,8 @@ public partial class MainWindow : Window
         InitializeVoiceOrchestrator();
         InitializeVoskCatalog();
         InitializePiperCatalog();
+        InitializeGeminiChat();
+        InitializeGameLog();
         AppendLog("NovaVox démarré.", "info");
         ThemeManager.Apply(_state.Ai.UiTheme);
         ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
@@ -273,6 +284,7 @@ public partial class MainWindow : Window
         }
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
+        _gameLogWatcher?.Dispose();
         _overlayWindow?.Close();
     }
 
@@ -503,6 +515,8 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GameLogEnabled = GameLogEnabledCheckbox.IsChecked ?? false;
         _state.SaveAi();
+        if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
+        RefreshGameLogStatus();
     }
 
     private void GameLogAnnounceCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -632,16 +646,132 @@ public partial class MainWindow : Window
 
     private void CloseSettings_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Collapsed;
 
-    private void OpenGeminiSettings_Click(object sender, RoutedEventArgs e)
+    // --------------------------------------------------- Assistant Gemini (discussion)
+
+    private void InitializeGeminiChat()
     {
-        SettingsOverlay.Visibility = Visibility.Visible;
-        SettingsTabControl.SelectedItem = GeminiSettingsTab;
+        _chatGeminiClient = new GeminiClient(_state.Ai, _state.AiConfigStore) { GameLogStateProvider = () => _gameLogWatcher?.GetState() };
+        _chatGeminiClient.UserMessageAdded += (_, question) => Dispatcher.BeginInvoke(() =>
+        {
+            _geminiMessages.Add(new GeminiMessageVm { Role = "user", Text = question });
+            GeminiChatScrollViewer.ScrollToEnd();
+        });
+        _chatGeminiClient.ReplyReceived += (_, e) => Dispatcher.BeginInvoke(() =>
+        {
+            _geminiMessages.Add(new GeminiMessageVm { Role = e.IsError ? "error" : "assistant", Text = e.Reply });
+            GeminiChatScrollViewer.ScrollToEnd();
+            if (!e.IsError && (GeminiSpeakCheckbox.IsChecked ?? true))
+            {
+                EnsureTestTts();
+                _testTts!.Speak(e.Reply);
+            }
+        });
+        GeminiChatList.ItemsSource = _geminiMessages;
     }
 
-    private void OpenGameLogSettings_Click(object sender, RoutedEventArgs e)
+    private void OpenGeminiChat_Click(object sender, RoutedEventArgs e)
     {
-        SettingsOverlay.Visibility = Visibility.Visible;
-        SettingsTabControl.SelectedItem = GameLogSettingsTab;
+        GeminiWakeHintText.Text = string.IsNullOrEmpty(_state.Ai.GeminiApiKey)
+            ? "Aucune clé API Gemini configurée (voir ⚙️ Réglages > 🌟 IA Gemini)."
+            : $"Dis « {_state.Ai.GeminiName} » pour lui parler à voix haute, ou écris ta question ci-dessous.";
+        GeminiOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CloseGeminiChat_Click(object sender, RoutedEventArgs e) => GeminiOverlay.Visibility = Visibility.Collapsed;
+
+    private async void GeminiSend_Click(object sender, RoutedEventArgs e) => await SendGeminiChatMessageAsync();
+
+    private async void GeminiChatInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) await SendGeminiChatMessageAsync();
+    }
+
+    private async Task SendGeminiChatMessageAsync()
+    {
+        var question = GeminiChatInput.Text.Trim();
+        if (question.Length == 0 || _chatGeminiClient is null) return;
+        GeminiChatInput.Text = "";
+        await _chatGeminiClient.AskTextAsync(question, GeminiSpeakCheckbox.IsChecked ?? true);
+    }
+
+    // ------------------------------------------------------------------ Game.log
+
+    private void InitializeGameLog()
+    {
+        GameLogEventsList.ItemsSource = _gameLogEvents;
+        RefreshGameLogStatus();
+        if (_state.Ai.GameLogEnabled) StartGameLogWatcher();
+    }
+
+    private void StartGameLogWatcher()
+    {
+        if (_gameLogWatcher is not null) return;
+        _gameLogWatcher = new GameLogWatcher(
+            onEvent: evt => Dispatcher.BeginInvoke(() => OnGameLogEvent(evt)),
+            playerName: _state.Ai.GameLogPlayerHandle);
+        _gameLogWatcher.Start();
+        if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = _gameLogWatcher;
+    }
+
+    private void StopGameLogWatcher()
+    {
+        if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = null;
+        _gameLogWatcher?.Dispose();
+        _gameLogWatcher = null;
+    }
+
+    private void RefreshGameLogStatus()
+    {
+        GameLogStatusText.Text = _state.Ai.GameLogEnabled
+            ? "Surveillance du Game.log active."
+            : "Surveillance désactivée (voir ⚙️ Réglages > 🛰 Game.log).";
+    }
+
+    private void OnGameLogEvent(GameLogEvent evt)
+    {
+        var summary = evt.Type switch
+        {
+            GameLogEventTypes.ZoneChange => $"Changement de zone : {evt.Zone}",
+            GameLogEventTypes.RouteSet => $"Itinéraire défini vers {evt.Destination}",
+            GameLogEventTypes.JumpStart => "Saut quantique amorcé",
+            GameLogEventTypes.HudNotification => evt.Text ?? "Notification HUD",
+            GameLogEventTypes.NicknameDetected => $"Pseudo détecté : {evt.Nickname}",
+            GameLogEventTypes.WatcherStarted => evt.Message ?? "Surveillance démarrée",
+            GameLogEventTypes.WatcherError => $"[Erreur] {evt.Message}",
+            _ => evt.Message ?? evt.Type,
+        };
+
+        _gameLogEvents.Add(new GameLogEventVm { Time = DateTime.Now.ToString("HH:mm:ss"), Summary = summary });
+        while (_gameLogEvents.Count > MaxGameLogEvents) _gameLogEvents.RemoveAt(0);
+        GameLogEventsScrollViewer.ScrollToEnd();
+
+        if (evt.Type == GameLogEventTypes.ZoneChange && _state.Ai.GameLogAnnounceEvents && !string.IsNullOrEmpty(evt.Zone))
+        {
+            EnsureTestTts();
+            _testTts!.Speak($"Zone : {evt.Zone}");
+        }
+    }
+
+    private void OpenGameLog_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshGameLogStatus();
+        GameLogOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CloseGameLog_Click(object sender, RoutedEventArgs e) => GameLogOverlay.Visibility = Visibility.Collapsed;
+
+    private void EnsureTestTts()
+    {
+        if (_testTts is not null) return;
+        _testTts = new PiperTtsEngine();
+        _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog($"[Erreur voix] {msg}", "error"));
+        _testTts.Diagnostic += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog(msg, "info"));
+        _testTts.DefaultPiperVoice = _state.Ai.PiperVoice;
+        _testTts.LengthScale = _state.Ai.PiperLengthScale;
+        _testTts.NoiseScale = _state.Ai.PiperNoiseScale;
+        _testTts.RadioEffectEnabled = _state.Ai.RadioEffect;
+        _testTts.Volume = _state.Audio.TtsVolume;
+        _testTts.OutputDeviceName = _state.Audio.OutputDevice;
     }
 
     // ------------------------------------------------------------- Overlay
@@ -917,12 +1047,8 @@ public partial class MainWindow : Window
         var row = PiperRowFromSender(sender);
         if (row is null || !row.IsInstalled) return;
 
-        if (_testTts is null)
-        {
-            _testTts = new PiperTtsEngine();
-            _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog($"[Erreur voix] {msg}", "error"));
-        }
-        _testTts.LengthScale = PiperLengthScaleSlider.Value;
+        EnsureTestTts();
+        _testTts!.LengthScale = PiperLengthScaleSlider.Value;
         _testTts.NoiseScale = PiperNoiseScaleSlider.Value;
         _testTts.RadioEffectEnabled = RadioEffectCheckbox.IsChecked ?? false;
         _testTts.Volume = _state.Audio.TtsVolume;

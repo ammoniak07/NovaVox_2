@@ -34,6 +34,14 @@ public sealed class VoiceOrchestrator : IDisposable
     /// <summary>À appeler quand le périphérique de sortie change dans les réglages, même pendant que l'écoute tourne.</summary>
     public void UpdateOutputDevice(string? deviceName) => _tts.OutputDeviceName = deviceName;
 
+    /// <summary>
+    /// Surveillance Game.log possédée par MainWindow (panneau "🛰 Game.log") —
+    /// injectée ici pour que les questions posées à voix haute à Gemini
+    /// bénéficient aussi du contexte de jeu courant (zone/vaisseau), comme
+    /// le fait déjà la fenêtre de discussion tapée.
+    /// </summary>
+    public GameLogWatcher? GameLogWatcher { get; set; }
+
     /// <summary>Message à afficher dans le journal système, avec son "kind" (info/success/error/warning) — voir appendLog (gui/script.js).</summary>
     public event EventHandler<(string Message, string Kind)>? Log;
     public event EventHandler<bool>? ListeningChanged;
@@ -48,6 +56,7 @@ public sealed class VoiceOrchestrator : IDisposable
         _keySimulator.OnError = (context, ex) => RaiseLog($"[Erreur touche] {context} : {ex.Message}", "error");
         _keySimulator.OnWarning = msg => RaiseLog(msg, "warning");
         _tts.ErrorOccurred += (_, msg) => RaiseLog($"[Erreur voix] {msg}", "error");
+        _tts.Diagnostic += (_, msg) => RaiseLog(msg, "info");
 
         try
         {
@@ -69,7 +78,7 @@ public sealed class VoiceOrchestrator : IDisposable
         _tts.Volume = _state.Audio.TtsVolume;
         _tts.OutputDeviceName = _state.Audio.OutputDevice;
 
-        _geminiClient = new GeminiClient(_state.Ai, _state.AiConfigStore) { GameLogStateProvider = () => (GameLogState?)null };
+        _geminiClient = new GeminiClient(_state.Ai, _state.AiConfigStore) { GameLogStateProvider = () => GameLogWatcher?.GetState() };
         _geminiClient.UserMessageAdded += (_, question) => RaiseLog($"Question pour {_state.Ai.GeminiName} : « {question} »", "info");
         _geminiClient.ReplyReceived += (_, e) =>
         {
