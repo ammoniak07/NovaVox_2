@@ -40,14 +40,19 @@ public sealed class TrayIconService : IDisposable
         // dans WPF, au-dessus de tout style/trigger, règle le problème
         // dans tous les cas.
         menu.Resources.Add(typeof(TextBlock), new Style(typeof(TextBlock)));
+        // Fond opaque explicite en plus du texte forcé en noir : si le
+        // popup héritait d'un fond semi-transparent/sombre de quelque part,
+        // du texte noir dessus resterait tout aussi illisible que du texte
+        // clair sur fond clair.
+        menu.Background = System.Windows.Media.Brushes.White;
 
-        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.Black };
+        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.Black, Background = System.Windows.Media.Brushes.White };
         showItem.Click += (_, _) => onShow();
         menu.Items.Add(showItem);
 
         menu.Items.Add(new Separator());
 
-        var quitItem = new MenuItem { Header = "Quitter", Foreground = System.Windows.Media.Brushes.Black };
+        var quitItem = new MenuItem { Header = "Quitter", Foreground = System.Windows.Media.Brushes.Black, Background = System.Windows.Media.Brushes.White };
         quitItem.Click += (_, _) => onQuit();
         menu.Items.Add(quitItem);
 
