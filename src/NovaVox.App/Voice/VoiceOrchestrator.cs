@@ -45,9 +45,13 @@ public sealed class VoiceOrchestrator : IDisposable
     /// <summary>Message à afficher dans le journal système, avec son "kind" (info/success/error/warning) — voir appendLog (gui/script.js).</summary>
     public event EventHandler<(string Message, string Kind)>? Log;
     public event EventHandler<bool>? ListeningChanged;
+    /// <summary>Micro effectivement ouvert (porte micro ouverte ET écoute active) — port de _overlay_set_mic (app.py).</summary>
+    public event EventHandler<bool>? MicActiveChanged;
     public event EventHandler<long>? MicLevelChanged;
     public event EventHandler<string>? PhraseRecognized;
     public event EventHandler<string>? CommandExecuted;
+    /// <summary>Phrase + touche(s) d'une commande qui vient d'être déclenchée — pour l'overlay (_overlay_set_phrase/_overlay_set_last_command/_overlay_flash_command, app.py).</summary>
+    public event EventHandler<(string Phrase, string KeysLabel)>? CommandTriggered;
 
     public VoiceOrchestrator(AppState state, IntPtr windowHandle)
     {
@@ -139,14 +143,25 @@ public sealed class VoiceOrchestrator : IDisposable
                 Hotkey = _state.Audio.ListenHotkey,
                 ListenMode = _state.Audio.ListenMode,
             };
-            _hotkeyMonitor.PushToTalkStateChanged += (_, held) => { if (_speechListener is not null) _speechListener.MicGateOpen = held; };
-            _hotkeyMonitor.ToggleTriggered += (_, _) => { if (_speechListener is not null) _speechListener.MicGateOpen = !_speechListener.MicGateOpen; };
+            _hotkeyMonitor.PushToTalkStateChanged += (_, held) =>
+            {
+                if (_speechListener is null) return;
+                _speechListener.MicGateOpen = held;
+                MicActiveChanged?.Invoke(this, held);
+            };
+            _hotkeyMonitor.ToggleTriggered += (_, _) =>
+            {
+                if (_speechListener is null) return;
+                _speechListener.MicGateOpen = !_speechListener.MicGateOpen;
+                MicActiveChanged?.Invoke(this, _speechListener.MicGateOpen);
+            };
             _hotkeyMonitor.UnmatchedJoystick += (_, label) => RaiseLog($"[Avertissement] Bouton {label} introuvable parmi les manettes connectées.", "warning");
             _hotkeyMonitor.Start();
         }
 
         IsListening = true;
         ListeningChanged?.Invoke(this, true);
+        MicActiveChanged?.Invoke(this, _speechListener.MicGateOpen);
         RaiseLog("Modèle chargé. Écoute en cours...", "success");
         return true;
     }
@@ -162,6 +177,7 @@ public sealed class VoiceOrchestrator : IDisposable
 
         IsListening = false;
         ListeningChanged?.Invoke(this, false);
+        MicActiveChanged?.Invoke(this, false);
         RaiseLog("Écoute arrêtée.", "info");
     }
 
@@ -180,8 +196,10 @@ public sealed class VoiceOrchestrator : IDisposable
         {
             case VoiceActionKind.ExecuteCommand:
                 var cmd = commands[result.CommandIndex];
-                CommandExecuted?.Invoke(this, CommandMatcher.CommandKeysLabel(cmd));
-                RaiseLog($"Commande : « {cmd.Phrase} » → {CommandMatcher.CommandKeysLabel(cmd)}", "success");
+                var keysLabel = CommandMatcher.CommandKeysLabel(cmd);
+                CommandExecuted?.Invoke(this, keysLabel);
+                CommandTriggered?.Invoke(this, (cmd.Phrase, keysLabel));
+                RaiseLog($"Commande : « {cmd.Phrase} » → {keysLabel}", "success");
                 Task.Run(() => _commandExecutor.Run(cmd));
                 // Port de "if self.confirm_commands_voice: self._speak(cmd['phrase'])" (_execute_command, app.py).
                 if (_state.Ai.ConfirmCommands) _tts.Speak(cmd.Phrase);

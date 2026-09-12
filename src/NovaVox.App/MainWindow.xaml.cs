@@ -606,8 +606,16 @@ public partial class MainWindow : Window
             StatusLabelText.Text = listening ? "Écoute active" : "Arrêté";
             StatusText.Text = listening ? "Écoute en cours" : "Système en veille";
             StatusDot.Fill = listening ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("MutedBrush");
+            _overlayWindow?.SetListening(listening);
         });
+        _voiceOrchestrator.MicActiveChanged += (_, active) => Dispatcher.BeginInvoke(() => _overlayWindow?.SetMicActive(active));
         _voiceOrchestrator.CommandExecuted += (_, keys) => Dispatcher.BeginInvoke(() => StatusText.Text = $"Commande : {keys}");
+        _voiceOrchestrator.CommandTriggered += (_, e) => Dispatcher.BeginInvoke(() =>
+        {
+            _overlayWindow?.SetPhrase(e.Phrase);
+            _overlayWindow?.SetLastCommand($"{e.Phrase} ({e.KeysLabel})");
+            _overlayWindow?.FlashCommand();
+        });
 
         ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath)
             ? "Aucun modèle sélectionné"
