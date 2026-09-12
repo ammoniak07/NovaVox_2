@@ -8,38 +8,36 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <!-- Contenu principal -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <!-- En-tête -->
-        <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-            <Grid Margin="16,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock Text="NOVAVOX" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
-                    <TextBlock x:Name="StatusText" Text="Système en veille" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-                <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Démarrer l'écoute" Click="ListenToggleButton_Click" />
-                <Button x:Name="ThemeToggleButton" Grid.Column="2" Content="🌙" Margin="8,0,0,0" Width="36" Click="ThemeToggleButton_Click"
-                        ToolTip="Basculer jour/nuit" />
-            </Grid>
-        </Border>
+            <!-- En-tête -->
+            <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                <Grid Margin="16,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock Text="NOVAVOX" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusText" Text="Système en veille" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Démarrer l'écoute" Click="ListenToggleButton_Click" />
+                    <Button x:Name="SettingsButton" Grid.Column="2" Content="⚙️" Margin="8,0,0,0" Width="36" Click="SettingsButton_Click"
+                            ToolTip="Réglages" />
+                    <Button x:Name="ThemeToggleButton" Grid.Column="3" Content="🌙" Margin="8,0,0,0" Width="36" Click="ThemeToggleButton_Click"
+                            ToolTip="Basculer jour/nuit" />
+                </Grid>
+            </Border>
 
-        <Grid Grid.Row="1" Margin="16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" MinWidth="360" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="2*" MinWidth="320" />
-            </Grid.ColumnDefinitions>
-
-            <!-- Colonne gauche : liste de commandes + profils -->
-            <Grid Grid.Column="0">
+            <!-- Liste de commandes + journal (pleine largeur : les réglages s'ouvrent en recouvrement, voir SettingsOverlay plus bas) -->
+            <Grid Grid.Row="1" Margin="16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -167,188 +165,209 @@
                     </ScrollViewer>
                 </Border>
             </Grid>
-
-            <!-- Colonne droite : réglages -->
-            <TabControl Grid.Column="2" Background="Transparent">
-                <TabItem Header="🔊 Sons">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
-                        <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{StaticResource MutedBrush}"
-                                   TextWrapping="Wrap" Margin="0,0,0,4" />
-                        <ItemsControl x:Name="VoskModelsList" Margin="0,4,0,0">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                            <TextBlock Text="{Binding Description}" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
-                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                <Button Content="Télécharger et installer" IsEnabled="{Binding CanInstall}" Click="InstallVoskModel_Click" />
-                                                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Content="Parcourir un dossier déjà téléchargé..." HorizontalAlignment="Left" Margin="0,8,0,0" Click="BrowseModel_Click" />
-
-                        <TextBlock Text="Micro" FontWeight="Bold" Margin="0,16,0,6" />
-                        <ComboBox x:Name="InputDeviceCombo" Margin="0,0,0,8" SelectionChanged="InputDeviceCombo_SelectionChanged" />
-                        <TextBlock Text="Amplification micro" />
-                        <Slider x:Name="MicGainSlider" Minimum="0.1" Maximum="3.0" ValueChanged="MicGainSlider_ValueChanged" />
-                        <TextBlock Text="Seuil de sensibilité (0 = désactivé)" Margin="0,8,0,0" />
-                        <Slider x:Name="MicGateSlider" Minimum="0" Maximum="4000" ValueChanged="MicGateSlider_ValueChanged" />
-
-                        <TextBlock Text="Mode d'écoute" FontWeight="Bold" Margin="0,16,0,6" />
-                        <RadioButton x:Name="ListenAlwaysRadio" Content="Toujours active" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="always" />
-                        <RadioButton x:Name="ListenToggleRadio" Content="Touche bascule" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="toggle_key" Margin="0,4,0,0" />
-                        <RadioButton x:Name="ListenPttRadio" Content="Push-to-talk" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="push_to_talk" Margin="0,4,0,0" />
-                        <TextBlock Text="Touche assignée (capture au clavier/manette : voir réglages avancés)" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap" />
-                        <TextBox x:Name="ListenHotkeyBox" Margin="0,4,0,0" LostFocus="ListenHotkeyBox_LostFocus" />
-
-                        <TextBlock Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />
-                        <ComboBox x:Name="KbLayoutCombo" SelectionChanged="KbLayoutCombo_SelectionChanged">
-                            <ComboBoxItem Content="AZERTY (France)" Tag="azerty_fr" />
-                            <ComboBoxItem Content="AZERTY (Belgique)" Tag="azerty_be" />
-                            <ComboBoxItem Content="QWERTY" Tag="qwerty" />
-                        </ComboBox>
-
-                        <TextBlock Text="Voix (sortie)" FontWeight="Bold" Margin="0,16,0,6" />
-                        <TextBlock Text="Périphérique de sortie" />
-                        <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
-                        <TextBlock Text="Volume de la voix" />
-                        <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
-                        <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
-                    </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-
-                <TabItem Header="🌟 IA Gemini">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="10">
-                        <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
-                        <TextBlock Text="Clé API" Margin="0,12,0,4" />
-                        <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
-                        <TextBlock Text="Modèle" Margin="0,12,0,4" />
-                        <TextBox x:Name="GeminiModelBox" LostFocus="GeminiModelBox_LostFocus" />
-                        <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
-                        <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
-                        <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />
-                        <ComboBox x:Name="GeminiResponseLengthCombo" SelectionChanged="GeminiResponseLengthCombo_SelectionChanged">
-                            <ComboBoxItem Content="Courte" Tag="short" />
-                            <ComboBoxItem Content="Normale" Tag="normal" />
-                            <ComboBoxItem Content="Longue" Tag="long" />
-                        </ComboBox>
-                        <TextBlock Text="Contexte personnalisé" Margin="0,12,0,4" />
-                        <TextBox x:Name="GeminiContextBox" AcceptsReturn="True" Height="70" TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto" LostFocus="GeminiContextBox_LostFocus" />
-                        <CheckBox x:Name="RadioEffectCheckbox" Content="Effet radio de vaisseau" Margin="0,16,0,0" Checked="RadioEffectCheckbox_Changed" Unchecked="RadioEffectCheckbox_Changed" />
-
-                        <TextBlock Text="Moteur vocal (Piper)" FontWeight="Bold" Margin="0,16,0,6" />
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="InstallPiperEngineButton" Content="Installer le moteur Piper" Click="InstallPiperEngine_Click" />
-                            <TextBlock x:Name="PiperEngineStatusText" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
-                        </StackPanel>
-
-                        <TextBlock Text="Voix disponibles" FontWeight="Bold" Margin="0,16,0,6" />
-                        <ItemsControl x:Name="PiperVoicesList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal">
-                                                <RadioButton GroupName="PiperVoice" IsChecked="{Binding IsSelected, Mode=OneWay}" Click="SelectPiperVoice_Click"
-                                                             Content="{Binding Label}" IsEnabled="{Binding IsInstalled}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                <Button Content="Télécharger" Visibility="{Binding CanDownload, Converter={StaticResource BoolToVis}}" Click="DownloadPiperVoice_Click" />
-                                                <Button Content="Supprimer" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="DeletePiperVoice_Click" Margin="6,0,0,0" />
-                                                <Button Content="Tester" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="TestPiperVoice_Click" Margin="6,0,0,0" />
-                                                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <TextBlock Text="Vitesse (length_scale)" Margin="0,16,0,0" />
-                        <Slider x:Name="PiperLengthScaleSlider" Minimum="0.5" Maximum="2.0" ValueChanged="PiperLengthScaleSlider_ValueChanged" />
-                        <TextBlock Text="Expressivité (noise_scale)" />
-                        <Slider x:Name="PiperNoiseScaleSlider" Minimum="0.0" Maximum="1.5" ValueChanged="PiperNoiseScaleSlider_ValueChanged" />
-                    </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-
-                <TabItem Header="🛰 Game.log">
-                    <StackPanel Margin="10">
-                        <CheckBox x:Name="GameLogEnabledCheckbox" Content="Surveiller le Game.log" Checked="GameLogEnabledCheckbox_Changed" Unchecked="GameLogEnabledCheckbox_Changed" />
-                        <CheckBox x:Name="GameLogAnnounceCheckbox" Content="Annoncer les changements de zone à voix haute" Margin="0,8,0,0"
-                                  Checked="GameLogAnnounceCheckbox_Changed" Unchecked="GameLogAnnounceCheckbox_Changed" />
-                        <TextBlock Text="Pseudo RSI" Margin="0,16,0,4" />
-                        <TextBox x:Name="PlayerHandleBox" LostFocus="PlayerHandleBox_LostFocus" />
-                    </StackPanel>
-                </TabItem>
-
-                <TabItem Header="⬡ NovaVox">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
-                        <CheckBox x:Name="OverlayEnabledCheckbox" Content="Activer l'overlay" Checked="OverlayEnabledCheckbox_Changed" Unchecked="OverlayEnabledCheckbox_Changed" />
-                        <Button x:Name="ToggleOverlayEditButton" Content="Déplacer l'overlay" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOverlayEditButton_Click" />
-
-                        <TextBlock Text="Apparence" Margin="0,16,0,4" />
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Fond :" VerticalAlignment="Center" />
-                            <TextBox x:Name="OverlayBgColorBox" Width="90" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
-                            <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            <Slider x:Name="OverlayBgOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <TextBlock Text="Texte :" VerticalAlignment="Center" />
-                            <TextBox x:Name="OverlayTextColorBox" Width="90" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
-                            <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
-                            <Slider x:Name="OverlayTextOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
-                        </StackPanel>
-
-                        <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
-                                  Margin="0,16,0,0" Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
-
-                        <TextBlock Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
-                        <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">
-                            <ComboBoxItem Content="Français" Tag="fr" />
-                            <ComboBoxItem Content="English" Tag="en" />
-                            <ComboBoxItem Content="Nederlands" Tag="nl" />
-                            <ComboBoxItem Content="Español" Tag="es" />
-                            <ComboBoxItem Content="Italiano" Tag="it" />
-                            <ComboBoxItem Content="Deutsch" Tag="de" />
-                        </ComboBox>
-
-                        <Button Content="Réinitialiser l'application" Margin="0,24,0,0" HorizontalAlignment="Left" Click="ResetApplication_Click" />
-                    </StackPanel>
-                </TabItem>
-
-                <TabItem Header="🙏 Crédits">
-                    <StackPanel Margin="10">
-                        <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
-                        <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
-                        <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
-                        <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
-
-                        <TextBlock Text="Configuration" FontWeight="Bold" Margin="0,24,0,6" />
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="Exporter la config" Click="ExportConfig_Click" />
-                            <Button Content="Exporter (avec tous les profils)" Margin="8,0,0,0" Click="ExportConfigAllProfiles_Click" />
-                        </StackPanel>
-                        <Button Content="Importer la config" Margin="0,6,0,0" HorizontalAlignment="Left" Click="ImportConfig_Click" />
-
-                        <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
-                        <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
-                        <TextBlock x:Name="UpdateStatusText" Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
-                    </StackPanel>
-                </TabItem>
-            </TabControl>
         </Grid>
+
+        <!-- Recouvrement "Réglages", ouvert/fermé par le bouton ⚙️ de l'en-tête — pas une fenêtre séparée -->
+        <Border x:Name="SettingsOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="640" MaxHeight="820" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="16,14,16,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="⚙️ Réglages" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Click="CloseSettings_Click" />
+                    </Grid>
+
+                    <TabControl Grid.Row="1" Background="Transparent" Margin="10,4,10,10">
+                        <TabItem Header="🔊 Sons">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
+                                <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{StaticResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,4" />
+                                <ItemsControl x:Name="VoskModelsList" Margin="0,4,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Description}" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <Button Content="Télécharger et installer" IsEnabled="{Binding CanInstall}" Click="InstallVoskModel_Click" />
+                                                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="Parcourir un dossier déjà téléchargé..." HorizontalAlignment="Left" Margin="0,8,0,0" Click="BrowseModel_Click" />
+
+                                <TextBlock Text="Micro" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="InputDeviceCombo" Margin="0,0,0,8" SelectionChanged="InputDeviceCombo_SelectionChanged" />
+                                <TextBlock Text="Amplification micro" />
+                                <Slider x:Name="MicGainSlider" Minimum="0.1" Maximum="3.0" ValueChanged="MicGainSlider_ValueChanged" />
+                                <TextBlock Text="Seuil de sensibilité (0 = désactivé)" Margin="0,8,0,0" />
+                                <Slider x:Name="MicGateSlider" Minimum="0" Maximum="4000" ValueChanged="MicGateSlider_ValueChanged" />
+
+                                <TextBlock Text="Mode d'écoute" FontWeight="Bold" Margin="0,16,0,6" />
+                                <RadioButton x:Name="ListenAlwaysRadio" Content="Toujours active" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="always" />
+                                <RadioButton x:Name="ListenToggleRadio" Content="Touche bascule" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="toggle_key" Margin="0,4,0,0" />
+                                <RadioButton x:Name="ListenPttRadio" Content="Push-to-talk" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="push_to_talk" Margin="0,4,0,0" />
+                                <TextBlock Text="Touche assignée (capture au clavier/manette : voir réglages avancés)" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                <TextBox x:Name="ListenHotkeyBox" Margin="0,4,0,0" LostFocus="ListenHotkeyBox_LostFocus" />
+
+                                <TextBlock Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="KbLayoutCombo" SelectionChanged="KbLayoutCombo_SelectionChanged">
+                                    <ComboBoxItem Content="AZERTY (France)" Tag="azerty_fr" />
+                                    <ComboBoxItem Content="AZERTY (Belgique)" Tag="azerty_be" />
+                                    <ComboBoxItem Content="QWERTY" Tag="qwerty" />
+                                </ComboBox>
+
+                                <TextBlock Text="Voix (sortie)" FontWeight="Bold" Margin="0,16,0,6" />
+                                <TextBlock Text="Périphérique de sortie" />
+                                <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
+                                <TextBlock Text="Volume de la voix" />
+                                <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
+                                <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
+                            </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="🌟 IA Gemini">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="10">
+                                <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
+                                <TextBlock Text="Clé API" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
+                                <TextBlock Text="Modèle" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiModelBox" LostFocus="GeminiModelBox_LostFocus" />
+                                <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
+                                <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />
+                                <ComboBox x:Name="GeminiResponseLengthCombo" SelectionChanged="GeminiResponseLengthCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Courte" Tag="short" />
+                                    <ComboBoxItem Content="Normale" Tag="normal" />
+                                    <ComboBoxItem Content="Longue" Tag="long" />
+                                </ComboBox>
+                                <TextBlock Text="Contexte personnalisé" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiContextBox" AcceptsReturn="True" Height="70" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" LostFocus="GeminiContextBox_LostFocus" />
+                                <CheckBox x:Name="RadioEffectCheckbox" Content="Effet radio de vaisseau" Margin="0,16,0,0" Checked="RadioEffectCheckbox_Changed" Unchecked="RadioEffectCheckbox_Changed" />
+
+                                <TextBlock Text="Moteur vocal (Piper)" FontWeight="Bold" Margin="0,16,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="InstallPiperEngineButton" Content="Installer le moteur Piper" Click="InstallPiperEngine_Click" />
+                                    <TextBlock x:Name="PiperEngineStatusText" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <TextBlock Text="Voix disponibles" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ItemsControl x:Name="PiperVoicesList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <RadioButton GroupName="PiperVoice" IsChecked="{Binding IsSelected, Mode=OneWay}" Click="SelectPiperVoice_Click"
+                                                                     Content="{Binding Label}" IsEnabled="{Binding IsInstalled}" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <Button Content="Télécharger" Visibility="{Binding CanDownload, Converter={StaticResource BoolToVis}}" Click="DownloadPiperVoice_Click" />
+                                                        <Button Content="Supprimer" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="DeletePiperVoice_Click" Margin="6,0,0,0" />
+                                                        <Button Content="Tester" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="TestPiperVoice_Click" Margin="6,0,0,0" />
+                                                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <TextBlock Text="Vitesse (length_scale)" Margin="0,16,0,0" />
+                                <Slider x:Name="PiperLengthScaleSlider" Minimum="0.5" Maximum="2.0" ValueChanged="PiperLengthScaleSlider_ValueChanged" />
+                                <TextBlock Text="Expressivité (noise_scale)" />
+                                <Slider x:Name="PiperNoiseScaleSlider" Minimum="0.0" Maximum="1.5" ValueChanged="PiperNoiseScaleSlider_ValueChanged" />
+                            </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="🛰 Game.log">
+                            <StackPanel Margin="10">
+                                <CheckBox x:Name="GameLogEnabledCheckbox" Content="Surveiller le Game.log" Checked="GameLogEnabledCheckbox_Changed" Unchecked="GameLogEnabledCheckbox_Changed" />
+                                <CheckBox x:Name="GameLogAnnounceCheckbox" Content="Annoncer les changements de zone à voix haute" Margin="0,8,0,0"
+                                          Checked="GameLogAnnounceCheckbox_Changed" Unchecked="GameLogAnnounceCheckbox_Changed" />
+                                <TextBlock Text="Pseudo RSI" Margin="0,16,0,4" />
+                                <TextBox x:Name="PlayerHandleBox" LostFocus="PlayerHandleBox_LostFocus" />
+                            </StackPanel>
+                        </TabItem>
+
+                        <TabItem Header="⬡ NovaVox">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
+                                <CheckBox x:Name="OverlayEnabledCheckbox" Content="Activer l'overlay" Checked="OverlayEnabledCheckbox_Changed" Unchecked="OverlayEnabledCheckbox_Changed" />
+                                <Button x:Name="ToggleOverlayEditButton" Content="Déplacer l'overlay" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOverlayEditButton_Click" />
+
+                                <TextBlock Text="Apparence" Margin="0,16,0,4" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Fond :" VerticalAlignment="Center" />
+                                    <TextBox x:Name="OverlayBgColorBox" Width="90" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
+                                    <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    <Slider x:Name="OverlayBgOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Texte :" VerticalAlignment="Center" />
+                                    <TextBox x:Name="OverlayTextColorBox" Width="90" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
+                                    <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    <Slider x:Name="OverlayTextOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
+                                </StackPanel>
+
+                                <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
+                                          Margin="0,16,0,0" Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
+
+                                <TextBlock Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Français" Tag="fr" />
+                                    <ComboBoxItem Content="English" Tag="en" />
+                                    <ComboBoxItem Content="Nederlands" Tag="nl" />
+                                    <ComboBoxItem Content="Español" Tag="es" />
+                                    <ComboBoxItem Content="Italiano" Tag="it" />
+                                    <ComboBoxItem Content="Deutsch" Tag="de" />
+                                </ComboBox>
+
+                                <Button Content="Réinitialiser l'application" Margin="0,24,0,0" HorizontalAlignment="Left" Click="ResetApplication_Click" />
+                            </StackPanel>
+                        </TabItem>
+
+                        <TabItem Header="🙏 Crédits">
+                            <StackPanel Margin="10">
+                                <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
+                                <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
+                                <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
+
+                                <TextBlock Text="Configuration" FontWeight="Bold" Margin="0,24,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Exporter la config" Click="ExportConfig_Click" />
+                                    <Button Content="Exporter (avec tous les profils)" Margin="8,0,0,0" Click="ExportConfigAllProfiles_Click" />
+                                </StackPanel>
+                                <Button Content="Importer la config" Margin="0,6,0,0" HorizontalAlignment="Left" Click="ImportConfig_Click" />
+
+                                <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
+                                <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
+                                <TextBlock x:Name="UpdateStatusText" Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Border>
+        </Border>
     </Grid>
 </Window>

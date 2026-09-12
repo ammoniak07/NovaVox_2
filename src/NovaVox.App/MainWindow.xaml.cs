@@ -620,6 +620,12 @@ public partial class MainWindow : Window
         ThemeToggleButton.Content = newTheme == "light" ? "☀" : "🌙";
     }
 
+    // ----------------------------------------------------------- Réglages
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Visible;
+
+    private void CloseSettings_Click(object sender, RoutedEventArgs e) => SettingsOverlay.Visibility = Visibility.Collapsed;
+
     // ------------------------------------------------------------- Overlay
 
     private void InitializeOverlay()
