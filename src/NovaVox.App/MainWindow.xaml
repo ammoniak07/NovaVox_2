@@ -137,9 +137,9 @@
                                                 <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
                                                          Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                    <Button Width="30" Height="30" FontSize="13" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
-                                                    <Button Width="30" Height="30" FontSize="13" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
-                                                    <Button Width="30" Height="30" FontSize="13" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" Content="❌" />
+                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
+                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
+                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" Content="❌" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -176,12 +176,12 @@
                                                             ToolTip="Afficher/masquer les synonymes" Click="ToggleSynonyms_Click" Margin="0,0,6,0" />
 
                                                     <StackPanel Grid.Column="4" Orientation="Horizontal">
-                                                        <Button Width="30" Height="30" FontSize="13" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
-                                                        <Button Width="30" Height="30" FontSize="13" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
-                                                        <Button Width="32" Height="30" FontSize="13" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
-                                                        <Button Content="+ syn" Height="30" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
-                                                        <Button Width="32" Height="30" FontSize="13" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="✏️" />
-                                                        <Button Width="30" Height="30" FontSize="13" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" Content="❌" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
+                                                        <Button Content="+ syn" Height="34" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="✏️" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer" Content="❌" />
                                                     </StackPanel>
                                                 </Grid>
 
@@ -195,10 +195,10 @@
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
                                                                 <TextBlock Grid.Column="0" Text="{Binding}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                                                                <Button Grid.Column="1" Width="30" Height="28" FontSize="12"
+                                                                <Button Grid.Column="1" Width="32" Height="30" Padding="0" FontSize="14"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="EditSynonym_Click" ToolTip="Modifier ce synonyme" Content="✏️" />
-                                                                <Button Grid.Column="2" Width="28" Height="28" FontSize="12" Margin="4,0,0,0"
+                                                                <Button Grid.Column="2" Width="32" Height="30" Padding="0" FontSize="14" Margin="4,0,0,0"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="DeleteSynonym_Click" ToolTip="Supprimer ce synonyme" Content="❌" />
                                                             </Grid>
