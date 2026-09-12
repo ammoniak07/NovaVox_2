@@ -1,0 +1,73 @@
+<Window x:Class="NovaVox.App.Overlay.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NovaVox Overlay"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        SizeToContent="Height"
+        Width="230">
+    <Grid>
+        <Border x:Name="PanelBorder"
+                CornerRadius="10"
+                BorderThickness="1"
+                BorderBrush="#592DD4FF"
+                Padding="12,10">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.45" BlurRadius="18" ShadowDepth="4" Direction="270" />
+            </Border.Effect>
+            <StackPanel>
+                <Grid x:Name="RowTime" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🕐" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="TimeValue" Text="--:--:--" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="#DBE4EE" />
+                    </StackPanel>
+                </Grid>
+                <Grid x:Name="RowListening" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🎧" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="ListeningLabel" Text="Écoute :" Margin="6,0,4,0" Foreground="#DBE4EE" />
+                        <TextBlock x:Name="ListeningValue" Text="Arrêtée" Foreground="#DBE4EE" />
+                    </StackPanel>
+                </Grid>
+                <Grid x:Name="RowMic" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🎙" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="MicLabel" Text="Micro :" Margin="6,0,4,0" Foreground="#DBE4EE" />
+                        <TextBlock x:Name="MicValue" Text="—" Foreground="#DBE4EE" />
+                    </StackPanel>
+                </Grid>
+                <Grid x:Name="RowPhrase" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="💬" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="PhraseValue" Text="…" Margin="6,0,0,0" Foreground="#DBE4EE"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="180" />
+                    </StackPanel>
+                </Grid>
+                <Grid x:Name="RowZone" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🧭" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="ZoneLabel" Text="Zone :" Margin="6,0,4,0" Foreground="#DBE4EE" />
+                        <TextBlock x:Name="ZoneValue" Text="—" Foreground="#DBE4EE"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="150" />
+                    </StackPanel>
+                </Grid>
+                <Grid x:Name="RowLastCmd">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🎮" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="LastCmdValue" Text="—" Margin="6,0,0,0" Foreground="#DBE4EE"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="180" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Flash vert (2s) à chaque commande déclenchée, sur son propre calque
+             pour ne jamais entrer en conflit avec le fond "micro coupé" — voir
+             #panel::after / #panel.cmd-flash (overlay.html). -->
+        <Border x:Name="FlashOverlay" CornerRadius="10" Background="#8C0C5E31" Opacity="0" IsHitTestVisible="False" />
+    </Grid>
+</Window>
