@@ -645,6 +645,14 @@ public partial class MainWindow : Window
         _state.SwitchProfile(profile.Id);
         CommandsList.ItemsSource = null;
         InitializeCommandsList();
+        // SwitchProfile -> ReloadProfiles vide _state.Profiles et le
+        // reremplit avec de nouvelles instances ProfileInfo : le
+        // SelectedItem actuel (l'ancienne instance, cliquée par
+        // l'utilisateur) ne fait donc plus partie de la collection, et
+        // WPF le remet à null — d'où la case qui restait vide après un
+        // changement de profil. Repointe explicitement vers la nouvelle
+        // instance correspondante.
+        SelectActiveProfileInCombo();
     }
 
     private void NewProfile_Click(object sender, RoutedEventArgs e)
