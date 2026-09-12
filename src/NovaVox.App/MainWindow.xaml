@@ -502,12 +502,28 @@
                         </TabItem>
 
                         <TabItem Header="🙏 Crédits">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
                                 <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
                                 <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
                                 <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
+
+                                <TextBlock Text="Bibliothèques utilisées" FontWeight="Bold" Margin="0,24,0,6" />
+                                <TextBlock Text="Vosk — reconnaissance vocale hors-ligne" Margin="0,6,0,0" />
+                                <TextBlock Text="https://github.com/alphacep/vosk-api" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Text="Piper — synthèse vocale (TTS)" Margin="0,10,0,0" />
+                                <TextBlock Text="https://github.com/rhasspy/piper" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Text="NAudio — lecture/capture audio" Margin="0,10,0,0" />
+                                <TextBlock Text="https://github.com/naudio/NAudio" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Text="Vortice.Windows — accès aux manettes (DirectInput)" Margin="0,10,0,0" />
+                                <TextBlock Text="https://github.com/amerkoleci/Vortice.Windows" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Text="Hardcodet.NotifyIcon.Wpf — icône dans la zone de notification" Margin="0,10,0,0" />
+                                <TextBlock Text="https://github.com/hardcodet/wpf-notifyicon" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Text="System.Drawing.Common" Margin="0,10,0,0" />
+                                <TextBlock Text="https://www.nuget.org/packages/System.Drawing.Common" Foreground="{StaticResource AccentBrush}" />
                             </StackPanel>
+                            </ScrollViewer>
                         </TabItem>
                     </TabControl>
                 </Grid>
