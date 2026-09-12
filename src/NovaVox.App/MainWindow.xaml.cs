@@ -1003,6 +1003,12 @@ public partial class MainWindow : Window
     {
         _overlayWindow = new OverlayWindow(_state.OverlayConfigStore);
         _overlayWindow.LoadFromConfig();
+        // État initial explicite : au lancement, l'écoute n'a pas encore été
+        // démarrée (VoiceOrchestrator ne préviendra qu'au premier Start/Stop),
+        // donc sans ceci l'overlay resterait sur son fond "normal" au lieu du
+        // rouge "micro coupé" tant que l'utilisateur n'a pas basculé l'écoute.
+        _overlayWindow.SetListening(false);
+        _overlayWindow.SetMicActive(false);
         AppendLog($"Overlay : activé={_state.Overlay.Enabled}.", "info");
         if (_state.Overlay.Enabled)
         {
