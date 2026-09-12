@@ -65,6 +65,13 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     public bool HasSynonyms => Synonyms.Count > 0;
     public string SynonymsCountLabel => $"{(SynonymsExpanded ? "▾" : "▸")} {Synonyms.Count} syn";
 
+    private bool _isDropTargetTop;
+    /// <summary>État d'affichage (survol pendant un glisser) — jamais persisté, purement pour l'UI.</summary>
+    public bool IsDropTargetTop { get => _isDropTargetTop; set { _isDropTargetTop = value; Raise(); } }
+
+    private bool _isDropTargetBottom;
+    public bool IsDropTargetBottom { get => _isDropTargetBottom; set { _isDropTargetBottom = value; Raise(); } }
+
     public VoiceCommandRow()
     {
         Synonyms.CollectionChanged += (_, _) => { Raise(nameof(HasSynonyms)); Raise(nameof(SynonymsCountLabel)); };

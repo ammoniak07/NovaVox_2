@@ -256,20 +256,61 @@ public partial class MainWindow : Window
 
     private void CommandsList_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(typeof(VoiceCommandRow)) ? DragDropEffects.Move : DragDropEffects.None;
+        if (!e.Data.GetDataPresent(typeof(VoiceCommandRow)))
+        {
+            e.Effects = DragDropEffects.None;
+            ClearDropIndicators();
+            e.Handled = true;
+            return;
+        }
+        e.Effects = DragDropEffects.Move;
         e.Handled = true;
+
+        var targetItem = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
+        ClearDropIndicators();
+        if (targetItem?.DataContext is not VoiceCommandRow targetRow) return;
+
+        // Ligne d'accent en haut/bas de la ligne survolée selon la moitié où
+        // se trouve le curseur : seul visuel indiquant où la ligne glissée
+        // atterrira, absent jusqu'ici (voir drag-over-top/bottom, script.js).
+        if (e.GetPosition(targetItem).Y < targetItem.ActualHeight / 2) targetRow.IsDropTargetTop = true;
+        else targetRow.IsDropTargetBottom = true;
+    }
+
+    private void CommandsList_DragLeave(object sender, DragEventArgs e) => ClearDropIndicators();
+
+    private void ClearDropIndicators()
+    {
+        foreach (var row in _state.Commands)
+        {
+            row.IsDropTargetTop = false;
+            row.IsDropTargetBottom = false;
+        }
     }
 
     private void CommandsList_Drop(object sender, DragEventArgs e)
     {
+        ClearDropIndicators();
         if (e.Data.GetData(typeof(VoiceCommandRow)) is not VoiceCommandRow draggedRow) return;
         var targetItem = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
         if (targetItem?.DataContext is not VoiceCommandRow targetRow || ReferenceEquals(targetRow, draggedRow)) return;
 
         var fromIndex = _state.Commands.IndexOf(draggedRow);
         var toIndex = _state.Commands.IndexOf(targetRow);
-        if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return;
-        _state.Commands.Move(fromIndex, toIndex);
+        if (fromIndex < 0 || toIndex < 0) return;
+
+        // insertIndex : position (dans la liste ACTUELLE, avant retrait de
+        // l'élément glissé) où il doit atterrir — avant la ligne survolée si
+        // le curseur est dans sa moitié haute, après sinon.
+        var before = e.GetPosition(targetItem).Y < targetItem.ActualHeight / 2;
+        var insertIndex = before ? toIndex : toIndex + 1;
+        // ObservableCollection.Move retire d'abord l'élément (ce qui décale
+        // tout ce qui suit fromIndex d'un cran), puis l'insère à newIndex
+        // DANS la liste déjà réduite : compenser ce décalage si la cible
+        // était après le point de départ.
+        var newIndex = insertIndex > fromIndex ? insertIndex - 1 : insertIndex;
+        if (newIndex == fromIndex) return;
+        _state.Commands.Move(fromIndex, newIndex);
     }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
