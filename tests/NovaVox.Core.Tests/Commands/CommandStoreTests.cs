@@ -92,4 +92,14 @@ public class CommandStoreTests : IDisposable
         store.SaveCommands(new List<VoiceCommand> { new() { Phrase = "x", Keys = "n" } });
         Assert.False(File.Exists(store.ProfilePath("ghost")));
     }
+
+    [Fact]
+    public void ProfileInfo_ToStringReturnsName()
+    {
+        // Le ComboBox de sélection de profil (MainWindow.xaml) retombe sur
+        // ToString() pour la case fermée : sans cet override, il affichait
+        // le nom complet du type au lieu du nom du profil.
+        var profile = new ProfileInfo { Id = "p1", Name = "Ammo", Count = 3 };
+        Assert.Equal("Ammo", profile.ToString());
+    }
 }

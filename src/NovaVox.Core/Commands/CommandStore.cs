@@ -9,6 +9,13 @@ public sealed class ProfileInfo
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public int Count { get; set; }
+
+    // Le ComboBox custom-templaté de la sélection de profil (MainWindow.xaml)
+    // affiche l'élément sélectionné via SelectionBoxItem, qui retombe sur
+    // ToString() plutôt que DisplayMemberPath dans ce cas précis — sans ceci,
+    // la case affichait le nom complet du type ("NovaVox.Core.Commands.ProfileInfo")
+    // au lieu du nom du profil.
+    public override string ToString() => Name;
 }
 
 /// <summary>
