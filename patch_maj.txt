@@ -1,0 +1,5 @@
+NOVAVOX — Notes de mise à jour
+==============================
+v0.0.1
+------
+- Première version de la réédition .NET/WPF de NovaVox (portage complet depuis la version Python/pywebview d'origine, avec sa propre numérotation de version).

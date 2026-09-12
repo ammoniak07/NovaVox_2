@@ -42,6 +42,12 @@
          elle-même sans dupliquer le fichier dans le dépôt. -->
     <Content Include="..\..\icon.ico" Link="icon.ico" CopyToOutputDirectory="PreserveNewest" />
 
+    <!-- Numéro de version + notes de mise à jour (VersionUtil.GetAppVersion/
+         GetPatchNotes) : la toute première ligne "vX.Y.Z" du fichier fait foi,
+         donc il suffit d'ajouter un nouveau bloc en tête à chaque version —
+         pas de numéro à dupliquer ailleurs dans le code. -->
+    <Content Include="..\..\patch_maj.txt" Link="patch_maj.txt" CopyToOutputDirectory="PreserveNewest" />
+
     <!-- Logo d'en-tête / image de fond des listes Commandes+Journal
          (LoadAppLogoImage/LoadPanelsBackgroundImage, MainWindow.xaml.cs) :
          optionnels, absents du dépôt tant que l'utilisateur n'en dépose pas

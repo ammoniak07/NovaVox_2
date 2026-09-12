@@ -10,7 +10,7 @@ namespace NovaVox.Core.Update;
 public static partial class VersionUtil
 {
     /// <summary>Repli utilisé uniquement si patch_maj.txt est absent ou ne contient aucune ligne "vX.Y.Z" reconnaissable.</summary>
-    public const string FallbackVersion = "0.2.8";
+    public const string FallbackVersion = "0.0.1";
 
     [GeneratedRegex(@"\d+")]
     private static partial Regex DigitsRegex();
