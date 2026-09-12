@@ -25,4 +25,12 @@
     <ProjectReference Include="..\NovaVox.Core\NovaVox.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Copié à côté de NovaVox.exe : l'icône du tray est chargée depuis
+         le disque à l'exécution (voir TrayIconService), pas depuis les
+         ressources embarquées, pour rester cohérente avec l'icône .exe
+         elle-même sans dupliquer le fichier dans le dépôt. -->
+    <Content Include="..\..\..\icon.ico" Link="icon.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
