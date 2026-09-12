@@ -120,6 +120,12 @@ public static class HotkeyCapture
                     else
                     {
                         var heldModifiers = ComboModifierOrder.Where(m => KeyboardState.IsKeyDown(VirtualKeys.Map[m])).ToList();
+                        // AltGr (altright) est implémenté par Windows comme un Ctrl
+                        // gauche synthétique tenu juste avant VK_RMENU : sans ce
+                        // filtre, tout appui AltGr+touche ressortirait à tort comme
+                        // "ctrl+altright+touche". Un vrai Ctrl+AltGr simultané n'est
+                        // de toute façon pas une combinaison sensée.
+                        if (heldModifiers.Contains("altright")) heldModifiers.Remove("ctrl");
                         return new ComboCaptureResult(true, Modifiers: heldModifiers, MainKey: name);
                     }
                 }
