@@ -315,15 +315,21 @@
                  que l'image de fond (Grid.Row="2", rendu après elle donc
                  par-dessus) plutôt que dans sa propre ligne réservée : un
                  dégradé (transparent -> fond) sert de scrim au-dessus de
-                 l'image plutôt qu'une bande opaque qui la couperait. -->
-            <Border Grid.Row="2" VerticalAlignment="Bottom" Padding="16,14,16,10" IsHitTestVisible="True">
+                 l'image plutôt qu'une bande opaque qui la couperait. Hauteur
+                 fixe généreuse (200) pour que le dégradé s'étale
+                 progressivement plutôt que de créer une ligne de transition
+                 nette sur l'image (le texte reste collé en bas via
+                 VerticalAlignment="Bottom" sur le contenu, avec un peu de
+                 marge pour ne pas coller au bord de la fenêtre). -->
+            <Border Grid.Row="2" VerticalAlignment="Bottom" Height="200" Padding="16,0,16,18" IsHitTestVisible="True">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                         <GradientStop Color="Transparent" Offset="0" />
-                        <GradientStop Color="{DynamicResource BgColor}" Offset="0.7" />
+                        <GradientStop Color="{DynamicResource BgColor}" Offset="0.85" />
+                        <GradientStop Color="{DynamicResource BgColor}" Offset="1" />
                     </LinearGradientBrush>
                 </Border.Background>
-                <StackPanel HorizontalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <TextBlock Text="NovaVox" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
                         <Button x:Name="FooterVersionButton" Content="v…" Margin="6,0,0,0" Padding="6,1" FontSize="11" Click="FooterVersionButton_Click" ToolTip="Voir les notes de mise à jour" />
