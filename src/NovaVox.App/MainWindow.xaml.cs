@@ -86,6 +86,11 @@ public partial class MainWindow : Window
         MinWidth = WindowConfigStore.MinSize.W;
         MinHeight = WindowConfigStore.MinSize.H;
 
+        // Dès que le HWND existe (avant même l'affichage de la fenêtre, pour
+        // éviter un flash de barre de titre blanche) : la sombrit pour
+        // suivre le thème de l'appli plutôt que le blanc par défaut de Windows.
+        SourceInitialized += (_, _) => DarkTitleBar.Apply(new WindowInteropHelper(this).Handle);
+
         _commandsSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
         _commandsSaveTimer.Tick += (_, _) =>
         {
