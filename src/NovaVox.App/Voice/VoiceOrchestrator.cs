@@ -31,9 +31,6 @@ public sealed class VoiceOrchestrator : IDisposable
 
     public bool IsListening { get; private set; }
 
-    /// <summary>À appeler quand le périphérique de sortie change dans les réglages, même pendant que l'écoute tourne.</summary>
-    public void UpdateOutputDevice(string? deviceName) => _tts.OutputDeviceName = deviceName;
-
     /// <summary>
     /// Capture le prochain bouton pressé sur une manette connectée, pour
     /// assigner ListenHotkey depuis les réglages — port de
@@ -97,8 +94,17 @@ public sealed class VoiceOrchestrator : IDisposable
         }
     }
 
-    /// <summary>À appeler après toute modification des réglages IA (voix Piper, Gemini...) pendant que l'écoute tourne.</summary>
-    public void ApplyAiSettings()
+    /// <summary>
+    /// À appeler après tout changement des réglages voix Piper (voix,
+    /// vitesse, expressivité, volume, effet radio, périphérique de sortie)
+    /// pendant que l'écoute tourne — sans quoi le moteur TTS déjà démarré
+    /// garde les valeurs figées au dernier appel de Start()/ApplyAiSettings()
+    /// jusqu'au prochain redémarrage de l'écoute. Séparé d'ApplyAiSettings
+    /// pour pouvoir être appelé à chaque tick d'un slider sans recréer
+    /// _geminiClient à chaque fois (ce qui viderait l'historique de la
+    /// conversation Gemini en cours).
+    /// </summary>
+    public void ApplyTtsSettings()
     {
         _tts.DefaultPiperVoice = _state.Ai.PiperVoice;
         _tts.LengthScale = _state.Ai.PiperLengthScale;
@@ -106,6 +112,12 @@ public sealed class VoiceOrchestrator : IDisposable
         _tts.RadioEffectEnabled = _state.Ai.RadioEffect;
         _tts.Volume = _state.Audio.TtsVolume;
         _tts.OutputDeviceName = _state.Audio.OutputDevice;
+    }
+
+    /// <summary>À appeler après toute modification des réglages IA (voix Piper, Gemini...) pendant que l'écoute tourne.</summary>
+    public void ApplyAiSettings()
+    {
+        ApplyTtsSettings();
 
         _geminiClient = new GeminiClient(_state.Ai, _state.AiConfigStore) { GameLogStateProvider = () => GameLogWatcher?.GetState() };
         _geminiClient.UserMessageAdded += (_, question) => RaiseLog($"Question pour {_state.Ai.GeminiName} : « {question} »", "info");

@@ -867,7 +867,7 @@ public partial class MainWindow : Window
         var selected = OutputDeviceCombo.SelectedItem as string;
         _state.Audio.OutputDevice = selected == "Périphérique par défaut" ? null : selected;
         _state.SaveAudio();
-        _voiceOrchestrator?.UpdateOutputDevice(_state.Audio.OutputDevice);
+        ApplyLiveVoiceSettings();
     }
 
     private void ListenMode_Checked(object sender, RoutedEventArgs e)
@@ -987,6 +987,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Audio.TtsVolume = e.NewValue;
         _state.SaveAudio();
+        ApplyLiveVoiceSettings();
     }
 
     private void AecEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -1055,6 +1056,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.RadioEffect = RadioEffectCheckbox.IsChecked ?? false;
         _state.SaveAi();
+        ApplyLiveVoiceSettings();
     }
 
     private void PiperLengthScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1062,6 +1064,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.PiperLengthScale = e.NewValue;
         _state.SaveAi();
+        ApplyLiveVoiceSettings();
     }
 
     private void PiperNoiseScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1069,6 +1072,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.PiperNoiseScale = e.NewValue;
         _state.SaveAi();
+        ApplyLiveVoiceSettings();
     }
 
     private void GameLogEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -1447,6 +1451,22 @@ public partial class MainWindow : Window
         _testTts = new PiperTtsEngine();
         _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog($"[Erreur voix] {msg}", "error"));
         _testTts.Diagnostic += (_, msg) => Dispatcher.BeginInvoke(() => AppendLog(msg, "diagnostic"));
+        ApplyLiveVoiceSettings();
+    }
+
+    /// <summary>
+    /// À appeler après tout changement des réglages voix Piper (voix,
+    /// vitesse "length scale", expressivité "noise scale", volume, effet
+    /// radio, périphérique de sortie) pour qu'il s'applique immédiatement à
+    /// la lecture des commandes ET des réponses Gemini, même si l'écoute
+    /// tourne déjà — sans quoi seul un redémarrage de l'écoute (qui
+    /// resynchronise _tts) ou du bouton "Tester" (qui le fait manuellement)
+    /// en tenait compte.
+    /// </summary>
+    private void ApplyLiveVoiceSettings()
+    {
+        _voiceOrchestrator?.ApplyTtsSettings();
+        if (_testTts is null) return;
         _testTts.DefaultPiperVoice = _state.Ai.PiperVoice;
         _testTts.LengthScale = _state.Ai.PiperLengthScale;
         _testTts.NoiseScale = _state.Ai.PiperNoiseScale;
@@ -1696,6 +1716,7 @@ public partial class MainWindow : Window
         foreach (var other in _piperVoiceRows) other.IsSelected = other.Id == row.Id;
         _state.Ai.PiperVoice = row.Id;
         _state.SaveAi();
+        ApplyLiveVoiceSettings();
     }
 
     private async void DownloadPiperVoice_Click(object sender, RoutedEventArgs e)
@@ -1722,6 +1743,7 @@ public partial class MainWindow : Window
                 row.IsSelected = true;
                 _state.Ai.PiperVoice = row.Id;
                 _state.SaveAi();
+                ApplyLiveVoiceSettings();
             }
         }
         finally
