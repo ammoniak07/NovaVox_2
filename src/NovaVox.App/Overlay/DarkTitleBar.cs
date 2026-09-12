@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Windows.Media;
 
 namespace NovaVox.App.Overlay;
 
@@ -10,9 +11,9 @@ namespace NovaVox.App.Overlay;
 /// </summary>
 internal static class DarkTitleBar
 {
-    // Valeur documentée par Microsoft (DWMWINDOWATTRIBUTE), supportée
-    // depuis Windows 10 1809 (build 17763) et Windows 11.
-    private const int DwmwaUseImmersiveDarkMode = 20;
+    // Valeurs documentées par Microsoft (DWMWINDOWATTRIBUTE).
+    private const int DwmwaUseImmersiveDarkMode = 20; // Windows 10 1809+ et Windows 11 : bascule juste sombre/clair, pas de couleur précise.
+    private const int DwmwaCaptionColor = 35; // Windows 11 22000+ seulement : couleur exacte de la barre de titre.
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
@@ -29,6 +30,27 @@ internal static class DarkTitleBar
         {
             var value = 1;
             DwmSetWindowAttribute(hwnd, DwmwaUseImmersiveDarkMode, ref value, sizeof(int));
+        }
+        catch
+        {
+            // Best effort, purement cosmétique.
+        }
+    }
+
+    /// <summary>
+    /// Colore la barre de titre exactement comme le reste de l'interface
+    /// (au lieu du gris générique du mode sombre de Windows) — Windows 11
+    /// (build 22000+) seulement ; sans effet silencieux sur Windows 10, qui
+    /// garde la barre de titre sombre générique posée par <see cref="Apply"/>.
+    /// </summary>
+    public static void ApplyCaptionColor(IntPtr hwnd, Color color)
+    {
+        if (hwnd == IntPtr.Zero) return;
+        try
+        {
+            // COLORREF : 0x00BBGGRR, pas 0x00RRGGBB.
+            var colorRef = (color.B << 16) | (color.G << 8) | color.R;
+            DwmSetWindowAttribute(hwnd, DwmwaCaptionColor, ref colorRef, sizeof(int));
         }
         catch
         {

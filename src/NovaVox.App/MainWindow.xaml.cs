@@ -139,6 +139,7 @@ public partial class MainWindow : Window
         AppendLog("NovaVox démarré.", "info");
         ThemeManager.Apply(_state.Ai.UiTheme);
         ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
+        SyncTitleBarColor();
 
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
         VersionText.Text = $"NovaVox v{version}";
@@ -1456,6 +1457,14 @@ public partial class MainWindow : Window
         _state.SaveAi();
         ThemeManager.Apply(newTheme);
         ThemeToggleButton.Content = newTheme == "light" ? "☀" : "🌙";
+        SyncTitleBarColor();
+    }
+
+    /// <summary>Colore la barre de titre native exactement comme le fond de l'en-tête de l'appli, au lieu du gris générique — voir DarkTitleBar.ApplyCaptionColor.</summary>
+    private void SyncTitleBarColor()
+    {
+        if (Application.Current?.Resources["PanelColor"] is not Color color) return;
+        DarkTitleBar.ApplyCaptionColor(new WindowInteropHelper(this).Handle, color);
     }
 
     // ----------------------------------------------------------- Réglages
