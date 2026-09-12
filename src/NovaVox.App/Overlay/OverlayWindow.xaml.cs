@@ -50,7 +50,7 @@ public partial class OverlayWindow : Window
     public void LoadFromConfig()
     {
         var config = _store.Load();
-        if (config.X is not null && config.Y is not null)
+        if (config.X is not null && config.Y is not null && IsValidScreenPosition(config.X.Value, config.Y.Value))
         {
             WindowStartupLocation = WindowStartupLocation.Manual;
             Left = config.X.Value;
@@ -58,6 +58,23 @@ public partial class OverlayWindow : Window
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
         ApplyRowVisibility(config.VisibleRows);
+    }
+
+    /// <summary>
+    /// Rejette une position enregistrée aberrante (ex: -26214, constaté en
+    /// conditions réelles — laisse Windows replacer la fenêtre par défaut)
+    /// plutôt que de rendre l'overlay invisible car placé hors de tout écran.
+    /// La marge tolère qu'une fenêtre déjà positionnée déborde légèrement
+    /// (bord d'écran, changement de résolution).
+    /// </summary>
+    private static bool IsValidScreenPosition(double x, double y)
+    {
+        const double margin = 500;
+        return double.IsFinite(x) && double.IsFinite(y)
+            && x >= SystemParameters.VirtualScreenLeft - margin
+            && x <= SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth + margin
+            && y >= SystemParameters.VirtualScreenTop - margin
+            && y <= SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight + margin;
     }
 
     public void ApplyAppearance(string bgColorHex, int bgOpacityPercent, string textColorHex, int textOpacityPercent)
@@ -156,7 +173,10 @@ public partial class OverlayWindow : Window
         _clockTimer.Stop();
         try
         {
-            _store.Save(enabled: true, x: (int)Left, y: (int)Top);
+            if (IsValidScreenPosition(Left, Top))
+                _store.Save(enabled: true, x: (int)Left, y: (int)Top);
+            else
+                _store.Save(enabled: true); // position aberrante : ne pas la persister, la fenêtre se replacera par défaut au prochain lancement
         }
         catch
         {
