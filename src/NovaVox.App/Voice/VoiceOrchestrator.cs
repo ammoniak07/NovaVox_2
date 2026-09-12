@@ -27,6 +27,7 @@ public sealed class VoiceOrchestrator : IDisposable
 
     private SpeechListener? _speechListener;
     private HotkeyMonitor? _hotkeyMonitor;
+    private CommandTriggerWatcher? _commandTriggerWatcher;
     private GeminiClient? _geminiClient;
 
     public bool IsListening { get; private set; }
@@ -184,6 +185,13 @@ public sealed class VoiceOrchestrator : IDisposable
             _hotkeyMonitor.Start();
         }
 
+        // Déclenchement manuel par commande (touche/bouton manette assigné
+        // via TriggerHotkey) — même principe que le raccourci d'activation
+        // du micro ci-dessus, tourne pendant toute la durée de l'écoute.
+        _commandTriggerWatcher = new CommandTriggerWatcher(() => _state.Commands.Select(row => row.ToModel()).ToList(), _joystickManager);
+        _commandTriggerWatcher.CommandFired += (_, cmd) => FireCommand(cmd);
+        _commandTriggerWatcher.Start();
+
         IsListening = true;
         ListeningChanged?.Invoke(this, true);
         MicActiveChanged?.Invoke(this, _speechListener.MicGateOpen);
@@ -197,6 +205,8 @@ public sealed class VoiceOrchestrator : IDisposable
 
         _hotkeyMonitor?.Dispose();
         _hotkeyMonitor = null;
+        _commandTriggerWatcher?.Dispose();
+        _commandTriggerWatcher = null;
         _speechListener?.Dispose();
         _speechListener = null;
 
@@ -220,14 +230,7 @@ public sealed class VoiceOrchestrator : IDisposable
         switch (result.Kind)
         {
             case VoiceActionKind.ExecuteCommand:
-                var cmd = commands[result.CommandIndex];
-                var keysLabel = CommandMatcher.CommandKeysLabel(cmd);
-                CommandExecuted?.Invoke(this, keysLabel);
-                CommandTriggered?.Invoke(this, (cmd.Phrase, keysLabel));
-                RaiseLog($"Commande : « {cmd.Phrase} » → {keysLabel}", "success");
-                Task.Run(() => _commandExecutor.Run(cmd));
-                // Port de "if self.confirm_commands_voice: self._speak(cmd['phrase'])" (_execute_command, app.py).
-                if (_state.Ai.ConfirmCommands) _tts.Speak(cmd.Phrase);
+                FireCommand(commands[result.CommandIndex]);
                 break;
 
             case VoiceActionKind.AskGemini:
@@ -242,6 +245,23 @@ public sealed class VoiceOrchestrator : IDisposable
                 RaiseLog($"({_state.Ai.GeminiName} : délai dépassé, annulé)", "warning");
                 break;
         }
+    }
+
+    /// <summary>
+    /// Exécute une commande et notifie tout le monde (journal, overlay,
+    /// confirmation vocale) — partagé entre une commande reconnue à la
+    /// voix (OnTextRecognized) et une commande déclenchée manuellement via
+    /// TriggerHotkey (_commandTriggerWatcher).
+    /// </summary>
+    private void FireCommand(VoiceCommand cmd)
+    {
+        var keysLabel = CommandMatcher.CommandKeysLabel(cmd);
+        CommandExecuted?.Invoke(this, keysLabel);
+        CommandTriggered?.Invoke(this, (cmd.Phrase, keysLabel));
+        RaiseLog($"Commande : « {cmd.Phrase} » → {keysLabel}", "success");
+        Task.Run(() => _commandExecutor.Run(cmd));
+        // Port de "if self.confirm_commands_voice: self._speak(cmd['phrase'])" (_execute_command, app.py).
+        if (_state.Ai.ConfirmCommands) _tts.Speak(cmd.Phrase);
     }
 
     private void RaiseLog(string message, string kind = "info") => Log?.Invoke(this, (message, kind));

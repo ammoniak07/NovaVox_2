@@ -87,6 +87,7 @@ public sealed class CommandStore
                 RepeatCount = ClampInt(item["repeat_count"], fallback: 1, min: 1, max: 50),
                 RepeatDelay = ClampDouble(item["repeat_delay"], fallback: 0.1, min: 0.0, max: 10.0),
                 ExtraSteps = NormalizeExtraSteps(item["extra_steps"] as JsonArray),
+                TriggerHotkey = GetStringOrNull(item["trigger_hotkey"]),
             };
             normalized.Add(cmd);
         }
@@ -135,6 +136,7 @@ public sealed class CommandStore
                     ["keys"] = s.Keys,
                     ["delay"] = s.DelayBefore,
                 }).ToArray()),
+                ["trigger_hotkey"] = cmd.TriggerHotkey,
             });
         }
         return arr;

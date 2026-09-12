@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using NAudio.Wave;
 using NovaVox.App.Gemini;
 using NovaVox.App.Hotkeys;
+using NovaVox.App.Input;
 using NovaVox.App.Install;
 using NovaVox.App.Overlay;
 using NovaVox.App.Speech;
@@ -110,6 +111,7 @@ public partial class MainWindow : Window
 
         InitializeCommandsList();
         InitializeProfiles();
+        BuildVirtualKeyboard();
         InitializeOverlay();
         LoadSettingsIntoControls();
         InitializeVoiceOrchestrator();
@@ -180,6 +182,370 @@ public partial class MainWindow : Window
     {
         var row = RowFromSender(sender);
         if (row is not null) _state.Commands.Remove(row);
+    }
+
+    // ------------------------------------------------- Clavier interactif
+    //
+    // Port de la modale #keyboardModal (gui/index.html/script.js) :
+    // sélection d'une combinaison clavier/souris pour la touche d'une
+    // commande, par clic sur le clavier virtuel OU détection physique
+    // ("Détecter"). kbState côté Python == (_kbModifiers, _kbMainKey) ici.
+
+    private readonly HashSet<string> _kbModifiers = new();
+    private string? _kbMainKey;
+    private CancellationTokenSource? _kbCaptureCts;
+    private CancellationTokenSource? _kbMouseCaptureCts;
+    private Action<string, bool, int, double>? _kbOnConfirm;
+    private readonly List<(string Value, bool IsModifier, Button Button)> _kbKeyButtons = new();
+
+    private void BuildVirtualKeyboard()
+    {
+        BuildKeyboardRows(VirtualKeyboardLayout.MainRows, KbMainPanel);
+        BuildKeyboardRows(VirtualKeyboardLayout.NavRows, KbNavPanel);
+        BuildKeyboardRows(VirtualKeyboardLayout.NumpadRows, KbNumpadPanel);
+        BuildKeyboardRow(VirtualKeyboardLayout.MouseRow, KbMousePanel);
+        UpdateKbLayoutButtonHighlight();
+        RefreshKeyboardHighlight();
+    }
+
+    private void BuildKeyboardRows(VirtualKey[][] rows, StackPanel container)
+    {
+        foreach (var row in rows)
+        {
+            var rowPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+            BuildKeyboardRow(row, rowPanel);
+            container.Children.Add(rowPanel);
+        }
+    }
+
+    private void BuildKeyboardRow(IEnumerable<VirtualKey> row, StackPanel container)
+    {
+        foreach (var key in row)
+        {
+            if (key.Ghost)
+            {
+                container.Children.Add(new Border { Width = 34, Height = 30, Margin = new Thickness(2) });
+                continue;
+            }
+            var width = key.Wider ? 96.0 : key.Wide ? 62.0 : key.Spacebar ? 150.0 : 34.0;
+            var btn = new Button
+            {
+                Content = key.Label,
+                Width = width,
+                Height = 30,
+                Margin = new Thickness(2),
+                Padding = new Thickness(0),
+                FontSize = 11,
+            };
+            var value = key.Value;
+            var isModifier = key.IsModifier;
+            btn.Click += (_, _) => OnVirtualKeyClick(value, isModifier);
+            container.Children.Add(btn);
+            _kbKeyButtons.Add((value, isModifier, btn));
+        }
+    }
+
+    private void OnVirtualKeyClick(string value, bool isModifier)
+    {
+        if (isModifier)
+        {
+            if (!_kbModifiers.Remove(value)) _kbModifiers.Add(value);
+        }
+        else
+        {
+            _kbMainKey = _kbMainKey == value ? null : value;
+        }
+        RefreshKeyboardHighlight();
+    }
+
+    private string SelectedKbLayoutKey() =>
+        _state.Audio.KbLayout is "azerty_fr" or "azerty_be" or "qwerty" ? _state.Audio.KbLayout : "azerty_fr";
+
+    private void RefreshKeyboardHighlight()
+    {
+        var accent = (Brush)FindResource("AccentBrush");
+        var panelAlt = (Brush)FindResource("PanelAltBrush");
+        var bg = (Brush)FindResource("BgBrush");
+        var text = (Brush)FindResource("TextBrush");
+
+        foreach (var (value, isModifier, btn) in _kbKeyButtons)
+        {
+            var active = isModifier ? _kbModifiers.Contains(value) : _kbMainKey == value;
+            btn.Background = active ? accent : panelAlt;
+            btn.Foreground = active ? bg : text;
+        }
+
+        var layoutKey = SelectedKbLayoutKey();
+        var parts = VirtualKeyboardLayout.ModifierOrder.Where(_kbModifiers.Contains).ToList();
+        if (_kbMainKey is not null) parts.Add(_kbMainKey);
+        KbSelectedValueText.Text = parts.Count > 0
+            ? string.Join(" + ", parts.Select(p => VirtualKeyboardLayout.DisplayLabel(p, layoutKey)))
+            : "—";
+        KbConfirmButton.IsEnabled = parts.Count > 0;
+    }
+
+    private void RefreshKeyboardLabels()
+    {
+        var layoutKey = SelectedKbLayoutKey();
+        foreach (var (value, _, btn) in _kbKeyButtons)
+            btn.Content = VirtualKeyboardLayout.DisplayLabel(value, layoutKey);
+    }
+
+    private void UpdateKbLayoutButtonHighlight()
+    {
+        var layoutKey = SelectedKbLayoutKey();
+        var accent = (Brush)FindResource("AccentBrush");
+        var panelAlt = (Brush)FindResource("PanelAltBrush");
+        var bg = (Brush)FindResource("BgBrush");
+        var text = (Brush)FindResource("TextBrush");
+        foreach (var (btn, tag) in new[] { (KbLayoutFrButton, "azerty_fr"), (KbLayoutBeButton, "azerty_be"), (KbLayoutQwertyButton, "qwerty") })
+        {
+            var active = tag == layoutKey;
+            btn.Background = active ? accent : panelAlt;
+            btn.Foreground = active ? bg : text;
+        }
+    }
+
+    private void KbLayoutButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag }) return;
+        _state.Audio.KbLayout = tag;
+        _state.SaveAudio();
+        SelectComboItemByTag(KbLayoutCombo, tag);
+        RefreshKeyboardLabels();
+        UpdateKbLayoutButtonHighlight();
+        RefreshKeyboardHighlight();
+    }
+
+    private void ParseKeysIntoState(string? value)
+    {
+        _kbModifiers.Clear();
+        _kbMainKey = null;
+        foreach (var part in (value ?? "").Split('+').Select(p => p.Trim().ToLowerInvariant()).Where(p => p.Length > 0))
+        {
+            if (VirtualKeyboardLayout.ModifierOrder.Contains(part)) _kbModifiers.Add(part);
+            else _kbMainKey = part;
+        }
+    }
+
+    private static int ParseIntOr(string text, int fallback) => int.TryParse(text, out var v) ? v : fallback;
+
+    private static double ParseDoubleOr(string text, double fallback)
+    {
+        if (double.TryParse(text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var v)) return v;
+        if (double.TryParse(text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out v)) return v;
+        return fallback;
+    }
+
+    /// <summary>Ouvre le clavier interactif pré-rempli avec la touche/les options actuelles d'une commande — équivalent de openKeyboard(cb, seedValue) côté Python pour ce cas d'usage précis.</summary>
+    private void OpenKeyboardForCommand(VoiceCommandRow row)
+    {
+        _kbCaptureCts?.Cancel();
+        _kbMouseCaptureCts?.Cancel();
+
+        ParseKeysIntoState(row.Keys);
+
+        KbHoldCheckbox.IsChecked = row.Hold;
+        var repeatEnabled = row.RepeatCount > 1;
+        KbRepeatCheckbox.IsChecked = repeatEnabled;
+        KbRepeatFields.Visibility = repeatEnabled ? Visibility.Visible : Visibility.Collapsed;
+        KbRepeatCountBox.Text = (repeatEnabled ? row.RepeatCount : 3).ToString();
+        KbRepeatDelayBox.Text = row.RepeatDelay.ToString(System.Globalization.CultureInfo.CurrentCulture);
+
+        _kbOnConfirm = (combo, hold, repeatCount, repeatDelay) =>
+        {
+            row.Keys = combo;
+            row.Hold = hold;
+            row.RepeatCount = repeatCount;
+            row.RepeatDelay = repeatDelay;
+            _state.SaveCommands();
+        };
+
+        UpdateKbLayoutButtonHighlight();
+        RefreshKeyboardHighlight();
+        KeyboardOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CommandKeysButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is not null) OpenKeyboardForCommand(row);
+    }
+
+    private void CloseKeyboard_Click(object sender, RoutedEventArgs e) => CloseKeyboardOverlay();
+
+    private void KbCancel_Click(object sender, RoutedEventArgs e) => CloseKeyboardOverlay();
+
+    private void CloseKeyboardOverlay()
+    {
+        _kbCaptureCts?.Cancel();
+        _kbMouseCaptureCts?.Cancel();
+        _kbOnConfirm = null;
+        KeyboardOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void KbClear_Click(object sender, RoutedEventArgs e)
+    {
+        _kbModifiers.Clear();
+        _kbMainKey = null;
+        RefreshKeyboardHighlight();
+    }
+
+    private void KbConfirm_Click(object sender, RoutedEventArgs e)
+    {
+        var parts = VirtualKeyboardLayout.ModifierOrder.Where(_kbModifiers.Contains).ToList();
+        if (_kbMainKey is not null) parts.Add(_kbMainKey);
+        if (parts.Count == 0) return;
+        var combo = string.Join("+", parts);
+
+        var hold = KbHoldCheckbox.IsChecked == true;
+        var repeatEnabled = KbRepeatCheckbox.IsChecked == true;
+        var repeatCount = repeatEnabled ? Math.Max(2, ParseIntOr(KbRepeatCountBox.Text, 3)) : 1;
+        var repeatDelay = Math.Max(0.0, ParseDoubleOr(KbRepeatDelayBox.Text, 0.1));
+
+        var onConfirm = _kbOnConfirm;
+        _kbCaptureCts?.Cancel();
+        _kbMouseCaptureCts?.Cancel();
+        _kbOnConfirm = null;
+        KeyboardOverlay.Visibility = Visibility.Collapsed;
+        onConfirm?.Invoke(combo, hold, repeatCount, repeatDelay);
+    }
+
+    private void KbRepeatCheckbox_Changed(object sender, RoutedEventArgs e) =>
+        KbRepeatFields.Visibility = KbRepeatCheckbox.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Port de onKeyCapture/startKeyCapture (script.js), via HotkeyCapture.CaptureKeyComboAsync (détection physique clavier).</summary>
+    private async void KbCaptureButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_kbCaptureCts is not null)
+        {
+            _kbCaptureCts.Cancel();
+            return;
+        }
+        _kbCaptureCts = new CancellationTokenSource();
+        KbCaptureButton.Content = "⏳ Appuie sur une touche... (Échap ou recliquer pour annuler)";
+        try
+        {
+            var result = await HotkeyCapture.CaptureKeyComboAsync(_kbCaptureCts.Token);
+            if (result.Ok && result.MainKey is not null)
+            {
+                _kbModifiers.Clear();
+                foreach (var m in result.Modifiers ?? Array.Empty<string>()) _kbModifiers.Add(m);
+                _kbMainKey = result.MainKey;
+                RefreshKeyboardHighlight();
+            }
+            else if (result.Reason == CaptureFailureReason.Timeout)
+            {
+                AppendLog("Aucune touche détectée (15 secondes écoulées). Réessaie.", "warning");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Annulé via le bouton recliqué : rien à faire.
+        }
+        finally
+        {
+            _kbCaptureCts = null;
+            KbCaptureButton.Content = "🎙 Détecter (appuyer sur la touche)";
+        }
+    }
+
+    /// <summary>Port de capture_mouse_button/onCaptureMouseButton (app.py/script.js), via HotkeyCapture.CaptureMouseClickAsync.</summary>
+    private async void KbMouseCaptureButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_kbMouseCaptureCts is not null)
+        {
+            _kbMouseCaptureCts.Cancel();
+            return;
+        }
+        _kbMouseCaptureCts = new CancellationTokenSource();
+        KbMouseCaptureButton.Content = "⏳ Clique avec la souris... (recliquer ici pour annuler)";
+        try
+        {
+            var result = await HotkeyCapture.CaptureMouseClickAsync(_kbMouseCaptureCts.Token);
+            if (result.Ok && result.KeyName is not null)
+            {
+                _kbMainKey = result.KeyName;
+                RefreshKeyboardHighlight();
+            }
+            else if (result.Reason == CaptureFailureReason.Timeout)
+            {
+                AppendLog("Aucun clic détecté (15 secondes écoulées). Réessaie.", "warning");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Annulé via le bouton recliqué : rien à faire.
+        }
+        finally
+        {
+            _kbMouseCaptureCts = null;
+            KbMouseCaptureButton.Content = "🖱 Détecter (cliquer)";
+        }
+    }
+
+    // ---------------------------------- Déclenchement manette par commande
+
+    private CancellationTokenSource? _commandTriggerCaptureCts;
+
+    private async void CommandTriggerCaptureButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_commandTriggerCaptureCts is not null)
+        {
+            _commandTriggerCaptureCts.Cancel();
+            return;
+        }
+        var row = RowFromSender(sender);
+        if (row is null || _voiceOrchestrator is null) return;
+
+        var button = sender as Button;
+        _commandTriggerCaptureCts = new CancellationTokenSource();
+        if (button is not null) button.Content = "⏳";
+        AppendLog($"Appuie maintenant sur le bouton du joystick à assigner à « {row.Phrase} » (15 secondes, ou clique à nouveau pour annuler)...", "info");
+        try
+        {
+            CaptureResult result;
+            try
+            {
+                result = await _voiceOrchestrator.CaptureJoystickButtonAsync(_commandTriggerCaptureCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Task.Delay observe l'annulation immédiatement (voir CaptureJoystickButton_Click) :
+                // à traiter comme un résultat "annulé" normal, pas une erreur.
+                result = new CaptureResult(false, Reason: CaptureFailureReason.Cancelled);
+            }
+            if (result.Ok && result.JoystickHotkey is not null)
+            {
+                row.TriggerHotkey = result.JoystickHotkey;
+                _state.SaveCommands();
+                AppendLog($"Déclenchement manette réglé pour « {row.Phrase} » : {row.TriggerHotkeyLabel}.", "success");
+            }
+            else
+            {
+                var message = result.Reason switch
+                {
+                    CaptureFailureReason.NoDevice => "Aucun joystick/manette détecté. Vérifie qu'il est bien branché et reconnu par Windows.",
+                    CaptureFailureReason.Timeout => "Aucun bouton détecté (15 secondes écoulées). Réessaie.",
+                    CaptureFailureReason.Cancelled => "Détection annulée.",
+                    _ => "Erreur pendant la détection du bouton.",
+                };
+                AppendLog(message, result.Reason == CaptureFailureReason.Cancelled ? "info" : "error");
+            }
+        }
+        finally
+        {
+            _commandTriggerCaptureCts = null;
+            if (button is not null) button.Content = "🕹";
+        }
+    }
+
+    private void CommandTriggerClear_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null) return;
+        row.TriggerHotkey = null;
+        _state.SaveCommands();
     }
 
     // ------------------------------------------------------------- Profils
@@ -527,6 +893,9 @@ public partial class MainWindow : Window
         {
             _state.Audio.KbLayout = tag;
             _state.SaveAudio();
+            RefreshKeyboardLabels();
+            UpdateKbLayoutButtonHighlight();
+            RefreshKeyboardHighlight();
         }
     }
 

@@ -139,8 +139,8 @@
 
                                                 <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
                                                          ToolTip="Phrase à dire" Margin="0,0,4,0" />
-                                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Keys, UpdateSourceTrigger=PropertyChanged}"
-                                                         ToolTip="Touche(s), ex. ctrl+n" Margin="0,0,4,0" FontFamily="Consolas" />
+                                                <Button Grid.Row="0" Grid.Column="1" Content="{Binding Keys}" FontFamily="Consolas" Margin="0,0,4,0"
+                                                        ToolTip="Cliquer pour choisir la ou les touches (clavier interactif)" Click="CommandKeysButton_Click" />
                                                 <CheckBox Grid.Row="0" Grid.Column="2" Content="Maintenir" IsChecked="{Binding Hold}" VerticalAlignment="Center" Margin="0,0,6,0" />
                                                 <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" Margin="0,0,6,0">
                                                     <TextBlock Text="×" VerticalAlignment="Center" />
@@ -152,9 +152,20 @@
                                                     <Button Content="✕" Width="24" Margin="2,0,0,0" Click="DeleteRow_Click" />
                                                 </StackPanel>
 
-                                                <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0"
-                                                         Text="{Binding SynonymsText, UpdateSourceTrigger=LostFocus}"
-                                                         ToolTip="Synonymes séparés par des virgules" Foreground="{StaticResource MutedBrush}" FontStyle="Italic" />
+                                                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,4,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Text="{Binding SynonymsText, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"
+                                                             ToolTip="Synonymes séparés par des virgules" Foreground="{StaticResource MutedBrush}" FontStyle="Italic" />
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding TriggerHotkeyLabel}" Foreground="{StaticResource MutedBrush}" FontSize="11"
+                                                                   VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Déclenchement manuel (manette) de cette commande, indépendant de la voix" />
+                                                        <Button Content="🕹" Width="26" Click="CommandTriggerCaptureButton_Click" ToolTip="Assigner un bouton joystick pour déclencher cette commande sans la voix" />
+                                                        <Button Content="✕" Width="22" Margin="2,0,0,0" Click="CommandTriggerClear_Click" ToolTip="Effacer le déclenchement manette" />
+                                                    </StackPanel>
+                                                </Grid>
                                             </Grid>
                                         </Border>
                                     </Grid>
@@ -592,6 +603,96 @@
                             </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Clavier interactif de sélection des touches de commande — port de #keyboardModal (gui/index.html). -->
+        <Border x:Name="KeyboardOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="1000" MaxHeight="880" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="18,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="CHOISIR LA OU LES TOUCHES" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Click="CloseKeyboard_Click" />
+                    </Grid>
+
+                    <Border Grid.Row="1" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="SÉLECTION : " Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock x:Name="KbSelectedValueText" Grid.Column="1" Text="—" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            <Button x:Name="KbCaptureButton" Grid.Column="2" Content="🎙 Détecter (appuyer sur la touche)" Click="KbCaptureButton_Click" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="DISPOSITION : " Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <Button x:Name="KbLayoutFrButton" Content="AZERTY France" Tag="azerty_fr" Click="KbLayoutButton_Click" Margin="0,0,6,0" />
+                        <Button x:Name="KbLayoutBeButton" Content="AZERTY Belgique" Tag="azerty_be" Click="KbLayoutButton_Click" Margin="0,0,6,0" />
+                        <Button x:Name="KbLayoutQwertyButton" Content="QWERTY" Tag="qwerty" Click="KbLayoutButton_Click" />
+                        <TextBlock Text="Change juste l'affichage des lettres pour correspondre à ton clavier physique — les touches réellement envoyées au jeu ne changent pas."
+                                   Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="360" />
+                    </StackPanel>
+
+                    <CheckBox x:Name="KbHoldCheckbox" Grid.Row="3" Content="Maintenir la touche 2 secondes (au lieu d'un appui bref)" Margin="0,0,0,8" />
+
+                    <StackPanel Grid.Row="4" Margin="0,0,0,10">
+                        <CheckBox x:Name="KbRepeatCheckbox" Content="Répéter la touche plusieurs fois" Checked="KbRepeatCheckbox_Changed" Unchecked="KbRepeatCheckbox_Changed" />
+                        <StackPanel x:Name="KbRepeatFields" Orientation="Horizontal" Margin="20,6,0,0" Visibility="Collapsed">
+                            <TextBlock Text="Répétitions :" VerticalAlignment="Center" />
+                            <TextBox x:Name="KbRepeatCountBox" Width="50" Margin="6,0,16,0" />
+                            <TextBlock Text="Délai entre chaque (s) :" VerticalAlignment="Center" />
+                            <TextBox x:Name="KbRepeatDelayBox" Width="50" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="5" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <StackPanel x:Name="KbMainPanel" />
+                                <StackPanel Margin="18,0,0,0">
+                                    <StackPanel x:Name="KbNavPanel" />
+                                    <StackPanel x:Name="KbNumpadPanel" Margin="0,14,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <TextBlock Text="SOURIS" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,16,0,6" />
+                            <StackPanel x:Name="KbMousePanel" Orientation="Horizontal" Margin="0,0,0,8" />
+                            <Button x:Name="KbMouseCaptureButton" Content="🖱 Détecter (cliquer)" HorizontalAlignment="Stretch" Click="KbMouseCaptureButton_Click" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Grid Grid.Row="6" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="Effacer" Click="KbClear_Click" />
+                        <Button Grid.Column="2" Content="Annuler" Click="KbCancel_Click" Margin="0,0,6,0" />
+                        <Button x:Name="KbConfirmButton" Grid.Column="3" Content="Valider" Style="{StaticResource AccentPillButtonStyle}" Click="KbConfirm_Click" IsEnabled="False" />
+                    </Grid>
                 </Grid>
             </Border>
         </Border>

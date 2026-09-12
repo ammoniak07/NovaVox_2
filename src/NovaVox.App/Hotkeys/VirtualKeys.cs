@@ -20,6 +20,9 @@ public static class VirtualKeys
         var map = new Dictionary<string, int>
         {
             ["esc"] = 0x1B,
+            ["f1"] = 0x70, ["f2"] = 0x71, ["f3"] = 0x72, ["f4"] = 0x73,
+            ["f5"] = 0x74, ["f6"] = 0x75, ["f7"] = 0x76, ["f8"] = 0x77,
+            ["f9"] = 0x78, ["f10"] = 0x79, ["f11"] = 0x7A, ["f12"] = 0x7B,
             ["`"] = 0xC0,
             ["-"] = 0xBD,
             ["="] = 0xBB,
@@ -39,7 +42,11 @@ public static class VirtualKeys
             ["/"] = 0xBF,
             ["ctrl"] = 0x11,
             ["winleft"] = 0x5B,
-            ["alt"] = 0x12,
+            // VK_LMENU (Alt gauche), pas le VK_MENU générique 0x12 : ce
+            // dernier est aussi à l'état "enfoncé" quand AltGr (altright,
+            // VK_RMENU) est tenu, ce qui rendrait les deux indiscernables
+            // pendant une capture physique (voir HotkeyCapture.CaptureKeyComboAsync).
+            ["alt"] = 0xA4,
             ["altright"] = 0xA5,
             ["space"] = 0x20,
             ["apps"] = 0x5D,
