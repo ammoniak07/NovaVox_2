@@ -487,15 +487,6 @@
                                 </ComboBox>
 
                                 <Button Content="Réinitialiser l'application" Margin="0,24,0,0" HorizontalAlignment="Left" Click="ResetApplication_Click" />
-                            </StackPanel>
-                        </TabItem>
-
-                        <TabItem Header="🙏 Crédits">
-                            <StackPanel Margin="10">
-                                <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
-                                <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
-                                <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
-                                <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
 
                                 <TextBlock Text="Configuration" FontWeight="Bold" Margin="0,24,0,6" />
                                 <StackPanel Orientation="Horizontal">
@@ -507,6 +498,15 @@
                                 <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
                                 <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
                                 <TextBlock x:Name="UpdateStatusText" Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </TabItem>
+
+                        <TabItem Header="🙏 Crédits">
+                            <StackPanel Margin="10">
+                                <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
+                                <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
+                                <TextBlock Text="https://discord.gg/NhhhGKv7F" Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" />
                             </StackPanel>
                         </TabItem>
                     </TabControl>
