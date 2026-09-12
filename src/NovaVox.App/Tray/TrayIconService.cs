@@ -1,7 +1,6 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Hardcodet.Wpf.TaskbarNotification;
 using NovaVox.Core;
 
@@ -42,13 +41,13 @@ public sealed class TrayIconService : IDisposable
         // dans tous les cas.
         menu.Resources.Add(typeof(TextBlock), new Style(typeof(TextBlock)));
 
-        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Foreground = Brushes.Black };
+        var showItem = new MenuItem { Header = "Afficher NOVAVOX", FontWeight = FontWeights.Bold, Foreground = System.Windows.Media.Brushes.Black };
         showItem.Click += (_, _) => onShow();
         menu.Items.Add(showItem);
 
         menu.Items.Add(new Separator());
 
-        var quitItem = new MenuItem { Header = "Quitter", Foreground = Brushes.Black };
+        var quitItem = new MenuItem { Header = "Quitter", Foreground = System.Windows.Media.Brushes.Black };
         quitItem.Click += (_, _) => onQuit();
         menu.Items.Add(quitItem);
 
