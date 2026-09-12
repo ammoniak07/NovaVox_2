@@ -6,6 +6,7 @@ using NAudio.Wave;
 using NovaVox.App.Overlay;
 using NovaVox.App.ViewModels;
 using NovaVox.Core;
+using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
 using NovaVox.Core.Update;
 
