@@ -77,11 +77,14 @@ public partial class OverlayWindow : Window
             && y <= SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight + margin;
     }
 
+    private Brush? _normalPanelBackground;
+
     public void ApplyAppearance(string bgColorHex, int bgOpacityPercent, string textColorHex, int textOpacityPercent)
     {
         var bgColor = (Color)ColorConverter.ConvertFromString(bgColorHex)!;
         bgColor.A = (byte)Math.Clamp(bgOpacityPercent * 255 / 100, 0, 255);
-        PanelBorder.Background = new SolidColorBrush(bgColor);
+        _normalPanelBackground = new SolidColorBrush(bgColor);
+        PanelBorder.Background = _normalPanelBackground;
 
         var textColor = (Color)ColorConverter.ConvertFromString(textColorHex)!;
         textColor.A = (byte)Math.Clamp(textOpacityPercent * 255 / 100, 0, 255);
@@ -120,8 +123,11 @@ public partial class OverlayWindow : Window
         MicValue.Text = active ? "Actif" : "Coupé";
         // Fond rouge dédié pendant que le micro est coupé (mic-cut,
         // overlay.html) — indépendant du flash de commande (calque séparé).
+        // Restaure le fond normal (mémorisé par ApplyAppearance) plutôt que
+        // de se réassigner à lui-même : sinon, une fois rouge, il le reste
+        // pour toujours même quand le micro se réactive.
         PanelBorder.Background = active
-            ? PanelBorder.Background
+            ? _normalPanelBackground ?? PanelBorder.Background
             : new SolidColorBrush(Color.FromArgb(0xB8, 0x78, 0x14, 0x14));
     }
 
