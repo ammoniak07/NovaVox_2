@@ -104,51 +104,62 @@
                  statut au-dessus dès qu'elle dépasse la hauteur de cette
                  zone. -->
             <Grid Grid.Row="2" Margin="16" ClipToBounds="True">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*" MinWidth="360" />
-                    <ColumnDefinition Width="16" />
-                    <ColumnDefinition Width="2*" MinWidth="280" />
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                <!-- Image de fond : visible uniquement dans l'espace laissé
-                     libre sous les listes Commandes/Journal (raccourcies
-                     ci-dessous), qui la recouvrent ailleurs avec leur propre
-                     fond opaque. Chargée depuis un fichier local si présent
-                     (voir LoadBackgroundImage, MainWindow.xaml.cs) : absent,
-                     rien ne s'affiche. Stretch="None" + centrée : gardée à
-                     sa taille native plutôt que redimensionnée, pour qu'agrandir
-                     la fenêtre révèle progressivement plus de l'image (comme
-                     une fenêtre sur une image fixe) au lieu de la rétrécir. -->
-                <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="None"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+                <!-- Sélecteur de profil : commun aux deux colonnes, sorti de
+                     la colonne Commandes pour que COMMANDES et JOURNAL
+                     SYSTÈME démarrent toutes les deux juste en dessous, à la
+                     même hauteur (sinon la colonne Commandes avait un en-tête
+                     de plus que Journal système, et sa carte démarrait plus
+                     bas). -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
+                    <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
+                    <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
+                    <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
+                </StackPanel>
 
-                <!-- Colonne gauche : commandes -->
-                <Grid Grid.Column="0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="3*" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" MinWidth="360" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="2*" MinWidth="280" />
+                    </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
-                        <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
-                        <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
-                        <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
-                    </StackPanel>
+                    <!-- Image de fond : visible uniquement dans l'espace laissé
+                         libre sous les listes Commandes/Journal (raccourcies
+                         ci-dessous), qui la recouvrent ailleurs avec leur propre
+                         fond opaque. Chargée depuis un fichier local si présent
+                         (voir LoadBackgroundImage, MainWindow.xaml.cs) : absent,
+                         rien ne s'affiche. Stretch="None" + centrée : gardée à
+                         sa taille native plutôt que redimensionnée, pour qu'agrandir
+                         la fenêtre révèle progressivement plus de l'image (comme
+                         une fenêtre sur une image fixe) au lieu de la rétrécir. -->
+                    <Image x:Name="PanelsBackgroundImage" Grid.Column="0" Grid.ColumnSpan="3" Stretch="None"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
-                            <TextBlock x:Name="CommandCountText" Text="0" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" FontSize="12" />
-                        </Border>
-                        <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
-                        <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
-                    </StackPanel>
+                    <!-- Colonne gauche : commandes -->
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="3*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                    <Border x:Name="CommandsCard" Grid.Row="2" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
+                                <TextBlock x:Name="CommandCountText" Text="0" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" FontSize="12" />
+                            </Border>
+                            <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
+                            <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
+                        </StackPanel>
+
+                        <Border x:Name="CommandsCard" Grid.Row="1" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  AllowDrop="True" PreviewMouseMove="CommandsList_PreviewMouseMove" PreviewMouseLeftButtonUp="CommandsList_PreviewMouseLeftButtonUp"
                                  DragOver="CommandsList_DragOver" DragLeave="CommandsList_DragLeave" Drop="CommandsList_Drop">
@@ -287,6 +298,7 @@
                         <RichTextBox x:Name="LogList" IsReadOnly="True" IsDocumentEnabled="True" Background="Transparent" BorderThickness="0"
                                      FontFamily="Consolas" FontSize="12" Padding="8,4" VerticalScrollBarVisibility="Auto" />
                     </Border>
+                </Grid>
                 </Grid>
             </Grid>
         </Grid>
