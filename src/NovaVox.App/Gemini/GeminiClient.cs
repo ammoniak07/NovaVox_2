@@ -86,8 +86,9 @@ public sealed class GeminiClient
         if (used >= limit)
         {
             var modelLabel = GeminiModels.AvailableModels.FirstOrDefault(m => m.Id == Config.GeminiModel)?.Label ?? Config.GeminiModel;
-            var switchHint = Config.GeminiModel != "gemini-3.5-flash-lite"
-                ? " ou passe sur Gemini Flash-Lite dans les réglages (limite quotidienne plus haute)"
+            var maxLimit = GeminiModels.AvailableModels.Max(m => GeminiModels.DailyLimitFor(m.Id));
+            var switchHint = limit < maxLimit
+                ? " ou passe sur un modèle à quota plus élevé dans les réglages"
                 : "";
             return ($"[Limite atteinte] Tu as utilisé les {limit} requêtes gratuites du jour pour " +
                     $"{modelLabel}. Le quota se réinitialise à minuit, heure du Pacifique (Californie)" +

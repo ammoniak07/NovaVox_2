@@ -349,6 +349,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -358,10 +359,25 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="⚙️ Réglages" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSettings_Click" />
+                        <Button x:Name="CloseSettingsButton" Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSettings_Click" />
                     </Grid>
 
-                    <TabControl x:Name="SettingsTabControl" Grid.Row="1" Background="Transparent" Margin="10,4,10,10">
+                    <!-- Visible uniquement tant que la configuration obligatoire du
+                         premier lancement (modèle Vosk + moteur Piper) n'est pas
+                         terminée — voir StartFirstLaunchSetupIfNeeded, MainWindow.xaml.cs.
+                         Grid.Row="1" (au-dessus des onglets, pas par-dessus) : les
+                         boutons d'installation de l'onglet Sons juste en dessous
+                         doivent rester utilisables. -->
+                    <Border x:Name="FirstLaunchBanner" Grid.Row="1" Margin="16,0,16,4" Background="{StaticResource AccentDimBrush}"
+                            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Visibility="Collapsed">
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextBrush}">
+                            <Run Text="👋 Bienvenue !" FontWeight="Bold" />
+                            <LineBreak />
+                            <Run Text="Avant de pouvoir utiliser NovaVox, installe ci-dessous un modèle de reconnaissance vocale ET le moteur de synthèse Piper (onglet Sons)." />
+                        </TextBlock>
+                    </Border>
+
+                    <TabControl x:Name="SettingsTabControl" Grid.Row="2" Background="Transparent" Margin="10,4,10,10">
                         <TabItem Header="🔊 Sons">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
@@ -373,10 +389,16 @@
                                         <DataTemplate>
                                             <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                        <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="✅ Installé" Foreground="{StaticResource SuccessBrush}" FontWeight="Bold" FontSize="11" />
+                                                        </Border>
+                                                    </StackPanel>
                                                     <TextBlock Text="{Binding Description}" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
                                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                        <Button Content="Télécharger et installer" IsEnabled="{Binding CanInstall}" Click="InstallVoskModel_Click" />
+                                                        <Button Content="{Binding InstallButtonLabel}" IsEnabled="{Binding CanInstall}" Click="InstallVoskModel_Click" />
+                                                        <Button Content="Désinstaller" Margin="6,0,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="UninstallVoskModel_Click" />
                                                         <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                                                     </StackPanel>
                                                 </StackPanel>
@@ -445,7 +467,8 @@
                                 <TextBlock Text="Clé API" Margin="0,12,0,4" />
                                 <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
                                 <TextBlock Text="Modèle" Margin="0,12,0,4" />
-                                <TextBox x:Name="GeminiModelBox" LostFocus="GeminiModelBox_LostFocus" />
+                                <ComboBox x:Name="GeminiModelCombo" DisplayMemberPath="Label" SelectionChanged="GeminiModelCombo_SelectionChanged" />
+                                <TextBlock x:Name="GeminiModelDescText" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
                                 <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
                                 <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />

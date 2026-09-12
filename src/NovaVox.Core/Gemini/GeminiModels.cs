@@ -20,6 +20,8 @@ public static class GeminiModels
     {
         new("gemini-3.6-flash", "Gemini 3.6 Flash — recommandé",
             "Rapide, gratuit avec un quota généreux pour un usage personnel, bon compromis qualité/vitesse."),
+        new("gemini-3.6-flash-lite", "Gemini 3.6 Flash-Lite — le plus rapide",
+            "Quota gratuit le plus élevé et réponses les plus rapides, un peu moins riches que Flash."),
         new("gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite — encore plus rapide",
             "Quota gratuit plus élevé et réponses plus rapides, un peu moins riches que Flash."),
     };
@@ -27,6 +29,11 @@ public static class GeminiModels
     public static readonly IReadOnlyDictionary<string, int> DailyLimits = new Dictionary<string, int>
     {
         ["gemini-3.6-flash"] = 500,
+        // Quota estimé par analogie avec gemini-3.5-flash-lite (même
+        // principe "lite" : quota nettement plus généreux que le modèle
+        // Flash complet) — à ajuster si Google publie une valeur
+        // officielle différente pour ce modèle.
+        ["gemini-3.6-flash-lite"] = 1500,
         ["gemini-3.5-flash-lite"] = 1500,
     };
 

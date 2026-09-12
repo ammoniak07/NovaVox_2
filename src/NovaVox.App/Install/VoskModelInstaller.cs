@@ -14,12 +14,39 @@ public sealed class VoskModelInstaller
 {
     public static string TargetDir => Path.Combine(NovaVoxPaths.BaseDirectory, "model");
 
+    // Marqueur écrit dans le dossier du modèle après une installation
+    // depuis le catalogue (pas après un "Parcourir un dossier déjà
+    // téléchargé...") : seul moyen de savoir ensuite QUEL modèle du
+    // catalogue est actuellement installé, puisque le dossier lui-même
+    // (nom imposé par le zip Vosk) ne le dit pas une fois renommé en "model".
+    private const string InstalledMarkerFileName = ".novavox_model_id.txt";
+
     public event EventHandler<(int Percent, string Message)>? Progress;
     public event EventHandler<(bool Success, string Message)>? Done;
 
     public bool IsModelFolderValid(string? path) =>
         !string.IsNullOrEmpty(path) && Directory.Exists(path)
         && Directory.Exists(Path.Combine(path, "am")) && Directory.Exists(Path.Combine(path, "conf"));
+
+    /// <summary>Id (catalogue) du modèle actuellement installé dans TargetDir, ou null si aucun/installé manuellement (dossier parcouru à la main).</summary>
+    public string? GetInstalledModelId()
+    {
+        var markerPath = Path.Combine(TargetDir, InstalledMarkerFileName);
+        try
+        {
+            return File.Exists(markerPath) ? File.ReadAllText(markerPath).Trim() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Supprime le modèle installé (TargetDir). Sans effet si aucun modèle n'y est installé.</summary>
+    public void Uninstall()
+    {
+        if (Directory.Exists(TargetDir)) Directory.Delete(TargetDir, recursive: true);
+    }
 
     public async Task<string?> InstallAsync(VoskModelInfo model, CancellationToken cancellationToken = default)
     {
@@ -58,6 +85,7 @@ public sealed class VoskModelInstaller
             RaiseProgress(96, "Installation du modèle...");
             if (Directory.Exists(TargetDir)) Directory.Delete(TargetDir, recursive: true);
             Directory.Move(extractedModelDir, TargetDir);
+            File.WriteAllText(Path.Combine(TargetDir, InstalledMarkerFileName), model.Id);
 
             RaiseProgress(100, "Modèle installé avec succès.");
             Done?.Invoke(this, (true, TargetDir));

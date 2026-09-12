@@ -23,6 +23,7 @@ using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
 using NovaVox.Core.GameLog;
+using NovaVox.Core.Gemini;
 using NovaVox.Core.Hotkeys;
 using NovaVox.Core.Speech;
 using NovaVox.Core.Tts;
@@ -51,6 +52,9 @@ public partial class MainWindow : Window
     /// chaque lancement, quel que soit le réglage précédent).
     /// </summary>
     private bool _loadingSettings = true;
+
+    /// <summary>true tant que la configuration obligatoire du premier lancement (modèle Vosk + moteur Piper) n'est pas terminée — voir StartFirstLaunchSetupIfNeeded/MaybeCompleteFirstLaunchSetup.</summary>
+    private bool _firstLaunchSetupActive;
 
     private readonly VoskModelInstaller _voskInstaller = new();
     private readonly PiperInstaller _piperInstaller = new();
@@ -144,6 +148,43 @@ public partial class MainWindow : Window
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
         VersionText.Text = $"NovaVox v{version}";
         FooterVersionButton.Content = $"v{version}";
+
+        StartFirstLaunchSetupIfNeeded();
+    }
+
+    /// <summary>
+    /// Un modèle Vosk ET le moteur Piper sont nécessaires pour utiliser
+    /// NovaVox (reconnaissance + synthèse vocale) : si l'un des deux manque
+    /// encore, ouvre directement les réglages (onglet Sons, déjà celui par
+    /// défaut) avec un bandeau d'explication, et retire la possibilité de
+    /// fermer ce recouvrement tant que les deux ne sont pas installés —
+    /// pour ne pas laisser l'utilisateur découvrir cette étape par hasard.
+    /// </summary>
+    private void StartFirstLaunchSetupIfNeeded()
+    {
+        if (IsFirstLaunchSetupComplete()) return;
+
+        _firstLaunchSetupActive = true;
+        FirstLaunchBanner.Visibility = Visibility.Visible;
+        CloseSettingsButton.Visibility = Visibility.Collapsed;
+        SettingsOverlay.Visibility = Visibility.Visible;
+        StartMicLevelMonitorIfIdle();
+    }
+
+    private bool IsFirstLaunchSetupComplete() =>
+        _voskInstaller.IsModelFolderValid(_state.Audio.ModelPath) && _piperInstaller.IsEngineInstalled;
+
+    /// <summary>À appeler après tout succès d'installation (modèle Vosk ou moteur Piper) : referme la configuration obligatoire du premier lancement dès que les deux prérequis sont réunis.</summary>
+    private void MaybeCompleteFirstLaunchSetup()
+    {
+        if (!_firstLaunchSetupActive || !IsFirstLaunchSetupComplete()) return;
+
+        _firstLaunchSetupActive = false;
+        FirstLaunchBanner.Visibility = Visibility.Collapsed;
+        CloseSettingsButton.Visibility = Visibility.Visible;
+        SettingsOverlay.Visibility = Visibility.Collapsed;
+        _micLevelMonitor.Stop();
+        AppendLog("Configuration initiale terminée : modèle vocal et moteur Piper installés.", "success");
     }
 
     private void FooterVersionButton_Click(object sender, RoutedEventArgs e)
@@ -968,7 +1009,8 @@ public partial class MainWindow : Window
             var ai = _state.Ai;
             GeminiEnabledCheckbox.IsChecked = ai.GeminiEnabled;
             GeminiApiKeyBox.Text = ai.GeminiApiKey;
-            GeminiModelBox.Text = ai.GeminiModel;
+            if (GeminiModelCombo.ItemsSource is null) GeminiModelCombo.ItemsSource = GeminiModels.AvailableModels;
+            GeminiModelCombo.SelectedItem = GeminiModels.AvailableModels.FirstOrDefault(m => m.Id == ai.GeminiModel) ?? GeminiModels.AvailableModels[0];
             GeminiNameBox.Text = ai.GeminiName;
             SelectComboItemByTag(GeminiResponseLengthCombo, ai.GeminiResponseLength);
             GeminiContextBox.Text = ai.GeminiCustomContext;
@@ -1228,11 +1270,12 @@ public partial class MainWindow : Window
         _state.SaveAi();
     }
 
-    private void GeminiModelBox_LostFocus(object sender, RoutedEventArgs e)
+    private void GeminiModelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (GeminiModelCombo.SelectedItem is not GeminiModelInfo model) return;
+        GeminiModelDescText.Text = model.Description;
         if (_loadingSettings) return;
-        var value = GeminiModelBox.Text.Trim();
-        _state.Ai.GeminiModel = value.Length == 0 ? AiConfig.DefaultGeminiModel : value;
+        _state.Ai.GeminiModel = model.Id;
         _state.SaveAi();
     }
 
@@ -1477,6 +1520,7 @@ public partial class MainWindow : Window
 
     private void CloseSettings_Click(object sender, RoutedEventArgs e)
     {
+        if (_firstLaunchSetupActive) return; // bouton masqué, mais défense en profondeur
         SettingsOverlay.Visibility = Visibility.Collapsed;
         _micLevelMonitor.Stop();
     }
@@ -1908,6 +1952,14 @@ public partial class MainWindow : Window
         foreach (var model in VoskModelCatalog.ModelsForLanguage(_state.Ai.UiLanguage))
             _voskModelRows.Add(new VoskModelRowVm { Model = model });
         VoskModelsList.ItemsSource = _voskModelRows;
+        RefreshVoskInstalledStates();
+    }
+
+    /// <summary>Un seul modèle Vosk installé à la fois (voir VoskModelInstaller) : marque celui qui correspond, décoche tous les autres.</summary>
+    private void RefreshVoskInstalledStates()
+    {
+        var installedId = _voskInstaller.GetInstalledModelId();
+        foreach (var row in _voskModelRows) row.IsInstalled = installedId is not null && row.Model.Id == installedId;
     }
 
     private static VoskModelRowVm? VoskRowFromSender(object sender) => (sender as FrameworkElement)?.DataContext as VoskModelRowVm;
@@ -1934,6 +1986,8 @@ public partial class MainWindow : Window
                 ModelPathText.Text = installedPath;
                 row.StatusText = "Installé.";
                 AppendLog($"Modèle Vosk « {row.Label} » installé.", "success");
+                RefreshVoskInstalledStates(); // un seul modèle actif à la fois : celui-ci remplace l'ancien
+                MaybeCompleteFirstLaunchSetup();
             }
             else
             {
@@ -1947,6 +2001,23 @@ public partial class MainWindow : Window
             _voskInstaller.Done -= OnDone;
             row.IsDownloading = false;
         }
+    }
+
+    private void UninstallVoskModel_Click(object sender, RoutedEventArgs e)
+    {
+        var row = VoskRowFromSender(sender);
+        if (row is null || !row.IsInstalled) return;
+
+        _voskInstaller.Uninstall();
+        row.IsInstalled = false;
+        row.StatusText = "";
+        if (_state.Audio.ModelPath == VoskModelInstaller.TargetDir)
+        {
+            _state.Audio.ModelPath = null;
+            _state.SaveAudio();
+        }
+        ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath) ? "Aucun modèle sélectionné" : _state.Audio.ModelPath;
+        AppendLog($"Modèle Vosk « {row.Label} » désinstallé.", "info");
     }
 
     // ------------------------------------------------- Moteur & voix Piper
@@ -1982,8 +2053,11 @@ public partial class MainWindow : Window
     {
         InstallPiperEngineButton.IsEnabled = false;
         void OnProgress(object? _, string message) => PiperEngineStatusText.Text = message;
-        void OnDone(object? _, bool success) =>
+        void OnDone(object? _, bool success)
+        {
             AppendLog(success ? "Moteur Piper installé." : "[Erreur Piper] Échec de l'installation du moteur (voir détails ci-dessus).", success ? "success" : "error");
+            if (success) MaybeCompleteFirstLaunchSetup();
+        }
         _piperInstaller.EngineProgress += OnProgress;
         _piperInstaller.EngineInstallDone += OnDone;
         try

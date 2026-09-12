@@ -22,6 +22,11 @@ public sealed class VoskModelRowVm : INotifyPropertyChanged
 
     public bool CanInstall => !IsDownloading;
 
+    private bool _isInstalled;
+    public bool IsInstalled { get => _isInstalled; set { _isInstalled = value; Raise(); Raise(nameof(InstallButtonLabel)); } }
+
+    public string InstallButtonLabel => IsInstalled ? "Réinstaller" : "Télécharger et installer";
+
     private string _statusText = "";
     public string StatusText { get => _statusText; set { _statusText = value; Raise(); } }
 }
