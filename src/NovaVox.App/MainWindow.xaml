@@ -279,7 +279,9 @@
                                 <TextBlock Text="Contexte personnalisé" Margin="0,12,0,4" />
                                 <TextBox x:Name="GeminiContextBox" AcceptsReturn="True" Height="70" TextWrapping="Wrap"
                                          VerticalScrollBarVisibility="Auto" LostFocus="GeminiContextBox_LostFocus" />
-                                <CheckBox x:Name="RadioEffectCheckbox" Content="Effet radio de vaisseau" Margin="0,16,0,0" Checked="RadioEffectCheckbox_Changed" Unchecked="RadioEffectCheckbox_Changed" />
+                                <CheckBox x:Name="ConfirmCommandsCheckbox" Content="Confirmer les commandes à voix haute" Margin="0,16,0,0"
+                                          Checked="ConfirmCommandsCheckbox_Changed" Unchecked="ConfirmCommandsCheckbox_Changed" />
+                                <CheckBox x:Name="RadioEffectCheckbox" Content="Effet radio de vaisseau" Margin="0,8,0,0" Checked="RadioEffectCheckbox_Changed" Unchecked="RadioEffectCheckbox_Changed" />
 
                                 <TextBlock Text="Moteur vocal (Piper)" FontWeight="Bold" Margin="0,16,0,6" />
                                 <StackPanel Orientation="Horizontal">

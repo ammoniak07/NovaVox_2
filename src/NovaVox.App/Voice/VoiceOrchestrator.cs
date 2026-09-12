@@ -183,6 +183,8 @@ public sealed class VoiceOrchestrator : IDisposable
                 CommandExecuted?.Invoke(this, CommandMatcher.CommandKeysLabel(cmd));
                 RaiseLog($"Commande : « {cmd.Phrase} » → {CommandMatcher.CommandKeysLabel(cmd)}", "success");
                 Task.Run(() => _commandExecutor.Run(cmd));
+                // Port de "if self.confirm_commands_voice: self._speak(cmd['phrase'])" (_execute_command, app.py).
+                if (_state.Ai.ConfirmCommands) _tts.Speak(cmd.Phrase);
                 break;
 
             case VoiceActionKind.AskGemini:

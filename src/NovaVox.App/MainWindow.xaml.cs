@@ -324,6 +324,7 @@ public partial class MainWindow : Window
             GeminiNameBox.Text = ai.GeminiName;
             SelectComboItemByTag(GeminiResponseLengthCombo, ai.GeminiResponseLength);
             GeminiContextBox.Text = ai.GeminiCustomContext;
+            ConfirmCommandsCheckbox.IsChecked = ai.ConfirmCommands;
             RadioEffectCheckbox.IsChecked = ai.RadioEffect;
             PiperLengthScaleSlider.Value = ai.PiperLengthScale;
             PiperNoiseScaleSlider.Value = ai.PiperNoiseScale;
@@ -487,6 +488,13 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.GeminiCustomContext = GeminiContextBox.Text;
+        _state.SaveAi();
+    }
+
+    private void ConfirmCommandsCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Ai.ConfirmCommands = ConfirmCommandsCheckbox.IsChecked ?? false;
         _state.SaveAi();
     }
 
