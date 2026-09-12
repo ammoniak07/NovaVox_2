@@ -1,9 +1,11 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using NAudio.Wave;
+using NovaVox.App.Install;
 using NovaVox.App.Overlay;
 using NovaVox.App.Speech;
 using NovaVox.App.ViewModels;
@@ -11,6 +13,8 @@ using NovaVox.App.Voice;
 using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
+using NovaVox.Core.Speech;
+using NovaVox.Core.Tts;
 using NovaVox.Core.Update;
 
 namespace NovaVox.App;
@@ -23,6 +27,12 @@ public partial class MainWindow : Window
     private VoiceOrchestrator? _voiceOrchestrator;
     private bool _restoring = true;
     private bool _loadingSettings;
+
+    private readonly VoskModelInstaller _voskInstaller = new();
+    private readonly PiperInstaller _piperInstaller = new();
+    private readonly ObservableCollection<VoskModelRowVm> _voskModelRows = new();
+    private readonly ObservableCollection<PiperVoiceRowVm> _piperVoiceRows = new();
+    private PiperTtsEngine? _testTts;
 
     /// <summary>
     /// Mis à true uniquement par le "Quitter" du menu tray (voir
@@ -75,6 +85,8 @@ public partial class MainWindow : Window
         InitializeOverlay();
         LoadSettingsIntoControls();
         InitializeVoiceOrchestrator();
+        InitializeVoskCatalog();
+        InitializePiperCatalog();
         ThemeManager.Apply(_state.Ai.UiTheme);
         ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
 
@@ -252,6 +264,7 @@ public partial class MainWindow : Window
             return;
         }
         _voiceOrchestrator?.Dispose();
+        _testTts?.Dispose();
         _overlayWindow?.Close();
     }
 
@@ -285,7 +298,6 @@ public partial class MainWindow : Window
             SelectComboItemByTag(GeminiResponseLengthCombo, ai.GeminiResponseLength);
             GeminiContextBox.Text = ai.GeminiCustomContext;
             RadioEffectCheckbox.IsChecked = ai.RadioEffect;
-            PiperVoiceBox.Text = ai.PiperVoice ?? "";
             PiperLengthScaleSlider.Value = ai.PiperLengthScale;
             PiperNoiseScaleSlider.Value = ai.PiperNoiseScale;
 
@@ -446,14 +458,6 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.RadioEffect = RadioEffectCheckbox.IsChecked ?? false;
-        _state.SaveAi();
-    }
-
-    private void PiperVoiceBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (_loadingSettings) return;
-        var value = PiperVoiceBox.Text.Trim();
-        _state.Ai.PiperVoice = value.Length == 0 ? null : value;
         _state.SaveAi();
     }
 
@@ -691,5 +695,165 @@ public partial class MainWindow : Window
         {
             NovaVox.App.Update.UpdateChecker.OpenUpdateUrl(result.Url);
         }
+    }
+
+    // ------------------------------------------------ Modèle Vosk (téléchargement)
+
+    private void InitializeVoskCatalog()
+    {
+        _voskModelRows.Clear();
+        foreach (var model in VoskModelCatalog.ModelsForLanguage(_state.Ai.UiLanguage))
+            _voskModelRows.Add(new VoskModelRowVm { Model = model });
+        VoskModelsList.ItemsSource = _voskModelRows;
+    }
+
+    private static VoskModelRowVm? VoskRowFromSender(object sender) => (sender as FrameworkElement)?.DataContext as VoskModelRowVm;
+
+    private async void InstallVoskModel_Click(object sender, RoutedEventArgs e)
+    {
+        var row = VoskRowFromSender(sender);
+        if (row is null || row.IsDownloading) return;
+
+        row.IsDownloading = true;
+        row.StatusText = "Préparation...";
+        void OnProgress(object? _, (int Percent, string Message) p) => row.StatusText = $"{p.Percent}% — {p.Message}";
+        _voskInstaller.Progress += OnProgress;
+        try
+        {
+            var installedPath = await _voskInstaller.InstallAsync(row.Model);
+            if (installedPath is not null)
+            {
+                _state.Audio.ModelPath = installedPath;
+                _state.SaveAudio();
+                ModelPathText.Text = installedPath;
+                row.StatusText = "Installé.";
+                LastLogText.Text = $"Journal : Modèle Vosk « {row.Label} » installé.";
+            }
+        }
+        finally
+        {
+            _voskInstaller.Progress -= OnProgress;
+            row.IsDownloading = false;
+        }
+    }
+
+    // ------------------------------------------------- Moteur & voix Piper
+
+    private void InitializePiperCatalog()
+    {
+        _piperVoiceRows.Clear();
+        foreach (var voice in PiperVoiceCatalog.Voices)
+        {
+            _piperVoiceRows.Add(new PiperVoiceRowVm
+            {
+                Voice = voice,
+                IsInstalled = _piperInstaller.IsVoiceInstalled(voice.Id),
+                IsSelected = voice.Id == _state.Ai.PiperVoice,
+            });
+        }
+        PiperVoicesList.ItemsSource = _piperVoiceRows;
+        RefreshPiperEngineStatus();
+    }
+
+    private void RefreshPiperEngineStatus()
+    {
+        var installed = _piperInstaller.IsEngineInstalled;
+        InstallPiperEngineButton.Content = installed ? "Réinstaller le moteur Piper" : "Installer le moteur Piper";
+        PiperEngineStatusText.Text = installed
+            ? "Moteur Piper installé."
+            : "Aucune voix ne pourra être testée tant que le moteur n'est pas installé (~60-70 Mo).";
+    }
+
+    private static PiperVoiceRowVm? PiperRowFromSender(object sender) => (sender as FrameworkElement)?.DataContext as PiperVoiceRowVm;
+
+    private async void InstallPiperEngine_Click(object sender, RoutedEventArgs e)
+    {
+        InstallPiperEngineButton.IsEnabled = false;
+        void OnProgress(object? _, string message) => PiperEngineStatusText.Text = message;
+        _piperInstaller.EngineProgress += OnProgress;
+        try
+        {
+            await _piperInstaller.InstallEngineAsync();
+        }
+        finally
+        {
+            _piperInstaller.EngineProgress -= OnProgress;
+            InstallPiperEngineButton.IsEnabled = true;
+            RefreshPiperEngineStatus();
+        }
+    }
+
+    private void SelectPiperVoice_Click(object sender, RoutedEventArgs e)
+    {
+        var row = PiperRowFromSender(sender);
+        if (row is null || !row.IsInstalled) return;
+
+        foreach (var other in _piperVoiceRows) other.IsSelected = other.Id == row.Id;
+        _state.Ai.PiperVoice = row.Id;
+        _state.SaveAi();
+    }
+
+    private async void DownloadPiperVoice_Click(object sender, RoutedEventArgs e)
+    {
+        var row = PiperRowFromSender(sender);
+        if (row is null || row.IsDownloading || row.IsInstalled) return;
+
+        row.IsDownloading = true;
+        row.StatusText = "Préparation...";
+        void OnProgress(object? _, (string VoiceId, string Message) p)
+        {
+            if (p.VoiceId == row.Id) row.StatusText = p.Message;
+        }
+        _piperInstaller.VoiceProgress += OnProgress;
+        try
+        {
+            await _piperInstaller.DownloadVoiceAsync(row.Id);
+            row.IsInstalled = _piperInstaller.IsVoiceInstalled(row.Id);
+            row.StatusText = row.IsInstalled ? "Téléchargée." : "Échec du téléchargement.";
+            if (row.IsInstalled && _piperVoiceRows.All(r => !r.IsSelected))
+            {
+                row.IsSelected = true;
+                _state.Ai.PiperVoice = row.Id;
+                _state.SaveAi();
+            }
+        }
+        finally
+        {
+            _piperInstaller.VoiceProgress -= OnProgress;
+            row.IsDownloading = false;
+        }
+    }
+
+    private void DeletePiperVoice_Click(object sender, RoutedEventArgs e)
+    {
+        var row = PiperRowFromSender(sender);
+        if (row is null) return;
+
+        _piperInstaller.DeleteVoice(row.Id);
+        row.IsInstalled = false;
+        row.IsSelected = false;
+        row.StatusText = "";
+        if (_state.Ai.PiperVoice == row.Id)
+        {
+            _state.Ai.PiperVoice = null;
+            _state.SaveAi();
+        }
+    }
+
+    private void TestPiperVoice_Click(object sender, RoutedEventArgs e)
+    {
+        var row = PiperRowFromSender(sender);
+        if (row is null || !row.IsInstalled) return;
+
+        if (_testTts is null)
+        {
+            _testTts = new PiperTtsEngine();
+            _testTts.ErrorOccurred += (_, msg) => Dispatcher.BeginInvoke(() => MessageBox.Show(this, msg, "NovaVox"));
+        }
+        _testTts.LengthScale = PiperLengthScaleSlider.Value;
+        _testTts.NoiseScale = PiperNoiseScaleSlider.Value;
+        _testTts.RadioEffectEnabled = RadioEffectCheckbox.IsChecked ?? false;
+        _testTts.Volume = _state.Audio.TtsVolume;
+        _testTts.Speak("Ceci est un test de la voix sélectionnée.", row.Id);
     }
 }

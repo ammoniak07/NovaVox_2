@@ -136,13 +136,28 @@
             <!-- Colonne droite : réglages -->
             <TabControl Grid.Column="2" Background="Transparent">
                 <TabItem Header="🔊 Sons">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
                         <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{StaticResource MutedBrush}"
                                    TextWrapping="Wrap" Margin="0,0,0,4" />
-                        <Button Content="Parcourir..." HorizontalAlignment="Left" Click="BrowseModel_Click" />
-                        <TextBlock Text="Pas de téléchargement automatique dans cette version : télécharge un modèle sur alphacephei.com/vosk/models, dézippe-le, puis sélectionne le dossier ici."
-                                   Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <ItemsControl x:Name="VoskModelsList" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Description}" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <Button Content="Télécharger et installer" IsEnabled="{Binding CanInstall}" Click="InstallVoskModel_Click" />
+                                                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="Parcourir un dossier déjà téléchargé..." HorizontalAlignment="Left" Margin="0,8,0,0" Click="BrowseModel_Click" />
 
                         <TextBlock Text="Micro" FontWeight="Bold" Margin="0,16,0,6" />
                         <ComboBox x:Name="InputDeviceCombo" Margin="0,0,0,8" SelectionChanged="InputDeviceCombo_SelectionChanged" />
@@ -170,9 +185,11 @@
                         <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
                         <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
                     </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="🌟 IA Gemini">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
                         <TextBlock Text="Clé API" Margin="0,12,0,4" />
@@ -191,13 +208,41 @@
                         <TextBox x:Name="GeminiContextBox" AcceptsReturn="True" Height="70" TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto" LostFocus="GeminiContextBox_LostFocus" />
                         <CheckBox x:Name="RadioEffectCheckbox" Content="Effet radio de vaisseau" Margin="0,16,0,0" Checked="RadioEffectCheckbox_Changed" Unchecked="RadioEffectCheckbox_Changed" />
-                        <TextBlock Text="Voix Piper (identifiant)" Margin="0,12,0,4" />
-                        <TextBox x:Name="PiperVoiceBox" LostFocus="PiperVoiceBox_LostFocus" />
-                        <TextBlock Text="Vitesse (length_scale)" Margin="0,12,0,0" />
+
+                        <TextBlock Text="Moteur vocal (Piper)" FontWeight="Bold" Margin="0,16,0,6" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="InstallPiperEngineButton" Content="Installer le moteur Piper" Click="InstallPiperEngine_Click" />
+                            <TextBlock x:Name="PiperEngineStatusText" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <TextBlock Text="Voix disponibles" FontWeight="Bold" Margin="0,16,0,6" />
+                        <ItemsControl x:Name="PiperVoicesList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton GroupName="PiperVoice" IsChecked="{Binding IsSelected, Mode=OneWay}" Click="SelectPiperVoice_Click"
+                                                             Content="{Binding Label}" IsEnabled="{Binding IsInstalled}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <Button Content="Télécharger" Visibility="{Binding CanDownload, Converter={StaticResource BoolToVis}}" Click="DownloadPiperVoice_Click" />
+                                                <Button Content="Supprimer" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="DeletePiperVoice_Click" Margin="6,0,0,0" />
+                                                <Button Content="Tester" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="TestPiperVoice_Click" Margin="6,0,0,0" />
+                                                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Vitesse (length_scale)" Margin="0,16,0,0" />
                         <Slider x:Name="PiperLengthScaleSlider" Minimum="0.5" Maximum="2.0" ValueChanged="PiperLengthScaleSlider_ValueChanged" />
                         <TextBlock Text="Expressivité (noise_scale)" />
                         <Slider x:Name="PiperNoiseScaleSlider" Minimum="0.0" Maximum="1.5" ValueChanged="PiperNoiseScaleSlider_ValueChanged" />
                     </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="🛰 Game.log">

@@ -3,6 +3,7 @@ using NovaVox.App.ViewModels;
 using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.Config;
+using NovaVox.Core.Tts;
 
 namespace NovaVox.App;
 
@@ -36,7 +37,7 @@ public sealed class AppState
 
         CommandStore.ActiveProfileId = CommandStore.LoadActiveProfileId() ?? CommandStore.EnsureProfilesMigrated();
         Audio = AudioConfigStore.Load();
-        Ai = AiConfigStore.Load();
+        Ai = AiConfigStore.Load(knownPiperVoices: PiperVoiceCatalog.Voices.Select(v => v.Id).ToList());
         Overlay = OverlayConfigStore.Load();
 
         ReloadCommands();
