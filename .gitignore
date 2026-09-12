@@ -11,6 +11,9 @@ out/
 model/
 piper/
 
+# Journal texte généré à l'exécution (voir NovaVox.Core.AppLog)
+Log/
+
 # Éditeurs / OS
 .vs/
 .vscode/

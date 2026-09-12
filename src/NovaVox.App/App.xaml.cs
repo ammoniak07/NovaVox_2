@@ -1,6 +1,9 @@
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using NovaVox.App.Autolaunch;
 using NovaVox.App.Tray;
+using NovaVox.Core;
 
 namespace NovaVox.App;
 
@@ -13,6 +16,21 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Toute exception qui échapperait autrement complètement (l'appli
+        // disparaît sans aucune trace) est journalisée en dernier recours
+        // dans Log/ avant que le processus ne se termine — ne cherche pas
+        // à "récupérer" ni continuer dans un état incertain, juste à
+        // laisser une trace exploitable.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            AppLog.AppendException(NovaVoxPaths.BaseDirectory, "Exception non gérée (AppDomain)", args.ExceptionObject as Exception ?? new Exception(args.ExceptionObject?.ToString() ?? "inconnue"));
+        DispatcherUnhandledException += (_, args) =>
+            AppLog.AppendException(NovaVoxPaths.BaseDirectory, "Exception non gérée (thread IU)", args.Exception);
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            AppLog.AppendException(NovaVoxPaths.BaseDirectory, "Exception de tâche jamais observée", args.Exception);
+            args.SetObserved();
+        };
 
         // Lancée avec --wait-for-sc (raccourci de veille, voir
         // StarCitizenAutolaunch) : reste en veille silencieuse, sans

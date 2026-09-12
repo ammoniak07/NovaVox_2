@@ -1179,7 +1179,7 @@ public partial class MainWindow : Window
         while (LogList.Document.Blocks.Count > MaxLogParagraphs) LogList.Document.Blocks.Remove(LogList.Document.Blocks.FirstBlock);
         LogList.ScrollToEnd();
 
-        if (kind == "error") ErrorLog.Append(NovaVoxPaths.BaseDirectory, message);
+        AppLog.Append(NovaVoxPaths.BaseDirectory, message, kind);
     }
 
     private void ClearLog_Click(object sender, RoutedEventArgs e) => LogList.Document.Blocks.Clear();
