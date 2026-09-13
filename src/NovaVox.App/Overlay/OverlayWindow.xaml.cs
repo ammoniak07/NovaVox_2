@@ -86,14 +86,11 @@ public partial class OverlayWindow : Window
             && y <= SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight + margin;
     }
 
-    private Brush? _normalPanelBackground;
-
     public void ApplyAppearance(string bgColorHex, int bgOpacityPercent, string textColorHex, int textOpacityPercent)
     {
         var bgColor = (Color)ColorConverter.ConvertFromString(bgColorHex)!;
         bgColor.A = (byte)Math.Clamp(bgOpacityPercent * 255 / 100, 0, 255);
-        _normalPanelBackground = new SolidColorBrush(bgColor);
-        PanelBorder.Background = _normalPanelBackground;
+        PanelBorder.Background = new SolidColorBrush(bgColor);
 
         var textColor = (Color)ColorConverter.ConvertFromString(textColorHex)!;
         textColor.A = (byte)Math.Clamp(textOpacityPercent * 255 / 100, 0, 255);
@@ -205,19 +202,21 @@ public partial class OverlayWindow : Window
         }
     }
 
-    public void SetListening(bool active) => ListeningValue.Text = active ? "En cours" : "Arrêtée";
+    private bool _micActive = true;
+    private bool _listeningActive = true;
+
+    public void SetListening(bool active)
+    {
+        _listeningActive = active;
+        ListeningValue.Text = active ? "En cours" : "Arrêtée";
+        RefreshBorderColor();
+    }
 
     public void SetMicActive(bool active)
     {
+        _micActive = active;
         MicValue.Text = active ? "Actif" : "Coupé";
-        // Fond rouge dédié pendant que le micro est coupé (mic-cut,
-        // overlay.html) — indépendant du flash de commande (calque séparé).
-        // Restaure le fond normal (mémorisé par ApplyAppearance) plutôt que
-        // de se réassigner à lui-même : sinon, une fois rouge, il le reste
-        // pour toujours même quand le micro se réactive.
-        PanelBorder.Background = active
-            ? _normalPanelBackground ?? PanelBorder.Background
-            : new SolidColorBrush(Color.FromArgb(0xB8, 0x78, 0x14, 0x14));
+        RefreshBorderColor();
     }
 
     public void SetPhrase(string? text) => PhraseValue.Text = string.IsNullOrEmpty(text) ? "…" : text;
@@ -244,11 +243,32 @@ public partial class OverlayWindow : Window
     public void SetEditMode(bool editable)
     {
         _editMode = editable;
-        PanelBorder.BorderBrush = editable
-            ? new SolidColorBrush(Color.FromRgb(0x2D, 0xD4, 0xFF))
-            : new SolidColorBrush(Color.FromArgb(0x59, 0x2D, 0xD4, 0xFF));
+        RefreshBorderColor();
         if (_hwnd != IntPtr.Zero) WindowClickThrough.SetClickThrough(_hwnd, clickThrough: !editable);
         RefreshRowVisualsForEditMode();
+    }
+
+    /// <summary>
+    /// Cadre rouge (pas tout le panneau, pour rester lisible) tant que le
+    /// micro est coupé OU que l'écoute n'est pas active — remplace l'ancien
+    /// fond plein rouge (SetMicActive) qui rendait le texte illisible sur
+    /// certaines couleurs de texte. Priorité sur la couleur cyan d'édition :
+    /// l'alerte doit rester visible même overlay déverrouillé.
+    /// </summary>
+    private void RefreshBorderColor()
+    {
+        if (!_micActive || !_listeningActive)
+        {
+            PanelBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0x33, 0x33));
+            PanelBorder.BorderThickness = new Thickness(2);
+        }
+        else
+        {
+            PanelBorder.BorderBrush = _editMode
+                ? new SolidColorBrush(Color.FromRgb(0x2D, 0xD4, 0xFF))
+                : new SolidColorBrush(Color.FromArgb(0x59, 0x2D, 0xD4, 0xFF));
+            PanelBorder.BorderThickness = new Thickness(1);
+        }
     }
 
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
