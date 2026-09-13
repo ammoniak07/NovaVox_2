@@ -6,7 +6,8 @@ v0.0.2
 - Micro coupé ou écoute arrêtée : un cadre rouge s'affiche autour de l'overlay au lieu de tout le fond, pour rester lisible ; le flash vert au déclenchement d'une commande est inchangé.
 - La transparence/opacité configurée n'est plus perdue à chaque redémarrage de l'application.
 - Journalisation nettement étoffée (dossier Log/) pour faciliter le diagnostic en cas de problème : actions utilisateur, réglages modifiés, touches envoyées, erreurs auparavant silencieuses.
-- Liste des commandes : recherche par phrase/touche/synonyme, et chaque titre peut être replié/déplié comme un tiroir (état conservé au redémarrage).
+- Liste des commandes : recherche par phrase/touche/synonyme. 
+- Chaque titre peut être replié/déplié comme un tiroir (état conservé au redémarrage).
 v0.0.1
 ------
 - Première version de la réédition .NET/WPF de NovaVox (portage complet depuis la version Python/pywebview d'origine, avec sa propre numérotation de version).
