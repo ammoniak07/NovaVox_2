@@ -28,6 +28,12 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _clockTimer;
     private bool _editMode;
     private IntPtr _hwnd;
+    private Dictionary<string, bool> _visibleRows = new();
+    // Évite que le rechargement programmatique des cases à cocher (IsChecked
+    // remis à jour depuis _visibleRows dans RefreshRowVisualsForEditMode) ne
+    // déclenche à son tour RowVisibilityCheckbox_Changed, qui réécrirait le
+    // fichier de config avec les mêmes valeurs à chaque bascule de mode.
+    private bool _suppressCheckboxEvents;
 
     public OverlayWindow(OverlayConfigStore store)
     {
@@ -58,7 +64,9 @@ public partial class OverlayWindow : Window
             Top = config.Y.Value;
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
-        ApplyRowVisibility(config.VisibleRows);
+        _visibleRows = new Dictionary<string, bool>(config.VisibleRows);
+        ApplyRowVisibility(_visibleRows);
+        RefreshRowVisualsForEditMode();
     }
 
     /// <summary>
@@ -117,6 +125,82 @@ public partial class OverlayWindow : Window
     private static Visibility RowVisibility(Dictionary<string, bool> rows, string key) =>
         !rows.TryGetValue(key, out var visible) || visible ? Visibility.Visible : Visibility.Collapsed;
 
+    private IEnumerable<(Grid Row, CheckBox Checkbox, string Key)> RowEntries()
+    {
+        yield return (RowTime, TimeRowCheckbox, "time");
+        yield return (RowListening, ListeningRowCheckbox, "listening");
+        yield return (RowMic, MicRowCheckbox, "mic");
+        yield return (RowPhrase, PhraseRowCheckbox, "phrase");
+        yield return (RowZone, ZoneRowCheckbox, "zone");
+        yield return (RowLastCmd, LastCmdRowCheckbox, "lastCmd");
+    }
+
+    /// <summary>
+    /// En mode édition, toutes les lignes redeviennent visibles (atténuées si
+    /// masquées dans la config, pour rester cliquables et réactivables) et
+    /// leurs cases à cocher apparaissent ; hors édition, seule la config
+    /// (ApplyRowVisibility) décide de ce qui s'affiche et les cases
+    /// disparaissent. IsChecked est réassigné sans passer par l'utilisateur :
+    /// _suppressCheckboxEvents évite une écriture de config en boucle.
+    /// </summary>
+    private void RefreshRowVisualsForEditMode()
+    {
+        _suppressCheckboxEvents = true;
+        try
+        {
+            foreach (var (row, checkbox, key) in RowEntries())
+            {
+                var visible = !_visibleRows.TryGetValue(key, out var v) || v;
+                if (_editMode)
+                {
+                    row.Visibility = Visibility.Visible;
+                    row.Opacity = visible ? 1.0 : 0.35;
+                    checkbox.Visibility = Visibility.Visible;
+                    checkbox.IsChecked = visible;
+                }
+                else
+                {
+                    row.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+                    row.Opacity = 1.0;
+                    checkbox.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+        finally
+        {
+            _suppressCheckboxEvents = false;
+        }
+    }
+
+    private void RowVisibilityCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressCheckboxEvents) return;
+        if (sender is not CheckBox { Tag: string key } checkbox) return;
+
+        var visible = checkbox.IsChecked == true;
+        _visibleRows[key] = visible;
+        foreach (var (row, _, rowKey) in RowEntries())
+        {
+            if (rowKey == key)
+            {
+                row.Opacity = visible ? 1.0 : 0.35;
+                break;
+            }
+        }
+
+        try
+        {
+            _store.Save(enabled: true, visibleRows: _visibleRows);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde des lignes affichées échouée ({ex.Message}).", "diagnostic");
+        }
+    }
+
+    /// <summary>Empêche le clic sur une case à cocher de déclencher DragMove() (voir OnMouseLeftButtonDown), qui capturerait la souris avant que la case ne réagisse au clic.</summary>
+    private void StopDragOnCheckbox(object sender, MouseButtonEventArgs e) => e.Handled = true;
+
     public void SetListening(bool active) => ListeningValue.Text = active ? "En cours" : "Arrêtée";
 
     public void SetMicActive(bool active)
@@ -160,6 +244,7 @@ public partial class OverlayWindow : Window
             ? new SolidColorBrush(Color.FromRgb(0x2D, 0xD4, 0xFF))
             : new SolidColorBrush(Color.FromArgb(0x59, 0x2D, 0xD4, 0xFF));
         if (_hwnd != IntPtr.Zero) WindowClickThrough.SetClickThrough(_hwnd, clickThrough: !editable);
+        RefreshRowVisualsForEditMode();
     }
 
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
