@@ -1,6 +1,15 @@
 namespace NovaVox.Core.Gemini;
 
-public sealed record GeminiModelInfo(string Id, string Label, string Description);
+public sealed record GeminiModelInfo(string Id, string Label, string Description)
+{
+    // Le ComboBox custom-templaté des réglages (MainWindow.xaml, voir
+    // GeminiModelCombo) affiche l'élément sélectionné via SelectionBoxItem,
+    // qui retombe sur ToString() plutôt que DisplayMemberPath dans ce cas
+    // précis — sans ceci, la case affichait le ToString() généré par le
+    // record ("GeminiModelInfo { Id = ..., Label = ..., ... }") au lieu du
+    // libellé du modèle (même bug que ProfileInfo.ToString(), voir CommandStore.cs).
+    public override string ToString() => Label;
+}
 
 /// <summary>
 /// Modèles Gemini proposés, leurs limites gratuites quotidiennes (RPD) et
