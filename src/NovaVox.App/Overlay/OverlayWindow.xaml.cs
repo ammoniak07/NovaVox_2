@@ -188,6 +188,13 @@ public partial class OverlayWindow : Window
             }
         }
 
+        // Log volontairement inconditionnel (pas seulement en cas d'échec) :
+        // repère de diagnostic pour confirmer que le clic atteint bien la
+        // case (si cette ligne n'apparaît jamais malgré des clics, le
+        // problème est en amont — le clic ne parvient pas jusqu'à la
+        // CheckBox, ex. capturé par un DragMove()).
+        AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Case '{key}' -> {(visible ? "cochée" : "décochée")}.", "diagnostic");
+
         try
         {
             _store.Save(enabled: true, visibleRows: _visibleRows);
