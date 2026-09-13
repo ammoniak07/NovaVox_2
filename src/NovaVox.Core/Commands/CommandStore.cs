@@ -240,7 +240,6 @@ public sealed class CommandStore
             ["game_log_enabled"] = game.GameLogEnabled,
             ["gemini_wiki_enabled"] = game.GeminiWikiEnabled,
             ["overlay_visible_rows"] = rows,
-            ["background_image_path"] = game.BackgroundImagePath,
         };
     }
 
@@ -256,8 +255,6 @@ public sealed class CommandStore
             foreach (var kv in rows)
                 if (kv.Value is not null) game.OverlayVisibleRows[kv.Key] = GetBool(kv.Value, true);
         }
-        var bg = GetStringOrNull(data["background_image_path"]);
-        game.BackgroundImagePath = string.IsNullOrWhiteSpace(bg) ? null : bg;
         return game;
     }
 

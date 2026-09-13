@@ -77,7 +77,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
-                        <Button Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
+                        <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />
                         <Button x:Name="ThemeToggleButton" Style="{StaticResource IconCircleButtonStyle}" Content="🌙" Margin="8,0,0,0" Click="ThemeToggleButton_Click"
@@ -129,10 +129,6 @@
                     <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
                     <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
                     <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
-                    <Button Content="🖼 Fond" Margin="16,0,0,0" Click="ChooseProfileBackground_Click"
-                            ToolTip="Image de fond propre à ce profil (remplace celle par défaut tant que ce profil est actif)" />
-                    <Button Content="✕ Fond" Margin="4,0,0,0" Click="ResetProfileBackground_Click"
-                            ToolTip="Revenir à l'image de fond par défaut pour ce profil" />
                 </StackPanel>
 
                 <Grid Grid.Row="1">

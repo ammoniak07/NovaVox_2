@@ -1224,26 +1224,6 @@ public partial class MainWindow : Window
         AppendLog($"Profil supprimé : « {profile.Name} ».", "success");
     }
 
-    private void ChooseProfileBackground_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Choisir une image de fond pour ce profil", Filter = "Images (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg" };
-        if (dialog.ShowDialog(this) != true) return;
-
-        _state.ActiveProfileBackgroundImagePath = dialog.FileName;
-        _state.SaveCurrentProfileGameSettings();
-        LoadPanelsBackgroundImage();
-        AppendLog($"Image de fond du profil « {(ProfileCombo.SelectedItem as ProfileInfo)?.Name} » mise à jour.", "success");
-    }
-
-    private void ResetProfileBackground_Click(object sender, RoutedEventArgs e)
-    {
-        if (_state.ActiveProfileBackgroundImagePath is null) return;
-        _state.ActiveProfileBackgroundImagePath = null;
-        _state.SaveCurrentProfileGameSettings();
-        LoadPanelsBackgroundImage();
-        AppendLog($"Image de fond du profil « {(ProfileCombo.SelectedItem as ProfileInfo)?.Name} » réinitialisée (image par défaut).", "info");
-    }
-
     private static (int X, int Y, int W, int H)? VirtualScreenBounds()
     {
         try
@@ -1990,20 +1970,22 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Image de fond affichée derrière les listes Commandes/Journal
-    /// (raccourcies pour la révéler, voir MainWindow.xaml). Priorité à
-    /// l'image propre au profil actif (voir ChooseProfileBackground_Click),
-    /// sinon lue depuis un fichier local plutôt qu'embarquée dans l'appli,
-    /// pour que l'utilisateur puisse la changer en déposant simplement un
-    /// fichier "background.jpg" ou "background.png" à côté de NovaVox.exe,
-    /// sans recompiler. Ni l'un ni l'autre : rien ne s'affiche. Réappelée
-    /// à chaque changement de profil (voir ProfileCombo_SelectionChanged) :
-    /// remet explicitement Source (même null) pour effacer une image
-    /// propre à l'ancien profil si le nouveau n'en a pas.
+    /// (raccourcies pour la révéler, voir MainWindow.xaml) — lue directement
+    /// depuis un fichier local plutôt qu'embarquée dans l'appli, pour que
+    /// l'utilisateur puisse la changer en déposant simplement un fichier
+    /// "background.jpg"/"background.png" (profil Star Citizen) ou
+    /// "background2.jpg"/"background2.png" (tout profil où le Game.log est
+    /// désactivé, ex. "autre jeu" — background2.* absent : retombe sur
+    /// l'image par défaut) à côté de NovaVox.exe, sans recompiler. Aucune
+    /// des deux : rien ne s'affiche. Réappelée à chaque changement de
+    /// profil (voir ProfileCombo_SelectionChanged) : remet explicitement
+    /// Source (même null) pour effacer une image restée affichée.
     /// </summary>
     private void LoadPanelsBackgroundImage()
     {
-        var overridePath = _state.ActiveProfileBackgroundImagePath;
-        var bitmap = overridePath is not null && File.Exists(overridePath) ? LoadBitmapFromFile(overridePath) : null;
+        var bitmap = _state.Ai.GameLogEnabled
+            ? null
+            : TryLoadLocalImage("background2.jpg", "background2.jpeg", "background2.png");
         PanelsBackgroundImage.Source = bitmap ?? TryLoadLocalImage("background.jpg", "background.jpeg", "background.png");
     }
 
@@ -2070,6 +2052,13 @@ public partial class MainWindow : Window
         GameLogStatusText.Text = _state.Ai.GameLogEnabled
             ? "Surveillance du Game.log active."
             : "Surveillance désactivée (voir ⚙️ Réglages > 🛰 Game.log).";
+        // Le Game.log n'a de sens que pour Star Citizen : plutôt qu'une
+        // case à cocher décochée mais toujours visible, masque carrément
+        // son point d'entrée (bouton d'en-tête + onglet Réglages) sur un
+        // profil "autre jeu" (Game.log désactivé pour ce profil).
+        var visibility = _state.Ai.GameLogEnabled ? Visibility.Visible : Visibility.Collapsed;
+        GameLogHeaderButton.Visibility = visibility;
+        GameLogSettingsTab.Visibility = visibility;
     }
 
     private void OnGameLogEvent(GameLogEvent evt)

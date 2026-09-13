@@ -73,7 +73,6 @@ public class CommandStoreTests : IDisposable
             GameLogEnabled = false,
             GeminiWikiEnabled = false,
             OverlayVisibleRows = new Dictionary<string, bool> { ["zone"] = false, ["time"] = true },
-            BackgroundImagePath = @"C:\images\autre_jeu.png",
         };
         store.WriteProfile(id, "Autre jeux", new List<VoiceCommand>(), game);
 
@@ -84,7 +83,6 @@ public class CommandStoreTests : IDisposable
         Assert.False(reloaded.GeminiWikiEnabled);
         Assert.False(reloaded.OverlayVisibleRows["zone"]);
         Assert.True(reloaded.OverlayVisibleRows["time"]);
-        Assert.Equal(@"C:\images\autre_jeu.png", reloaded.BackgroundImagePath);
     }
 
     [Fact]
@@ -99,7 +97,6 @@ public class CommandStoreTests : IDisposable
         Assert.True(game.GameLogEnabled);
         Assert.True(game.GeminiWikiEnabled);
         Assert.Empty(game.OverlayVisibleRows);
-        Assert.Null(game.BackgroundImagePath);
     }
 
     [Fact]

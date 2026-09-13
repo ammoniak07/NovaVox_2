@@ -26,13 +26,6 @@ public sealed class AppState
     public AiConfig Ai { get; private set; }
     public OverlayConfig Overlay { get; private set; }
 
-    /// <summary>
-    /// Image de fond du profil actif (chemin absolu), ou null pour l'image
-    /// par défaut (background.png/jpg/jpeg à côté de l'exécutable) — voir
-    /// ProfileGameSettings.BackgroundImagePath / MainWindow.LoadPanelsBackgroundImage.
-    /// </summary>
-    public string? ActiveProfileBackgroundImagePath { get; set; }
-
     public ObservableCollection<VoiceCommandRow> Commands { get; } = new();
     public ObservableCollection<ProfileInfo> Profiles { get; } = new();
 
@@ -64,12 +57,6 @@ public sealed class AppState
 
         ReloadCommands();
         ReloadProfiles();
-
-        if (CommandStore.ActiveProfileId is { } activeId)
-        {
-            try { ActiveProfileBackgroundImagePath = CommandStore.ReadProfile(activeId).Game.BackgroundImagePath; }
-            catch { /* profil illisible : image par défaut */ }
-        }
     }
 
     public void ReloadCommands()
@@ -130,15 +117,14 @@ public sealed class AppState
             ? new Dictionary<string, bool>(game.OverlayVisibleRows)
             : OverlayConfig.RowKeys.ToDictionary(k => k, _ => true);
         SaveOverlay();
-        ActiveProfileBackgroundImagePath = game.BackgroundImagePath;
     }
 
     /// <summary>
     /// Reflète les réglages jeu ACTUELLEMENT en vigueur (Ai/Overlay) dans
     /// le profil actif — appelée après une modification de l'un des
     /// réglages concernés (Game.log, wiki Gemini, lignes visibles de
-    /// l'overlay, image de fond) pour qu'elle survive à un changement de
-    /// profil ultérieur, exactement comme les commandes le font déjà
+    /// l'overlay) pour qu'elle survive à un changement de profil ultérieur,
+    /// exactement comme les commandes le font déjà
     /// (SaveCommands/mirrorToProfile). Best effort, jamais bloquant.
     /// </summary>
     public void SaveCurrentProfileGameSettings()
@@ -152,7 +138,6 @@ public sealed class AppState
                 GameLogEnabled = Ai.GameLogEnabled,
                 GeminiWikiEnabled = Ai.GeminiWikiEnabled,
                 OverlayVisibleRows = new Dictionary<string, bool>(Overlay.VisibleRows),
-                BackgroundImagePath = ActiveProfileBackgroundImagePath,
             };
             CommandStore.WriteProfile(profileId, name, commands, game);
         }
