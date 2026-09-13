@@ -205,9 +205,6 @@ public partial class OverlayWindow : Window
         }
     }
 
-    /// <summary>Empêche le clic sur une case à cocher de déclencher DragMove() (voir OnMouseLeftButtonDown), qui capturerait la souris avant que la case ne réagisse au clic.</summary>
-    private void StopDragOnCheckbox(object sender, MouseButtonEventArgs e) => e.Handled = true;
-
     public void SetListening(bool active) => ListeningValue.Text = active ? "En cours" : "Arrêtée";
 
     public void SetMicActive(bool active)
@@ -257,11 +254,14 @@ public partial class OverlayWindow : Window
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (!_editMode) return;
-        // Filet de sécurité en plus de StopDragOnCheckbox (qui marque déjà
-        // l'évènement Handled) : même si un clic sur la case à cocher
-        // parvenait quand même jusqu'ici, ne jamais démarrer un DragMove()
-        // à partir d'elle — sinon la case ne peut plus être (dé)cochée,
-        // le déplacement de la fenêtre "avalant" le clic.
+        // Ne jamais démarrer un DragMove() à partir d'un clic sur une case à
+        // cocher : contrairement à une première tentative, ce filtrage ne
+        // doit PAS passer par e.Handled côté CheckBox (Preview...Down) — la
+        // case partage l'EventArgs entre son passage tunnel et bulle, donc
+        // marquer Handled=true dès la phase Preview empêche aussi la
+        // CheckBox de traiter son propre clic (plus de Checked/Unchecked du
+        // tout). Un filtrage par contenu (élément d'origine) ici, uniquement
+        // côté fenêtre, évite ce problème.
         if (IsWithinCheckbox(e.OriginalSource as DependencyObject)) return;
         try
         {
