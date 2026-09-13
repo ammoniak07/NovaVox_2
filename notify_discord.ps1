@@ -28,7 +28,7 @@ if ([string]::IsNullOrWhiteSpace($webhookUrl)) {
     exit 0
 }
 
-$title = "NovaVoxNET v$Version disponible"
+$title = "NovaVox v$Version disponible"
 $notes = "Voir le changelog complet dans l'application."
 
 # Recap complet a usage UNIQUE : si discord_first_post.txt existe (premier
@@ -40,7 +40,7 @@ if ($FirstPostFile -and (Test-Path $FirstPostFile)) {
     $recap = (Get-Content $FirstPostFile -Raw -Encoding UTF8).Trim()
     if ($recap) {
         $notes = $recap
-        $title = "NovaVoxNET - recap complet + v$Version"
+        $title = "NovaVox - recap complet + v$Version"
     }
     Remove-Item -Path $FirstPostFile -Force -ErrorAction SilentlyContinue
 } elseif ($NotesFile -and (Test-Path $NotesFile)) {
@@ -65,7 +65,7 @@ $embed = @{
 }
 
 $payload = @{
-    username = "NovaVoxNET"
+    username = "NovaVox"
     embeds   = @($embed)
 } | ConvertTo-Json -Depth 6
 
