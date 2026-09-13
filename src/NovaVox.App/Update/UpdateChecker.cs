@@ -14,19 +14,25 @@ public static class UpdateChecker
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(4) };
 
-    public const string DefaultManifestUrl = "https://novanox.1ercorpscolonial.fr/version.json";
+    // Manifest DISTINCT de celui de la version Python (qui vit sur le
+    // même site, à /version.json) : cette édition .NET a sa propre
+    // numérotation de version (repartie à 0.0.1) et son propre
+    // installeur — comparer sa version locale au manifest Python
+    // signalerait une "mise à jour" en permanence (la version Python
+    // est numériquement bien plus haute). Voir build.bat pour la
+    // génération/le déploiement de novavoxnet_version.json.
+    public const string DefaultManifestUrl = "https://novanox.1ercorpscolonial.fr/novavoxnet_version.json";
 
     /// <summary>
-    /// URL du manifest — un fichier gui/update_source.txt à côté de
+    /// URL du manifest — un fichier update_source.txt à côté de
     /// l'exécutable (généré à la compilation pour une variante GitHub
-    /// Releases, voir build_exe.bat côté Python) prend le pas sur le
-    /// défaut si présent.
+    /// Releases, voir build.bat) prend le pas sur le défaut si présent.
     /// </summary>
     public static string ResolveManifestUrl()
     {
         try
         {
-            var overridePath = Path.Combine(NovaVoxPaths.BaseDirectory, "gui", "update_source.txt");
+            var overridePath = Path.Combine(NovaVoxPaths.BaseDirectory, "update_source.txt");
             if (File.Exists(overridePath))
             {
                 var url = File.ReadAllText(overridePath).Trim();

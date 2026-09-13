@@ -18,6 +18,18 @@ piper/
 # Journal texte généré à l'exécution (voir NovaVox.Core.AppLog)
 Log/
 
+# Manifest de mise à jour régénéré à chaque build (voir build.bat) —
+# jamais la source de vérité, seulement une copie locale avant envoi.
+novavoxnet_version.json
+
+# URL de webhook Discord (secrète, jamais versionnée) — voir notify_discord.ps1
+discord_webhook.txt
+discord_first_post.txt
+
+# Détails de connexion SSH vers le serveur de déploiement (IP, utilisateur,
+# nom de la clé) -- secret, jamais versionné — voir build.bat
+deploy_config.txt
+
 # Éditeurs / OS
 .vs/
 .vscode/

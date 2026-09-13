@@ -573,10 +573,7 @@
                                 <Button Content="Importer la config" Margin="0,6,0,0" HorizontalAlignment="Left" Click="ImportConfig_Click" />
 
                                 <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
-                                <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" IsEnabled="False" Click="CheckForUpdate_Click"
-                                        ToolTip="En suspens : ce bouton pointe encore vers le serveur de mise à jour de l'ancienne version Python de NovaVox." />
-                                <TextBlock Text="En suspens pour le moment (le serveur de mise à jour actuel est celui de l'ancienne version Python)."
-                                           Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                                <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
                                 <TextBlock x:Name="UpdateStatusText" Margin="0,4,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
                             </StackPanel>
                         </TabItem>
