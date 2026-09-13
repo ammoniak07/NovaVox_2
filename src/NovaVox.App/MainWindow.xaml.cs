@@ -1152,18 +1152,6 @@ public partial class MainWindow : Window
         // changement de profil. Repointe explicitement vers la nouvelle
         // instance correspondante.
         SelectActiveProfileInCombo();
-        // Les réglages jeu (Game.log, wiki Gemini, lignes overlay, image de
-        // fond) viennent d'être réappliqués par SwitchProfile — reflète-les
-        // dans l'interface : Réglages (si ouverts), surveillance Game.log
-        // réellement démarrée/arrêtée (pas juste la case cochée/décochée —
-        // LoadSettingsIntoControls la met à jour SANS déclencher
-        // GameLogEnabledCheckbox_Changed, protégé par _loadingSettings),
-        // overlay déjà affiché, image de fond.
-        LoadSettingsIntoControls();
-        if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
-        RefreshGameLogStatus();
-        _overlayWindow?.LoadFromConfig();
-        LoadPanelsBackgroundImage();
         AppendLog($"Profil actif : « {profile.Name} ».", "info");
     }
 
@@ -1185,9 +1173,9 @@ public partial class MainWindow : Window
         if (ProfileCombo.SelectedItem is not ProfileInfo profile) return;
         var name = InputDialog.Show(this, "Nouveau nom du profil :", profile.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
-        var (_, commands, game) = _state.CommandStore.ReadProfile(profile.Id);
+        var (_, commands) = _state.CommandStore.ReadProfile(profile.Id);
         var oldName = profile.Name;
-        _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands, game);
+        _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands);
         _state.ReloadProfiles();
         SelectActiveProfileInCombo();
         AppendLog($"Profil renommé : « {oldName} » → « {name.Trim()} ».", "success");
@@ -1209,14 +1197,7 @@ public partial class MainWindow : Window
         _state.ReloadProfiles();
 
         if (wasActive && _state.Profiles.Count > 0)
-        {
             _state.SwitchProfile(_state.Profiles[0].Id);
-            LoadSettingsIntoControls();
-            if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
-            RefreshGameLogStatus();
-            _overlayWindow?.LoadFromConfig();
-            LoadPanelsBackgroundImage();
-        }
 
         CommandsList.ItemsSource = null;
         InitializeCommandsList();
@@ -1311,6 +1292,7 @@ public partial class MainWindow : Window
             AecEnabledCheckbox.IsChecked = audio.AecEnabled;
 
             var ai = _state.Ai;
+            GameModeCombo.SelectedIndex = ai.GameLogEnabled ? 0 : 1;
             GeminiEnabledCheckbox.IsChecked = ai.GeminiEnabled;
             GeminiWikiEnabledCheckbox.IsChecked = ai.GeminiWikiEnabled;
             GeminiApiKeyBox.Text = ai.GeminiApiKey;
@@ -1575,7 +1557,6 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GeminiWikiEnabled = GeminiWikiEnabledCheckbox.IsChecked ?? false;
         SaveAiAndLog();
-        _state.SaveCurrentProfileGameSettings();
     }
 
     private void GeminiApiKeyBox_LostFocus(object sender, RoutedEventArgs e)
@@ -1678,9 +1659,45 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GameLogEnabled = GameLogEnabledCheckbox.IsChecked ?? false;
         SaveAiAndLog();
-        _state.SaveCurrentProfileGameSettings();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
+        LoadPanelsBackgroundImage();
+    }
+
+    /// <summary>
+    /// Mode de jeu (en-tête, à côté de "Assistant Gemini") : bascule d'un
+    /// coup les réglages qui n'ont de sens que pour Star Citizen —
+    /// indépendant des profils de commandes (sélecteur "Profil :" plus bas,
+    /// qui ne concerne que les commandes elles-mêmes). "Autre jeu" masque
+    /// aussi le point d'entrée Game.log (bouton d'en-tête + onglet
+    /// Réglages, voir RefreshGameLogStatus) et bascule l'image de fond sur
+    /// background2.* (voir LoadPanelsBackgroundImage).
+    /// </summary>
+    private void GameModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (GameModeCombo.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        var starCitizen = tag == "sc";
+
+        _state.Ai.GameLogEnabled = starCitizen;
+        _state.Ai.GeminiWikiEnabled = starCitizen;
+        SaveAiAndLog();
+        _state.Overlay.VisibleRows["zone"] = starCitizen;
+        _state.SaveOverlay();
+
+        if (starCitizen) StartGameLogWatcher(); else StopGameLogWatcher();
+        RefreshGameLogStatus();
+        _overlayWindow?.LoadFromConfig();
+        LoadPanelsBackgroundImage();
+
+        // Répercute sur les cases à cocher correspondantes dans Réglages
+        // sans redéclencher leurs propres gestionnaires (déjà appliqué
+        // ci-dessus) — LoadSettingsIntoControls entier plutôt qu'un
+        // réglage isolé : simple, et sans effet de bord (relit juste l'état
+        // actuel dans chaque contrôle).
+        LoadSettingsIntoControls();
+
+        AppendLog($"Mode de jeu : {(starCitizen ? "Star Citizen" : "Autre jeu")}.", "info");
     }
 
     private void GameLogAnnounceCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -2213,16 +2230,6 @@ public partial class MainWindow : Window
     private void InitializeOverlay()
     {
         _overlayWindow = new OverlayWindow(_state.OverlayConfigStore);
-        // L'overlay écrit directement dans OverlayConfigStore (case à
-        // cocher par ligne, voir OverlayWindow.RowVisibilityCheckbox_Changed)
-        // sans passer par _state.Overlay : recharge l'état en mémoire avant
-        // de le recopier dans le profil actif, sinon SaveCurrentProfileGameSettings
-        // écrirait l'ancienne valeur (périmée) de _state.Overlay.VisibleRows.
-        _overlayWindow.RowVisibilityChanged += () =>
-        {
-            _state.ReloadOverlay();
-            _state.SaveCurrentProfileGameSettings();
-        };
         _overlayWindow.LoadFromConfig();
         // État initial explicite : au lancement, l'écoute n'a pas encore été
         // démarrée (VoiceOrchestrator ne préviendra qu'au premier Start/Stop),

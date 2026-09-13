@@ -200,16 +200,7 @@ public partial class OverlayWindow : Window
         {
             AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde des lignes affichées échouée ({ex.Message}).", "diagnostic");
         }
-        RowVisibilityChanged?.Invoke();
     }
-
-    /// <summary>
-    /// Levé après une sauvegarde réussie ou ratée des lignes visibles —
-    /// MainWindow s'y abonne pour recopier le choix dans le profil actif
-    /// (voir AppState.SaveCurrentProfileGameSettings), cette fenêtre n'ayant
-    /// pas connaissance des profils, seulement de OverlayConfigStore.
-    /// </summary>
-    public event Action? RowVisibilityChanged;
 
     private bool _micActive = true;
     private bool _listeningActive = true;

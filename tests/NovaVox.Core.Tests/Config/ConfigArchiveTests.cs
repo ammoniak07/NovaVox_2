@@ -105,7 +105,7 @@ public class ConfigArchiveTests : IDisposable
         var result = ConfigArchive.Import(_destDir, _zipPath, destStore);
 
         Assert.True(result.Ok);
-        var (_, profileCommands, _) = destStore.ReadProfile(activeId!);
+        var (_, profileCommands) = destStore.ReadProfile(activeId!);
         Assert.Equal("nouvelle", profileCommands[0].Phrase);
     }
 }

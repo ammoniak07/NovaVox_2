@@ -37,23 +37,3 @@ public sealed class CommandProfile
     public string DisplayName { get; set; } = "";
     public List<VoiceCommand> Commands { get; set; } = new();
 }
-
-/// <summary>
-/// Réglages liés au JEU rattachés à un profil (pas aux commandes elles-
-/// mêmes) : bascule automatiquement en changeant de profil, ex. un
-/// profil "Star Citizen" (surveillance du Game.log, wiki Gemini, zone
-/// affichée dans l'overlay) vs un profil "autre jeu" générique (tout ça
-/// désactivé — masque même les points d'entrée Game.log de l'interface,
-/// voir MainWindow.RefreshGameLogStatus ; l'image de fond suit le même
-/// interrupteur par convention de nom de fichier, voir
-/// MainWindow.LoadPanelsBackgroundImage, pas stocké ici). Stocké dans le
-/// fichier du profil (profiles/&lt;id&gt;.json, clé "game") à côté de ses
-/// commandes — voir CommandStore.ReadProfile/WriteProfile.
-/// </summary>
-public sealed class ProfileGameSettings
-{
-    public bool GameLogEnabled { get; set; } = true;
-    public bool GeminiWikiEnabled { get; set; } = true;
-    /// <summary>Mêmes clés que OverlayConfig.RowKeys — vide = tout visible (comportement par défaut inchangé).</summary>
-    public Dictionary<string, bool> OverlayVisibleRows { get; set; } = new();
-}

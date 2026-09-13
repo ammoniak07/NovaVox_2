@@ -76,7 +76,15 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
+                        <!-- Mode de jeu : bascule d'un coup Game.log/wiki Gemini/
+                             ligne Zone de l'overlay/image de fond — indépendant des
+                             profils de commandes (menu déroulant plus bas), voir
+                             GameModeCombo_SelectionChanged (MainWindow.xaml.cs). -->
+                        <ComboBox x:Name="GameModeCombo" Width="150" SelectionChanged="GameModeCombo_SelectionChanged">
+                            <ComboBoxItem Content="🚀 Star Citizen" Tag="sc" />
+                            <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
+                        </ComboBox>
+                        <Button Content="🌟 Assistant Gemini" Margin="8,0,0,0" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
                         <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />

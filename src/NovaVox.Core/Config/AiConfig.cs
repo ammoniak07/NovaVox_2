@@ -36,7 +36,7 @@ public sealed class AiConfig
     public Dictionary<string, string> GameLogHudOverrides { get; set; } = new();
     public Dictionary<string, string> GameLogDestinationAliases { get; set; } = new();
     public bool GeminiEnabled { get; set; } = true;
-    /// <summary>Recherche de contexte sur le wiki Star Citizen (starcitizen.tools) avant de répondre — pertinent seulement pour ce jeu, désactivable pour un profil "autre jeux" (voir ProfileGameSettings).</summary>
+    /// <summary>Recherche de contexte sur le wiki Star Citizen (starcitizen.tools) avant de répondre — pertinent seulement pour ce jeu, décoché automatiquement par le sélecteur "Mode de jeu" (en-tête) sur "Autre jeu".</summary>
     public bool GeminiWikiEnabled { get; set; } = true;
     public string GeminiApiKey { get; set; } = "";
     public string GeminiModel { get; set; } = DefaultGeminiModel;
