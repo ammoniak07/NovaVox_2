@@ -1917,10 +1917,22 @@ public partial class MainWindow : Window
             return;
         }
 
-        MessageBox.Show(
-            this,
-            "Configuration importée. Ferme puis rouvre NovaVox pour appliquer les changements.",
-            "NovaVox");
+        // Reflète immédiatement les profils/commandes importés dans
+        // l'interface (ObservableCollection déjà liées à ProfileCombo/
+        // CommandsList) — sans quoi le nouveau profil n'apparaissait
+        // qu'après avoir fermé puis rouvert NovaVox.
+        _state.ReloadProfiles();
+        _state.ReloadCommands();
+        SelectActiveProfileInCombo();
+        UpdateCommandCount();
+
+        var message = result.ImportedProfileCount > 0
+            ? $"Configuration importée ({result.ImportedProfileCount} profil(s))."
+            : "Configuration importée.";
+        var settingsImported = result.Imported.Any(f => f is "ai_config.json" or "audio_config.json" or "overlay_config.json");
+        if (settingsImported)
+            message += " Rouvre les Réglages (ou redémarre NovaVox) pour voir les réglages Sons/IA/Overlay importés.";
+        MessageBox.Show(this, message, "NovaVox");
     }
 
     // --------------------------------------------------------- Mise à jour
