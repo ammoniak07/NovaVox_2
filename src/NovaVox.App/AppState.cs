@@ -31,7 +31,7 @@ public sealed class AppState
     /// par défaut (background.png/jpg/jpeg à côté de l'exécutable) — voir
     /// ProfileGameSettings.BackgroundImagePath / MainWindow.LoadPanelsBackgroundImage.
     /// </summary>
-    public string? ActiveProfileBackgroundImagePath { get; private set; }
+    public string? ActiveProfileBackgroundImagePath { get; set; }
 
     public ObservableCollection<VoiceCommandRow> Commands { get; } = new();
     public ObservableCollection<ProfileInfo> Profiles { get; } = new();
