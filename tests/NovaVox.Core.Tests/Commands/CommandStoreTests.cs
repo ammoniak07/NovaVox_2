@@ -64,6 +64,45 @@ public class CommandStoreTests : IDisposable
     }
 
     [Fact]
+    public void WriteProfile_ReadProfile_RoundTripsGameSettings()
+    {
+        var store = new CommandStore(_dir);
+        var id = store.NewProfileId();
+        var game = new ProfileGameSettings
+        {
+            GameLogEnabled = false,
+            GeminiWikiEnabled = false,
+            OverlayVisibleRows = new Dictionary<string, bool> { ["zone"] = false, ["time"] = true },
+            BackgroundImagePath = @"C:\images\autre_jeu.png",
+        };
+        store.WriteProfile(id, "Autre jeux", new List<VoiceCommand>(), game);
+
+        var (name, commands, reloaded) = store.ReadProfile(id);
+        Assert.Equal("Autre jeux", name);
+        Assert.Empty(commands);
+        Assert.False(reloaded.GameLogEnabled);
+        Assert.False(reloaded.GeminiWikiEnabled);
+        Assert.False(reloaded.OverlayVisibleRows["zone"]);
+        Assert.True(reloaded.OverlayVisibleRows["time"]);
+        Assert.Equal(@"C:\images\autre_jeu.png", reloaded.BackgroundImagePath);
+    }
+
+    [Fact]
+    public void ReadProfile_MissingGameKey_FallsBackToEnabledDefaults()
+    {
+        var store = new CommandStore(_dir);
+        var id = store.NewProfileId();
+        // Simule un profil écrit AVANT l'ajout de ProfileGameSettings (pas de clé "game").
+        File.WriteAllText(store.ProfilePath(id), """{"name": "Ancien profil", "commands": []}""");
+
+        var (_, _, game) = store.ReadProfile(id);
+        Assert.True(game.GameLogEnabled);
+        Assert.True(game.GeminiWikiEnabled);
+        Assert.Empty(game.OverlayVisibleRows);
+        Assert.Null(game.BackgroundImagePath);
+    }
+
+    [Fact]
     public void NormalizeCommands_ClampsRepeatCountAndDelay()
     {
         var json = System.Text.Json.Nodes.JsonNode.Parse(
@@ -96,7 +135,7 @@ public class CommandStoreTests : IDisposable
         Assert.Equal(2, profiles.Count);
         Assert.Contains(profiles, p => p.Name == "Combat" && p.Count == 1);
 
-        var (name, commands) = store.ReadProfile(newId);
+        var (name, commands, _) = store.ReadProfile(newId);
         Assert.Equal("Combat", name);
         Assert.Single(commands);
     }

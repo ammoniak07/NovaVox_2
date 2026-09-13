@@ -165,6 +165,21 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_GeminiWikiEnabledDefaultsToTrue()
+    {
+        var config = new AiConfigStore(_dir).Load();
+        Assert.True(config.GeminiWikiEnabled);
+    }
+
+    [Fact]
+    public void AiConfig_GeminiWikiEnabledRoundTripsFalse()
+    {
+        var store = new AiConfigStore(_dir);
+        store.Save(new AiConfig { GeminiWikiEnabled = false });
+        Assert.False(new AiConfigStore(_dir).Load().GeminiWikiEnabled);
+    }
+
+    [Fact]
     public void AiConfig_RoundTripsGameLogDictionaries()
     {
         var store = new AiConfigStore(_dir);

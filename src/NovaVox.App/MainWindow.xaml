@@ -129,6 +129,10 @@
                     <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
                     <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
                     <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
+                    <Button Content="🖼 Fond" Margin="16,0,0,0" Click="ChooseProfileBackground_Click"
+                            ToolTip="Image de fond propre à ce profil (remplace celle par défaut tant que ce profil est actif)" />
+                    <Button Content="✕ Fond" Margin="4,0,0,0" Click="ResetProfileBackground_Click"
+                            ToolTip="Revenir à l'image de fond par défaut pour ce profil" />
                 </StackPanel>
 
                 <Grid Grid.Row="1">
@@ -255,6 +259,12 @@
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
                                                         <Button Content="+ syn" Height="34" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
+                                                        <Button Content="{Binding ExtraStepsCountLabel}" Visibility="{Binding HasExtraSteps, Converter={StaticResource BoolToVis}}"
+                                                                Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource AccentBrush}"
+                                                                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Height="34" Margin="6,0,0,0"
+                                                                ToolTip="Afficher/masquer les étapes supplémentaires" Click="ToggleExtraSteps_Click" />
+                                                        <Button Content="+ étape" Height="34" Margin="6,0,0,0" Click="AddExtraStep_Click"
+                                                                ToolTip="Ajouter une étape : une suite de touches jouée après l'action principale" />
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="⌨️" />
                                                         <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
                                                             <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="16" />
@@ -278,6 +288,35 @@
                                                                 <Button Grid.Column="2" Style="{StaticResource DeleteIconButtonStyle}" Width="32" Height="30" Margin="4,0,0,0"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="DeleteSynonym_Click" ToolTip="Supprimer ce synonyme">
+                                                                    <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="14" />
+                                                                </Button>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <!-- Suite de touches jouées après l'action principale (ExtraStep) —
+                                                     même agencement que la liste de synonymes juste au-dessus. -->
+                                                <ItemsControl ItemsSource="{Binding ExtraSteps}" Visibility="{Binding ExtraStepsExpanded, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="26,2,0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center">
+                                                                    <Run Text="{Binding Keys, Mode=OneWay}" FontFamily="Consolas" />
+                                                                    <Run Text=" — délai " />
+                                                                    <Run Text="{Binding DelayBefore, Mode=OneWay, StringFormat={}{0:F1}s}" />
+                                                                </TextBlock>
+                                                                <Button Grid.Column="1" Width="32" Height="30" Padding="0" FontSize="14"
+                                                                        Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
+                                                                        Click="EditExtraStep_Click" ToolTip="Modifier cette étape" Content="✏️" />
+                                                                <Button Grid.Column="2" Style="{StaticResource DeleteIconButtonStyle}" Width="32" Height="30" Margin="4,0,0,0"
+                                                                        Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
+                                                                        Click="DeleteExtraStep_Click" ToolTip="Supprimer cette étape">
                                                                     <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="14" />
                                                                 </Button>
                                                             </Grid>
@@ -481,6 +520,9 @@
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
+                                <CheckBox x:Name="GeminiWikiEnabledCheckbox" Content="Rechercher du contexte sur le wiki Star Citizen" Margin="0,6,0,0"
+                                          ToolTip="À désactiver pour un profil sans rapport avec Star Citizen (voir Profil > 🕹 Autre jeu)."
+                                          Checked="GeminiWikiEnabledCheckbox_Changed" Unchecked="GeminiWikiEnabledCheckbox_Changed" />
                                 <TextBlock Text="Clé API" Margin="0,12,0,4" />
                                 <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
                                 <TextBlock Text="Modèle" Margin="0,12,0,4" />
@@ -935,7 +977,7 @@
 
                     <CheckBox x:Name="KbHoldCheckbox" Grid.Row="3" Content="Maintenir la touche 2 secondes (au lieu d'un appui bref)" Margin="0,0,0,8" />
 
-                    <StackPanel Grid.Row="4" Margin="0,0,0,10">
+                    <StackPanel x:Name="KbRepeatSection" Grid.Row="4" Margin="0,0,0,10">
                         <CheckBox x:Name="KbRepeatCheckbox" Content="Répéter la touche plusieurs fois" Checked="KbRepeatCheckbox_Changed" Unchecked="KbRepeatCheckbox_Changed" />
                         <StackPanel x:Name="KbRepeatFields" Orientation="Horizontal" Margin="20,6,0,0" Visibility="Collapsed">
                             <TextBlock Text="Répétitions :" VerticalAlignment="Center" />

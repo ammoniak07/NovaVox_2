@@ -100,7 +100,7 @@ public sealed class GeminiClient
         }
 
         var gameStateBlock = GameLogStateProvider is not null ? GameStatePrompt.ToPromptBlock(GameLogStateProvider()) : "";
-        var wikiBlock = question.Length > 0
+        var wikiBlock = Config.GeminiWikiEnabled && question.Length > 0
             ? await BuildWikiReferenceBlockAsync(question, apiKey, used, limit).ConfigureAwait(false)
             : "";
 

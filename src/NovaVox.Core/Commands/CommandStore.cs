@@ -189,8 +189,8 @@ public sealed class CommandStore
         }
         try
         {
-            var (name, _) = ReadProfile(ActiveProfileId);
-            WriteProfile(ActiveProfileId, name, commands);
+            var (name, _, game) = ReadProfile(ActiveProfileId);
+            WriteProfile(ActiveProfileId, name, commands, game);
         }
         catch
         {
@@ -216,16 +216,52 @@ public sealed class CommandStore
         }
     }
 
-    public void WriteProfile(string profileId, string displayName, List<VoiceCommand> commands)
+    public void WriteProfile(string profileId, string displayName, List<VoiceCommand> commands, ProfileGameSettings? game = null)
     {
         var path = ProfilePath(profileId);
         var tmp = path + ".tmp";
-        var obj = new JsonObject { ["name"] = displayName, ["commands"] = CommandsToJson(commands) };
+        var obj = new JsonObject
+        {
+            ["name"] = displayName,
+            ["commands"] = CommandsToJson(commands),
+            ["game"] = GameSettingsToJson(game ?? new ProfileGameSettings()),
+        };
         File.WriteAllText(tmp, obj.ToJsonString(WriteOptions));
         File.Move(tmp, path, overwrite: true); // écriture atomique
     }
 
-    public (string Name, List<VoiceCommand> Commands) ReadProfile(string profileId)
+    /// <summary>Port JSON de ProfileGameSettings — clé "game" du fichier de profil, à côté de "commands".</summary>
+    public static JsonObject GameSettingsToJson(ProfileGameSettings game)
+    {
+        var rows = new JsonObject();
+        foreach (var (key, value) in game.OverlayVisibleRows) rows[key] = value;
+        return new JsonObject
+        {
+            ["game_log_enabled"] = game.GameLogEnabled,
+            ["gemini_wiki_enabled"] = game.GeminiWikiEnabled,
+            ["overlay_visible_rows"] = rows,
+            ["background_image_path"] = game.BackgroundImagePath,
+        };
+    }
+
+    /// <summary>Absente (profil créé avant cette fonctionnalité) : réglages par défaut, comportement inchangé pour un profil existant.</summary>
+    public static ProfileGameSettings ParseGameSettings(JsonObject? data)
+    {
+        var game = new ProfileGameSettings();
+        if (data is null) return game;
+        game.GameLogEnabled = GetBool(data["game_log_enabled"], true);
+        game.GeminiWikiEnabled = GetBool(data["gemini_wiki_enabled"], true);
+        if (data["overlay_visible_rows"] is JsonObject rows)
+        {
+            foreach (var kv in rows)
+                if (kv.Value is not null) game.OverlayVisibleRows[kv.Key] = GetBool(kv.Value, true);
+        }
+        var bg = GetStringOrNull(data["background_image_path"]);
+        game.BackgroundImagePath = string.IsNullOrWhiteSpace(bg) ? null : bg;
+        return game;
+    }
+
+    public (string Name, List<VoiceCommand> Commands, ProfileGameSettings Game) ReadProfile(string profileId)
     {
         var path = ProfilePath(profileId);
         var data = JsonNode.Parse(StripBom(File.ReadAllText(path)));
@@ -233,10 +269,10 @@ public sealed class CommandStore
         {
             var name = GetString(obj["name"]);
             if (string.IsNullOrWhiteSpace(name)) name = profileId;
-            return (name.Trim(), NormalizeCommands(obj["commands"]));
+            return (name.Trim(), NormalizeCommands(obj["commands"]), ParseGameSettings(obj["game"] as JsonObject));
         }
         // Tolère un fichier qui ne serait qu'une liste brute.
-        return (profileId, NormalizeCommands(data));
+        return (profileId, NormalizeCommands(data), new ProfileGameSettings());
     }
 
     public List<ProfileInfo> ListProfiles()
@@ -249,7 +285,7 @@ public sealed class CommandStore
             var pid = Path.GetFileNameWithoutExtension(path);
             try
             {
-                var (name, commands) = ReadProfile(pid);
+                var (name, commands, _) = ReadProfile(pid);
                 var count = commands.Count(c => !c.IsTitle);
                 result.Add(new ProfileInfo { Id = pid, Name = name, Count = count });
             }
@@ -295,7 +331,14 @@ public sealed class CommandStore
     /// les commandes actuelles de commands.json. Retourne l'id du profil
     /// créé, ou null si des profils existaient déjà.
     /// </summary>
-    public string? EnsureProfilesMigrated()
+    /// <param name="currentGameSettings">
+    /// Réglages jeu (Game.log/wiki Gemini/lignes overlay) actuellement en
+    /// vigueur (ai_config.json/overlay_config.json), à figer dans ce
+    /// premier profil migré — sinon il repartirait sur les valeurs par
+    /// défaut de ProfileGameSettings au lieu de ce que l'utilisateur a
+    /// déjà configuré. Passer null pour les valeurs par défaut (tests).
+    /// </param>
+    public string? EnsureProfilesMigrated(ProfileGameSettings? currentGameSettings = null)
     {
         Directory.CreateDirectory(ProfilesDir);
         var existingFiles = Directory.EnumerateFiles(ProfilesDir, "*.json")
@@ -305,7 +348,7 @@ public sealed class CommandStore
 
         var commands = LoadCommands();
         var pid = NewProfileId();
-        WriteProfile(pid, DefaultProfileName, commands);
+        WriteProfile(pid, DefaultProfileName, commands, currentGameSettings);
         SaveActiveProfileId(pid);
         return pid;
     }

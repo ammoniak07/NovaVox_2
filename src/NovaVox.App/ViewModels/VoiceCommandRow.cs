@@ -56,7 +56,8 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
 
     public ObservableCollection<string> Synonyms { get; } = new();
 
-    public List<ExtraStep> ExtraSteps { get; set; } = new();
+    /// <summary>Suite de touches jouées après l'action principale (jusqu'à CommandStore.MaxCommandExtraSteps) — voir AddExtraStep_Click/OpenKeyboardForExtraStep (MainWindow.xaml.cs).</summary>
+    public ObservableCollection<ExtraStep> ExtraSteps { get; } = new();
 
     private bool _synonymsExpanded;
     /// <summary>État d'affichage (repliée/dépliée) de la liste de synonymes — jamais persisté, purement pour l'UI (voir toggle-syn, script.js).</summary>
@@ -64,6 +65,13 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
 
     public bool HasSynonyms => Synonyms.Count > 0;
     public string SynonymsCountLabel => $"{(SynonymsExpanded ? "▾" : "▸")} {Synonyms.Count} syn";
+
+    private bool _extraStepsExpanded;
+    /// <summary>État d'affichage (repliée/dépliée) de la liste d'étapes supplémentaires — jamais persisté, purement pour l'UI (même principe que SynonymsExpanded).</summary>
+    public bool ExtraStepsExpanded { get => _extraStepsExpanded; set { _extraStepsExpanded = value; Raise(); Raise(nameof(ExtraStepsCountLabel)); } }
+
+    public bool HasExtraSteps => ExtraSteps.Count > 0;
+    public string ExtraStepsCountLabel => $"{(ExtraStepsExpanded ? "▾" : "▸")} {ExtraSteps.Count} étape(s)";
 
     private bool _isDropTargetTop;
     /// <summary>État d'affichage (survol pendant un glisser) — jamais persisté, purement pour l'UI.</summary>
@@ -85,6 +93,7 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     public VoiceCommandRow()
     {
         Synonyms.CollectionChanged += (_, _) => { Raise(nameof(HasSynonyms)); Raise(nameof(SynonymsCountLabel)); };
+        ExtraSteps.CollectionChanged += (_, _) => { Raise(nameof(HasExtraSteps)); Raise(nameof(ExtraStepsCountLabel)); };
     }
 
     public static VoiceCommandRow FromModel(VoiceCommand cmd)
@@ -97,10 +106,10 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
             Hold = cmd.Hold,
             RepeatCount = cmd.RepeatCount,
             RepeatDelay = cmd.RepeatDelay,
-            ExtraSteps = new List<ExtraStep>(cmd.ExtraSteps),
             IsCollapsed = cmd.Collapsed,
         };
         foreach (var s in cmd.Synonyms) row.Synonyms.Add(s);
+        foreach (var step in cmd.ExtraSteps) row.ExtraSteps.Add(step);
         return row;
     }
 
@@ -113,7 +122,7 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
         RepeatCount = RepeatCount,
         RepeatDelay = RepeatDelay,
         Synonyms = Synonyms.ToList(),
-        ExtraSteps = ExtraSteps,
+        ExtraSteps = ExtraSteps.ToList(),
         Collapsed = IsCollapsed,
     };
 }

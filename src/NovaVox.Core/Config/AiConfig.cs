@@ -36,6 +36,8 @@ public sealed class AiConfig
     public Dictionary<string, string> GameLogHudOverrides { get; set; } = new();
     public Dictionary<string, string> GameLogDestinationAliases { get; set; } = new();
     public bool GeminiEnabled { get; set; } = true;
+    /// <summary>Recherche de contexte sur le wiki Star Citizen (starcitizen.tools) avant de répondre — pertinent seulement pour ce jeu, désactivable pour un profil "autre jeux" (voir ProfileGameSettings).</summary>
+    public bool GeminiWikiEnabled { get; set; } = true;
     public string GeminiApiKey { get; set; } = "";
     public string GeminiModel { get; set; } = DefaultGeminiModel;
     public string GeminiName { get; set; } = DefaultGeminiName;
@@ -92,6 +94,7 @@ public sealed class AiConfigStore
                 GetDouble(data["piper_noise_scale"]) ?? AiConfig.DefaultPiperNoiseScale, 0.0, 1.5);
             config.RadioEffect = GetBool(data["radio_effect"], AiConfig.DefaultRadioEffect);
             config.GeminiEnabled = GetBool(data["gemini_enabled"], true);
+            config.GeminiWikiEnabled = GetBool(data["gemini_wiki_enabled"], true);
             config.GameLogEnabled = GetBool(data["game_log_enabled"]);
             config.GameLogAnnounceEvents = GetBool(data["game_log_announce_events"], true);
             config.GameLogPlayerHandle = GetString(data["game_log_player_handle"]).Trim();
@@ -146,6 +149,7 @@ public sealed class AiConfigStore
             ["game_log_hud_overrides"] = FromStringDict(config.GameLogHudOverrides),
             ["game_log_destination_aliases"] = FromStringDict(config.GameLogDestinationAliases),
             ["gemini_enabled"] = config.GeminiEnabled,
+            ["gemini_wiki_enabled"] = config.GeminiWikiEnabled,
             ["gemini_api_key"] = config.GeminiApiKey,
             ["gemini_model"] = config.GeminiModel,
             ["gemini_name"] = config.GeminiName,

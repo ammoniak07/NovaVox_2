@@ -8,6 +8,8 @@ v0.0.2
 - Journalisation nettement étoffée (dossier Log/) pour faciliter le diagnostic en cas de problème : actions utilisateur, réglages modifiés, touches envoyées, erreurs auparavant silencieuses.
 - Liste des commandes : recherche par phrase/touche/synonyme. 
 - Chaque titre peut être replié/déplié comme un tiroir (état conservé au redémarrage).
+- Chaque profil peut avoir ses propres réglages de jeu : surveillance du Game.log, recherche Gemini sur le wiki Star Citizen, lignes affichées dans l'overlay (ex. masquer Zone) et image de fond — bascule automatiquement en changeant de profil (bouton 🖼 Fond à côté du sélecteur).
+- Ajout de la possibilité de créer une commande qui joue une suite de touches (bouton "+ étape").
 v0.0.1
 ------
 - Première version de la réédition .NET/WPF de NovaVox (portage complet depuis la version Python/pywebview d'origine, avec sa propre numérotation de version).

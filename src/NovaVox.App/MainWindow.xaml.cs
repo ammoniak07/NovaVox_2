@@ -925,6 +925,79 @@ public partial class MainWindow : Window
         if (row is not null) OpenKeyboardForCommand(row);
     }
 
+    // ----------------------------------- Étapes supplémentaires (ExtraStep)
+
+    private void ToggleExtraSteps_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is not null) row.ExtraStepsExpanded = !row.ExtraStepsExpanded;
+    }
+
+    private void AddExtraStep_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null) return;
+        if (row.ExtraSteps.Count >= CommandStore.MaxCommandExtraSteps)
+        {
+            MessageBox.Show(this, $"Maximum {CommandStore.MaxCommandExtraSteps} étapes supplémentaires par commande.", "NovaVox");
+            return;
+        }
+        OpenKeyboardForExtraStep(row, existingIndex: null);
+    }
+
+    private void EditExtraStep_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: VoiceCommandRow row, DataContext: ExtraStep step }) return;
+        var idx = row.ExtraSteps.IndexOf(step);
+        if (idx >= 0) OpenKeyboardForExtraStep(row, idx);
+    }
+
+    private void DeleteExtraStep_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: VoiceCommandRow row, DataContext: ExtraStep step }) return;
+        row.ExtraSteps.Remove(step);
+        ScheduleCommandsSave();
+        AppendLog($"Étape supprimée de « {row.Phrase} ».", "diagnostic");
+    }
+
+    /// <summary>
+    /// Réutilise le clavier interactif de la touche principale (Hold/Répéter
+    /// masqués : une étape n'a ni l'un ni l'autre, voir ExtraStep) pour
+    /// choisir la ou les touches de l'étape, puis demande le délai avant
+    /// qu'elle ne soit jouée via une simple boîte de dialogue (pas de champ
+    /// dédié dans le clavier, pour rester une modification contenue).
+    /// </summary>
+    private void OpenKeyboardForExtraStep(VoiceCommandRow row, int? existingIndex)
+    {
+        _kbCaptureCts?.Cancel();
+        _kbMouseCaptureCts?.Cancel();
+
+        var existing = existingIndex is int existingIdx ? row.ExtraSteps[existingIdx] : null;
+        ParseKeysIntoState(existing?.Keys ?? "");
+
+        KbHoldCheckbox.IsChecked = false;
+        KbRepeatCheckbox.IsChecked = false;
+        KbRepeatFields.Visibility = Visibility.Collapsed;
+        KbHoldCheckbox.Visibility = Visibility.Collapsed;
+        KbRepeatSection.Visibility = Visibility.Collapsed;
+
+        _kbOnConfirm = (combo, _, _, _) =>
+        {
+            var defaultDelay = existing?.DelayBefore ?? CommandStore.DefaultExtraStepDelay;
+            var delayText = InputDialog.Show(this, "Délai avant cette étape (secondes) :", defaultDelay.ToString(System.Globalization.CultureInfo.CurrentCulture));
+            var delay = delayText is null ? defaultDelay : Math.Max(0.0, ParseDoubleOr(delayText, defaultDelay));
+            var step = new ExtraStep { Keys = combo, DelayBefore = delay };
+            if (existingIndex is int idx) row.ExtraSteps[idx] = step; else row.ExtraSteps.Add(step);
+            row.ExtraStepsExpanded = true;
+            ScheduleCommandsSave();
+            AppendLog($"Étape « {combo} » ({delay:F1}s) {(existingIndex is null ? "ajoutée à" : "modifiée sur")} « {row.Phrase} ».", "diagnostic");
+        };
+
+        UpdateKbLayoutButtonHighlight();
+        RefreshKeyboardHighlight();
+        KeyboardOverlay.Visibility = Visibility.Visible;
+    }
+
     private void CloseKeyboard_Click(object sender, RoutedEventArgs e) => CloseKeyboardOverlay();
 
     private void KbCancel_Click(object sender, RoutedEventArgs e) => CloseKeyboardOverlay();
@@ -935,6 +1008,13 @@ public partial class MainWindow : Window
         _kbMouseCaptureCts?.Cancel();
         _kbOnConfirm = null;
         KeyboardOverlay.Visibility = Visibility.Collapsed;
+        // Au cas où une étape supplémentaire (OpenKeyboardForExtraStep) les
+        // avait masqués et que l'utilisateur a annulé au lieu de confirmer
+        // (KbConfirm_Click ne passe pas par ici, voir sa propre restauration) :
+        // la prochaine ouverture (touche principale d'une commande) doit les
+        // retrouver visibles.
+        KbHoldCheckbox.Visibility = Visibility.Visible;
+        KbRepeatSection.Visibility = Visibility.Visible;
     }
 
     private void KbClear_Click(object sender, RoutedEventArgs e)
@@ -961,6 +1041,11 @@ public partial class MainWindow : Window
         _kbMouseCaptureCts?.Cancel();
         _kbOnConfirm = null;
         KeyboardOverlay.Visibility = Visibility.Collapsed;
+        // Restaure Hold/Répéter avant d'invoquer le callback (pas après) :
+        // au cas où celui-ci rouvrirait immédiatement le clavier (pas le
+        // cas actuellement, mais évite une dépendance à l'ordre).
+        KbHoldCheckbox.Visibility = Visibility.Visible;
+        KbRepeatSection.Visibility = Visibility.Visible;
         onConfirm?.Invoke(combo, hold, repeatCount, repeatDelay);
     }
 
@@ -1067,6 +1152,18 @@ public partial class MainWindow : Window
         // changement de profil. Repointe explicitement vers la nouvelle
         // instance correspondante.
         SelectActiveProfileInCombo();
+        // Les réglages jeu (Game.log, wiki Gemini, lignes overlay, image de
+        // fond) viennent d'être réappliqués par SwitchProfile — reflète-les
+        // dans l'interface : Réglages (si ouverts), surveillance Game.log
+        // réellement démarrée/arrêtée (pas juste la case cochée/décochée —
+        // LoadSettingsIntoControls la met à jour SANS déclencher
+        // GameLogEnabledCheckbox_Changed, protégé par _loadingSettings),
+        // overlay déjà affiché, image de fond.
+        LoadSettingsIntoControls();
+        if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
+        RefreshGameLogStatus();
+        _overlayWindow?.LoadFromConfig();
+        LoadPanelsBackgroundImage();
         AppendLog($"Profil actif : « {profile.Name} ».", "info");
     }
 
@@ -1088,9 +1185,9 @@ public partial class MainWindow : Window
         if (ProfileCombo.SelectedItem is not ProfileInfo profile) return;
         var name = InputDialog.Show(this, "Nouveau nom du profil :", profile.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
-        var (_, commands) = _state.CommandStore.ReadProfile(profile.Id);
+        var (_, commands, game) = _state.CommandStore.ReadProfile(profile.Id);
         var oldName = profile.Name;
-        _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands);
+        _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands, game);
         _state.ReloadProfiles();
         SelectActiveProfileInCombo();
         AppendLog($"Profil renommé : « {oldName} » → « {name.Trim()} ».", "success");
@@ -1112,12 +1209,39 @@ public partial class MainWindow : Window
         _state.ReloadProfiles();
 
         if (wasActive && _state.Profiles.Count > 0)
+        {
             _state.SwitchProfile(_state.Profiles[0].Id);
+            LoadSettingsIntoControls();
+            if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
+            RefreshGameLogStatus();
+            _overlayWindow?.LoadFromConfig();
+            LoadPanelsBackgroundImage();
+        }
 
         CommandsList.ItemsSource = null;
         InitializeCommandsList();
         SelectActiveProfileInCombo();
         AppendLog($"Profil supprimé : « {profile.Name} ».", "success");
+    }
+
+    private void ChooseProfileBackground_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Choisir une image de fond pour ce profil", Filter = "Images (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg" };
+        if (dialog.ShowDialog(this) != true) return;
+
+        _state.ActiveProfileBackgroundImagePath = dialog.FileName;
+        _state.SaveCurrentProfileGameSettings();
+        LoadPanelsBackgroundImage();
+        AppendLog($"Image de fond du profil « {(ProfileCombo.SelectedItem as ProfileInfo)?.Name} » mise à jour.", "success");
+    }
+
+    private void ResetProfileBackground_Click(object sender, RoutedEventArgs e)
+    {
+        if (_state.ActiveProfileBackgroundImagePath is null) return;
+        _state.ActiveProfileBackgroundImagePath = null;
+        _state.SaveCurrentProfileGameSettings();
+        LoadPanelsBackgroundImage();
+        AppendLog($"Image de fond du profil « {(ProfileCombo.SelectedItem as ProfileInfo)?.Name} » réinitialisée (image par défaut).", "info");
     }
 
     private static (int X, int Y, int W, int H)? VirtualScreenBounds()
@@ -1208,6 +1332,7 @@ public partial class MainWindow : Window
 
             var ai = _state.Ai;
             GeminiEnabledCheckbox.IsChecked = ai.GeminiEnabled;
+            GeminiWikiEnabledCheckbox.IsChecked = ai.GeminiWikiEnabled;
             GeminiApiKeyBox.Text = ai.GeminiApiKey;
             if (GeminiModelCombo.ItemsSource is null) GeminiModelCombo.ItemsSource = GeminiModels.AvailableModels;
             GeminiModelCombo.SelectedItem = GeminiModels.AvailableModels.FirstOrDefault(m => m.Id == ai.GeminiModel) ?? GeminiModels.AvailableModels[0];
@@ -1465,6 +1590,14 @@ public partial class MainWindow : Window
         SaveAiAndLog();
     }
 
+    private void GeminiWikiEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Ai.GeminiWikiEnabled = GeminiWikiEnabledCheckbox.IsChecked ?? false;
+        SaveAiAndLog();
+        _state.SaveCurrentProfileGameSettings();
+    }
+
     private void GeminiApiKeyBox_LostFocus(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
@@ -1565,6 +1698,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GameLogEnabled = GameLogEnabledCheckbox.IsChecked ?? false;
         SaveAiAndLog();
+        _state.SaveCurrentProfileGameSettings();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
     }
@@ -1856,16 +1990,21 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Image de fond affichée derrière les listes Commandes/Journal
-    /// (raccourcies pour la révéler, voir MainWindow.xaml) — lue directement
-    /// depuis un fichier local plutôt qu'embarquée dans l'appli, pour que
-    /// l'utilisateur puisse la changer en déposant simplement un fichier
-    /// "background.jpg" ou "background.png" à côté de NovaVox.exe, sans
-    /// recompiler. Absente : rien ne s'affiche.
+    /// (raccourcies pour la révéler, voir MainWindow.xaml). Priorité à
+    /// l'image propre au profil actif (voir ChooseProfileBackground_Click),
+    /// sinon lue depuis un fichier local plutôt qu'embarquée dans l'appli,
+    /// pour que l'utilisateur puisse la changer en déposant simplement un
+    /// fichier "background.jpg" ou "background.png" à côté de NovaVox.exe,
+    /// sans recompiler. Ni l'un ni l'autre : rien ne s'affiche. Réappelée
+    /// à chaque changement de profil (voir ProfileCombo_SelectionChanged) :
+    /// remet explicitement Source (même null) pour effacer une image
+    /// propre à l'ancien profil si le nouveau n'en a pas.
     /// </summary>
     private void LoadPanelsBackgroundImage()
     {
-        var bitmap = TryLoadLocalImage("background.jpg", "background.jpeg", "background.png");
-        if (bitmap is not null) PanelsBackgroundImage.Source = bitmap;
+        var overridePath = _state.ActiveProfileBackgroundImagePath;
+        var bitmap = overridePath is not null && File.Exists(overridePath) ? LoadBitmapFromFile(overridePath) : null;
+        PanelsBackgroundImage.Source = bitmap ?? TryLoadLocalImage("background.jpg", "background.jpeg", "background.png");
     }
 
     /// <summary>
@@ -1888,8 +2027,11 @@ public partial class MainWindow : Window
         var path = fileNames
             .Select(name => Path.Combine(NovaVoxPaths.BaseDirectory, name))
             .FirstOrDefault(File.Exists);
-        if (path is null) return null;
+        return path is null ? null : LoadBitmapFromFile(path);
+    }
 
+    private BitmapImage? LoadBitmapFromFile(string path)
+    {
         try
         {
             var bitmap = new BitmapImage();
@@ -2082,6 +2224,16 @@ public partial class MainWindow : Window
     private void InitializeOverlay()
     {
         _overlayWindow = new OverlayWindow(_state.OverlayConfigStore);
+        // L'overlay écrit directement dans OverlayConfigStore (case à
+        // cocher par ligne, voir OverlayWindow.RowVisibilityCheckbox_Changed)
+        // sans passer par _state.Overlay : recharge l'état en mémoire avant
+        // de le recopier dans le profil actif, sinon SaveCurrentProfileGameSettings
+        // écrirait l'ancienne valeur (périmée) de _state.Overlay.VisibleRows.
+        _overlayWindow.RowVisibilityChanged += () =>
+        {
+            _state.ReloadOverlay();
+            _state.SaveCurrentProfileGameSettings();
+        };
         _overlayWindow.LoadFromConfig();
         // État initial explicite : au lancement, l'écoute n'a pas encore été
         // démarrée (VoiceOrchestrator ne préviendra qu'au premier Start/Stop),

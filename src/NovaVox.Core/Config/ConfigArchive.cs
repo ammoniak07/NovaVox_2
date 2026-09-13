@@ -129,8 +129,8 @@ public static class ConfigArchive
             try
             {
                 var importedCommands = commandStore.LoadCommands();
-                var (name, _) = commandStore.ReadProfile(commandStore.ActiveProfileId);
-                commandStore.WriteProfile(commandStore.ActiveProfileId, name, importedCommands);
+                var (name, _, game) = commandStore.ReadProfile(commandStore.ActiveProfileId);
+                commandStore.WriteProfile(commandStore.ActiveProfileId, name, importedCommands, game);
             }
             catch
             {
