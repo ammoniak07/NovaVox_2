@@ -61,6 +61,15 @@
     <Content Include="..\..\background.jpg" Link="background.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background.jpg')" />
     <Content Include="..\..\background.jpeg" Link="background.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background.jpeg')" />
     <Content Include="..\..\background.png" Link="background.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background.png')" />
+
+    <!-- Même principe pour l'image de fond du mode "Autre jeu" (voir
+         GameModeCombo_SelectionChanged/LoadPanelsBackgroundImage,
+         MainWindow.xaml.cs) : sans ces entrées, background2.* restait à la
+         racine du dépôt mais n'était jamais copié à côté de NovaVox.exe,
+         donc jamais trouvé au lancement. -->
+    <Content Include="..\..\background2.jpg" Link="background2.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background2.jpg')" />
+    <Content Include="..\..\background2.jpeg" Link="background2.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background2.jpeg')" />
+    <Content Include="..\..\background2.png" Link="background2.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background2.png')" />
   </ItemGroup>
 
 </Project>
