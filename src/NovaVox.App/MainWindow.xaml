@@ -34,7 +34,7 @@
         </Style>
         <Style x:Key="DeleteIconGlyphStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
             <Setter Property="Text" Value="&#xE74D;" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -50,7 +50,7 @@
             </Grid.RowDefinitions>
 
             <!-- En-tête -->
-            <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Border Grid.Row="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                 <Grid Margin="16,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -63,16 +63,16 @@
                              présente — même mécanisme que l'image de fond des
                              listes Commandes/Journal. -->
                         <Grid Width="60" Height="60" VerticalAlignment="Center">
-                            <Border x:Name="DefaultLogoBadge" CornerRadius="30" Background="{StaticResource PanelAltBrush}"
-                                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="3">
-                                <Path Fill="{StaticResource AccentBrush}" Stretch="Uniform" Width="26" Height="26"
+                            <Border x:Name="DefaultLogoBadge" CornerRadius="30" Background="{DynamicResource PanelAltBrush}"
+                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="3">
+                                <Path Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="26" Height="26"
                                       Data="M 0.5,0 L 1,0.28 L 1,0.72 L 0.5,1 L 0,0.72 L 0,0.28 Z" />
                             </Border>
                             <Image x:Name="AppLogoImage" Stretch="Uniform" Visibility="Collapsed" />
                         </Grid>
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="NOVAVOX" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
-                            <TextBlock Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{StaticResource MutedBrush}" />
+                            <TextBlock Text="NOVAVOX" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                            <TextBlock Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -87,7 +87,7 @@
             </Border>
 
             <!-- Barre de statut + bouton d'engagement -->
-            <Border Grid.Row="1" Margin="16,16,16,0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+            <Border Grid.Row="1" Margin="16,16,16,0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="8" Padding="18,14">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -95,10 +95,10 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Ellipse x:Name="StatusDot" Width="14" Height="14" Fill="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                        <Ellipse x:Name="StatusDot" Width="14" Height="14" Fill="{DynamicResource MutedBrush}" VerticalAlignment="Center" />
                         <StackPanel Margin="12,0,0,0">
                             <TextBlock x:Name="StatusLabelText" Text="Arrêté" FontWeight="Bold" />
-                            <TextBlock x:Name="StatusText" Text="Système en veille" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0" />
+                            <TextBlock x:Name="StatusText" Text="Système en veille" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
                         </StackPanel>
                     </StackPanel>
                     <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Engager l'écoute" Style="{StaticResource AccentPillButtonStyle}" Click="ListenToggleButton_Click" />
@@ -162,13 +162,13 @@
                         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
-                                <TextBlock x:Name="CommandCountText" Text="0" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" FontSize="12" />
+                                <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
                             </Border>
                             <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
                             <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
                         </StackPanel>
 
-                        <Border x:Name="CommandsCard" Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource PanelBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                        <Border x:Name="CommandsCard" Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource PanelBrush50}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  AllowDrop="True" PreviewMouseMove="CommandsList_PreviewMouseMove" PreviewMouseLeftButtonUp="CommandsList_PreviewMouseLeftButtonUp"
                                  DragOver="CommandsList_DragOver" DragLeave="CommandsList_DragLeave" Drop="CommandsList_Drop">
@@ -178,7 +178,7 @@
                                         <!-- Ligne "titre de groupe" : fond teinté (AccentDimBrush) pour bien
                                              se distinguer des lignes de commande, texte centré. -->
                                         <Border Visibility="{Binding IsTitle, Converter={StaticResource BoolToVis}}"
-                                                Background="{StaticResource AccentDimBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
+                                                Background="{DynamicResource AccentDimBrush}" CornerRadius="4" Padding="8,6" Margin="0,4">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
@@ -187,11 +187,11 @@
                                                 </Grid.ColumnDefinitions>
                                                 <Border Grid.Column="0" Width="30" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Stretch"
                                                         ToolTip="Glisser pour réordonner" MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
-                                                    <Path Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
+                                                    <Path Data="{StaticResource DragHandleGeometry}" Fill="{DynamicResource MutedBrush}"
                                                           Width="14" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
                                                 <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}" TextAlignment="Center"
-                                                         Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
+                                                         Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                                                     <Button Width="34" Height="34" Padding="0" FontSize="15" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
                                                     <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
@@ -204,7 +204,7 @@
 
                                         <!-- Ligne "commande" -->
                                         <Border Visibility="{Binding IsCommand, Converter={StaticResource BoolToVis}}"
-                                                Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                                                 CornerRadius="4" Padding="8" Margin="0,3">
                                             <StackPanel>
                                                 <Grid>
@@ -218,21 +218,21 @@
 
                                                     <Border Grid.Column="0" Width="30" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Stretch"
                                                             ToolTip="Glisser pour réordonner" MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
-                                                        <Path Data="{StaticResource DragHandleGeometry}" Fill="{StaticResource MutedBrush}"
+                                                        <Path Data="{StaticResource DragHandleGeometry}" Fill="{DynamicResource MutedBrush}"
                                                               Width="14" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </Border>
 
                                                     <Button Grid.Column="1" Content="{Binding KeysDisplayWithBadges}" FontFamily="Consolas" FontWeight="Bold"
-                                                            Background="{StaticResource PanelBrush}" Foreground="{StaticResource AccentBrush}"
-                                                            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" Padding="8,3" Margin="0,0,8,0"
+                                                            Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource AccentBrush}"
+                                                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="8,3" Margin="0,0,8,0"
                                                             ToolTip="Cliquer pour choisir la ou les touches (clavier interactif)" Click="CommandKeysButton_Click" />
 
                                                     <TextBox Grid.Column="2" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}"
                                                              ToolTip="Phrase à dire" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Margin="0,0,8,0" />
 
                                                     <Button Grid.Column="3" Content="{Binding SynonymsCountLabel}" Visibility="{Binding HasSynonyms, Converter={StaticResource BoolToVis}}"
-                                                            Background="{StaticResource PanelBrush}" Foreground="{StaticResource AccentBrush}"
-                                                            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                                            Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource AccentBrush}"
+                                                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
                                                             ToolTip="Afficher/masquer les synonymes" Click="ToggleSynonyms_Click" Margin="0,0,6,0" />
 
                                                     <StackPanel Grid.Column="4" Orientation="Horizontal">
@@ -256,7 +256,7 @@
                                                                     <ColumnDefinition Width="Auto" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0" Text="{Binding}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                                                                <TextBlock Grid.Column="0" Text="{Binding}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" />
                                                                 <Button Grid.Column="1" Width="32" Height="30" Padding="0" FontSize="14"
                                                                         Tag="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=DataContext}"
                                                                         Click="EditSynonym_Click" ToolTip="Modifier ce synonyme" Content="✏️" />
@@ -273,9 +273,9 @@
                                         </Border>
 
                                         <!-- Indicateurs visuels de dépôt pendant un glisser-déposer -->
-                                        <Border Height="3" Background="{StaticResource AccentBrush}" VerticalAlignment="Top" CornerRadius="2" IsHitTestVisible="False"
+                                        <Border Height="3" Background="{DynamicResource AccentBrush}" VerticalAlignment="Top" CornerRadius="2" IsHitTestVisible="False"
                                                 Visibility="{Binding IsDropTargetTop, Converter={StaticResource BoolToVis}}" />
-                                        <Border Height="3" Background="{StaticResource AccentBrush}" VerticalAlignment="Bottom" CornerRadius="2" IsHitTestVisible="False"
+                                        <Border Height="3" Background="{DynamicResource AccentBrush}" VerticalAlignment="Bottom" CornerRadius="2" IsHitTestVisible="False"
                                                 Visibility="{Binding IsDropTargetBottom, Converter={StaticResource BoolToVis}}" />
                                     </Grid>
                                 </DataTemplate>
@@ -304,7 +304,7 @@
                          l'espace sous la carte révèle l'image de fond,
                          comme sous la liste Commandes. -->
                     <Border x:Name="LogCard" Grid.Row="1" VerticalAlignment="Top" Height="{Binding ActualHeight, ElementName=CommandsCard}"
-                            Background="{StaticResource PanelAltBrush50}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                            Background="{DynamicResource PanelAltBrush50}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <!-- RichTextBox plutôt qu'un ItemsControl de TextBlock : permet de sélectionner/copier le texte du journal (IsReadOnly le protège en écriture). -->
                         <RichTextBox x:Name="LogList" IsReadOnly="True" IsDocumentEnabled="True" Background="Transparent" BorderThickness="0"
                                      FontFamily="Consolas" FontSize="12" Padding="8,4" VerticalScrollBarVisibility="Auto" />
@@ -322,19 +322,19 @@
             <Border Grid.Row="2" VerticalAlignment="Bottom" Padding="16,0,16,18" IsHitTestVisible="True">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock Text="NovaVox" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
+                        <TextBlock Text="NovaVox" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
                         <Button x:Name="FooterVersionButton" Content="v…" Margin="6,0,0,0" Padding="6,1" FontSize="11" Click="FooterVersionButton_Click" ToolTip="Voir les notes de mise à jour" />
-                        <TextBlock Text=" · Développé par " Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
-                        <TextBlock Text="Ammoniak007" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" VerticalAlignment="Center" FontSize="11" />
+                        <TextBlock Text=" · Développé par " Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" FontSize="11" />
+                        <TextBlock Text="Ammoniak007" Foreground="{DynamicResource MutedBrush}" FontWeight="Bold" VerticalAlignment="Center" FontSize="11" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,3,0,0">
                         <TextBlock FontSize="11">
-                            <Run Text="Support : 💬 " Foreground="{StaticResource MutedBrush}" />
+                            <Run Text="Support : 💬 " Foreground="{DynamicResource MutedBrush}" />
                             <Hyperlink NavigateUri="https://discord.gg/NhhhGKv7F" RequestNavigate="Hyperlink_RequestNavigate">Discord NovaVox</Hyperlink>
                         </TextBlock>
-                        <TextBlock Text="   ·   " Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                        <TextBlock Text="   ·   " Foreground="{DynamicResource MutedBrush}" FontSize="11" />
                         <TextBlock FontSize="11">
-                            <Run Text="📧 " Foreground="{StaticResource MutedBrush}" />
+                            <Run Text="📧 " Foreground="{DynamicResource MutedBrush}" />
                             <Hyperlink NavigateUri="mailto:appnovavox@outlook.fr" RequestNavigate="Hyperlink_RequestNavigate">appnovavox@outlook.fr</Hyperlink>
                         </TextBlock>
                     </StackPanel>
@@ -344,7 +344,7 @@
 
         <!-- Recouvrement "Réglages", ouvert/fermé par le bouton ⚙️ de l'en-tête — pas une fenêtre séparée -->
         <Border x:Name="SettingsOverlay" Background="#B3000000" Visibility="Collapsed">
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
                     Width="640" MaxHeight="820" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -368,9 +368,9 @@
                          Grid.Row="1" (au-dessus des onglets, pas par-dessus) : les
                          boutons d'installation de l'onglet Sons juste en dessous
                          doivent rester utilisables. -->
-                    <Border x:Name="FirstLaunchBanner" Grid.Row="1" Margin="16,0,16,4" Background="{StaticResource AccentDimBrush}"
-                            BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Visibility="Collapsed">
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextBrush}">
+                    <Border x:Name="FirstLaunchBanner" Grid.Row="1" Margin="16,0,16,4" Background="{DynamicResource AccentDimBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Visibility="Collapsed">
+                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}">
                             <Run Text="👋 Bienvenue !" FontWeight="Bold" />
                             <LineBreak />
                             <Run Text="Avant de pouvoir utiliser NovaVox, installe ci-dessous un modèle de reconnaissance vocale ET le moteur de synthèse Piper (onglet Sons)." />
@@ -382,24 +382,24 @@
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <TextBlock Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
-                                <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{StaticResource MutedBrush}"
+                                <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{DynamicResource MutedBrush}"
                                            TextWrapping="Wrap" Margin="0,0,0,4" />
                                 <ItemsControl x:Name="VoskModelsList" Margin="0,4,0,0">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
+                                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                                         <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}">
-                                                            <TextBlock Text="✅ Installé" Foreground="{StaticResource SuccessBrush}" FontWeight="Bold" FontSize="11" />
+                                                            <TextBlock Text="✅ Installé" Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold" FontSize="11" />
                                                         </Border>
                                                     </StackPanel>
-                                                    <TextBlock Text="{Binding Description}" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
                                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                                         <Button Content="{Binding InstallButtonLabel}" IsEnabled="{Binding CanInstall}" Click="InstallVoskModel_Click" />
                                                         <Button Content="Désinstaller" Margin="6,0,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="UninstallVoskModel_Click" />
-                                                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                        <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                                                     </StackPanel>
                                                 </StackPanel>
                                             </Border>
@@ -414,7 +414,7 @@
                                 <Slider x:Name="MicGainSlider" Minimum="0.1" Maximum="3.0" ValueChanged="MicGainSlider_ValueChanged" />
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                     <TextBlock Text="Seuil de sensibilité (couper le son sous ce niveau)" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="MicGateValueText" Text="Désactivé" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="MicGateValueText" Text="Désactivé" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <!-- Mètre de niveau micro en direct : fond = piste, MicLevelFillBar = niveau
                                      capté à l'instant (via MicLevelMonitor tant que les réglages sont ouverts
@@ -422,25 +422,25 @@
                                      VoiceOrchestrator.MicLevelChanged — voir StartMicLevelMonitorIfIdle,
                                      MainWindow.xaml.cs), MicGateMarkerLine = position du seuil réglé ci-dessous. -->
                                 <Grid x:Name="MicLevelMeterTrack" Height="16" Margin="0,6,0,6" ClipToBounds="True" SizeChanged="MicLevelMeterTrack_SizeChanged">
-                                    <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" />
-                                    <Border x:Name="MicLevelFillBar" Background="{StaticResource AccentBrush}" CornerRadius="4" HorizontalAlignment="Left" Width="0" />
-                                    <Border x:Name="MicGateMarkerLine" Background="{StaticResource DangerBrush}" Width="2" HorizontalAlignment="Left" />
+                                    <Border Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="4" />
+                                    <Border x:Name="MicLevelFillBar" Background="{DynamicResource AccentBrush}" CornerRadius="4" HorizontalAlignment="Left" Width="0" />
+                                    <Border x:Name="MicGateMarkerLine" Background="{DynamicResource DangerBrush}" Width="2" HorizontalAlignment="Left" />
                                 </Grid>
                                 <Slider x:Name="MicGateSlider" Minimum="0" Maximum="4000" ValueChanged="MicGateSlider_ValueChanged" />
                                 <TextBlock Text="Lance l'écoute (ou ouvre simplement ces réglages), regarde la barre pendant que la vidéo/le bruit joue, puis pendant que tu parles normalement. Règle le curseur juste au-dessus du niveau du bruit de fond mais en-dessous du niveau de ta voix — tout ce qui reste sous le curseur sera ignoré par la reconnaissance."
-                                           Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
 
                                 <TextBlock Text="Mode d'écoute" FontWeight="Bold" Margin="0,16,0,6" />
                                 <RadioButton x:Name="ListenAlwaysRadio" Content="Toujours active" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="always" />
                                 <RadioButton x:Name="ListenToggleRadio" Content="Touche bascule" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="toggle_key" Margin="0,4,0,0" />
                                 <RadioButton x:Name="ListenPttRadio" Content="Push-to-talk" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="push_to_talk" Margin="0,4,0,0" />
                                 <TextBlock Text="Touche assignée" FontWeight="SemiBold" Margin="0,6,0,2" />
-                                <TextBlock x:Name="ListenHotkeyValueText" Text="Non définie" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6" />
+                                <TextBlock x:Name="ListenHotkeyValueText" Text="Non définie" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6" />
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="CaptureJoystickButton" Content="🕹 Bouton joystick" Click="CaptureJoystickButton_Click" Margin="0,0,6,0" />
                                     <Button Content="Effacer" Click="ClearListenHotkey_Click" />
                                 </StackPanel>
-                                <TextBlock Text="Ou saisis une combinaison clavier (ex : ctrl+f9) :" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                <TextBlock Text="Ou saisis une combinaison clavier (ex : ctrl+f9) :" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
                                 <TextBox x:Name="ListenHotkeyBox" Margin="0,4,0,0" LostFocus="ListenHotkeyBox_LostFocus" />
 
                                 <TextBlock Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />
@@ -468,7 +468,7 @@
                                 <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
                                 <TextBlock Text="Modèle" Margin="0,12,0,4" />
                                 <ComboBox x:Name="GeminiModelCombo" DisplayMemberPath="Label" SelectionChanged="GeminiModelCombo_SelectionChanged" />
-                                <TextBlock x:Name="GeminiModelDescText" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock x:Name="GeminiModelDescText" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
                                 <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
                                 <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />
@@ -487,14 +487,14 @@
                                 <TextBlock Text="Moteur vocal (Piper)" FontWeight="Bold" Margin="0,16,0,6" />
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="InstallPiperEngineButton" Content="Installer le moteur Piper" Click="InstallPiperEngine_Click" />
-                                    <TextBlock x:Name="PiperEngineStatusText" Text="" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PiperEngineStatusText" Text="" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <TextBlock Text="Voix disponibles" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ItemsControl x:Name="PiperVoicesList">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
+                                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,6">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal">
                                                         <RadioButton GroupName="PiperVoice" IsChecked="{Binding IsSelected, Mode=OneWay}" Click="SelectPiperVoice_Click"
@@ -504,7 +504,7 @@
                                                         <Button Content="Télécharger" Visibility="{Binding CanDownload, Converter={StaticResource BoolToVis}}" Click="DownloadPiperVoice_Click" />
                                                         <Button Content="Supprimer" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="DeletePiperVoice_Click" Margin="6,0,0,0" />
                                                         <Button Content="Tester" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}" Click="TestPiperVoice_Click" Margin="6,0,0,0" />
-                                                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                        <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                                                     </StackPanel>
                                                 </StackPanel>
                                             </Border>
@@ -576,8 +576,8 @@
                                 <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" IsEnabled="False" Click="CheckForUpdate_Click"
                                         ToolTip="En suspens : ce bouton pointe encore vers le serveur de mise à jour de l'ancienne version Python de NovaVox." />
                                 <TextBlock Text="En suspens pour le moment (le serveur de mise à jour actuel est celui de l'ancienne version Python)."
-                                           Margin="0,8,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
-                                <TextBlock x:Name="UpdateStatusText" Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                           Margin="0,8,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                                <TextBlock x:Name="UpdateStatusText" Margin="0,4,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
                             </StackPanel>
                         </TabItem>
 
@@ -612,7 +612,7 @@
 
         <!-- Recouvrement "Assistant Gemini" (discussion) — fenêtre d'UTILISATION, distincte des réglages -->
         <Border x:Name="GeminiOverlay" Background="#B3000000" Visibility="Collapsed">
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
                     Width="560" MaxHeight="700" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid Margin="16,14">
                     <Grid.RowDefinitions>
@@ -631,9 +631,9 @@
                         <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseGeminiChat_Click" />
                     </Grid>
 
-                    <TextBlock x:Name="GeminiWakeHintText" Grid.Row="1" Margin="0,6,0,10" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
+                    <TextBlock x:Name="GeminiWakeHintText" Grid.Row="1" Margin="0,6,0,10" Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
 
-                    <Border Grid.Row="2" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                    <Border Grid.Row="2" Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ScrollViewer x:Name="GeminiChatScrollViewer" VerticalScrollBarVisibility="Auto">
                             <ItemsControl x:Name="GeminiChatList" Margin="10">
                                 <ItemsControl.ItemTemplate>
@@ -641,15 +641,15 @@
                                         <Border Margin="0,4" Padding="10,6" CornerRadius="6" MaxWidth="420">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+                                                    <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
                                                     <Setter Property="HorizontalAlignment" Value="Left" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Role}" Value="user">
-                                                            <Setter Property="Background" Value="{StaticResource AccentDimBrush}" />
+                                                            <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
                                                             <Setter Property="HorizontalAlignment" Value="Right" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Role}" Value="error">
-                                                            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+                                                            <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -657,10 +657,10 @@
                                             <TextBlock Text="{Binding Text}" TextWrapping="Wrap">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Role}" Value="error">
-                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -687,7 +687,7 @@
 
         <!-- Recouvrement "Game.log — Entrées" (événements détectés + corrections de lecture) — fenêtre d'UTILISATION, distincte des réglages -->
         <Border x:Name="GameLogOverlay" Background="#B3000000" Visibility="Collapsed">
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
                     Width="640" MaxHeight="820" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid Margin="16,14">
                     <Grid.RowDefinitions>
@@ -705,25 +705,25 @@
                         <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseGameLog_Click" />
                     </Grid>
 
-                    <TextBlock x:Name="GameLogStatusText" Grid.Row="1" Margin="0,6,0,10" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
+                    <TextBlock x:Name="GameLogStatusText" Grid.Row="1" Margin="0,6,0,10" Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
 
                     <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="📢 Phrases annoncées pour les événements du Game.log" FontWeight="Bold" Margin="0,0,0,4" />
                             <TextBlock Text="Modifie le texte lu à voix haute pour chaque type d'événement détecté. Les champs entre accolades (ex. {dest}) sont remplacés automatiquement ; laisse un champ vide puis enregistre pour revenir au texte par défaut."
-                                       Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                       Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
                             <ItemsControl x:Name="GameLogPhrasesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
-                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                                    <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                                                     <Style.Triggers>
                                                         <!-- Modifié depuis le dernier "Enregistrer" : cadre rouge, disparaît une fois enregistré (voir IsDirty, MainWindow.xaml.cs). -->
                                                         <DataTrigger Binding="{Binding IsDirty}" Value="True">
-                                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -734,8 +734,8 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{StaticResource MutedBrush}" FontSize="11" />
-                                                    <TextBlock Grid.Column="1" Text="● non enregistré" Foreground="{StaticResource DangerBrush}" FontSize="11" FontWeight="Bold"
+                                                    <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                                                    <TextBlock Grid.Column="1" Text="● non enregistré" Foreground="{DynamicResource DangerBrush}" FontSize="11" FontWeight="Bold"
                                                                Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
                                                 </Grid>
                                                 <Grid Margin="0,4,0,0">
@@ -754,23 +754,23 @@
 
                             <TextBlock Text="🔧 Corrections de lecture pour des notifications précises" FontWeight="Bold" Margin="0,16,0,4" />
                             <TextBlock Text="Chaque nouvelle notification HUD du jeu apparaît automatiquement ci-dessous dès qu'elle est détectée. Modifie le texte à lire, ou laisse-le tel quel pour l'entendre lu mot pour mot."
-                                       Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                       Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
                             <ItemsControl x:Name="GameLogHudOverridesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                                    <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsNew}" Value="True">
-                                                            <Setter Property="Background" Value="{StaticResource AccentDimBrush}" />
-                                                            <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                            <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource AmberBrush}" />
                                                         </DataTrigger>
                                                         <!-- Après la précédente : passe le cadre en rouge si modifié depuis le dernier "Enregistrer",
                                                              y compris par-dessus le orange "nouvelle entrée" — disparaît une fois enregistré. -->
                                                         <DataTrigger Binding="{Binding IsDirty}" Value="True">
-                                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -781,13 +781,13 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap">
+                                                    <TextBlock Grid.Column="0" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap">
                                                         <Run Text="Détecté : « " /><Run Text="{Binding RawText, Mode=OneWay}" /><Run Text=" »" />
                                                     </TextBlock>
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                        <TextBlock Text="● nouvelle entrée" Foreground="{StaticResource AmberBrush}" FontSize="11" FontWeight="Bold"
+                                                        <TextBlock Text="● nouvelle entrée" Foreground="{DynamicResource AmberBrush}" FontSize="11" FontWeight="Bold"
                                                                    Visibility="{Binding IsNew, Converter={StaticResource BoolToVis}}" />
-                                                        <TextBlock Text="● non enregistré" Foreground="{StaticResource DangerBrush}" FontSize="11" FontWeight="Bold" Margin="8,0,0,0"
+                                                        <TextBlock Text="● non enregistré" Foreground="{DynamicResource DangerBrush}" FontSize="11" FontWeight="Bold" Margin="8,0,0,0"
                                                                    Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
                                                     </StackPanel>
                                                 </Grid>
@@ -809,24 +809,24 @@
 
                             <TextBlock Text="🧭 Alias de destinations" FontWeight="Bold" Margin="0,16,0,4" />
                             <TextBlock Text="Nom personnalisé annoncé pour chaque identifiant brut de destination détecté (route tracée, saut quantique, arrivée)."
-                                       Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                       Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
                             <ItemsControl x:Name="GameLogDestinationAliasesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
-                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                                    <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsNew}" Value="True">
-                                                            <Setter Property="Background" Value="{StaticResource AccentDimBrush}" />
-                                                            <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                            <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource AmberBrush}" />
                                                         </DataTrigger>
                                                         <!-- Après la précédente : passe le cadre en rouge si modifié depuis le dernier "Enregistrer",
                                                              y compris par-dessus le orange "nouvelle entrée" — disparaît une fois enregistré. -->
                                                         <DataTrigger Binding="{Binding IsDirty}" Value="True">
-                                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -837,13 +837,13 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Foreground="{StaticResource MutedBrush}" FontSize="11">
+                                                    <TextBlock Grid.Column="0" Foreground="{DynamicResource MutedBrush}" FontSize="11">
                                                         <Run Text="Détecté : « " /><Run Text="{Binding RawKey, Mode=OneWay}" /><Run Text=" »" />
                                                     </TextBlock>
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                        <TextBlock Text="● nouvelle entrée" Foreground="{StaticResource AmberBrush}" FontSize="11" FontWeight="Bold"
+                                                        <TextBlock Text="● nouvelle entrée" Foreground="{DynamicResource AmberBrush}" FontSize="11" FontWeight="Bold"
                                                                    Visibility="{Binding IsNew, Converter={StaticResource BoolToVis}}" />
-                                                        <TextBlock Text="● non enregistré" Foreground="{StaticResource DangerBrush}" FontSize="11" FontWeight="Bold" Margin="8,0,0,0"
+                                                        <TextBlock Text="● non enregistré" Foreground="{DynamicResource DangerBrush}" FontSize="11" FontWeight="Bold" Margin="8,0,0,0"
                                                                    Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
                                                     </StackPanel>
                                                 </Grid>
@@ -870,7 +870,7 @@
 
         <!-- Clavier interactif de sélection des touches de commande — port de #keyboardModal (gui/index.html). -->
         <Border x:Name="KeyboardOverlay" Background="#B3000000" Visibility="Collapsed">
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
                     Width="1000" MaxHeight="880" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid Margin="18,14">
                     <Grid.RowDefinitions>
@@ -892,7 +892,7 @@
                         <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseKeyboard_Click" />
                     </Grid>
 
-                    <Border Grid.Row="1" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    <Border Grid.Row="1" Background="{DynamicResource PanelAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                             CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -900,19 +900,19 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="SÉLECTION : " Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="0" Text="SÉLECTION : " Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" />
                             <TextBlock x:Name="KbSelectedValueText" Grid.Column="1" Text="—" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center" Margin="4,0,0,0" />
                             <Button x:Name="KbCaptureButton" Grid.Column="2" Content="🎙 Détecter (appuyer sur la touche)" Click="KbCaptureButton_Click" />
                         </Grid>
                     </Border>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBlock Text="DISPOSITION : " Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="DISPOSITION : " Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <Button x:Name="KbLayoutFrButton" Content="AZERTY France" Tag="azerty_fr" Click="KbLayoutButton_Click" Margin="0,0,6,0" />
                         <Button x:Name="KbLayoutBeButton" Content="AZERTY Belgique" Tag="azerty_be" Click="KbLayoutButton_Click" Margin="0,0,6,0" />
                         <Button x:Name="KbLayoutQwertyButton" Content="QWERTY" Tag="qwerty" Click="KbLayoutButton_Click" />
                         <TextBlock Text="Change juste l'affichage des lettres pour correspondre à ton clavier physique — les touches réellement envoyées au jeu ne changent pas."
-                                   Foreground="{StaticResource MutedBrush}" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="360" />
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="10" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="360" />
                     </StackPanel>
 
                     <CheckBox x:Name="KbHoldCheckbox" Grid.Row="3" Content="Maintenir la touche 2 secondes (au lieu d'un appui bref)" Margin="0,0,0,8" />
@@ -937,7 +937,7 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <TextBlock Text="SOURIS" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,16,0,6" />
+                            <TextBlock Text="SOURIS" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,16,0,6" />
                             <StackPanel x:Name="KbMousePanel" Orientation="Horizontal" Margin="0,0,0,8" />
                             <Button x:Name="KbMouseCaptureButton" Content="🖱 Détecter (cliquer)" HorizontalAlignment="Stretch" Click="KbMouseCaptureButton_Click" />
                         </StackPanel>
@@ -960,7 +960,7 @@
 
         <!-- Recouvrement "Notes de mise à jour", ouvert en cliquant sur le numéro de version du pied de page -->
         <Border x:Name="PatchNotesOverlay" Background="#B3000000" Visibility="Collapsed">
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
                     Width="640" MaxHeight="720" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid>
                     <Grid.RowDefinitions>

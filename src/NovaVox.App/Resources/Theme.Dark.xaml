@@ -3,10 +3,11 @@
 
     <!-- Palette sombre reprise de gui/style.css. Toutes les couleurs sont
          définies ici SEULEMENT (jamais dans Theme.Light.xaml sous un autre
-         nom) : basculer entre les deux ne fait que réassigner les mêmes
-         clés (BgBrush, TextBrush...), consommées ailleurs via
-         DynamicResource pour que le changement s'applique immédiatement,
-         sans redémarrer la fenêtre. -->
+         nom) : basculer entre les deux ne fait que remplacer tout ce
+         dictionnaire (voir ThemeManager), y compris les Brush ci-dessous —
+         consommés ailleurs via DynamicResource (jamais StaticResource) pour
+         que chaque consommateur pointe vers le nouveau Brush aussitôt, sans
+         redémarrer la fenêtre. -->
     <Color x:Key="BgColor">#0A0E14</Color>
     <Color x:Key="PanelColor">#121822</Color>
     <Color x:Key="PanelAltColor">#1A2230</Color>
@@ -18,5 +19,32 @@
     <Color x:Key="DangerColor">#FF4D5E</Color>
     <Color x:Key="SuccessColor">#35E0A1</Color>
     <Color x:Key="SelectionColor">#1E3A4D</Color>
+
+    <!-- Un objet Brush INDÉPENDANT par thème (pas un seul Brush partagé
+         dont on réécrirait la Color) : WPF gèle (Freeze, donc rend
+         inmodifiable) tout Brush utilisé par un Setter de Style/
+         ControlTemplate scellé, ce qui a déjà fait planter une tentative
+         précédente qui mutait un Brush partagé en place — voir
+         ThemeManager. Ici, remplacer le dictionnaire fusionné fait
+         simplement pointer chaque DynamicResource vers CET objet-ci. -->
+    <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
+    <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
+    <SolidColorBrush x:Key="PanelAltBrush" Color="{StaticResource PanelAltColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AmberBrush" Color="{StaticResource AmberColor}" />
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="{StaticResource SelectionColor}" />
+    <SolidColorBrush x:Key="AccentDimBrush" Color="{StaticResource AccentColor}" Opacity="0.18" />
+    <!-- Variantes à 50% d'opacité : pour les fonds de carte qui doivent
+         laisser deviner l'image derrière (Commandes/Journal système), sans
+         rendre transparent le reste de la carte (bordure, texte, boutons —
+         d'où un Brush dédié plutôt qu'un Opacity sur le Border lui-même,
+         qui aurait fondu tout son contenu). -->
+    <SolidColorBrush x:Key="PanelBrush50" Color="{StaticResource PanelColor}" Opacity="0.5" />
+    <SolidColorBrush x:Key="PanelAltBrush50" Color="{StaticResource PanelAltColor}" Opacity="0.5" />
 
 </ResourceDictionary>

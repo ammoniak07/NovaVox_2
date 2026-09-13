@@ -14,4 +14,23 @@
     <Color x:Key="SuccessColor">#047857</Color>
     <Color x:Key="SelectionColor">#D6EEF5</Color>
 
+    <!-- Voir le commentaire équivalent dans Theme.Dark.xaml : un objet
+         Brush indépendant par thème (jamais un seul Brush partagé
+         réécrit en place, ce que WPF interdit une fois figé par un
+         Style/ControlTemplate scellé). -->
+    <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
+    <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
+    <SolidColorBrush x:Key="PanelAltBrush" Color="{StaticResource PanelAltColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AmberBrush" Color="{StaticResource AmberColor}" />
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="{StaticResource SelectionColor}" />
+    <SolidColorBrush x:Key="AccentDimBrush" Color="{StaticResource AccentColor}" Opacity="0.18" />
+    <SolidColorBrush x:Key="PanelBrush50" Color="{StaticResource PanelColor}" Opacity="0.5" />
+    <SolidColorBrush x:Key="PanelAltBrush50" Color="{StaticResource PanelAltColor}" Opacity="0.5" />
+
 </ResourceDictionary>
