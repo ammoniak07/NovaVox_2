@@ -100,6 +100,31 @@ public class ConfigStoreTests : IDisposable
         Assert.True(config.VisibleRows["zone"]);
     }
 
+    /// <summary>
+    /// Régression : OverlayWindow.OnClosing ne sauvegarde que la position
+    /// (enabled + x/y), sans repasser bgColor/bgOpacity/textColor/
+    /// textOpacity — un Save() qui reconstruisait le JSON à partir de
+    /// rien effaçait alors l'opacité/couleur choisies par l'utilisateur à
+    /// chaque fermeture de l'overlay (donc à chaque fermeture de
+    /// NovaVox), qui revenait à l'opacité par défaut au lancement suivant.
+    /// </summary>
+    [Fact]
+    public void OverlayConfig_SaveWithoutAppearance_PreservesPreviouslySavedAppearance()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, bgColor: "#123456", bgOpacity: 40, textColor: "#abcdef", textOpacity: 55);
+
+        store.Save(enabled: true, x: 100, y: 200); // ex. OverlayWindow.OnClosing : position seulement
+
+        var config = store.Load();
+        Assert.Equal(100, config.X);
+        Assert.Equal(200, config.Y);
+        Assert.Equal("#123456", config.BgColor);
+        Assert.Equal(40, config.BgOpacity);
+        Assert.Equal("#abcdef", config.TextColor);
+        Assert.Equal(55, config.TextOpacity);
+    }
+
     [Fact]
     public void AiConfig_FallsBackWhenModelUnknown()
     {

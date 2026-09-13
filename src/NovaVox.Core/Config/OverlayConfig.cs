@@ -77,27 +77,49 @@ public sealed partial class OverlayConfigStore
         return config;
     }
 
+    /// <summary>
+    /// N'importe quel paramètre laissé à null conserve la valeur déjà
+    /// enregistrée sur disque plutôt que d'être remis à sa valeur par
+    /// défaut — indispensable puisque plusieurs appelants ne mettent à
+    /// jour qu'une partie des réglages (ex. OverlayWindow.OnClosing ne
+    /// sauvegarde que la position) : sans cette fusion, un tel appel
+    /// écrasait silencieusement la couleur/opacité déjà choisies par
+    /// l'utilisateur à chaque fermeture de l'overlay.
+    /// </summary>
     public void Save(
         bool enabled, int? x = null, int? y = null, Dictionary<string, bool>? visibleRows = null,
         string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null)
     {
+        var existing = File.Exists(_path) ? TryParseFile(_path) : null;
+
         var data = new JsonObject { ["enabled"] = enabled };
-        if (x is not null && y is not null)
+
+        var savedX = x ?? GetInt(existing?["x"]);
+        var savedY = y ?? GetInt(existing?["y"]);
+        if (savedX is not null && savedY is not null)
         {
-            data["x"] = x;
-            data["y"] = y;
+            data["x"] = savedX;
+            data["y"] = savedY;
         }
-        if (visibleRows is not null)
+
+        var rows = new JsonObject();
+        foreach (var k in OverlayConfig.RowKeys)
         {
-            var rows = new JsonObject();
-            foreach (var k in OverlayConfig.RowKeys)
-                rows[k] = visibleRows.TryGetValue(k, out var v) ? v : true;
-            data["visible_rows"] = rows;
+            rows[k] = visibleRows is not null
+                ? (visibleRows.TryGetValue(k, out var v) ? v : true)
+                : GetBool(existing?["visible_rows"]?[k], true);
         }
-        if (bgColor is not null) data["bg_color"] = ValidateHexColor(bgColor, OverlayConfig.DefaultBgColor);
-        if (bgOpacity is not null) data["bg_opacity"] = Math.Clamp(bgOpacity.Value, 0, 100);
-        if (textColor is not null) data["text_color"] = ValidateHexColor(textColor, OverlayConfig.DefaultTextColor);
-        if (textOpacity is not null) data["text_opacity"] = Math.Clamp(textOpacity.Value, 0, 100);
+        data["visible_rows"] = rows;
+
+        data["bg_color"] = ValidateHexColor(bgColor ?? GetStringOrNull(existing?["bg_color"]), OverlayConfig.DefaultBgColor);
+        data["bg_opacity"] = bgOpacity is not null
+            ? Math.Clamp(bgOpacity.Value, 0, 100)
+            : ValidateOpacityPercent(existing?["bg_opacity"], OverlayConfig.DefaultBgOpacity);
+        data["text_color"] = ValidateHexColor(textColor ?? GetStringOrNull(existing?["text_color"]), OverlayConfig.DefaultTextColor);
+        data["text_opacity"] = textOpacity is not null
+            ? Math.Clamp(textOpacity.Value, 0, 100)
+            : ValidateOpacityPercent(existing?["text_opacity"], OverlayConfig.DefaultTextOpacity);
+
         try
         {
             File.WriteAllText(_path, data.ToJsonString(WriteOptions));
@@ -106,5 +128,11 @@ public sealed partial class OverlayConfigStore
         {
             // Confort seulement, jamais bloquant.
         }
+    }
+
+    private JsonObject? TryParseFile(string path)
+    {
+        try { return ParseFile(path) as JsonObject; }
+        catch { return null; }
     }
 }
