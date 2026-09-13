@@ -1292,7 +1292,7 @@ public partial class MainWindow : Window
             AecEnabledCheckbox.IsChecked = audio.AecEnabled;
 
             var ai = _state.Ai;
-            GameModeCombo.SelectedIndex = ai.GameLogEnabled ? 0 : 1;
+            GameModeCombo.SelectedIndex = _state.GameMode.CurrentMode == GameModeConfig.StarCitizen ? 0 : 1;
             GeminiEnabledCheckbox.IsChecked = ai.GeminiEnabled;
             GeminiWikiEnabledCheckbox.IsChecked = ai.GeminiWikiEnabled;
             GeminiApiKeyBox.Text = ai.GeminiApiKey;
@@ -1666,12 +1666,13 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Mode de jeu (en-tête, à côté de "Assistant Gemini") : bascule d'un
-    /// coup les réglages qui n'ont de sens que pour Star Citizen —
-    /// indépendant des profils de commandes (sélecteur "Profil :" plus bas,
-    /// qui ne concerne que les commandes elles-mêmes). "Autre jeu" masque
-    /// aussi le point d'entrée Game.log (bouton d'en-tête + onglet
-    /// Réglages, voir RefreshGameLogStatus) et bascule l'image de fond sur
-    /// background2.* (voir LoadPanelsBackgroundImage).
+    /// coup tout ce qui n'a de sens que pour Star Citizen — touche
+    /// d'activation vocale, transparence de l'overlay, Game.log, wiki
+    /// Gemini, ligne Zone de l'overlay, image de fond, ET le profil de
+    /// commandes actif (celui mémorisé la dernière fois que ce mode était
+    /// sélectionné, voir AppState.SwitchGameMode). "Autre jeu" masque aussi
+    /// le point d'entrée Game.log (bouton d'en-tête + onglet Réglages) et
+    /// la case wiki Gemini, qui n'ont plus lieu d'être affichés.
     /// </summary>
     private void GameModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -1679,22 +1680,20 @@ public partial class MainWindow : Window
         if (GameModeCombo.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
         var starCitizen = tag == "sc";
 
-        _state.Ai.GameLogEnabled = starCitizen;
-        _state.Ai.GeminiWikiEnabled = starCitizen;
-        SaveAiAndLog();
-        _state.Overlay.VisibleRows["zone"] = starCitizen;
-        _state.SaveOverlay();
+        _state.SwitchGameMode(starCitizen ? GameModeConfig.StarCitizen : GameModeConfig.Other);
 
-        if (starCitizen) StartGameLogWatcher(); else StopGameLogWatcher();
+        if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
         _overlayWindow?.LoadFromConfig();
         LoadPanelsBackgroundImage();
+        _voiceOrchestrator?.UpdateListenHotkeySettings();
 
-        // Répercute sur les cases à cocher correspondantes dans Réglages
-        // sans redéclencher leurs propres gestionnaires (déjà appliqué
-        // ci-dessus) — LoadSettingsIntoControls entier plutôt qu'un
-        // réglage isolé : simple, et sans effet de bord (relit juste l'état
-        // actuel dans chaque contrôle).
+        // Le profil de commandes actif a pu changer (SwitchGameMode) : la
+        // liste elle-même, son sélecteur et Réglages doivent tous refléter
+        // le nouvel état — même séquence que ProfileCombo_SelectionChanged.
+        CommandsList.ItemsSource = null;
+        InitializeCommandsList();
+        SelectActiveProfileInCombo();
         LoadSettingsIntoControls();
 
         AppendLog($"Mode de jeu : {(starCitizen ? "Star Citizen" : "Autre jeu")}.", "info");
@@ -2069,13 +2068,14 @@ public partial class MainWindow : Window
         GameLogStatusText.Text = _state.Ai.GameLogEnabled
             ? "Surveillance du Game.log active."
             : "Surveillance désactivée (voir ⚙️ Réglages > 🛰 Game.log).";
-        // Le Game.log n'a de sens que pour Star Citizen : plutôt qu'une
-        // case à cocher décochée mais toujours visible, masque carrément
-        // son point d'entrée (bouton d'en-tête + onglet Réglages) sur un
-        // profil "autre jeu" (Game.log désactivé pour ce profil).
+        // Le Game.log et le wiki Gemini n'ont de sens que pour Star Citizen :
+        // plutôt que des cases décochées mais toujours visibles, masque
+        // carrément leurs points d'entrée (bouton d'en-tête + onglet
+        // Réglages Game.log, case wiki Gemini) sur le mode "autre jeu".
         var visibility = _state.Ai.GameLogEnabled ? Visibility.Visible : Visibility.Collapsed;
         GameLogHeaderButton.Visibility = visibility;
         GameLogSettingsTab.Visibility = visibility;
+        GeminiWikiEnabledCheckbox.Visibility = visibility;
     }
 
     private void OnGameLogEvent(GameLogEvent evt)
