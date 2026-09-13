@@ -121,6 +121,7 @@ public sealed class VoiceOrchestrator : IDisposable
 
         _geminiClient = new GeminiClient(_state.Ai, _state.AiConfigStore) { GameLogStateProvider = () => GameLogWatcher?.GetState() };
         _geminiClient.UserMessageAdded += (_, question) => RaiseLog($"Question pour {_state.Ai.GeminiName} : « {question} »", "info");
+        _geminiClient.Log += (_, e) => RaiseLog(e.Message, e.Kind);
         _geminiClient.ReplyReceived += (_, e) =>
         {
             RaiseLog(e.IsError ? e.Reply : $"{_state.Ai.GeminiName} : {e.Reply}", e.IsError ? "error" : "info");

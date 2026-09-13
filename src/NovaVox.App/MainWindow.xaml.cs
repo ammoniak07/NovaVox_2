@@ -1535,6 +1535,7 @@ public partial class MainWindow : Window
             _geminiMessages.Add(new GeminiMessageVm { Role = "user", Text = question });
             GeminiChatScrollViewer.ScrollToEnd();
         });
+        _chatGeminiClient.Log += (_, e) => Dispatcher.BeginInvoke(() => AppendLog(e.Message, e.Kind));
         _chatGeminiClient.ReplyReceived += (_, e) => Dispatcher.BeginInvoke(() =>
         {
             _geminiMessages.Add(new GeminiMessageVm { Role = e.IsError ? "error" : "assistant", Text = e.Reply });

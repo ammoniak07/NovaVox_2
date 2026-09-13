@@ -15,12 +15,13 @@ public sealed class GeminiReplyEventArgs : EventArgs
 
 /// <summary>
 /// Client Gemini (assistant IA embarqué) — port de Api._gemini_ask /
-/// gemini_ask_text / _gemini_reply_thread (app.py). La recherche de
-/// contexte sur le wiki communautaire Star Citizen
-/// (_gemini_wiki_reference_block) n'est PAS encore portée : c'est une
-/// amélioration "best-effort" annexe côté Python (jamais bloquante),
-/// laissée en TODO pour une passe ultérieure plutôt que de retarder le
-/// flux de conversation principal.
+/// gemini_ask_text / _gemini_reply_thread (app.py), y compris la
+/// recherche best-effort de contexte sur le wiki communautaire Star
+/// Citizen (_gemini_wiki_reference_block/_wiki_extract_entity_en/
+/// _wiki_search_page_title/_wiki_fetch_page_text) — voir
+/// NovaVox.Core.Gemini.StarCitizenWiki pour la logique pure (JSON,
+/// construction d'URL, HTML→texte) et BuildWikiReferenceBlockAsync
+/// ci-dessous pour les appels réseau.
 /// </summary>
 public sealed class GeminiClient
 {
@@ -34,6 +35,9 @@ public sealed class GeminiClient
 
     public event EventHandler<string>? UserMessageAdded;
     public event EventHandler<GeminiReplyEventArgs>? ReplyReceived;
+
+    /// <summary>Traces "[Info] Wiki SC : ..." destinées au journal système de l'interface (voir _log côté Python).</summary>
+    public event EventHandler<(string Message, string Kind)>? Log;
 
     public GeminiClient(AiConfig config, AiConfigStore? store = null)
     {
@@ -96,10 +100,13 @@ public sealed class GeminiClient
         }
 
         var gameStateBlock = GameLogStateProvider is not null ? GameStatePrompt.ToPromptBlock(GameLogStateProvider()) : "";
+        var wikiBlock = question.Length > 0
+            ? await BuildWikiReferenceBlockAsync(question, apiKey, used, limit).ConfigureAwait(false)
+            : "";
 
         var systemText = GeminiPrompt.BuildSystemPrompt(
             Config.GeminiName, Config.GeminiCustomContext, Config.UserName, Config.GeminiResponseLength, Config.UiLanguage)
-            + gameStateBlock;
+            + gameStateBlock + wikiBlock;
 
         var requestBody = GeminiRequestBuilder.BuildRequestBody(_history, systemText, Config.GeminiResponseLength);
         var url = GeminiRequestBuilder.RequestUrl(Config.GeminiModel);
@@ -142,4 +149,99 @@ public sealed class GeminiClient
             return ($"[Erreur] {e.Message}", true);
         }
     }
+
+    /// <summary>
+    /// Best-effort : si la question semble viser une entité précise du jeu
+    /// (vaisseau, objet, lieu...), cherche l'article correspondant sur le
+    /// wiki communautaire Star Citizen et renvoie un bloc de contexte à
+    /// ajouter au prompt système. Ne consomme le quota gratuit que s'il
+    /// reste au moins 2 requêtes (1 pour cette recherche + 1 pour la
+    /// vraie réponse) — et à la moindre erreur réseau/timeout, renvoie une
+    /// chaîne vide sans jamais empêcher la réponse normale.
+    /// </summary>
+    private async Task<string> BuildWikiReferenceBlockAsync(string question, string apiKey, int quotaUsed, int quotaLimit)
+    {
+        if (quotaUsed + 2 > quotaLimit)
+        {
+            RaiseLog("[Info] Wiki SC : recherche sautée (quota gratuit du jour presque épuisé).", "info");
+            return "";
+        }
+
+        // Nom de l'étape en cours, pour que le message d'erreur ci-dessous
+        // précise LAQUELLE des 3 requêtes réseau a échoué plutôt qu'un
+        // simple "ignorée (...)" sans indiquer où.
+        var step = "identification de l'entité (appel Gemini)";
+        string term;
+        string title;
+        string extract;
+        try
+        {
+            var recentHistory = _history.Skip(Math.Max(0, _history.Count - 6)).ToList();
+            var prompt = StarCitizenWiki.BuildEntityExtractionPrompt(recentHistory, question);
+            var entityRequestBody = StarCitizenWiki.BuildEntityExtractionRequestBody(prompt);
+            var entityUrl = GeminiRequestBuilder.RequestUrl(Config.GeminiModel);
+
+            using var entityCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var entityRequest = new HttpRequestMessage(HttpMethod.Post, entityUrl)
+            {
+                Content = new StringContent(entityRequestBody.ToJsonString(), Encoding.UTF8, "application/json"),
+            };
+            entityRequest.Headers.Add("x-goog-api-key", apiKey);
+            using var entityResponse = await Http.SendAsync(entityRequest, entityCts.Token).ConfigureAwait(false);
+            entityResponse.EnsureSuccessStatusCode();
+            var entityBodyText = await entityResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+            GeminiQuota.RecordRequest(Config);
+            Store?.Save(Config);
+
+            var entityTerm = StarCitizenWiki.ExtractEntityTerm(JsonNode.Parse(entityBodyText));
+            if (entityTerm is null)
+            {
+                RaiseLog("[Info] Wiki SC : aucune entité précise identifiée dans la question.", "info");
+                return "";
+            }
+            term = entityTerm;
+
+            step = "recherche de la page (wiki)";
+            using var searchCts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            using var searchRequest = new HttpRequestMessage(HttpMethod.Get, StarCitizenWiki.SearchUrl(term));
+            searchRequest.Headers.UserAgent.ParseAdd("Mozilla/5.0");
+            using var searchResponse = await Http.SendAsync(searchRequest, searchCts.Token).ConfigureAwait(false);
+            searchResponse.EnsureSuccessStatusCode();
+            var searchBodyText = await searchResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            var foundTitle = StarCitizenWiki.ExtractSearchTitle(JsonNode.Parse(searchBodyText));
+            if (foundTitle is null)
+            {
+                RaiseLog($"[Info] Wiki SC : aucune page trouvée pour « {term} ».", "info");
+                return "";
+            }
+            title = foundTitle;
+
+            step = "récupération du contenu de la page (wiki)";
+            using var pageCts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            using var pageRequest = new HttpRequestMessage(HttpMethod.Get, StarCitizenWiki.PageUrl(title));
+            pageRequest.Headers.UserAgent.ParseAdd("Mozilla/5.0");
+            using var pageResponse = await Http.SendAsync(pageRequest, pageCts.Token).ConfigureAwait(false);
+            pageResponse.EnsureSuccessStatusCode();
+            var pageBodyText = await pageResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            var foundExtract = StarCitizenWiki.ExtractPageText(JsonNode.Parse(pageBodyText));
+            if (foundExtract is null)
+            {
+                RaiseLog($"[Info] Wiki SC : page « {title} » sans contenu exploitable (vide ou désambiguïsation).", "info");
+                return "";
+            }
+            extract = foundExtract;
+        }
+        catch (Exception e)
+        {
+            RaiseLog($"[Info] Wiki SC : recherche de contexte ignorée pendant {step} ({e.Message}).", "info");
+            return "";
+        }
+
+        RaiseLog($"[Info] Wiki SC : contexte pour « {term} » → page « {title} » ({extract.Length} caractères).", "info");
+        return StarCitizenWiki.BuildReferenceBlock(title, extract);
+    }
+
+    private void RaiseLog(string message, string kind) => Log?.Invoke(this, (message, kind));
 }
