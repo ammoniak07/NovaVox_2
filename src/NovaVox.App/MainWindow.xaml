@@ -71,7 +71,7 @@
                             <Image x:Name="AppLogoImage" Stretch="Uniform" Visibility="Collapsed" />
                         </Grid>
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="NOVAVOX" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                            <TextBlock Text="NOVAVOX V2" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
                             <TextBlock Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
                         </StackPanel>
                     </StackPanel>
