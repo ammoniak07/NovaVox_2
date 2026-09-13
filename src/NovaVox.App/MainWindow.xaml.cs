@@ -295,10 +295,10 @@ public partial class MainWindow : Window
     }
 
     private void AddCommand_Click(object sender, RoutedEventArgs e) =>
-        _state.Commands.Add(new VoiceCommandRow { Phrase = "nouvelle commande", Keys = "n" });
+        _state.Commands.Insert(0, new VoiceCommandRow { Phrase = "nouvelle commande", Keys = "n" });
 
     private void AddTitle_Click(object sender, RoutedEventArgs e) =>
-        _state.Commands.Add(new VoiceCommandRow { IsTitle = true, Phrase = "Nouveau groupe" });
+        _state.Commands.Insert(0, new VoiceCommandRow { IsTitle = true, Phrase = "Nouveau groupe" });
 
     private static VoiceCommandRow? RowFromSender(object sender) =>
         (sender as FrameworkElement)?.DataContext as VoiceCommandRow;
