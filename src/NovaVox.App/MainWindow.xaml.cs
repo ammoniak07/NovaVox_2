@@ -175,8 +175,8 @@ public partial class MainWindow : Window
         LoadPanelsBackgroundImage();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
+        InitializeThemeCombo();
         ThemeManager.Apply(_state.Ai.UiTheme);
-        ThemeToggleButton.Content = _state.Ai.UiTheme == "light" ? "☀" : "🌙";
         SyncTitleBarColor();
 
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
@@ -1670,11 +1670,12 @@ public partial class MainWindow : Window
     /// Mode de jeu (en-tête, à côté de "Assistant Gemini") : bascule d'un
     /// coup tout ce qui n'a de sens que pour Star Citizen — touche
     /// d'activation vocale, transparence de l'overlay, Game.log, wiki
-    /// Gemini, ligne Zone de l'overlay, image de fond, ET le profil de
-    /// commandes actif (celui mémorisé la dernière fois que ce mode était
-    /// sélectionné, voir AppState.SwitchGameMode). "Autre jeu" masque aussi
-    /// le point d'entrée Game.log (bouton d'en-tête + onglet Réglages) et
-    /// la case wiki Gemini, qui n'ont plus lieu d'être affichés.
+    /// Gemini, thème de couleurs, ligne Zone de l'overlay, image de fond,
+    /// ET le profil de commandes actif (celui mémorisé la dernière fois
+    /// que ce mode était sélectionné, voir AppState.SwitchGameMode).
+    /// "Autre jeu" masque aussi le point d'entrée Game.log (bouton
+    /// d'en-tête + onglet Réglages) et la case wiki Gemini, qui n'ont plus
+    /// lieu d'être affichés.
     /// </summary>
     private void GameModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -1689,6 +1690,9 @@ public partial class MainWindow : Window
         _overlayWindow?.LoadFromConfig();
         LoadPanelsBackgroundImage();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
+        ThemeManager.Apply(_state.Ai.UiTheme);
+        SelectThemeComboItem(_state.Ai.UiTheme);
+        SyncTitleBarColor();
 
         // Le profil de commandes actif a pu changer (SwitchGameMode) : la
         // liste elle-même, son sélecteur et Réglages doivent tous refléter
@@ -1850,15 +1854,46 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------- Thème
 
-    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Construit une seule fois la liste déroulante à partir de
+    /// ThemeManager.AvailableThemes (id + libellé), puis sélectionne la
+    /// palette du thème actuel sans déclencher ThemeCombo_SelectionChanged
+    /// (détache/rattache le gestionnaire, même mécanique que
+    /// SelectActiveProfileInCombo/ProfileCombo) — nécessaire ici car ce
+    /// combo est aussi resélectionné depuis GameModeCombo_SelectionChanged,
+    /// en dehors de toute fenêtre _loadingSettings.
+    /// </summary>
+    private void InitializeThemeCombo()
     {
-        var newTheme = _state.Ai.UiTheme == "light" ? "dark" : "light";
+        ThemeCombo.SelectionChanged -= ThemeCombo_SelectionChanged;
+        ThemeCombo.Items.Clear();
+        foreach (var (id, label) in ThemeManager.AvailableThemes)
+            ThemeCombo.Items.Add(new ComboBoxItem { Content = label, Tag = id });
+        ThemeCombo.SelectionChanged += ThemeCombo_SelectionChanged;
+        SelectThemeComboItem(_state.Ai.UiTheme);
+    }
+
+    private void SelectThemeComboItem(string theme)
+    {
+        ThemeCombo.SelectionChanged -= ThemeCombo_SelectionChanged;
+        foreach (ComboBoxItem item in ThemeCombo.Items)
+        {
+            if (item.Tag as string != theme) continue;
+            ThemeCombo.SelectedItem = item;
+            break;
+        }
+        ThemeCombo.SelectionChanged += ThemeCombo_SelectionChanged;
+    }
+
+    private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ThemeCombo.SelectedItem is not ComboBoxItem { Tag: string newTheme } || newTheme == _state.Ai.UiTheme) return;
+
         _state.Ai.UiTheme = newTheme;
         SaveAiAndLog();
         ThemeManager.Apply(newTheme);
-        ThemeToggleButton.Content = newTheme == "light" ? "☀" : "🌙";
         SyncTitleBarColor();
-        AppendLog($"Thème : {(newTheme == "light" ? "jour" : "nuit")}.", "diagnostic");
+        AppendLog($"Thème : {ThemeManager.AvailableThemes.FirstOrDefault(t => t.Id == newTheme).Label}.", "diagnostic");
     }
 
     /// <summary>Colore la barre de titre native exactement comme le fond de l'en-tête de l'appli, au lieu du gris générique — voir DarkTitleBar.ApplyCaptionColor.</summary>

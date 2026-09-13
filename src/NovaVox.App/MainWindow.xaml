@@ -115,8 +115,13 @@
                         <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />
-                        <Button x:Name="ThemeToggleButton" Style="{StaticResource IconCircleButtonStyle}" Content="🌙" Margin="8,0,0,0" Click="ThemeToggleButton_Click"
-                                ToolTip="Basculer jour/nuit" />
+                        <!-- Thème de couleurs de l'interface : liste construite dynamiquement à partir de
+                             ThemeManager.AvailableThemes (MainWindow.xaml.cs, InitializeThemeCombo) plutôt
+                             que codée en dur ici, pour ne garder qu'un seul endroit à mettre à jour en
+                             ajoutant une palette. Propre au mode de jeu actif (GameModeConfig.UiTheme, voir
+                             AppState.SwitchGameMode) : "Autre jeu" démarre sur "Militaire" par défaut. -->
+                        <ComboBox x:Name="ThemeCombo" Width="130" Margin="8,0,0,0" ToolTip="Thème de couleurs"
+                                  SelectionChanged="ThemeCombo_SelectionChanged" />
                     </StackPanel>
                 </Grid>
             </Border>

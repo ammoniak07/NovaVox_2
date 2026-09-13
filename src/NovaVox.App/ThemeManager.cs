@@ -29,12 +29,35 @@ namespace NovaVox.App;
 /// </summary>
 public static class ThemeManager
 {
-    private static readonly Uri DarkUri = new("Resources/Theme.Dark.xaml", UriKind.Relative);
-    private static readonly Uri LightUri = new("Resources/Theme.Light.xaml", UriKind.Relative);
+    // Un id (AiConfig.ValidThemes/UiTheme, persisté tel quel dans
+    // ai_config.json/game_mode.json) -> le ResourceDictionary de palette
+    // correspondant (Resources/Theme.<Nom>.xaml). Étendre le sélecteur
+    // (ThemeCombo, MainWindow.xaml) revient à ajouter une entrée ici + le
+    // fichier XAML de palette (mêmes clés que Theme.Dark.xaml).
+    private static readonly IReadOnlyDictionary<string, Uri> ThemeUris = new Dictionary<string, Uri>
+    {
+        ["dark"] = new("Resources/Theme.Dark.xaml", UriKind.Relative),
+        ["light"] = new("Resources/Theme.Light.xaml", UriKind.Relative),
+        ["military"] = new("Resources/Theme.Military.xaml", UriKind.Relative),
+        ["cyberpunk"] = new("Resources/Theme.Cyberpunk.xaml", UriKind.Relative),
+        ["amber"] = new("Resources/Theme.Amber.xaml", UriKind.Relative),
+        ["ocean"] = new("Resources/Theme.Ocean.xaml", UriKind.Relative),
+    };
+
+    /// <summary>Id + libellé affiché, dans l'ordre du sélecteur (ThemeCombo, MainWindow.xaml).</summary>
+    public static readonly (string Id, string Label)[] AvailableThemes =
+    {
+        ("dark", "🌙 Sombre"),
+        ("light", "☀ Clair"),
+        ("military", "🪖 Militaire"),
+        ("cyberpunk", "💜 Cyberpunk"),
+        ("amber", "🟠 Ambre"),
+        ("ocean", "🌊 Océan"),
+    };
 
     public static void Apply(string theme)
     {
-        var targetUri = theme == "light" ? LightUri : DarkUri;
+        var targetUri = ThemeUris.TryGetValue(theme, out var uri) ? uri : ThemeUris["dark"];
         var app = Application.Current;
         if (app is null) return;
 
@@ -43,7 +66,7 @@ public static class ThemeManager
         {
             var source = merged[i].Source;
             if (source is null) continue;
-            if (IsSameResource(source, DarkUri) || IsSameResource(source, LightUri))
+            if (ThemeUris.Values.Any(u => IsSameResource(source, u)))
             {
                 merged[i] = new ResourceDictionary { Source = targetUri };
                 return;

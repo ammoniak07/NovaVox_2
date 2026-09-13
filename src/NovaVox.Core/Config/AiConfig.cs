@@ -15,9 +15,11 @@ public sealed class AiConfig
     public const string DefaultGeminiName = "Gemini";
     public const string DefaultResponseLength = "normal";
     public const string DefaultUiTheme = "dark";
+    /// <summary>Palettes disponibles pour le sélecteur de thème (en-tête) — une ResourceDictionary par id dans NovaVox.App/Resources (Theme.<Id>.xaml, voir ThemeManager).</summary>
+    public static readonly string[] ValidThemes = { "dark", "light", "military", "cyberpunk", "amber", "ocean" };
 
     public string UiLanguage { get; set; } = DefaultUiLanguage;
-    /// <summary>"dark" ou "light" — bascule jour/nuit de l'interface WPF (n'existait pas côté Python, ajout propre à ce portage).</summary>
+    /// <summary>Thème de couleurs de l'interface WPF — un des id de <see cref="ValidThemes"/> (sélecteur d'en-tête, n'existait pas côté Python, ajout propre à ce portage).</summary>
     public string UiTheme { get; set; } = DefaultUiTheme;
     /// <summary>Affiche ou masque la carte "Journal système" (colonne droite) de la fenêtre principale — n'existait pas côté Python, ajout propre à ce portage.</summary>
     public bool ShowSystemLog { get; set; } = true;
@@ -77,7 +79,8 @@ public sealed class AiConfigStore
 
             config.UiLanguage = GetStringOrNull(data["ui_language"]) is { } lang && AiConfig.SupportedLanguages.Contains(lang)
                 ? lang : AiConfig.DefaultUiLanguage;
-            config.UiTheme = GetStringOrNull(data["ui_theme"]) is "light" ? "light" : AiConfig.DefaultUiTheme;
+            config.UiTheme = GetStringOrNull(data["ui_theme"]) is { } theme && AiConfig.ValidThemes.Contains(theme)
+                ? theme : AiConfig.DefaultUiTheme;
             config.ShowSystemLog = GetBool(data["ui_show_system_log"], true);
             config.Voice = GetStringOrNull(data["voice"]);
             config.ConfirmCommands = GetBool(data["confirm_commands"]);

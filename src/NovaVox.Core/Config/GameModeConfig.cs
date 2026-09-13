@@ -20,6 +20,8 @@ public sealed class GameModeSettings
     public bool GameLogEnabled { get; set; } = true;
     public bool GeminiWikiEnabled { get; set; } = true;
     public string? CommandProfileId { get; set; }
+    /// <summary>Thème de couleurs de l'interface (un id de AiConfig.ValidThemes) propre à ce mode — voir AppState.SwitchGameMode.</summary>
+    public string UiTheme { get; set; } = AiConfig.DefaultUiTheme;
 }
 
 public sealed class GameModeConfig
@@ -28,8 +30,10 @@ public sealed class GameModeConfig
     public const string Other = "other";
 
     public string CurrentMode { get; set; } = StarCitizen;
-    public GameModeSettings ForStarCitizen { get; set; } = new() { GameLogEnabled = true, GeminiWikiEnabled = true };
-    public GameModeSettings ForOther { get; set; } = new() { GameLogEnabled = false, GeminiWikiEnabled = false };
+    public GameModeSettings ForStarCitizen { get; set; } = new() { GameLogEnabled = true, GeminiWikiEnabled = true, UiTheme = AiConfig.DefaultUiTheme };
+    // Thème "militaire" par défaut pour "Autre jeu" tant que l'utilisateur n'a pas choisi lui-même
+    // (sélecteur d'en-tête) : distingue immédiatement ce mode de Star Citizen sans réglage préalable.
+    public GameModeSettings ForOther { get; set; } = new() { GameLogEnabled = false, GeminiWikiEnabled = false, UiTheme = "military" };
 
     public GameModeSettings ForMode(string mode) => mode == Other ? ForOther : ForStarCitizen;
 }
@@ -74,6 +78,8 @@ public sealed class GameModeConfigStore
         settings.GameLogEnabled = GetBool(data["game_log_enabled"], defaultEnabled);
         settings.GeminiWikiEnabled = GetBool(data["gemini_wiki_enabled"], defaultEnabled);
         settings.CommandProfileId = GetStringOrNull(data["command_profile_id"]);
+        settings.UiTheme = GetStringOrNull(data["ui_theme"]) is { } theme && AiConfig.ValidThemes.Contains(theme)
+            ? theme : AiConfig.DefaultUiTheme;
         return settings;
     }
 
@@ -103,5 +109,6 @@ public sealed class GameModeConfigStore
         ["game_log_enabled"] = settings.GameLogEnabled,
         ["gemini_wiki_enabled"] = settings.GeminiWikiEnabled,
         ["command_profile_id"] = settings.CommandProfileId,
+        ["ui_theme"] = settings.UiTheme,
     };
 }

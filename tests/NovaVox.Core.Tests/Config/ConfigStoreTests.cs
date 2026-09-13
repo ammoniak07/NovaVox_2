@@ -149,6 +149,18 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal("light", new AiConfigStore(_dir).Load().UiTheme);
     }
 
+    [Theory]
+    [InlineData("military")]
+    [InlineData("cyberpunk")]
+    [InlineData("amber")]
+    [InlineData("ocean")]
+    public void AiConfig_UiThemeRoundTripsNewPalettes(string theme)
+    {
+        var store = new AiConfigStore(_dir);
+        store.Save(new AiConfig { UiTheme = theme });
+        Assert.Equal(theme, new AiConfigStore(_dir).Load().UiTheme);
+    }
+
     [Fact]
     public void AiConfig_ShowSystemLogDefaultsToTrue()
     {

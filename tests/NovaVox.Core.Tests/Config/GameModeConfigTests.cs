@@ -18,6 +18,8 @@ public class GameModeConfigTests : IDisposable
         Assert.True(config.ForStarCitizen.GeminiWikiEnabled);
         Assert.False(config.ForOther.GameLogEnabled);
         Assert.False(config.ForOther.GeminiWikiEnabled);
+        Assert.Equal("dark", config.ForStarCitizen.UiTheme);
+        Assert.Equal("military", config.ForOther.UiTheme);
     }
 
     [Fact]
@@ -30,12 +32,12 @@ public class GameModeConfigTests : IDisposable
             ForStarCitizen = new GameModeSettings
             {
                 ListenHotkey = "ctrl+f9", OverlayBgOpacity = 60, OverlayTextOpacity = 90,
-                GameLogEnabled = true, GeminiWikiEnabled = true, CommandProfileId = "p1",
+                GameLogEnabled = true, GeminiWikiEnabled = true, CommandProfileId = "p1", UiTheme = "amber",
             },
             ForOther = new GameModeSettings
             {
                 ListenHotkey = "ctrl+f10", OverlayBgOpacity = 40, OverlayTextOpacity = 80,
-                GameLogEnabled = false, GeminiWikiEnabled = false, CommandProfileId = "p2",
+                GameLogEnabled = false, GeminiWikiEnabled = false, CommandProfileId = "p2", UiTheme = "cyberpunk",
             },
         };
         store.Save(config);
@@ -46,11 +48,23 @@ public class GameModeConfigTests : IDisposable
         Assert.Equal(60, reloaded.ForStarCitizen.OverlayBgOpacity);
         Assert.Equal(90, reloaded.ForStarCitizen.OverlayTextOpacity);
         Assert.Equal("p1", reloaded.ForStarCitizen.CommandProfileId);
+        Assert.Equal("amber", reloaded.ForStarCitizen.UiTheme);
         Assert.Equal("ctrl+f10", reloaded.ForOther.ListenHotkey);
         Assert.Equal(40, reloaded.ForOther.OverlayBgOpacity);
         Assert.Equal(80, reloaded.ForOther.OverlayTextOpacity);
         Assert.False(reloaded.ForOther.GameLogEnabled);
         Assert.Equal("p2", reloaded.ForOther.CommandProfileId);
+        Assert.Equal("cyberpunk", reloaded.ForOther.UiTheme);
+    }
+
+    [Fact]
+    public void Load_UnknownUiTheme_FallsBackToDark()
+    {
+        File.WriteAllText(Path.Combine(_dir, "game_mode.json"), """
+        {"current_mode": "sc", "sc": {"ui_theme": "purple"}}
+        """);
+        var config = new GameModeConfigStore(_dir).Load();
+        Assert.Equal("dark", config.ForStarCitizen.UiTheme);
     }
 
     [Fact]

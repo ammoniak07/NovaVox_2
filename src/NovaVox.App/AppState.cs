@@ -103,8 +103,10 @@ public sealed class AppState
     /// <summary>
     /// Bascule le mode de jeu (GameModeCombo, en-tête) : sauvegarde l'état
     /// actuel (touche d'activation vocale, transparence de l'overlay,
-    /// Game.log, wiki Gemini, profil de commandes actif) dans le bundle du
-    /// mode qu'on quitte, puis applique celui du mode qu'on rejoint. Les
+    /// Game.log, wiki Gemini, thème de couleurs, profil de commandes actif)
+    /// dans le bundle du mode qu'on quitte, puis applique celui du mode
+    /// qu'on rejoint — le thème (ThemeManager) doit être réappliqué par
+    /// l'appelant après coup, ce n'est qu'une préférence stockée ici. Les
     /// profils de commandes sont cloisonnés par mode (chaque profil
     /// n'appartient qu'à un seul mode, voir ProfileInfo.GameMode) : on
     /// bascule sur le profil mémorisé pour ce mode s'il existe toujours,
@@ -123,6 +125,7 @@ public sealed class AppState
         outgoing.GameLogEnabled = Ai.GameLogEnabled;
         outgoing.GeminiWikiEnabled = Ai.GeminiWikiEnabled;
         outgoing.CommandProfileId = CommandStore.ActiveProfileId;
+        outgoing.UiTheme = Ai.UiTheme;
 
         GameMode.CurrentMode = mode;
         GameModeConfigStore.Save(GameMode);
@@ -136,6 +139,7 @@ public sealed class AppState
         SaveOverlay();
         Ai.GameLogEnabled = incoming.GameLogEnabled;
         Ai.GeminiWikiEnabled = incoming.GeminiWikiEnabled;
+        Ai.UiTheme = incoming.UiTheme;
         SaveAi();
 
         // Recharge la liste de profils AVANT de choisir lequel activer : ne
