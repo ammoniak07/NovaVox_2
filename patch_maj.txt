@@ -5,7 +5,6 @@ v0.0.2
 - Les nouvelles commandes/titres apparaissent désormais en haut de la liste.
 - Micro coupé ou écoute arrêtée : un cadre rouge s'affiche autour de l'overlay au lieu de tout le fond, pour rester lisible ; le flash vert au déclenchement d'une commande est inchangé.
 - La transparence/opacité configurée n'est plus perdue à chaque redémarrage de l'application.
-Diagnostic :
 - Journalisation nettement étoffée (dossier Log/) pour faciliter le diagnostic en cas de problème : actions utilisateur, réglages modifiés, touches envoyées, erreurs auparavant silencieuses.
 v0.0.1
 ------
