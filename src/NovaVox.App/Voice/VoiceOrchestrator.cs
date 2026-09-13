@@ -82,6 +82,7 @@ public sealed class VoiceOrchestrator : IDisposable
         _commandExecutor = new CommandExecutor(_keySimulator);
         _keySimulator.OnError = (context, ex) => RaiseLog($"[Erreur touche] {context} : {ex.Message}", "error");
         _keySimulator.OnWarning = msg => RaiseLog(msg, "warning");
+        _keySimulator.OnKeyPress = keysStr => RaiseLog($"[Touche] {keysStr}", "diagnostic");
         _tts.ErrorOccurred += (_, msg) => RaiseLog($"[Erreur voix] {msg}", "error");
         _tts.Diagnostic += (_, msg) => RaiseLog(msg, "diagnostic");
 

@@ -19,6 +19,9 @@ public sealed class KeySimulator
     /// <summary>Appelé pour un avertissement non bloquant (touche inconnue, échec de relâchement isolé).</summary>
     public Action<string>? OnWarning { get; set; }
 
+    /// <summary>Appelé juste avant chaque envoi réel (une fois par appel à PressKeys, donc une fois par répétition/étape) — trace fichier uniquement (voir AppendLog, "diagnostic").</summary>
+    public Action<string>? OnKeyPress { get; set; }
+
     /// <summary>
     /// Enfonce (et relâche) la combinaison de touches une fois.
     /// GARDE-FOU CRITIQUE : toute touche/bouton enfoncé DOIT toujours être
@@ -38,6 +41,8 @@ public sealed class KeySimulator
             if (MouseButtons.Contains(k)) mouseButton = k;
             else keyboardKeys.Add(k);
         }
+
+        OnKeyPress?.Invoke(keysStr + (hold ? " (maintenue)" : ""));
 
         var pressedKeys = new List<string>();
         var mousePressed = false;

@@ -36,6 +36,16 @@ public partial class MainWindow : Window
     private readonly WindowConfigStore _windowConfigStore = new(NovaVoxPaths.BaseDirectory);
     private readonly AppState _state = new(NovaVoxPaths.BaseDirectory);
     private readonly DispatcherTimer _commandsSaveTimer;
+    // Journalisent (fichier Log/ seulement, jamais le panneau) un résumé
+    // des réglages Audio/IA/Overlay après chaque modification — sur le
+    // même principe de "temporisation" que _commandsSaveTimer : beaucoup
+    // de curseurs (volume, gain...) déclenchent une sauvegarde à CHAQUE
+    // valeur pendant un glisser, donc une trace à chaque appel spammerait
+    // le journal. Une seule ligne récapitulative ~600ms après la dernière
+    // modification, plutôt qu'une par crantage de curseur.
+    private readonly DispatcherTimer _audioSettingsLogTimer;
+    private readonly DispatcherTimer _aiSettingsLogTimer;
+    private readonly DispatcherTimer _overlaySettingsLogTimer;
     private VoiceOrchestrator? _voiceOrchestrator;
     private bool _restoring = true;
 
@@ -100,6 +110,28 @@ public partial class MainWindow : Window
         {
             _commandsSaveTimer.Stop();
             _state.SaveCommands();
+            var count = _state.Commands.Count(r => !r.IsTitle);
+            var titles = _state.Commands.Count(r => r.IsTitle);
+            AppendLog($"[Réglages] Commandes enregistrées ({count} commande(s), {titles} titre(s)).", "diagnostic");
+        };
+
+        _audioSettingsLogTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        _audioSettingsLogTimer.Tick += (_, _) =>
+        {
+            _audioSettingsLogTimer.Stop();
+            AppendLog(AudioSettingsLogSummary(), "diagnostic");
+        };
+        _aiSettingsLogTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        _aiSettingsLogTimer.Tick += (_, _) =>
+        {
+            _aiSettingsLogTimer.Stop();
+            AppendLog(AiSettingsLogSummary(), "diagnostic");
+        };
+        _overlaySettingsLogTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        _overlaySettingsLogTimer.Tick += (_, _) =>
+        {
+            _overlaySettingsLogTimer.Stop();
+            AppendLog(OverlaySettingsLogSummary(), "diagnostic");
         };
 
         Loaded += OnLoaded;
@@ -294,11 +326,80 @@ public partial class MainWindow : Window
         _commandsSaveTimer.Start();
     }
 
-    private void AddCommand_Click(object sender, RoutedEventArgs e) =>
-        _state.Commands.Insert(0, new VoiceCommandRow { Phrase = "nouvelle commande", Keys = "n" });
+    // ---------------------------------------- Journalisation des réglages
+    // Enveloppent _state.SaveXxx() : la sauvegarde elle-même reste
+    // immédiate (comportement inchangé), seule la LIGNE DE JOURNAL est
+    // temporisée (voir les 3 DispatcherTimer déclarés dans le
+    // constructeur) pour ne pas spammer Log/ à chaque crantage d'un
+    // curseur pendant un glisser.
 
-    private void AddTitle_Click(object sender, RoutedEventArgs e) =>
+    private void SaveAudioAndLog()
+    {
+        _state.SaveAudio();
+        _audioSettingsLogTimer.Stop();
+        _audioSettingsLogTimer.Start();
+    }
+
+    private void SaveAiAndLog()
+    {
+        _state.SaveAi();
+        _aiSettingsLogTimer.Stop();
+        _aiSettingsLogTimer.Start();
+    }
+
+    private void SaveOverlayAndLog()
+    {
+        _state.SaveOverlay();
+        _overlaySettingsLogTimer.Stop();
+        _overlaySettingsLogTimer.Start();
+    }
+
+    private string AudioSettingsLogSummary()
+    {
+        var a = _state.Audio;
+        return "[Réglages] Audio : " +
+            $"entrée={a.InputDevice ?? "défaut"} gain={a.MicGain:F2} porte={a.MicGate} " +
+            $"mode_écoute={a.ListenMode} touche_écoute={a.ListenHotkey ?? "aucune"} touche_profil={a.ProfileCycleHotkey ?? "aucune"} " +
+            $"clavier={a.KbLayout} aec={a.AecEnabled} sortie={a.OutputDevice ?? "défaut"} volume_tts={a.TtsVolume:F2} " +
+            $"modèle_vosk={a.ModelPath ?? "aucun"}";
+    }
+
+    private string AiSettingsLogSummary()
+    {
+        var ai = _state.Ai;
+        // Clé API Gemini jamais journalisée en clair (secret utilisateur) : seule sa présence l'est.
+        return "[Réglages] IA : " +
+            $"langue={ai.UiLanguage} thème={ai.UiTheme} voix_reconnue={ai.Voice ?? "aucune"} " +
+            $"confirmer_commandes={ai.ConfirmCommands} délai_déclenchement={ai.TriggerCooldown:F1} " +
+            $"pseudo={ai.UserName} voix_piper={ai.PiperVoice ?? "aucune"} vitesse_piper={ai.PiperLengthScale:F2} " +
+            $"expressivité_piper={ai.PiperNoiseScale:F2} effet_radio={ai.RadioEffect} " +
+            $"gamelog_actif={ai.GameLogEnabled} gamelog_annonce={ai.GameLogAnnounceEvents} pseudo_rsi={ai.GameLogPlayerHandle} " +
+            $"gemini_actif={ai.GeminiEnabled} gemini_modèle={ai.GeminiModel} gemini_clé={(ai.GeminiApiKey.Length > 0 ? "définie" : "vide")} " +
+            $"gemini_nom={ai.GeminiName} gemini_longueur_réponse={ai.GeminiResponseLength} " +
+            $"gemini_contexte={(ai.GeminiCustomContext.Length > 0 ? $"défini ({ai.GeminiCustomContext.Length} car.)" : "vide")}";
+    }
+
+    private string OverlaySettingsLogSummary()
+    {
+        var o = _state.Overlay;
+        var visibleRows = string.Join(",", o.VisibleRows.Where(kv => kv.Value).Select(kv => kv.Key));
+        return "[Réglages] Overlay : " +
+            $"activé={o.Enabled} position=({o.X?.ToString() ?? "?"},{o.Y?.ToString() ?? "?"}) " +
+            $"couleur_fond={o.BgColor} opacité_fond={o.BgOpacity} couleur_texte={o.TextColor} opacité_texte={o.TextOpacity} " +
+            $"lignes_visibles={visibleRows}";
+    }
+
+    private void AddCommand_Click(object sender, RoutedEventArgs e)
+    {
+        _state.Commands.Insert(0, new VoiceCommandRow { Phrase = "nouvelle commande", Keys = "n" });
+        AppendLog("Commande créée.", "diagnostic");
+    }
+
+    private void AddTitle_Click(object sender, RoutedEventArgs e)
+    {
         _state.Commands.Insert(0, new VoiceCommandRow { IsTitle = true, Phrase = "Nouveau groupe" });
+        AppendLog("Titre de groupe créé.", "diagnostic");
+    }
 
     private static VoiceCommandRow? RowFromSender(object sender) =>
         (sender as FrameworkElement)?.DataContext as VoiceCommandRow;
@@ -322,7 +423,9 @@ public partial class MainWindow : Window
     private void DeleteRow_Click(object sender, RoutedEventArgs e)
     {
         var row = RowFromSender(sender);
-        if (row is not null) _state.Commands.Remove(row);
+        if (row is null) return;
+        _state.Commands.Remove(row);
+        AppendLog(row.IsTitle ? $"Titre de groupe supprimé : « {row.Phrase} »." : $"Commande supprimée : « {row.Phrase} ».", "diagnostic");
     }
 
     private void SpeakCommand_Click(object sender, RoutedEventArgs e)
@@ -331,6 +434,7 @@ public partial class MainWindow : Window
         if (row is null || string.IsNullOrWhiteSpace(row.Phrase)) return;
         EnsureTestTts();
         _testTts!.Speak(row.Phrase);
+        AppendLog($"Test de lecture de la phrase « {row.Phrase} ».", "diagnostic");
     }
 
     private void ToggleSynonyms_Click(object sender, RoutedEventArgs e)
@@ -349,6 +453,8 @@ public partial class MainWindow : Window
         if (row.Synonyms.Any(s => string.Equals(s, trimmed, StringComparison.OrdinalIgnoreCase))) return;
         row.Synonyms.Add(trimmed);
         row.SynonymsExpanded = true;
+        ScheduleCommandsSave();
+        AppendLog($"Synonyme ajouté à « {row.Phrase} » : « {trimmed} ».", "diagnostic");
     }
 
     /// <summary>Tag résolu via RelativeSource AncestorType=ListBoxItem (voir DataTemplate imbriqué du XAML) : la commande parente, alors que le DataContext du bouton lui-même est le synonyme (une simple chaîne).</summary>
@@ -360,12 +466,16 @@ public partial class MainWindow : Window
         var updated = InputDialog.Show(this, $"Modifier le synonyme de « {row.Phrase} » :", current);
         if (string.IsNullOrWhiteSpace(updated)) return;
         row.Synonyms[idx] = updated.Trim();
+        ScheduleCommandsSave();
+        AppendLog($"Synonyme de « {row.Phrase} » modifié : « {current} » → « {updated.Trim()} ».", "diagnostic");
     }
 
     private void DeleteSynonym_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: VoiceCommandRow row, DataContext: string current }) return;
         row.Synonyms.Remove(current);
+        ScheduleCommandsSave();
+        AppendLog($"Synonyme de « {row.Phrase} » supprimé : « {current} ».", "diagnostic");
     }
 
     // --------------------------------------- Réordonnancement par glisser
@@ -669,7 +779,7 @@ public partial class MainWindow : Window
     {
         if (sender is not Button { Tag: string tag }) return;
         _state.Audio.KbLayout = tag;
-        _state.SaveAudio();
+        SaveAudioAndLog();
         SelectComboItemByTag(KbLayoutCombo, tag);
         RefreshKeyboardLabels();
         UpdateKbLayoutButtonHighlight();
@@ -718,6 +828,8 @@ public partial class MainWindow : Window
             row.RepeatCount = repeatCount;
             row.RepeatDelay = repeatDelay;
             _state.SaveCommands();
+            AppendLog($"Touche de « {row.Phrase} » réglée sur « {combo} »" +
+                (hold ? " (maintenue)" : "") + (repeatCount > 1 ? $" (répétée {repeatCount}x, {repeatDelay:F1}s)" : "") + ".", "diagnostic");
         };
 
         UpdateKbLayoutButtonHighlight();
@@ -873,6 +985,7 @@ public partial class MainWindow : Window
         // changement de profil. Repointe explicitement vers la nouvelle
         // instance correspondante.
         SelectActiveProfileInCombo();
+        AppendLog($"Profil actif : « {profile.Name} ».", "info");
     }
 
     private void NewProfile_Click(object sender, RoutedEventArgs e)
@@ -885,6 +998,7 @@ public partial class MainWindow : Window
         CommandsList.ItemsSource = null;
         InitializeCommandsList();
         SelectActiveProfileInCombo();
+        AppendLog($"Profil créé : « {name.Trim()} ».", "success");
     }
 
     private void RenameProfile_Click(object sender, RoutedEventArgs e)
@@ -893,9 +1007,11 @@ public partial class MainWindow : Window
         var name = InputDialog.Show(this, "Nouveau nom du profil :", profile.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
         var (_, commands) = _state.CommandStore.ReadProfile(profile.Id);
+        var oldName = profile.Name;
         _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands);
         _state.ReloadProfiles();
         SelectActiveProfileInCombo();
+        AppendLog($"Profil renommé : « {oldName} » → « {name.Trim()} ».", "success");
     }
 
     private void DeleteProfile_Click(object sender, RoutedEventArgs e)
@@ -919,6 +1035,7 @@ public partial class MainWindow : Window
         CommandsList.ItemsSource = null;
         InitializeCommandsList();
         SelectActiveProfileInCombo();
+        AppendLog($"Profil supprimé : « {profile.Name} ».", "success");
     }
 
     private static (int X, int Y, int W, int H)? VirtualScreenBounds()
@@ -1067,7 +1184,7 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Audio.MicGain = e.NewValue;
-        _state.SaveAudio();
+        SaveAudioAndLog();
     }
 
     private void MicGateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1075,7 +1192,7 @@ public partial class MainWindow : Window
         UpdateMicGateMarker(); // même pendant le chargement des réglages, pour refléter la valeur restaurée
         if (_loadingSettings) return;
         _state.Audio.MicGate = (int)e.NewValue;
-        _state.SaveAudio();
+        SaveAudioAndLog();
     }
 
     private void InputDeviceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1083,7 +1200,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         var selected = InputDeviceCombo.SelectedItem as string;
         _state.Audio.InputDevice = selected == "Périphérique par défaut" ? null : selected;
-        _state.SaveAudio();
+        SaveAudioAndLog();
         // Redémarre le mètre de niveau léger avec le nouveau périphérique
         // (sans effet si l'écoute complète tourne déjà : elle alimente
         // alors le mètre elle-même via VoiceOrchestrator.MicLevelChanged).
@@ -1126,7 +1243,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         var selected = OutputDeviceCombo.SelectedItem as string;
         _state.Audio.OutputDevice = selected == "Périphérique par défaut" ? null : selected;
-        _state.SaveAudio();
+        SaveAudioAndLog();
         ApplyLiveVoiceSettings();
     }
 
@@ -1136,7 +1253,7 @@ public partial class MainWindow : Window
         if (sender is RadioButton { Tag: string tag })
         {
             _state.Audio.ListenMode = tag;
-            _state.SaveAudio();
+            SaveAudioAndLog();
             _voiceOrchestrator?.UpdateListenHotkeySettings();
         }
     }
@@ -1150,7 +1267,7 @@ public partial class MainWindow : Window
         // moyen d'effacer est le bouton "Effacer" (voir onClearListenHotkey, script.js).
         if (value.Length == 0) return;
         _state.Audio.ListenHotkey = value.ToLowerInvariant();
-        _state.SaveAudio();
+        SaveAudioAndLog();
         UpdateListenHotkeyDisplay();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
     }
@@ -1166,7 +1283,7 @@ public partial class MainWindow : Window
     private void ClearListenHotkey_Click(object sender, RoutedEventArgs e)
     {
         _state.Audio.ListenHotkey = null;
-        _state.SaveAudio();
+        SaveAudioAndLog();
         ListenHotkeyBox.Text = "";
         UpdateListenHotkeyDisplay();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
@@ -1205,7 +1322,7 @@ public partial class MainWindow : Window
             if (result.Ok && result.JoystickHotkey is not null)
             {
                 _state.Audio.ListenHotkey = result.JoystickHotkey;
-                _state.SaveAudio();
+                SaveAudioAndLog();
                 UpdateListenHotkeyDisplay();
                 _voiceOrchestrator?.UpdateListenHotkeySettings();
                 AppendLog($"Touche d'activation vocale réglée sur « {ListenHotkeyValueText.Text} ».", "success");
@@ -1235,7 +1352,7 @@ public partial class MainWindow : Window
         if (KbLayoutCombo.SelectedItem is ComboBoxItem { Tag: string tag })
         {
             _state.Audio.KbLayout = tag;
-            _state.SaveAudio();
+            SaveAudioAndLog();
             RefreshKeyboardLabels();
             UpdateKbLayoutButtonHighlight();
             RefreshKeyboardHighlight();
@@ -1246,7 +1363,7 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Audio.TtsVolume = e.NewValue;
-        _state.SaveAudio();
+        SaveAudioAndLog();
         ApplyLiveVoiceSettings();
     }
 
@@ -1254,21 +1371,21 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Audio.AecEnabled = AecEnabledCheckbox.IsChecked ?? false;
-        _state.SaveAudio();
+        SaveAudioAndLog();
     }
 
     private void GeminiEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
         _state.Ai.GeminiEnabled = GeminiEnabledCheckbox.IsChecked ?? false;
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void GeminiApiKeyBox_LostFocus(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
         _state.Ai.GeminiApiKey = GeminiApiKeyBox.Text.Trim();
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void GeminiModelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1277,7 +1394,7 @@ public partial class MainWindow : Window
         GeminiModelDescText.Text = model.Description;
         if (_loadingSettings) return;
         _state.Ai.GeminiModel = model.Id;
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void GeminiNameBox_LostFocus(object sender, RoutedEventArgs e)
@@ -1285,7 +1402,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         var value = GeminiNameBox.Text.Trim();
         _state.Ai.GeminiName = value.Length == 0 ? AiConfig.DefaultGeminiName : value;
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void GeminiResponseLengthCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1294,7 +1411,7 @@ public partial class MainWindow : Window
         if (GeminiResponseLengthCombo.SelectedItem is ComboBoxItem { Tag: string tag })
         {
             _state.Ai.GeminiResponseLength = tag;
-            _state.SaveAi();
+            SaveAiAndLog();
         }
     }
 
@@ -1302,21 +1419,21 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.GeminiCustomContext = GeminiContextBox.Text;
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void ConfirmCommandsCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
         _state.Ai.ConfirmCommands = ConfirmCommandsCheckbox.IsChecked ?? false;
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void RadioEffectCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
         _state.Ai.RadioEffect = RadioEffectCheckbox.IsChecked ?? false;
-        _state.SaveAi();
+        SaveAiAndLog();
         ApplyLiveVoiceSettings();
     }
 
@@ -1324,7 +1441,7 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.PiperLengthScale = e.NewValue;
-        _state.SaveAi();
+        SaveAiAndLog();
         ApplyLiveVoiceSettings();
     }
 
@@ -1332,7 +1449,7 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.PiperNoiseScale = e.NewValue;
-        _state.SaveAi();
+        SaveAiAndLog();
         ApplyLiveVoiceSettings();
     }
 
@@ -1340,7 +1457,7 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.GameLogEnabled = GameLogEnabledCheckbox.IsChecked ?? false;
-        _state.SaveAi();
+        SaveAiAndLog();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
     }
@@ -1349,14 +1466,14 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Ai.GameLogAnnounceEvents = GameLogAnnounceCheckbox.IsChecked ?? false;
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void PlayerHandleBox_LostFocus(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
         _state.Ai.GameLogPlayerHandle = PlayerHandleBox.Text.Trim();
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void UiLanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1365,7 +1482,7 @@ public partial class MainWindow : Window
         if (UiLanguageCombo.SelectedItem is ComboBoxItem { Tag: string tag })
         {
             _state.Ai.UiLanguage = tag;
-            _state.SaveAi();
+            SaveAiAndLog();
         }
     }
 
@@ -1488,7 +1605,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true) return;
 
         _state.Audio.ModelPath = dialog.FolderName;
-        _state.SaveAudio();
+        SaveAudioAndLog();
         ModelPathText.Text = dialog.FolderName;
     }
 
@@ -1498,10 +1615,11 @@ public partial class MainWindow : Window
     {
         var newTheme = _state.Ai.UiTheme == "light" ? "dark" : "light";
         _state.Ai.UiTheme = newTheme;
-        _state.SaveAi();
+        SaveAiAndLog();
         ThemeManager.Apply(newTheme);
         ThemeToggleButton.Content = newTheme == "light" ? "☀" : "🌙";
         SyncTitleBarColor();
+        AppendLog($"Thème : {(newTheme == "light" ? "jour" : "nuit")}.", "diagnostic");
     }
 
     /// <summary>Colore la barre de titre native exactement comme le fond de l'en-tête de l'appli, au lieu du gris générique — voir DarkTitleBar.ApplyCaptionColor.</summary>
@@ -1717,7 +1835,7 @@ public partial class MainWindow : Window
             if (string.IsNullOrEmpty(_state.Ai.GameLogPlayerHandle) && !string.IsNullOrEmpty(evt.Nickname))
             {
                 _state.Ai.GameLogPlayerHandle = evt.Nickname;
-                _state.SaveAi();
+                SaveAiAndLog();
                 Dispatcher.BeginInvoke(() => PlayerHandleBox.Text = evt.Nickname);
                 AppendLog($"Pseudo RSI détecté automatiquement : « {evt.Nickname} ».", "info");
             }
@@ -1745,7 +1863,7 @@ public partial class MainWindow : Window
             HookDestinationAliasRow(row);
             _destinationAliasRows.Insert(0, row);
         }
-        if (result.IsNewHudOverride || result.IsNewDestinationAlias) _state.SaveAi();
+        if (result.IsNewHudOverride || result.IsNewDestinationAlias) SaveAiAndLog();
 
         if (_state.Ai.GameLogAnnounceEvents && result.Text.Length > 0)
         {
@@ -1768,7 +1886,7 @@ public partial class MainWindow : Window
             _state.Ai.GameLogPhrases[row.Key] = text;
         }
         row.IsDirty = false;
-        _state.SaveAi();
+        SaveAiAndLog();
         AppendLog($"Phrase « {row.Label} » enregistrée.", "success");
     }
 
@@ -1779,7 +1897,7 @@ public partial class MainWindow : Window
         _state.Ai.GameLogHudOverrides[row.RawText] = custom.Length == 0 ? row.RawText : custom;
         row.IsNew = false;
         row.IsDirty = false;
-        _state.SaveAi();
+        SaveAiAndLog();
         AppendLog("Correction de lecture enregistrée.", "success");
     }
 
@@ -1788,7 +1906,7 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
         _state.Ai.GameLogHudOverrides.Remove(row.RawText);
         _hudOverrideRows.Remove(row);
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void SaveDestinationAlias_Click(object sender, RoutedEventArgs e)
@@ -1797,7 +1915,7 @@ public partial class MainWindow : Window
         _state.Ai.GameLogDestinationAliases[row.RawKey] = row.CustomName.Trim();
         row.IsNew = false;
         row.IsDirty = false;
-        _state.SaveAi();
+        SaveAiAndLog();
         AppendLog("Alias de destination enregistré.", "success");
     }
 
@@ -1806,7 +1924,7 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is not DestinationAliasRowVm row) return;
         _state.Ai.GameLogDestinationAliases.Remove(row.RawKey);
         _destinationAliasRows.Remove(row);
-        _state.SaveAi();
+        SaveAiAndLog();
     }
 
     private void OpenGameLog_Click(object sender, RoutedEventArgs e)
@@ -1872,7 +1990,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         var enabled = OverlayEnabledCheckbox.IsChecked ?? false;
         _state.Overlay.Enabled = enabled;
-        _state.SaveOverlay();
+        SaveOverlayAndLog();
         if (_overlayWindow is null)
         {
             AppendLog("Overlay : case cochée mais la fenêtre d'overlay n'existe pas (jamais initialisée).", "error");
@@ -1907,7 +2025,7 @@ public partial class MainWindow : Window
         _state.Overlay.BgOpacity = (int)OverlayBgOpacitySlider.Value;
         _state.Overlay.TextColor = OverlayTextColorBox.Text.Trim();
         _state.Overlay.TextOpacity = (int)OverlayTextOpacitySlider.Value;
-        _state.SaveOverlay();
+        SaveOverlayAndLog();
         _overlayWindow.ApplyAppearance(_state.Overlay.BgColor, _state.Overlay.BgOpacity, _state.Overlay.TextColor, _state.Overlay.TextOpacity);
     }
 
@@ -2031,7 +2149,7 @@ public partial class MainWindow : Window
             if (installedPath is not null)
             {
                 _state.Audio.ModelPath = installedPath;
-                _state.SaveAudio();
+                SaveAudioAndLog();
                 ModelPathText.Text = installedPath;
                 row.StatusText = "Installé.";
                 AppendLog($"Modèle Vosk « {row.Label} » installé.", "success");
@@ -2063,7 +2181,7 @@ public partial class MainWindow : Window
         if (_state.Audio.ModelPath == VoskModelInstaller.TargetDir)
         {
             _state.Audio.ModelPath = null;
-            _state.SaveAudio();
+            SaveAudioAndLog();
         }
         ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath) ? "Aucun modèle sélectionné" : _state.Audio.ModelPath;
         AppendLog($"Modèle Vosk « {row.Label} » désinstallé.", "info");
@@ -2129,7 +2247,7 @@ public partial class MainWindow : Window
 
         foreach (var other in _piperVoiceRows) other.IsSelected = other.Id == row.Id;
         _state.Ai.PiperVoice = row.Id;
-        _state.SaveAi();
+        SaveAiAndLog();
         ApplyLiveVoiceSettings();
     }
 
@@ -2156,7 +2274,7 @@ public partial class MainWindow : Window
             {
                 row.IsSelected = true;
                 _state.Ai.PiperVoice = row.Id;
-                _state.SaveAi();
+                SaveAiAndLog();
                 ApplyLiveVoiceSettings();
             }
         }
@@ -2179,7 +2297,7 @@ public partial class MainWindow : Window
         if (_state.Ai.PiperVoice == row.Id)
         {
             _state.Ai.PiperVoice = null;
-            _state.SaveAi();
+            SaveAiAndLog();
         }
     }
 
