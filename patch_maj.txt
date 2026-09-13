@@ -1,5 +1,36 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.0.2
+------
+Interface :
+- Ajout d'un pied de page (version + crédits) sur la page principale, avec liens Crédits cliquables ; notes de mise à jour stylées comme la version Python.
+- Correction des boutons fermer (✕) tronqués sur les fenêtres superposées ; barres de défilement redessinées en thème sombre.
+- "V2" ajouté au titre de l'en-tête ; icône clavier à la place du crayon sur le bouton "modifier la touche".
+- Correction de l'affichage du sélecteur de modèle Gemini (nom technique affiché au lieu du libellé propre).
+- Correction du mode jour (plusieurs éléments restaient teintés mode nuit) et d'un plantage au changement de thème.
+- Les nouvelles commandes/titres apparaissent désormais en haut de la liste.
+
+Overlay en jeu :
+- Ajout de cases à cocher (en mode « Déplacer l'overlay ») pour choisir les informations affichées : heure, écoute, micro, phrase, zone, dernière commande.
+- Micro coupé ou écoute arrêtée : un cadre rouge s'affiche autour de l'overlay au lieu de tout le fond, pour rester lisible ; le flash vert au déclenchement d'une commande est inchangé.
+- La transparence/opacité configurée n'est plus perdue à chaque redémarrage de l'application.
+- La ligne « Zone » se met désormais à jour automatiquement à chaque arrivée à destination détectée dans le Game.log.
+
+Game.log & IA :
+- Gemini recherche désormais du contexte sur le wiki Star Citizen (starcitizen.tools), comme la version Python.
+- Cadre orange/rouge pour repérer les nouvelles entrées Game.log pas encore enregistrées.
+- Retrait du modèle « gemini-3.6-flash-lite » (n'existe pas côté API Google).
+
+Profils & configuration :
+- Les profils et commandes se rafraîchissent après un import, sans avoir à redémarrer l'application.
+
+Mises à jour & déploiement :
+- Vérification automatique des mises à jour, publication sur GitHub Releases et notification Discord à chaque nouvelle version.
+- Installation compatible avec une version Python (V1) déjà présente sur le même PC : plus de conflit de raccourcis.
+
+Diagnostic :
+- Journalisation nettement étoffée (dossier Log/) pour faciliter le diagnostic en cas de problème : actions utilisateur, réglages modifiés, touches envoyées, erreurs auparavant silencieuses.
+
 v0.0.1
 ------
 - Première version de la réédition .NET/WPF de NovaVox (portage complet depuis la version Python/pywebview d'origine, avec sa propre numérotation de version).
