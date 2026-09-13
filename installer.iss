@@ -16,7 +16,16 @@
 ; le dossier Output\ a cote de ce script.
 ; ============================================================
 
-#define MyAppName "NovaVox"
+; "NovaVox V2" (pas juste "NovaVox") : Inno Setup dérive de MyAppName à
+; la fois le nom du groupe Start Menu ET le nom de fichier de CHAQUE
+; raccourci (voir [Icons] plus bas) -- avec le même nom que la version
+; Python ("NovaVox"), les deux installeurs auraient généré des
+; raccourcis Bureau/Menu Démarrer au même chemin (ex. Bureau\NovaVox.lnk),
+; installer l'un après l'autre aurait donc silencieusement ECRASÉ le
+; raccourci de l'autre (pointant vers son .exe) sans aucun message.
+; Les dossiers d'installation eux-mêmes étaient déjà distincts (voir
+; DefaultDirName ci-dessous) : seuls les raccourcis collisionnaient.
+#define MyAppName "NovaVox V2"
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0"
 #endif

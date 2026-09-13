@@ -14,10 +14,18 @@ namespace NovaVox.App.Autolaunch;
 /// </summary>
 public static class StarCitizenAutolaunch
 {
+    // Nom DISTINCT de celui de la version Python ("NOVAVOX (veille Star
+    // Citizen).lnk", même dossier Démarrage) : les deux éditions peuvent
+    // coexister installées côte à côte (AppId/dossier d'installation déjà
+    // distincts, voir installer.iss) — avec le même nom de raccourci,
+    // activer la veille dans l'une aurait silencieusement écrasé le
+    // raccourci de l'autre (et le désactiver dans l'une aurait supprimé
+    // le fichier dont l'autre dépendait aussi), cassant sa propre veille
+    // sans aucun message d'erreur.
     private static string ShortcutPath() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Microsoft", "Windows", "Start Menu", "Programs", "Startup",
-        "NOVAVOX (veille Star Citizen).lnk");
+        "NOVAVOX V2 (veille Star Citizen).lnk");
 
     public static bool IsEnabled() => File.Exists(ShortcutPath());
 
