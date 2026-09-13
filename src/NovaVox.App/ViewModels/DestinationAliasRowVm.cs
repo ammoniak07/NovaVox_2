@@ -17,4 +17,8 @@ public sealed class DestinationAliasRowVm : INotifyPropertyChanged
 
     private bool _isNew;
     public bool IsNew { get => _isNew; set { _isNew = value; Raise(); } }
+
+    /// <summary>Modifié depuis le dernier "Enregistrer" (ou jamais encore enregistré) — cadre rouge tant que vrai, voir MainWindow.xaml.</summary>
+    private bool _isDirty;
+    public bool IsDirty { get => _isDirty; set { _isDirty = value; Raise(); } }
 }

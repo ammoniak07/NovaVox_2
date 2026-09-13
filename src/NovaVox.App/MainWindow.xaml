@@ -715,9 +715,29 @@
                             <ItemsControl x:Name="GameLogPhrasesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                        <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                                    <Style.Triggers>
+                                                        <!-- Modifié depuis le dernier "Enregistrer" : cadre rouge, disparaît une fois enregistré (voir IsDirty, MainWindow.xaml.cs). -->
+                                                        <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <StackPanel>
-                                                <TextBlock Text="{Binding Label}" Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                                                    <TextBlock Grid.Column="1" Text="● non enregistré" Foreground="{StaticResource DangerBrush}" FontSize="11" FontWeight="Bold"
+                                                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
+                                                </Grid>
                                                 <Grid Margin="0,4,0,0">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
@@ -747,6 +767,11 @@
                                                             <Setter Property="Background" Value="{StaticResource AccentDimBrush}" />
                                                             <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
                                                         </DataTrigger>
+                                                        <!-- Après la précédente : passe le cadre en rouge si modifié depuis le dernier "Enregistrer",
+                                                             y compris par-dessus le orange "nouvelle entrée" — disparaît une fois enregistré. -->
+                                                        <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                        </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
@@ -759,8 +784,12 @@
                                                     <TextBlock Grid.Column="0" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap">
                                                         <Run Text="Détecté : « " /><Run Text="{Binding RawText, Mode=OneWay}" /><Run Text=" »" />
                                                     </TextBlock>
-                                                    <TextBlock Grid.Column="1" Text="● nouvelle entrée" Foreground="{StaticResource AmberBrush}" FontSize="11" FontWeight="Bold"
-                                                               Visibility="{Binding IsNew, Converter={StaticResource BoolToVis}}" />
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <TextBlock Text="● nouvelle entrée" Foreground="{StaticResource AmberBrush}" FontSize="11" FontWeight="Bold"
+                                                                   Visibility="{Binding IsNew, Converter={StaticResource BoolToVis}}" />
+                                                        <TextBlock Text="● non enregistré" Foreground="{StaticResource DangerBrush}" FontSize="11" FontWeight="Bold" Margin="8,0,0,0"
+                                                                   Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
+                                                    </StackPanel>
                                                 </Grid>
                                                 <Grid Margin="0,4,0,0">
                                                     <Grid.ColumnDefinitions>
@@ -784,11 +813,40 @@
                             <ItemsControl x:Name="GameLogDestinationAliasesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                        <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource PanelAltBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource AccentDimBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                                                        </DataTrigger>
+                                                        <!-- Après la précédente : passe le cadre en rouge si modifié depuis le dernier "Enregistrer",
+                                                             y compris par-dessus le orange "nouvelle entrée" — disparaît une fois enregistré. -->
+                                                        <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <StackPanel>
-                                                <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="11">
-                                                    <Run Text="Détecté : « " /><Run Text="{Binding RawKey, Mode=OneWay}" /><Run Text=" »" />
-                                                </TextBlock>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Foreground="{StaticResource MutedBrush}" FontSize="11">
+                                                        <Run Text="Détecté : « " /><Run Text="{Binding RawKey, Mode=OneWay}" /><Run Text=" »" />
+                                                    </TextBlock>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <TextBlock Text="● nouvelle entrée" Foreground="{StaticResource AmberBrush}" FontSize="11" FontWeight="Bold"
+                                                                   Visibility="{Binding IsNew, Converter={StaticResource BoolToVis}}" />
+                                                        <TextBlock Text="● non enregistré" Foreground="{StaticResource DangerBrush}" FontSize="11" FontWeight="Bold" Margin="8,0,0,0"
+                                                                   Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
+                                                    </StackPanel>
+                                                </Grid>
                                                 <Grid Margin="0,4,0,0">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />

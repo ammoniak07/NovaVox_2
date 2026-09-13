@@ -15,4 +15,8 @@ public sealed class GameLogPhraseRowVm : INotifyPropertyChanged
 
     private string _text = "";
     public string Text { get => _text; set { _text = value; Raise(); } }
+
+    /// <summary>Modifié depuis le dernier "Enregistrer" — cadre rouge tant que vrai, voir MainWindow.xaml.</summary>
+    private bool _isDirty;
+    public bool IsDirty { get => _isDirty; set { _isDirty = value; Raise(); } }
 }

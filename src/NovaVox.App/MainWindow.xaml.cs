@@ -1582,27 +1582,51 @@ public partial class MainWindow : Window
         {
             var meta = GameLogPhraseCatalog.Meta[key];
             var hint = meta.Placeholders.Count == 0 ? "" : $" — variables : {string.Join(", ", meta.Placeholders.Select(p => "{" + p + "}"))}";
-            _gameLogPhraseRows.Add(new GameLogPhraseRowVm
+            var row = new GameLogPhraseRowVm
             {
                 Key = key,
                 Label = meta.Label + hint,
                 PlaceholderHint = hint,
                 Text = _state.Ai.GameLogPhrases.GetValueOrDefault(key, GameLogPhraseCatalog.Defaults[key]),
-            });
+            };
+            HookGameLogPhraseRow(row);
+            _gameLogPhraseRows.Add(row);
         }
         GameLogPhrasesList.ItemsSource = _gameLogPhraseRows;
 
         foreach (var (rawText, customText) in _state.Ai.GameLogHudOverrides)
-            _hudOverrideRows.Add(new HudOverrideRowVm { RawText = rawText, CustomText = customText });
+        {
+            var row = new HudOverrideRowVm { RawText = rawText, CustomText = customText };
+            HookHudOverrideRow(row);
+            _hudOverrideRows.Add(row);
+        }
         GameLogHudOverridesList.ItemsSource = _hudOverrideRows;
 
         foreach (var (rawKey, customName) in _state.Ai.GameLogDestinationAliases)
-            _destinationAliasRows.Add(new DestinationAliasRowVm { RawKey = rawKey, CustomName = customName });
+        {
+            var row = new DestinationAliasRowVm { RawKey = rawKey, CustomName = customName };
+            HookDestinationAliasRow(row);
+            _destinationAliasRows.Add(row);
+        }
         GameLogDestinationAliasesList.ItemsSource = _destinationAliasRows;
 
         RefreshGameLogStatus();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher();
     }
+
+    // Attachés APRÈS la construction complète de la ligne (initialiseur
+    // d'objet déjà passé) : seule une modification faite ensuite par
+    // l'utilisateur via le TextBox lié marque la ligne comme non
+    // enregistrée (cadre rouge, voir MainWindow.xaml) — la valeur posée
+    // à la création (texte déjà enregistré, ou détecté brut) ne compte pas.
+    private void HookGameLogPhraseRow(GameLogPhraseRowVm row) =>
+        row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(GameLogPhraseRowVm.Text)) row.IsDirty = true; };
+
+    private void HookHudOverrideRow(HudOverrideRowVm row) =>
+        row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(HudOverrideRowVm.CustomText)) row.IsDirty = true; };
+
+    private void HookDestinationAliasRow(DestinationAliasRowVm row) =>
+        row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(DestinationAliasRowVm.CustomName)) row.IsDirty = true; };
 
     /// <summary>
     /// Image de fond affichée derrière les listes Commandes/Journal
@@ -1709,9 +1733,17 @@ public partial class MainWindow : Window
             AppendLog($"🛰 Nouvelle destination non reconnue dans le Game.log ({result.DestinationAliasKey}) — ajoutée à 🛰 Game.log > Alias de destinations, prête à être renommée.", "warning");
 
         if (result.IsNewHudOverride && result.HudOverrideKey is not null)
-            _hudOverrideRows.Insert(0, new HudOverrideRowVm { RawText = result.HudOverrideKey, CustomText = _state.Ai.GameLogHudOverrides[result.HudOverrideKey], IsNew = true });
+        {
+            var row = new HudOverrideRowVm { RawText = result.HudOverrideKey, CustomText = _state.Ai.GameLogHudOverrides[result.HudOverrideKey], IsNew = true };
+            HookHudOverrideRow(row);
+            _hudOverrideRows.Insert(0, row);
+        }
         if (result.IsNewDestinationAlias && result.DestinationAliasKey is not null)
-            _destinationAliasRows.Insert(0, new DestinationAliasRowVm { RawKey = result.DestinationAliasKey, CustomName = _state.Ai.GameLogDestinationAliases[result.DestinationAliasKey], IsNew = true });
+        {
+            var row = new DestinationAliasRowVm { RawKey = result.DestinationAliasKey, CustomName = _state.Ai.GameLogDestinationAliases[result.DestinationAliasKey], IsNew = true };
+            HookDestinationAliasRow(row);
+            _destinationAliasRows.Insert(0, row);
+        }
         if (result.IsNewHudOverride || result.IsNewDestinationAlias) _state.SaveAi();
 
         if (_state.Ai.GameLogAnnounceEvents && result.Text.Length > 0)
@@ -1734,6 +1766,7 @@ public partial class MainWindow : Window
         {
             _state.Ai.GameLogPhrases[row.Key] = text;
         }
+        row.IsDirty = false;
         _state.SaveAi();
         AppendLog($"Phrase « {row.Label} » enregistrée.", "success");
     }
@@ -1744,6 +1777,7 @@ public partial class MainWindow : Window
         var custom = row.CustomText.Trim();
         _state.Ai.GameLogHudOverrides[row.RawText] = custom.Length == 0 ? row.RawText : custom;
         row.IsNew = false;
+        row.IsDirty = false;
         _state.SaveAi();
         AppendLog("Correction de lecture enregistrée.", "success");
     }
@@ -1761,6 +1795,7 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is not DestinationAliasRowVm row) return;
         _state.Ai.GameLogDestinationAliases[row.RawKey] = row.CustomName.Trim();
         row.IsNew = false;
+        row.IsDirty = false;
         _state.SaveAi();
         AppendLog("Alias de destination enregistré.", "success");
     }
