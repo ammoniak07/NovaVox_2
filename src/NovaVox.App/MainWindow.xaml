@@ -159,13 +159,28 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
-                                <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
-                            </Border>
-                            <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
-                            <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
+                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
+                                    <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
+                                </Border>
+                                <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
+                                <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
+                            </StackPanel>
+                            <!-- Filtre texte (phrase / touche / synonyme) : ne touche jamais
+                                 à _state.Commands lui-même (glisser-déposer et ordre intacts),
+                                 seulement à VoiceCommandRow.RowVisible — voir
+                                 RefreshCommandsVisibility (MainWindow.xaml.cs). Placeholder
+                                 manuel (TextBlock superposé) : TextBox n'en a pas nativement. -->
+                            <Grid Margin="0,6,0,0">
+                                <TextBox x:Name="CommandsSearchBox" Padding="8,4" Background="{DynamicResource PanelBrush}"
+                                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                         TextChanged="CommandsSearchBox_TextChanged"
+                                         ToolTip="Filtrer les commandes par phrase, touche ou synonyme" />
+                                <TextBlock x:Name="CommandsSearchPlaceholder" Text="🔎 Rechercher une commande..." Margin="10,0,0,0"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" IsHitTestVisible="False" />
+                            </Grid>
                         </StackPanel>
 
                         <Border x:Name="CommandsCard" Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource PanelBrush50}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
@@ -174,7 +189,7 @@
                                  DragOver="CommandsList_DragOver" DragLeave="CommandsList_DragLeave" Drop="CommandsList_Drop">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="4">
+                                    <Grid Margin="4" Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
                                         <!-- Ligne "titre de groupe" : fond teinté (AccentDimBrush) pour bien
                                              se distinguer des lignes de commande, texte centré. -->
                                         <Border Visibility="{Binding IsTitle, Converter={StaticResource BoolToVis}}"
@@ -193,7 +208,9 @@
                                                 <TextBox Grid.Column="1" Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}" TextAlignment="Center"
                                                          Background="Transparent" BorderThickness="0" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
+                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Content="{Binding CollapseGlyph}"
+                                                            Click="ToggleTitleCollapsed_Click" ToolTip="Replier/déplier ce groupe" />
+                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
                                                     <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
                                                     <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
                                                         <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="16" />

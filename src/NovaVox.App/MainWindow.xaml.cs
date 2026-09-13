@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -311,14 +313,94 @@ public partial class MainWindow : Window
                 foreach (VoiceCommandRow row in args.NewItems) HookRow(row);
             ScheduleCommandsSave();
             UpdateCommandCount();
+            RefreshCommandsVisibility();
         };
         CommandsList.ItemsSource = _state.Commands;
         UpdateCommandCount();
+        RefreshCommandsVisibility();
     }
 
     private void HookRow(VoiceCommandRow row) => row.PropertyChanged += (_, _) => ScheduleCommandsSave();
 
     private void UpdateCommandCount() => CommandCountText.Text = _state.Commands.Count(r => !r.IsTitle).ToString();
+
+    private void CommandsSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        CommandsSearchPlaceholder.Visibility = CommandsSearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RefreshCommandsVisibility();
+    }
+
+    private void ToggleTitleCollapsed_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null || !row.IsTitle) return;
+        row.IsCollapsed = !row.IsCollapsed;
+        RefreshCommandsVisibility();
+        AppendLog($"Groupe « {row.Phrase} » {(row.IsCollapsed ? "replié" : "déplié")}.", "info");
+    }
+
+    /// <summary>
+    /// Recalcule VoiceCommandRow.RowVisible pour chaque ligne — jamais
+    /// _state.Commands lui-même (glisser-déposer/ordre intacts) : filtre
+    /// texte (phrase/touche/synonymes, insensible casse+accents) et repli
+    /// de groupe par titre (implicite : un titre "gouverne" les commandes
+    /// jusqu'au titre suivant, il n'y a pas de hiérarchie dans le modèle).
+    /// La recherche prend le pas sur le repli tant qu'elle est active : un
+    /// groupe replié reste consultable via la recherche.
+    /// </summary>
+    private void RefreshCommandsVisibility()
+    {
+        var query = NormalizeForSearch(CommandsSearchBox.Text.Trim());
+        if (query.Length == 0)
+        {
+            VoiceCommandRow? currentTitle = null;
+            foreach (var row in _state.Commands)
+            {
+                if (row.IsTitle) { currentTitle = row; row.RowVisible = true; }
+                else row.RowVisible = currentTitle is null || !currentTitle.IsCollapsed;
+            }
+            return;
+        }
+
+        // Premier passage : un titre reste visible s'il correspond
+        // lui-même, ou si au moins une de ses commandes correspond.
+        var titleHasMatch = new Dictionary<VoiceCommandRow, bool>();
+        VoiceCommandRow? title = null;
+        foreach (var row in _state.Commands)
+        {
+            if (row.IsTitle) { title = row; titleHasMatch[row] = RowMatchesSearch(row, query); }
+            else if (title is not null && RowMatchesSearch(row, query)) titleHasMatch[title] = true;
+        }
+
+        title = null;
+        foreach (var row in _state.Commands)
+        {
+            if (row.IsTitle) { title = row; row.RowVisible = titleHasMatch.TryGetValue(row, out var has) && has; }
+            else row.RowVisible = RowMatchesSearch(row, query) || (title is not null && RowMatchesSearch(title, query));
+        }
+    }
+
+    private static bool RowMatchesSearch(VoiceCommandRow row, string normalizedQuery)
+    {
+        if (NormalizeForSearch(row.Phrase).Contains(normalizedQuery, StringComparison.Ordinal)) return true;
+        if (row.IsTitle) return false;
+        if (NormalizeForSearch(row.Keys).Contains(normalizedQuery, StringComparison.Ordinal)) return true;
+        foreach (var syn in row.Synonyms)
+            if (NormalizeForSearch(syn).Contains(normalizedQuery, StringComparison.Ordinal)) return true;
+        return false;
+    }
+
+    /// <summary>Minuscules + accents retirés, pour qu'une recherche tapée sans accents trouve quand même « Éjecter », etc.</summary>
+    private static string NormalizeForSearch(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        var formD = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(formD.Length);
+        foreach (var c in formD)
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
+    }
 
     private void ScheduleCommandsSave()
     {

@@ -72,6 +72,16 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     private bool _isDropTargetBottom;
     public bool IsDropTargetBottom { get => _isDropTargetBottom; set { _isDropTargetBottom = value; Raise(); } }
 
+    private bool _rowVisible = true;
+    /// <summary>Visibilité effective de la ligne dans CommandsList — recalculée par MainWindow.RefreshCommandsVisibility (recherche + repli de groupe), jamais persistée ni touchée ici directement.</summary>
+    public bool RowVisible { get => _rowVisible; set { _rowVisible = value; Raise(); } }
+
+    private bool _isCollapsed;
+    /// <summary>Titre replié : masque les commandes du groupe jusqu'au titre suivant — jamais persisté, purement UI (voir RefreshCommandsVisibility, MainWindow.xaml.cs).</summary>
+    public bool IsCollapsed { get => _isCollapsed; set { _isCollapsed = value; Raise(); Raise(nameof(CollapseGlyph)); } }
+
+    public string CollapseGlyph => IsCollapsed ? "▸" : "▾";
+
     public VoiceCommandRow()
     {
         Synonyms.CollectionChanged += (_, _) => { Raise(nameof(HasSynonyms)); Raise(nameof(SynonymsCountLabel)); };
