@@ -134,8 +134,8 @@
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="3*" MinWidth="360" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="2*" MinWidth="280" />
+                        <ColumnDefinition x:Name="JournalGapColumn" Width="16" />
+                        <ColumnDefinition x:Name="JournalColumn" Width="2*" MinWidth="280" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Image de fond : visible uniquement dans l'espace laissé
@@ -299,8 +299,10 @@
                     </Border>
                 </Grid>
 
-                <!-- Colonne droite : journal système -->
-                <Grid Grid.Column="2">
+                <!-- Colonne droite : journal système — visibilité + largeur
+                     de colonne basculées ensemble par ApplyShowSystemLog
+                     (MainWindow.xaml.cs), voir ⚙️ Réglages > ⬡ NovaVox. -->
+                <Grid x:Name="JournalColumnPanel" Grid.Column="2">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -567,6 +569,10 @@
 
                                 <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
                                           Margin="0,16,0,0" Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
+
+                                <TextBlock Text="Interface" FontWeight="Bold" Margin="0,16,0,6" />
+                                <CheckBox x:Name="ShowSystemLogCheckbox" Content="Afficher le journal système"
+                                          Checked="ShowSystemLogCheckbox_Changed" Unchecked="ShowSystemLogCheckbox_Changed" />
 
                                 <TextBlock Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">

@@ -150,6 +150,21 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_ShowSystemLogDefaultsToTrue()
+    {
+        var config = new AiConfigStore(_dir).Load();
+        Assert.True(config.ShowSystemLog);
+    }
+
+    [Fact]
+    public void AiConfig_ShowSystemLogRoundTripsFalse()
+    {
+        var store = new AiConfigStore(_dir);
+        store.Save(new AiConfig { ShowSystemLog = false });
+        Assert.False(new AiConfigStore(_dir).Load().ShowSystemLog);
+    }
+
+    [Fact]
     public void AiConfig_RoundTripsGameLogDictionaries()
     {
         var store = new AiConfigStore(_dir);

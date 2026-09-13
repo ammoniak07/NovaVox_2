@@ -1230,6 +1230,8 @@ public partial class MainWindow : Window
             OverlayTextColorBox.Text = overlay.TextColor;
             OverlayTextOpacitySlider.Value = overlay.TextOpacity;
             SelectComboItemByTag(UiLanguageCombo, ai.UiLanguage);
+            ShowSystemLogCheckbox.IsChecked = ai.ShowSystemLog;
+            ApplyShowSystemLog(ai.ShowSystemLog);
 
             AutolaunchCheckbox.IsChecked = NovaVox.App.Autolaunch.StarCitizenAutolaunch.IsEnabled();
         }
@@ -1509,6 +1511,29 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.ConfirmCommands = ConfirmCommandsCheckbox.IsChecked ?? false;
         SaveAiAndLog();
+    }
+
+    private void ShowSystemLogCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        var show = ShowSystemLogCheckbox.IsChecked ?? false;
+        _state.Ai.ShowSystemLog = show;
+        SaveAiAndLog();
+        ApplyShowSystemLog(show);
+    }
+
+    /// <summary>
+    /// Affiche/masque la carte JOURNAL SYSTÈME (colonne droite) et sa
+    /// colonne de grille — MinWidth doit aussi être remis à 0, sinon la
+    /// colonne réserve encore sa largeur minimale même à Width=0.
+    /// COMMANDES récupère alors tout l'espace libéré (seule colonne * restante).
+    /// </summary>
+    private void ApplyShowSystemLog(bool show)
+    {
+        JournalColumnPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        JournalGapColumn.Width = show ? new GridLength(16) : new GridLength(0);
+        JournalColumn.Width = show ? new GridLength(2, GridUnitType.Star) : new GridLength(0);
+        JournalColumn.MinWidth = show ? 280 : 0;
     }
 
     private void RadioEffectCheckbox_Changed(object sender, RoutedEventArgs e)

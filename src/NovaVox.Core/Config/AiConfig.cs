@@ -19,6 +19,8 @@ public sealed class AiConfig
     public string UiLanguage { get; set; } = DefaultUiLanguage;
     /// <summary>"dark" ou "light" — bascule jour/nuit de l'interface WPF (n'existait pas côté Python, ajout propre à ce portage).</summary>
     public string UiTheme { get; set; } = DefaultUiTheme;
+    /// <summary>Affiche ou masque la carte "Journal système" (colonne droite) de la fenêtre principale — n'existait pas côté Python, ajout propre à ce portage.</summary>
+    public bool ShowSystemLog { get; set; } = true;
     public string? Voice { get; set; }
     public bool ConfirmCommands { get; set; }
     public double TriggerCooldown { get; set; } = DefaultTriggerCooldown;
@@ -74,6 +76,7 @@ public sealed class AiConfigStore
             config.UiLanguage = GetStringOrNull(data["ui_language"]) is { } lang && AiConfig.SupportedLanguages.Contains(lang)
                 ? lang : AiConfig.DefaultUiLanguage;
             config.UiTheme = GetStringOrNull(data["ui_theme"]) is "light" ? "light" : AiConfig.DefaultUiTheme;
+            config.ShowSystemLog = GetBool(data["ui_show_system_log"], true);
             config.Voice = GetStringOrNull(data["voice"]);
             config.ConfirmCommands = GetBool(data["confirm_commands"]);
             config.TriggerCooldown = GetDouble(data["trigger_cooldown"]) ?? AiConfig.DefaultTriggerCooldown;
@@ -127,6 +130,7 @@ public sealed class AiConfigStore
         {
             ["ui_language"] = config.UiLanguage,
             ["ui_theme"] = config.UiTheme,
+            ["ui_show_system_log"] = config.ShowSystemLog,
             ["voice"] = config.Voice,
             ["confirm_commands"] = config.ConfirmCommands,
             ["trigger_cooldown"] = config.TriggerCooldown,
