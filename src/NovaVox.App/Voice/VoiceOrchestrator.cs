@@ -2,6 +2,7 @@ using NovaVox.App.Gemini;
 using NovaVox.App.Hotkeys;
 using NovaVox.App.Input;
 using NovaVox.App.Speech;
+using NovaVox.Core;
 using NovaVox.Core.Commands;
 using NovaVox.Core.GameLog;
 using NovaVox.Core.Tts;
@@ -88,9 +89,13 @@ public sealed class VoiceOrchestrator : IDisposable
         {
             _joystickManager = new JoystickManager(windowHandle);
         }
-        catch
+        catch (Exception ex)
         {
             _joystickManager = null; // DirectInput indisponible : les boutons manette ne seront pas surveillés.
+            // AppLog directement (pas RaiseLog) : on est dans le constructeur,
+            // avant que l'appelant ait pu s'abonner à Log — un RaiseLog ici
+            // ne trouverait aucun abonné et disparaîtrait silencieusement.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Joystick] DirectInput indisponible, boutons manette désactivés ({ex.Message}).", "diagnostic");
         }
     }
 

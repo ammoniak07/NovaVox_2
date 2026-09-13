@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using NovaVox.Core;
 using NovaVox.Core.Config;
 
 namespace NovaVox.App.Overlay;
@@ -184,9 +185,9 @@ public partial class OverlayWindow : Window
             else
                 _store.Save(enabled: true); // position aberrante : ne pas la persister, la fenêtre se replacera par défaut au prochain lancement
         }
-        catch
+        catch (Exception ex)
         {
-            // Confort seulement, jamais bloquant.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde de la position/apparence à la fermeture échouée ({ex.Message}).", "diagnostic");
         }
     }
 }

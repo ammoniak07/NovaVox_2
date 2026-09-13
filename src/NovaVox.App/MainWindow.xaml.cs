@@ -931,8 +931,9 @@ public partial class MainWindow : Window
                 (int)SystemParameters.VirtualScreenWidth,
                 (int)SystemParameters.VirtualScreenHeight);
         }
-        catch
+        catch (Exception ex)
         {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Fenêtre] Lecture des dimensions de l'écran virtuel échouée ({ex.Message}).", "diagnostic");
             return null;
         }
     }

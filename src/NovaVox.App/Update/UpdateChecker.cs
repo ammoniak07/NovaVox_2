@@ -33,9 +33,9 @@ public static class UpdateChecker
                 if (url.Length > 0) return url;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Repli sur le défaut si le fichier est illisible.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[MàJ] Lecture de gui/update_source.txt échouée, repli sur l'URL par défaut ({ex.Message}).", "diagnostic");
         }
         return DefaultManifestUrl;
     }
@@ -52,8 +52,9 @@ public static class UpdateChecker
             var localVersion = VersionUtil.GetAppVersion(patchNotesFilePath);
             return UpdateManifest.Parse(body, localVersion);
         }
-        catch
+        catch (Exception ex)
         {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[MàJ] Vérification de mise à jour échouée ({ex.GetType().Name} : {ex.Message}).", "diagnostic");
             return new UpdateCheckResult(false);
         }
     }

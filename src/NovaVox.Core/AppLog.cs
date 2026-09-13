@@ -41,4 +41,19 @@ public static class AppLog
     /// <summary>Journalise une exception avec sa pile d'appel complète — pour les gestionnaires globaux (App.xaml.cs) qui n'ont pas d'autre moyen de la faire remonter à l'utilisateur.</summary>
     public static void AppendException(string baseDir, string context, Exception ex) =>
         Append(baseDir, $"{context} : {ex}", "error");
+
+    /// <summary>
+    /// Première ligne de chaque fichier de log : contexte utile pour
+    /// diagnostiquer un problème signalé par un utilisateur (version,
+    /// OS, runtime .NET, architecture, dossier d'installation) sans
+    /// avoir à le lui redemander.
+    /// </summary>
+    public static void AppendStartupBanner(string baseDir, string appVersion)
+    {
+        Append(baseDir,
+            $"NovaVox {appVersion} — {Environment.OSVersion.VersionString} " +
+            $"({(Environment.Is64BitOperatingSystem ? "x64" : "x86")}) — " +
+            $".NET {Environment.Version} — {baseDir}",
+            "diagnostic");
+    }
 }

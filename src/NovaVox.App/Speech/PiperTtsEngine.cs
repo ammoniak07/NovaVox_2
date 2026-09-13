@@ -132,9 +132,9 @@ public sealed class PiperTtsEngine : IDisposable
             {
                 if (File.Exists(wavPath)) File.Delete(wavPath);
             }
-            catch
+            catch (Exception ex)
             {
-                // Best effort, comme côté Python.
+                AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Piper] Suppression du fichier audio temporaire échouée ({ex.Message}).", "diagnostic");
             }
         }
     }
@@ -172,9 +172,9 @@ public sealed class PiperTtsEngine : IDisposable
             {
                 process.Kill(entireProcessTree: true);
             }
-            catch
+            catch (Exception ex)
             {
-                // Best effort.
+                AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Piper] Échec de l'arrêt forcé du processus après timeout ({ex.Message}).", "diagnostic");
             }
             throw new TimeoutException("Piper n'a pas répondu à temps.");
         }

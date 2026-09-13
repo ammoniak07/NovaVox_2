@@ -1,3 +1,4 @@
+using NovaVox.Core;
 using Vortice.DirectInput;
 
 namespace NovaVox.App.Hotkeys;
@@ -58,10 +59,13 @@ public sealed class JoystickManager : IDisposable
             if (buttonIndex < 0 || buttonIndex >= state.Buttons.Length) return null;
             return state.Buttons[buttonIndex];
         }
-        catch
+        catch (Exception ex)
         {
             // Manette débranchée en cours de route : abandonne cette
             // instance, une prochaine lecture retentera une acquisition.
+            // Ne se reproduit qu'une fois par débranchement réel (pas à
+            // chaque poll), donc sans risque de saturer le journal.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Joystick] Manette {instanceGuid} perdue en cours de lecture ({ex.Message}).", "diagnostic");
             _acquired.Remove(instanceGuid);
             return null;
         }
@@ -75,9 +79,9 @@ public sealed class JoystickManager : IDisposable
             {
                 device.Unacquire();
             }
-            catch
+            catch (Exception ex)
             {
-                // Best effort.
+                AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Joystick] Libération d'une manette échouée à la fermeture ({ex.Message}).", "diagnostic");
             }
             device.Dispose();
         }

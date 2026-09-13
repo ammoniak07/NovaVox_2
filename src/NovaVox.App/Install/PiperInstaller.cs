@@ -138,8 +138,9 @@ public sealed class PiperInstaller
 
             VoiceDownloadDone?.Invoke(this, (voiceId, true));
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Piper] Téléchargement de la voix « {voiceId} » échoué ({ex.GetType().Name} : {ex.Message}).", "diagnostic");
             foreach (var p in partialPaths)
             {
                 try { if (File.Exists(p)) File.Delete(p); } catch { /* best effort */ }

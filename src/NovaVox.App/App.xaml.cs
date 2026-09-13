@@ -1,9 +1,11 @@
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using NovaVox.App.Autolaunch;
 using NovaVox.App.Tray;
 using NovaVox.Core;
+using NovaVox.Core.Update;
 
 namespace NovaVox.App;
 
@@ -16,6 +18,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
+        AppLog.AppendStartupBanner(NovaVoxPaths.BaseDirectory, version);
 
         // Toute exception qui échapperait autrement complètement (l'appli
         // disparaît sans aucune trace) est journalisée en dernier recours

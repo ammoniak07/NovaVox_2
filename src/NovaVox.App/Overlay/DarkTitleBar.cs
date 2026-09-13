@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows.Media;
+using NovaVox.Core;
 
 namespace NovaVox.App.Overlay;
 
@@ -31,9 +32,9 @@ internal static class DarkTitleBar
             var value = 1;
             DwmSetWindowAttribute(hwnd, DwmwaUseImmersiveDarkMode, ref value, sizeof(int));
         }
-        catch
+        catch (Exception ex)
         {
-            // Best effort, purement cosmétique.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Fenêtre] Barre de titre sombre indisponible (Windows trop ancien ?) : {ex.Message}.", "diagnostic");
         }
     }
 
@@ -52,9 +53,9 @@ internal static class DarkTitleBar
             var colorRef = (color.B << 16) | (color.G << 8) | color.R;
             DwmSetWindowAttribute(hwnd, DwmwaCaptionColor, ref colorRef, sizeof(int));
         }
-        catch
+        catch (Exception ex)
         {
-            // Best effort, purement cosmétique.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Fenêtre] Couleur de la barre de titre indisponible (Windows 11 requis) : {ex.Message}.", "diagnostic");
         }
     }
 }

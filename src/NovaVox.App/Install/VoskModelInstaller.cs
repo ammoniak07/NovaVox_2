@@ -36,8 +36,9 @@ public sealed class VoskModelInstaller
         {
             return File.Exists(markerPath) ? File.ReadAllText(markerPath).Trim() : null;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Vosk] Lecture du marqueur de modèle installé échouée ({ex.Message}).", "diagnostic");
             return null;
         }
     }

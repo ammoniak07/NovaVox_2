@@ -58,8 +58,9 @@ public static class StarCitizenAutolaunch
             process?.WaitForExit(10_000);
             return File.Exists(shortcutPath);
         }
-        catch
+        catch (Exception ex)
         {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Autolaunch] Création/suppression du raccourci de veille échouée ({ex.Message}).", "diagnostic");
             return false;
         }
     }
@@ -78,9 +79,9 @@ public static class StarCitizenAutolaunch
         {
             if (IsEnabled()) SetEnabled(true);
         }
-        catch
+        catch (Exception ex)
         {
-            // Confort seulement, jamais bloquant.
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Autolaunch] Rafraîchissement du raccourci de veille échoué ({ex.Message}).", "diagnostic");
         }
     }
 
