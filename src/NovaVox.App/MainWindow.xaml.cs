@@ -1845,6 +1845,11 @@ public partial class MainWindow : Window
         var result = GameLogAnnouncer.Build(evt, _state.Ai);
         if (result is null) return;
 
+        // Overlay "Zone :" — uniquement mise à jour quand la zone a pu être
+        // résolue (jamais écrasée par "zone inconnue"), comme
+        // _overlay_set_zone côté Python.
+        if (result.ResolvedZone is not null) _overlayWindow?.SetZone(result.ResolvedZone);
+
         AppendLog($"{result.Emoji} {result.Text}".Trim(), "info");
         if (result.RawHudText is not null)
             AppendLog($"   (texte détecté dans le jeu : « {result.RawHudText} »)", "info");

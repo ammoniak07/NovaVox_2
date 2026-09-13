@@ -126,6 +126,7 @@ public class GameLogAnnouncerTests
         Assert.Equal("Arrivée à destination : Hurston", result!.Text);
         Assert.True(result.IsNewDestinationAlias);
         Assert.True(config.GameLogDestinationAliases.ContainsKey("ooc stanton 1 hurston"));
+        Assert.Equal("Hurston", result.ResolvedZone);
     }
 
     [Fact]
@@ -139,6 +140,7 @@ public class GameLogAnnouncerTests
         Assert.NotNull(result);
         Assert.Equal("zone_change_no_zone", result!.Key);
         Assert.Equal("Arrivée à destination", result.Text);
+        Assert.Null(result.ResolvedZone);
     }
 
     [Fact]

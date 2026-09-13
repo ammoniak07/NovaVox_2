@@ -22,7 +22,9 @@ public sealed record GameLogAnnouncement(
     string? HudOverrideKey,
     /// <summary>true si raw_id ne correspond à AUCUN mécanisme de résolution automatique connu (à signaler dans le journal).</summary>
     bool UnresolvedDestinationWarning,
-    string? UnresolvedDestinationRawId);
+    string? UnresolvedDestinationRawId,
+    /// <summary>Nom de zone résolu (alias/HUD), uniquement pour un ZoneChange dont la zone a pu être identifiée — à afficher dans l'overlay (voir _overlay_set_zone côté Python : jamais écrasé par une zone inconnue).</summary>
+    string? ResolvedZone = null);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -93,7 +95,8 @@ public static partial class GameLogAnnouncer
             key, text, GameLogPhraseCatalog.Emoji.GetValueOrDefault(key, ""), RawHudText: null,
             IsNewDestinationAlias: isNewAlias, DestinationAliasKey: aliasKey,
             IsNewHudOverride: false, HudOverrideKey: null,
-            UnresolvedDestinationWarning: unresolvedWarning, UnresolvedDestinationRawId: unresolvedWarning ? aliasKey : null);
+            UnresolvedDestinationWarning: unresolvedWarning, UnresolvedDestinationRawId: unresolvedWarning ? aliasKey : null,
+            ResolvedZone: isZone && hasDest ? resolved : null);
     }
 
     /// <summary>Port de _maybe_register_destination_alias.</summary>
