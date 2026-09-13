@@ -18,15 +18,27 @@
              reste de l'overlay (cyan d'accent, texte clair). -->
         <Style x:Key="OverlayRowCheckboxStyle" TargetType="CheckBox">
             <Setter Property="Cursor" Value="Hand" />
+            <!-- La case visible ne fait que 14x14, mais la zone cliquable réelle
+                 est celle du Grid racine du template (Background="Transparent"
+                 explicite pour être hit-testable partout, pas seulement là où
+                 quelque chose est dessiné) : 24x24, sinon un clic à quelques
+                 pixels de la case rate sa cible et retombe sur le panneau
+                 derrière, ce qui déclenche un déplacement de l'overlay au lieu
+                 de cocher/décocher. -->
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
-                        <Border x:Name="Box" Width="14" Height="14" Background="#33FFFFFF"
-                                BorderBrush="#2DD4FF" BorderThickness="1" CornerRadius="3">
-                            <Path x:Name="Check" Data="M2,7 L6,11 L14,2" Stroke="#2DD4FF"
-                                  StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Stretch="Uniform" Margin="2" Visibility="Collapsed" />
-                        </Border>
+                        <Grid Background="Transparent">
+                            <Border x:Name="Box" Width="14" Height="14" Background="#33FFFFFF"
+                                    BorderBrush="#2DD4FF" BorderThickness="1" CornerRadius="3"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path x:Name="Check" Data="M2,7 L6,11 L14,2" Stroke="#2DD4FF"
+                                      StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Stretch="Uniform" Margin="2" Visibility="Collapsed" />
+                            </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Check" Property="Visibility" Value="Visible" />
@@ -96,7 +108,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <TextBlock Text="💬" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="PhraseValue" Text="…" Margin="6,0,0,0" Foreground="#DBE4EE"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                                   TextTrimming="CharacterEllipsis" MaxWidth="150" />
                     </StackPanel>
                     <CheckBox x:Name="PhraseRowCheckbox" Grid.Column="1" Tag="phrase" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
@@ -111,7 +123,7 @@
                         <TextBlock Text="🧭" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="ZoneLabel" Text="Zone :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="ZoneValue" Text="—" Foreground="#DBE4EE"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="130" />
+                                   TextTrimming="CharacterEllipsis" MaxWidth="120" />
                     </StackPanel>
                     <CheckBox x:Name="ZoneRowCheckbox" Grid.Column="1" Tag="zone" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
@@ -125,7 +137,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <TextBlock Text="🎮" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="LastCmdValue" Text="—" Margin="6,0,0,0" Foreground="#DBE4EE"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                                   TextTrimming="CharacterEllipsis" MaxWidth="150" />
                     </StackPanel>
                     <CheckBox x:Name="LastCmdRowCheckbox" Grid.Column="1" Tag="lastCmd" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"

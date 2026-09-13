@@ -250,6 +250,12 @@ public partial class OverlayWindow : Window
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (!_editMode) return;
+        // Filet de sécurité en plus de StopDragOnCheckbox (qui marque déjà
+        // l'évènement Handled) : même si un clic sur la case à cocher
+        // parvenait quand même jusqu'ici, ne jamais démarrer un DragMove()
+        // à partir d'elle — sinon la case ne peut plus être (dé)cochée,
+        // le déplacement de la fenêtre "avalant" le clic.
+        if (IsWithinCheckbox(e.OriginalSource as DependencyObject)) return;
         try
         {
             DragMove();
@@ -258,6 +264,16 @@ public partial class OverlayWindow : Window
         {
             // Le bouton a déjà été relâché avant l'appel : sans conséquence.
         }
+    }
+
+    private static bool IsWithinCheckbox(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is CheckBox) return true;
+            source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+        }
+        return false;
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
