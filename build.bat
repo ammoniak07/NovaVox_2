@@ -149,7 +149,7 @@ echo Compilation de l'installateur (Inno Setup) -- variante GitHub...
 if exist "Output\NovaVoxNET_Setup_GitHub.exe" del /q "Output\NovaVoxNET_Setup_GitHub.exe"
 if not exist %ISCC% goto :iscc2_missing
 
-echo https://api.github.com/repos/ammoniak07/NovaVoxNET/releases/latest> "dist\NovaVox\update_source.txt"
+echo https://api.github.com/repos/ammoniak07/NovaVox_2/releases/latest> "dist\NovaVox\update_source.txt"
 %ISCC% /DMyAppVersion=%APPVER% installer.iss
 if not exist "Output\NovaVoxNET_Setup.exe" goto :iscc2_failed
 ren "Output\NovaVoxNET_Setup.exe" "NovaVoxNET_Setup_GitHub.exe"
@@ -182,7 +182,7 @@ REM  manuellement (https://cli.github.com/) puis connecte via
 REM  "gh auth login" une seule fois (session ensuite memorisee sur
 REM  cette machine).
 REM ============================================================
-echo Publication sur GitHub Releases (ammoniak07/NovaVoxNET)...
+echo Publication sur GitHub Releases (ammoniak07/NovaVox_2)...
 where gh >nul 2>&1
 if errorlevel 1 goto :gh_missing
 
@@ -191,7 +191,7 @@ if errorlevel 1 goto :gh_not_logged_in
 
 if not exist "Output\NovaVoxNET_Setup_GitHub.exe" goto :gh_no_exe
 
-set GH_REPO=ammoniak07/NovaVoxNET
+set GH_REPO=ammoniak07/NovaVox_2
 set GH_TAG=v%APPVER%
 
 gh release view %GH_TAG% --repo %GH_REPO% >nul 2>&1
