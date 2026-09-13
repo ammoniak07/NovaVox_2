@@ -10,7 +10,7 @@
         <!-- Poignée de glisser (grille de points) : dessinée en vecteur, pas
              d'emoji équivalent. Les autres boutons de la liste de commandes
              (modifier/monter/descendre/écouter) utilisent de vrais emoji
-             (✏️🔼🔽▶️) — les tracés vectoriels essayés précédemment
+             (⌨️🔼🔽▶️) — les tracés vectoriels essayés précédemment
              rendaient trop petits/peu lisibles, alors que ces emoji
              s'affichent déjà correctement ailleurs dans l'appli (en-tête,
              overlay, réglages...). -->
@@ -240,7 +240,7 @@
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
                                                         <Button Content="+ syn" Height="34" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
-                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="✏️" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="⌨️" />
                                                         <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
                                                             <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="16" />
                                                         </Button>
