@@ -13,6 +13,9 @@ namespace NovaVox.Core;
 /// </summary>
 public static class AppLog
 {
+    /// <summary>Nombre de fichiers de log (un par lancement) conservés dans Log/ — voir PruneOldLogs.</summary>
+    public const int MaxLogFiles = 20;
+
     // Calculé une seule fois, à la première écriture de la session — pas à
     // chaque appel — pour que tous les messages d'un même lancement
     // atterrissent dans le même fichier.
@@ -55,5 +58,33 @@ public static class AppLog
             $"({(Environment.Is64BitOperatingSystem ? "x64" : "x86")}) — " +
             $".NET {Environment.Version} — {baseDir}",
             "diagnostic");
+    }
+
+    /// <summary>
+    /// Ne garde que les <paramref name="keep"/> fichiers de log les plus
+    /// récents (un par lancement — voir Append) et supprime les plus
+    /// anciens, sans quoi Log/ grossirait indéfiniment. Appelée une fois
+    /// par lancement, après AppendStartupBanner (le fichier de la session
+    /// en cours existe alors déjà et compte parmi les fichiers conservés).
+    /// </summary>
+    public static void PruneOldLogs(string baseDir, int keep = MaxLogFiles)
+    {
+        try
+        {
+            var dir = LogDirectory(baseDir);
+            if (!Directory.Exists(dir)) return;
+            var oldFiles = Directory.GetFiles(dir, "*.txt")
+                .Select(path => new FileInfo(path))
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .Skip(keep);
+            foreach (var file in oldFiles)
+            {
+                try { file.Delete(); } catch { /* best effort, fichier suivant */ }
+            }
+        }
+        catch
+        {
+            // Best effort : ne doit jamais empêcher le lancement de l'appli.
+        }
     }
 }

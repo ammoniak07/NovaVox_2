@@ -21,6 +21,7 @@ public partial class App : Application
 
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
         AppLog.AppendStartupBanner(NovaVoxPaths.BaseDirectory, version);
+        AppLog.PruneOldLogs(NovaVoxPaths.BaseDirectory);
 
         // Toute exception qui échapperait autrement complètement (l'appli
         // disparaît sans aucune trace) est journalisée en dernier recours

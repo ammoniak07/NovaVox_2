@@ -73,6 +73,67 @@ public class AppLogTests
     }
 
     [Fact]
+    public void PruneOldLogs_KeepsOnlyMostRecentFiles()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "novavox_applog_" + Guid.NewGuid().ToString("N"));
+        var logDir = Path.Combine(dir, "Log");
+        Directory.CreateDirectory(logDir);
+        try
+        {
+            var files = new List<string>();
+            for (var i = 0; i < 5; i++)
+            {
+                var path = Path.Combine(logDir, $"novavox_fake_{i}.txt");
+                File.WriteAllText(path, "x");
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(-i)); // fichier 0 = le plus récent
+                files.Add(path);
+            }
+
+            AppLog.PruneOldLogs(dir, keep: 3);
+
+            var remaining = Directory.GetFiles(logDir, "*.txt");
+            Assert.Equal(3, remaining.Length);
+            Assert.Contains(files[0], remaining);
+            Assert.Contains(files[1], remaining);
+            Assert.Contains(files[2], remaining);
+            Assert.DoesNotContain(files[3], remaining);
+            Assert.DoesNotContain(files[4], remaining);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PruneOldLogs_DoesNothingWhenUnderLimit()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "novavox_applog_" + Guid.NewGuid().ToString("N"));
+        var logDir = Path.Combine(dir, "Log");
+        Directory.CreateDirectory(logDir);
+        try
+        {
+            File.WriteAllText(Path.Combine(logDir, "novavox_fake_0.txt"), "x");
+            File.WriteAllText(Path.Combine(logDir, "novavox_fake_1.txt"), "x");
+
+            AppLog.PruneOldLogs(dir, keep: 20);
+
+            Assert.Equal(2, Directory.GetFiles(logDir, "*.txt").Length);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void PruneOldLogs_MissingLogFolder_DoesNotThrow()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "novavox_applog_" + Guid.NewGuid().ToString("N"));
+        AppLog.PruneOldLogs(dir, keep: 20); // dossier Log/ inexistant : ne doit jamais lever
+    }
+
+    [Fact]
     public void AppendException_IncludesFullExceptionDetails()
     {
         var dir = Path.Combine(Path.GetTempPath(), "novavox_applog_" + Guid.NewGuid().ToString("N"));
