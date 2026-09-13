@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using NovaVox.Core.Config;
 using NovaVox.Core.Json;
 using static NovaVox.Core.Json.JsonHelpers;
 
@@ -9,6 +10,9 @@ public sealed class ProfileInfo
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public int Count { get; set; }
+
+    /// <summary>Mode de jeu propriétaire de ce profil (GameModeConfig.StarCitizen/Other) — un profil n'appartient qu'à un seul mode.</summary>
+    public string GameMode { get; set; } = GameModeConfig.StarCitizen;
 
     // Le ComboBox custom-templaté de la sélection de profil (MainWindow.xaml)
     // affiche l'élément sélectionné via SelectionBoxItem, qui retombe sur
@@ -189,8 +193,8 @@ public sealed class CommandStore
         }
         try
         {
-            var (name, _) = ReadProfile(ActiveProfileId);
-            WriteProfile(ActiveProfileId, name, commands);
+            var (name, _, gameMode) = ReadProfile(ActiveProfileId);
+            WriteProfile(ActiveProfileId, name, commands, gameMode);
         }
         catch
         {
@@ -216,16 +220,22 @@ public sealed class CommandStore
         }
     }
 
-    public void WriteProfile(string profileId, string displayName, List<VoiceCommand> commands)
+    public void WriteProfile(string profileId, string displayName, List<VoiceCommand> commands, string gameMode = GameModeConfig.StarCitizen)
     {
         var path = ProfilePath(profileId);
         var tmp = path + ".tmp";
-        var obj = new JsonObject { ["name"] = displayName, ["commands"] = CommandsToJson(commands) };
+        var obj = new JsonObject { ["name"] = displayName, ["game_mode"] = gameMode, ["commands"] = CommandsToJson(commands) };
         File.WriteAllText(tmp, obj.ToJsonString(WriteOptions));
         File.Move(tmp, path, overwrite: true); // écriture atomique
     }
 
-    public (string Name, List<VoiceCommand> Commands) ReadProfile(string profileId)
+    /// <summary>
+    /// GameMode retombe sur GameModeConfig.StarCitizen pour les profils
+    /// existants créés avant l'introduction du cloisonnement par mode de jeu
+    /// (fichier sans clé "game_mode") — ils continuent d'apparaître côté
+    /// Star Citizen plutôt que de disparaître.
+    /// </summary>
+    public (string Name, List<VoiceCommand> Commands, string GameMode) ReadProfile(string profileId)
     {
         var path = ProfilePath(profileId);
         var data = JsonNode.Parse(StripBom(File.ReadAllText(path)));
@@ -233,10 +243,12 @@ public sealed class CommandStore
         {
             var name = GetString(obj["name"]);
             if (string.IsNullOrWhiteSpace(name)) name = profileId;
-            return (name.Trim(), NormalizeCommands(obj["commands"]));
+            var gameMode = GetString(obj["game_mode"]);
+            if (gameMode != GameModeConfig.Other) gameMode = GameModeConfig.StarCitizen;
+            return (name.Trim(), NormalizeCommands(obj["commands"]), gameMode);
         }
         // Tolère un fichier qui ne serait qu'une liste brute.
-        return (profileId, NormalizeCommands(data));
+        return (profileId, NormalizeCommands(data), GameModeConfig.StarCitizen);
     }
 
     public List<ProfileInfo> ListProfiles()
@@ -249,9 +261,9 @@ public sealed class CommandStore
             var pid = Path.GetFileNameWithoutExtension(path);
             try
             {
-                var (name, commands) = ReadProfile(pid);
+                var (name, commands, gameMode) = ReadProfile(pid);
                 var count = commands.Count(c => !c.IsTitle);
-                result.Add(new ProfileInfo { Id = pid, Name = name, Count = count });
+                result.Add(new ProfileInfo { Id = pid, Name = name, Count = count, GameMode = gameMode });
             }
             catch
             {
@@ -305,7 +317,7 @@ public sealed class CommandStore
 
         var commands = LoadCommands();
         var pid = NewProfileId();
-        WriteProfile(pid, DefaultProfileName, commands);
+        WriteProfile(pid, DefaultProfileName, commands, GameModeConfig.StarCitizen);
         SaveActiveProfileId(pid);
         return pid;
     }

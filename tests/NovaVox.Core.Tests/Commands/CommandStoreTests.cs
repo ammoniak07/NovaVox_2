@@ -96,9 +96,35 @@ public class CommandStoreTests : IDisposable
         Assert.Equal(2, profiles.Count);
         Assert.Contains(profiles, p => p.Name == "Combat" && p.Count == 1);
 
-        var (name, commands) = store.ReadProfile(newId);
+        var (name, commands, gameMode) = store.ReadProfile(newId);
         Assert.Equal("Combat", name);
         Assert.Single(commands);
+        Assert.Equal(NovaVox.Core.Config.GameModeConfig.StarCitizen, gameMode);
+    }
+
+    [Fact]
+    public void WriteProfile_TagsGameModeAndListProfilesReportsIt()
+    {
+        var store = new CommandStore(_dir);
+        var scId = store.NewProfileId();
+        store.WriteProfile(scId, "SC", new List<VoiceCommand>(), NovaVox.Core.Config.GameModeConfig.StarCitizen);
+        var otherId = store.NewProfileId();
+        store.WriteProfile(otherId, "Autre", new List<VoiceCommand>(), NovaVox.Core.Config.GameModeConfig.Other);
+
+        var profiles = store.ListProfiles();
+        Assert.Equal(NovaVox.Core.Config.GameModeConfig.StarCitizen, profiles.Single(p => p.Id == scId).GameMode);
+        Assert.Equal(NovaVox.Core.Config.GameModeConfig.Other, profiles.Single(p => p.Id == otherId).GameMode);
+    }
+
+    [Fact]
+    public void ReadProfile_MissingGameModeKey_DefaultsToStarCitizen()
+    {
+        var store = new CommandStore(_dir);
+        var id = store.NewProfileId();
+        File.WriteAllText(store.ProfilePath(id), """{"name":"Ancien","commands":[]}""");
+
+        var (_, _, gameMode) = store.ReadProfile(id);
+        Assert.Equal(NovaVox.Core.Config.GameModeConfig.StarCitizen, gameMode);
     }
 
     [Fact]

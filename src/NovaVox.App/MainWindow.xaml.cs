@@ -1160,7 +1160,7 @@ public partial class MainWindow : Window
         var name = InputDialog.Show(this, "Nom du nouveau profil :", "Nouveau profil");
         if (string.IsNullOrWhiteSpace(name)) return;
         var id = _state.CommandStore.NewProfileId();
-        _state.CommandStore.WriteProfile(id, name.Trim(), new());
+        _state.CommandStore.WriteProfile(id, name.Trim(), new(), _state.GameMode.CurrentMode);
         _state.SwitchProfile(id);
         CommandsList.ItemsSource = null;
         InitializeCommandsList();
@@ -1173,9 +1173,9 @@ public partial class MainWindow : Window
         if (ProfileCombo.SelectedItem is not ProfileInfo profile) return;
         var name = InputDialog.Show(this, "Nouveau nom du profil :", profile.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
-        var (_, commands) = _state.CommandStore.ReadProfile(profile.Id);
+        var (_, commands, gameMode) = _state.CommandStore.ReadProfile(profile.Id);
         var oldName = profile.Name;
-        _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands);
+        _state.CommandStore.WriteProfile(profile.Id, name.Trim(), commands, gameMode);
         _state.ReloadProfiles();
         SelectActiveProfileInCombo();
         AppendLog($"Profil renommé : « {oldName} » → « {name.Trim()} ».", "success");
@@ -1313,8 +1313,10 @@ public partial class MainWindow : Window
             var overlay = _state.Overlay;
             OverlayEnabledCheckbox.IsChecked = overlay.Enabled;
             OverlayBgColorBox.Text = overlay.BgColor;
+            OverlayBgColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(overlay.BgColor)!);
             OverlayBgOpacitySlider.Value = overlay.BgOpacity;
             OverlayTextColorBox.Text = overlay.TextColor;
+            OverlayTextColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(overlay.TextColor)!);
             OverlayTextOpacitySlider.Value = overlay.TextOpacity;
             SelectComboItemByTag(UiLanguageCombo, ai.UiLanguage);
             ShowSystemLogCheckbox.IsChecked = ai.ShowSystemLog;
@@ -2291,6 +2293,102 @@ public partial class MainWindow : Window
 
     private void OverlayAppearance_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) =>
         OverlayAppearance_Changed(sender, new RoutedEventArgs());
+
+    // --------------------------------------------- Sélecteur de couleur (overlay)
+
+    // "bg" ou "text" : quelle pastille a ouvert ColorPickerPopup, donc où
+    // renvoyer la couleur choisie. Évite de dupliquer tout le picker par
+    // cible (un seul Popup partagé, voir MainWindow.xaml).
+    private string? _colorPickerTarget;
+
+    // Coupe la boucle de rétroaction slider -> hex -> slider quand on pousse
+    // une couleur dans les sliders par programme (preset cliqué, hex saisi).
+    private bool _updatingColorPicker;
+
+    private void OverlayBgColorSwatch_Click(object sender, RoutedEventArgs e) =>
+        OpenColorPicker("bg", OverlayBgColorSwatch, _state.Overlay.BgColor);
+
+    private void OverlayTextColorSwatch_Click(object sender, RoutedEventArgs e) =>
+        OpenColorPicker("text", OverlayTextColorSwatch, _state.Overlay.TextColor);
+
+    private void OpenColorPicker(string target, UIElement placementTarget, string currentHex)
+    {
+        _colorPickerTarget = target;
+        ColorPickerPopup.PlacementTarget = placementTarget;
+        SetColorPickerSliders(currentHex);
+        ColorPickerPopup.IsOpen = true;
+    }
+
+    private void SetColorPickerSliders(string hex)
+    {
+        var color = (Color)ColorConverter.ConvertFromString(hex)!;
+        _updatingColorPicker = true;
+        ColorPickerRSlider.Value = color.R;
+        ColorPickerGSlider.Value = color.G;
+        ColorPickerBSlider.Value = color.B;
+        _updatingColorPicker = false;
+        ColorPickerHexBox.Text = hex;
+        ColorPickerPreview.Background = new SolidColorBrush(color);
+    }
+
+    private void ColorPickerSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_updatingColorPicker || _colorPickerTarget is null) return;
+        var r = (byte)ColorPickerRSlider.Value;
+        var g = (byte)ColorPickerGSlider.Value;
+        var b = (byte)ColorPickerBSlider.Value;
+        ApplyColorPickerHex($"#{r:X2}{g:X2}{b:X2}", updateSliders: false);
+    }
+
+    private void ColorPickerHexBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_colorPickerTarget is null) return;
+        var fallback = _colorPickerTarget == "bg" ? _state.Overlay.BgColor : _state.Overlay.TextColor;
+        var hex = OverlayConfigStore.ValidateHexColor(ColorPickerHexBox.Text.Trim(), fallback);
+        ApplyColorPickerHex(hex, updateSliders: true);
+    }
+
+    private void ColorPickerPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string hex } || _colorPickerTarget is null) return;
+        ApplyColorPickerHex(hex, updateSliders: true);
+    }
+
+    /// <summary>
+    /// Pousse une couleur choisie dans le picker (slider, preset ou hex
+    /// saisi) vers la pastille/case texte/état de la cible en cours
+    /// (Fond ou Texte), puis réutilise OverlayAppearance_Changed pour la
+    /// persistance et l'application live à l'overlay — même chemin que la
+    /// saisie hex manuelle d'avant.
+    /// </summary>
+    private void ApplyColorPickerHex(string hex, bool updateSliders)
+    {
+        if (_colorPickerTarget is null) return;
+        var color = (Color)ColorConverter.ConvertFromString(hex)!;
+        ColorPickerPreview.Background = new SolidColorBrush(color);
+        if (ColorPickerHexBox.Text != hex) ColorPickerHexBox.Text = hex;
+
+        if (updateSliders)
+        {
+            _updatingColorPicker = true;
+            ColorPickerRSlider.Value = color.R;
+            ColorPickerGSlider.Value = color.G;
+            ColorPickerBSlider.Value = color.B;
+            _updatingColorPicker = false;
+        }
+
+        if (_colorPickerTarget == "bg")
+        {
+            OverlayBgColorBox.Text = hex;
+            OverlayBgColorSwatch.Background = new SolidColorBrush(color);
+        }
+        else
+        {
+            OverlayTextColorBox.Text = hex;
+            OverlayTextColorSwatch.Background = new SolidColorBrush(color);
+        }
+        OverlayAppearance_Changed(this, new RoutedEventArgs());
+    }
 
     // ---------------------------------------------- Export/import config
 

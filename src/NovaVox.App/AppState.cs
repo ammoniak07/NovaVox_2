@@ -63,10 +63,11 @@ public sealed class AppState
             Commands.Add(VoiceCommandRow.FromModel(cmd));
     }
 
+    /// <summary>Ne recharge que les profils de commandes du mode de jeu actif — un profil Star Citizen n'est ni visible ni sélectionnable en mode "Autre jeu", et inversement.</summary>
     public void ReloadProfiles()
     {
         Profiles.Clear();
-        foreach (var p in CommandStore.ListProfiles())
+        foreach (var p in CommandStore.ListProfiles().Where(p => p.GameMode == GameMode.CurrentMode))
             Profiles.Add(p);
     }
 
@@ -91,7 +92,7 @@ public sealed class AppState
     public void SwitchProfile(string profileId)
     {
         SaveCommands();
-        var (_, commands) = CommandStore.ReadProfile(profileId);
+        var (_, commands, _) = CommandStore.ReadProfile(profileId);
         CommandStore.ActiveProfileId = profileId;
         CommandStore.SaveActiveProfileId(profileId);
         CommandStore.SaveCommands(commands, mirrorToProfile: false);
@@ -103,10 +104,12 @@ public sealed class AppState
     /// Bascule le mode de jeu (GameModeCombo, en-tête) : sauvegarde l'état
     /// actuel (touche d'activation vocale, transparence de l'overlay,
     /// Game.log, wiki Gemini, profil de commandes actif) dans le bundle du
-    /// mode qu'on quitte, puis applique celui du mode qu'on rejoint — y
-    /// compris son profil de commandes s'il en avait un de mémorisé et
-    /// qu'il existe toujours (sinon le profil de commandes actif ne
-    /// change pas). L'appelant doit ensuite rafraîchir l'UI (Réglages,
+    /// mode qu'on quitte, puis applique celui du mode qu'on rejoint. Les
+    /// profils de commandes sont cloisonnés par mode (chaque profil
+    /// n'appartient qu'à un seul mode, voir ProfileInfo.GameMode) : on
+    /// bascule sur le profil mémorisé pour ce mode s'il existe toujours,
+    /// sinon sur le premier profil disponible pour ce mode, sinon on en
+    /// crée un vide. L'appelant doit ensuite rafraîchir l'UI (Réglages,
     /// overlay affiché, image de fond, touche d'activation en direct).
     /// </summary>
     public void SwitchGameMode(string mode)
@@ -135,7 +138,27 @@ public sealed class AppState
         Ai.GeminiWikiEnabled = incoming.GeminiWikiEnabled;
         SaveAi();
 
+        // Recharge la liste de profils AVANT de choisir lequel activer : ne
+        // doit contenir que ceux du mode qu'on rejoint (chaque profil de
+        // commandes n'appartient qu'à un seul mode de jeu).
+        ReloadProfiles();
+
         if (incoming.CommandProfileId is { } profileId && Profiles.Any(p => p.Id == profileId))
+        {
             SwitchProfile(profileId);
+        }
+        else if (Profiles.Count > 0)
+        {
+            SwitchProfile(Profiles[0].Id);
+        }
+        else
+        {
+            // Ce mode de jeu n'a encore aucun profil de commandes : on en
+            // crée un vide plutôt que de laisser le mode sans profil actif.
+            var pid = CommandStore.NewProfileId();
+            CommandStore.WriteProfile(pid, CommandStore.DefaultProfileName, new List<VoiceCommand>(), mode);
+            ReloadProfiles();
+            SwitchProfile(pid);
+        }
     }
 }
