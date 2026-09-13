@@ -77,7 +77,7 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     public bool RowVisible { get => _rowVisible; set { _rowVisible = value; Raise(); } }
 
     private bool _isCollapsed;
-    /// <summary>Titre replié : masque les commandes du groupe jusqu'au titre suivant — jamais persisté, purement UI (voir RefreshCommandsVisibility, MainWindow.xaml.cs).</summary>
+    /// <summary>Titre replié : masque les commandes du groupe jusqu'au titre suivant (voir RefreshCommandsVisibility, MainWindow.xaml.cs) — persisté (VoiceCommand.Collapsed), significatif seulement pour un titre.</summary>
     public bool IsCollapsed { get => _isCollapsed; set { _isCollapsed = value; Raise(); Raise(nameof(CollapseGlyph)); } }
 
     public string CollapseGlyph => IsCollapsed ? "▸" : "▾";
@@ -98,6 +98,7 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
             RepeatCount = cmd.RepeatCount,
             RepeatDelay = cmd.RepeatDelay,
             ExtraSteps = new List<ExtraStep>(cmd.ExtraSteps),
+            IsCollapsed = cmd.Collapsed,
         };
         foreach (var s in cmd.Synonyms) row.Synonyms.Add(s);
         return row;
@@ -113,5 +114,6 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
         RepeatDelay = RepeatDelay,
         Synonyms = Synonyms.ToList(),
         ExtraSteps = ExtraSteps,
+        Collapsed = IsCollapsed,
     };
 }

@@ -78,7 +78,12 @@ public sealed class CommandStore
 
             if (GetString(item["type"]) == "title")
             {
-                normalized.Add(new VoiceCommand { Type = "title", Phrase = GetString(item["text"]).Trim() });
+                normalized.Add(new VoiceCommand
+                {
+                    Type = "title",
+                    Phrase = GetString(item["text"]).Trim(),
+                    Collapsed = GetBool(item["collapsed"]),
+                });
                 continue;
             }
 
@@ -125,7 +130,7 @@ public sealed class CommandStore
         {
             if (cmd.IsTitle)
             {
-                arr.Add(new JsonObject { ["type"] = "title", ["text"] = cmd.Phrase });
+                arr.Add(new JsonObject { ["type"] = "title", ["text"] = cmd.Phrase, ["collapsed"] = cmd.Collapsed });
                 continue;
             }
             arr.Add(new JsonObject

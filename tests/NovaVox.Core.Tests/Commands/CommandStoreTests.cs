@@ -48,6 +48,22 @@ public class CommandStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_RoundTripsTitleCollapsedState()
+    {
+        var store = new CommandStore(_dir);
+        var commands = new List<VoiceCommand>
+        {
+            new() { Type = "title", Phrase = "Replié", Collapsed = true },
+            new() { Type = "title", Phrase = "Déplié", Collapsed = false },
+        };
+        store.SaveCommands(commands, mirrorToProfile: false);
+
+        var reloaded = new CommandStore(_dir).LoadCommands();
+        Assert.True(reloaded[0].Collapsed);
+        Assert.False(reloaded[1].Collapsed);
+    }
+
+    [Fact]
     public void NormalizeCommands_ClampsRepeatCountAndDelay()
     {
         var json = System.Text.Json.Nodes.JsonNode.Parse(
