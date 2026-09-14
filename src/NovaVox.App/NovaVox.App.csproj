@@ -74,7 +74,7 @@
     <!-- Un fond par thème (BackgroundSuffixByTheme, MainWindow.xaml.cs) :
          background3.* (Cyberpunk) à background6.* (Clair). Mêmes oublis
          possibles que ci-dessus si un thème est ajouté sans étendre cette
-         liste -- penser à ajouter les 3 entrées (jpg/jpeg/png) ici à chaque
+         liste : penser à ajouter les 3 entrées (jpg/jpeg/png) ici à chaque
          nouveau thème. -->
     <Content Include="..\..\background3.jpg" Link="background3.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background3.jpg')" />
     <Content Include="..\..\background3.jpeg" Link="background3.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background3.jpeg')" />
