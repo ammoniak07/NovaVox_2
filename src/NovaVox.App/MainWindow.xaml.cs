@@ -1770,7 +1770,7 @@ public partial class MainWindow : Window
             ListenToggleButton.Content = listening ? "■ Couper l'écoute" : "▶ Engager l'écoute";
             StatusLabelText.Text = listening ? "Écoute active" : "Arrêté";
             StatusText.Text = listening ? "Écoute en cours" : "Système en veille";
-            StatusDot.Fill = listening ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("MutedBrush");
+            SetListenIndicator(listening);
             _overlayWindow?.SetListening(listening);
             // L'écoute complète et le mètre de niveau léger ne doivent jamais
             // capter le micro en même temps : l'une alimente le mètre pendant
@@ -1843,27 +1843,61 @@ public partial class MainWindow : Window
         // (voir InitializeVoiceOrchestrator), donc Start()/Stop() peuvent
         // tourner sur un thread d'arrière-plan sans risque pour l'UI.
         ListenToggleButton.IsEnabled = false;
-        ListenToggleButton.Background = (Brush)FindResource("ListenBusyBrush");
-        ListenBusySpinner.Visibility = Visibility.Visible;
-        ListenBusySpinnerRotate.BeginAnimation(RotateTransform.AngleProperty,
-            new DoubleAnimation(0, 360, TimeSpan.FromSeconds(0.8)) { RepeatBehavior = RepeatBehavior.Forever });
         try
         {
             if (_voiceOrchestrator.IsListening)
             {
+                // ListeningChanged(false), déclenché par Stop(), remet l'indicateur
+                // et le bouton à l'état arrêté (SetListenIndicator) une fois fait.
                 await Task.Run(() => _voiceOrchestrator.Stop());
             }
             else
             {
-                await Task.Run(() => _voiceOrchestrator.Start());
+                SetListenIndicator(null); // chargement : anneau orange + bouton rouge sombre
+                StatusLabelText.Text = "Chargement...";
+                StatusText.Text = "Initialisation du modèle";
+                var started = await Task.Run(() => _voiceOrchestrator.Start());
+                if (!started)
+                {
+                    // Start() a échoué avant d'émettre ListeningChanged (pas de modèle
+                    // sélectionné, exception...) : personne d'autre ne sort l'indicateur
+                    // de l'état "chargement", il faut le faire ici.
+                    SetListenIndicator(false);
+                    StatusLabelText.Text = "Arrêté";
+                    StatusText.Text = "Système en veille";
+                }
             }
         }
         finally
         {
-            ListenBusySpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, null);
-            ListenBusySpinner.Visibility = Visibility.Collapsed;
-            ListenToggleButton.ClearValue(Button.BackgroundProperty);
             ListenToggleButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Indicateur d'écoute (remplace le simple point de couleur d'origine) :
+    /// null = chargement (anneau orange tournant), true = écoute active
+    /// (anneau bleu tournant), false = arrêté (point statique, rien ne
+    /// tourne). Pilote aussi la couleur du bouton Engager/Couper l'écoute,
+    /// qui doit rester rouge sombre tant qu'on n'est pas à l'arrêt.
+    /// </summary>
+    private void SetListenIndicator(bool? listening)
+    {
+        if (listening is null || listening == true)
+        {
+            StatusDot.Visibility = Visibility.Collapsed;
+            StatusSpinner.Stroke = (Brush)FindResource(listening is null ? "AmberBrush" : "AccentBrush");
+            StatusSpinner.Visibility = Visibility.Visible;
+            StatusSpinnerRotate.BeginAnimation(RotateTransform.AngleProperty,
+                new DoubleAnimation(0, 360, TimeSpan.FromSeconds(0.8)) { RepeatBehavior = RepeatBehavior.Forever });
+            ListenToggleButton.Background = (Brush)FindResource("ListenBusyBrush");
+        }
+        else
+        {
+            StatusSpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+            StatusSpinner.Visibility = Visibility.Collapsed;
+            StatusDot.Visibility = Visibility.Visible;
+            ListenToggleButton.ClearValue(Button.BackgroundProperty);
         }
     }
 
