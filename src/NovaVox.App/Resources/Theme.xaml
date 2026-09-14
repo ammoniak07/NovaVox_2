@@ -99,6 +99,12 @@
         </Setter>
     </Style>
 
+    <!-- Rouge sombre fixe (identique dans les deux thèmes, contrairement à
+         DangerBrush défini dans Theme.Dark.xaml/Theme.Light.xaml) : état
+         "action en cours" du bouton Engager/Couper l'écoute pendant le
+         chargement du modèle Vosk et l'ouverture du micro. -->
+    <SolidColorBrush x:Key="ListenBusyBrush" Color="#7A1414" />
+
     <!-- Bouton plein accent, en pilule (bouton d'action principal type "Engager l'écoute") -->
     <Style x:Key="AccentPillButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource AccentBrush}" />

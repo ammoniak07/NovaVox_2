@@ -9,6 +9,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Threading;
@@ -1842,6 +1843,10 @@ public partial class MainWindow : Window
         // (voir InitializeVoiceOrchestrator), donc Start()/Stop() peuvent
         // tourner sur un thread d'arrière-plan sans risque pour l'UI.
         ListenToggleButton.IsEnabled = false;
+        ListenToggleButton.Background = (Brush)FindResource("ListenBusyBrush");
+        ListenBusySpinner.Visibility = Visibility.Visible;
+        ListenBusySpinnerRotate.BeginAnimation(RotateTransform.AngleProperty,
+            new DoubleAnimation(0, 360, TimeSpan.FromSeconds(0.8)) { RepeatBehavior = RepeatBehavior.Forever });
         try
         {
             if (_voiceOrchestrator.IsListening)
@@ -1855,6 +1860,9 @@ public partial class MainWindow : Window
         }
         finally
         {
+            ListenBusySpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+            ListenBusySpinner.Visibility = Visibility.Collapsed;
+            ListenToggleButton.ClearValue(Button.BackgroundProperty);
             ListenToggleButton.IsEnabled = true;
         }
     }

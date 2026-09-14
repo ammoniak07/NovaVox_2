@@ -141,7 +141,21 @@
                             <TextBlock x:Name="StatusText" Text="Système en veille" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
                         </StackPanel>
                     </StackPanel>
-                    <Button x:Name="ListenToggleButton" Grid.Column="1" Content="▶ Engager l'écoute" Style="{StaticResource AccentPillButtonStyle}" Click="ListenToggleButton_Click" />
+                    <Grid Grid.Column="1">
+                        <Button x:Name="ListenToggleButton" Content="▶ Engager l'écoute" Style="{StaticResource AccentPillButtonStyle}" Click="ListenToggleButton_Click" />
+                        <!-- Cercle de chargement affiché par-dessus le bouton pendant Start()/Stop()
+                             (chargement du modèle Vosk, ouverture du micro) : IsHitTestVisible=False
+                             pour ne jamais intercepter un clic (le bouton est de toute façon désactivé
+                             pendant ce temps). Rotation démarrée/arrêtée dans ListenToggleButton_Click. -->
+                        <Ellipse x:Name="ListenBusySpinner" Width="18" Height="18" StrokeThickness="2.5"
+                                 Stroke="{DynamicResource BgBrush}" StrokeDashArray="2,1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                 HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0"
+                                 Visibility="Collapsed" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <RotateTransform x:Name="ListenBusySpinnerRotate" Angle="0" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                    </Grid>
                 </Grid>
             </Border>
 
