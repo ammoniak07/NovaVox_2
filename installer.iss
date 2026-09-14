@@ -82,7 +82,7 @@ Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; GroupDesc
 ; dans dist\NovaVox\ (publication fraiche, sans donnees utilisateur) :
 ; l'appli les cree elle-meme avec des valeurs par defaut au premier
 ; lancement.
-Source: "dist\NovaVox\*"; DestDir: "{app}"; Excludes: "commands.json,ai_config.json,audio_config.json,overlay_config.json,window_config.json,profiles_config.json,profiles\*,Log\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\NovaVox\*"; DestDir: "{app}"; Excludes: "commands.json,ai_config.json,audio_config.json,overlay_config.json,window_config.json,profiles_config.json,profiles\*,Log\*,model\*,piper\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion isreadme skipifsourcedoesntexist
 
 [Icons]
@@ -116,7 +116,16 @@ begin
     SameText(Name, 'window_config.json') or
     SameText(Name, 'profiles_config.json') or
     SameText(Name, 'profiles') or
-    SameText(Name, 'Log');
+    SameText(Name, 'Log') or
+    // Modèle Vosk (VoskModelInstaller.TargetDir) et moteur/voix Piper
+    // (PiperInstaller.PiperDir) : jamais livrés dans dist\NovaVox\ (ils
+    // sont téléchargés par l'appli elle-même, voir Réglages > Sons), donc
+    // jamais écrasés par [Files] -- mais SANS cette préservation explicite,
+    // CleanPreviousInstall les supprimait quand même avant la copie d'une
+    // mise à jour, forçant un retéléchargement complet à chaque montée de
+    // version alors qu'ils étaient déjà installés par la version précédente.
+    SameText(Name, 'model') or
+    SameText(Name, 'piper');
 end;
 
 procedure CleanPreviousInstall(const AppDir: String);
