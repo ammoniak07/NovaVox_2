@@ -1889,7 +1889,7 @@ public partial class MainWindow : Window
             StatusSpinner.Stroke = (Brush)FindResource(listening is null ? "AmberBrush" : "AccentBrush");
             StatusSpinner.Visibility = Visibility.Visible;
             StatusSpinnerRotate.BeginAnimation(RotateTransform.AngleProperty,
-                new DoubleAnimation(0, 360, TimeSpan.FromSeconds(2)) { RepeatBehavior = RepeatBehavior.Forever });
+                new DoubleAnimation(0, 360, TimeSpan.FromSeconds(10)) { RepeatBehavior = RepeatBehavior.Forever });
             ListenToggleButton.Background = (Brush)FindResource("ListenBusyBrush");
         }
         else
