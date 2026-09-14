@@ -185,6 +185,7 @@ public partial class MainWindow : Window
         FooterVersionButton.Content = $"v{version}";
 
         StartFirstLaunchSetupIfNeeded();
+        _ = CheckForUpdateAtStartupAsync();
     }
 
     /// <summary>
@@ -2542,6 +2543,25 @@ public partial class MainWindow : Window
 
     // --------------------------------------------------------- Mise à jour
 
+    // URL de téléchargement de la version détectée par ShowUpdateToast — lue
+    // par UpdateToastDownload_Click au clic (le bandeau lui-même ne porte
+    // aucune donnée, juste des TextBlock).
+    private string? _pendingUpdateUrl;
+
+    /// <summary>
+    /// Vérification silencieuse au démarrage (voir OnLoaded) : contrairement
+    /// à CheckForUpdate_Click, ni MessageBox ni texte de statut ici en cas
+    /// d'absence de mise à jour ou d'échec réseau (CheckForUpdateAsync avale
+    /// déjà ses propres erreurs) — seul le bandeau UpdateToast apparaît, et
+    /// seulement s'il y a effectivement une nouvelle version.
+    /// </summary>
+    private async Task CheckForUpdateAtStartupAsync()
+    {
+        var patchNotesPath = Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt");
+        var result = await NovaVox.App.Update.UpdateChecker.CheckForUpdateAsync(patchNotesPath);
+        if (result.Available) ShowUpdateToast(result);
+    }
+
     private async void CheckForUpdate_Click(object sender, RoutedEventArgs e)
     {
         UpdateStatusText.Text = "Vérification en cours...";
@@ -2555,12 +2575,24 @@ public partial class MainWindow : Window
         }
 
         UpdateStatusText.Text = $"Nouvelle version disponible : v{result.Version}.";
-        if (MessageBox.Show(this, $"Version {result.Version} disponible. Ouvrir la page de téléchargement ?", "NovaVox",
-                MessageBoxButton.YesNo) == MessageBoxResult.Yes && result.Url is not null)
-        {
-            NovaVox.App.Update.UpdateChecker.OpenUpdateUrl(result.Url);
-        }
+        ShowUpdateToast(result);
     }
+
+    private void ShowUpdateToast(UpdateCheckResult result)
+    {
+        _pendingUpdateUrl = result.Url;
+        UpdateToastSubText.Text = $"(.NET/WPF) : v{result.Version}";
+        UpdateToast.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateToastDownload_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingUpdateUrl is not null)
+            NovaVox.App.Update.UpdateChecker.OpenUpdateUrl(_pendingUpdateUrl);
+        UpdateToast.Visibility = Visibility.Collapsed;
+    }
+
+    private void UpdateToastClose_Click(object sender, RoutedEventArgs e) => UpdateToast.Visibility = Visibility.Collapsed;
 
     // ------------------------------------------------ Modèle Vosk (téléchargement)
 
