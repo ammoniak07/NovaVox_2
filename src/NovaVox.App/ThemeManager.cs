@@ -1,4 +1,5 @@
 using System.Windows;
+using NovaVox.Core.Config;
 
 namespace NovaVox.App;
 
@@ -54,6 +55,19 @@ public static class ThemeManager
         ("amber", "🟠 Ambre"),
         ("ocean", "🌊 Océan"),
     };
+
+    /// <summary>
+    /// Sous-ensemble de AvailableThemes proposé selon le mode de jeu actif
+    /// (ThemeCombo, MainWindow.xaml.cs) : Star Citizen ne propose que
+    /// Sombre/Clair, comme avant l'ajout des thèmes de couleur — les
+    /// thèmes vifs (Militaire, Cyberpunk, Ambre, Océan) sont réservés au
+    /// mode "Autre jeu", qui exclut lui-même Sombre (déjà le thème par
+    /// défaut réservé à Star Citizen).
+    /// </summary>
+    public static IEnumerable<(string Id, string Label)> AvailableThemesFor(string gameMode) =>
+        gameMode == GameModeConfig.StarCitizen
+            ? AvailableThemes.Where(t => t.Id is "dark" or "light")
+            : AvailableThemes.Where(t => t.Id != "dark");
 
     public static void Apply(string theme)
     {

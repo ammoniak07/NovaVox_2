@@ -1696,7 +1696,12 @@ public partial class MainWindow : Window
         LoadPanelsBackgroundImage();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
         ThemeManager.Apply(_state.Ai.UiTheme);
-        SelectThemeComboItem(_state.Ai.UiTheme);
+        // InitializeThemeCombo (pas juste SelectThemeComboItem) : les thèmes
+        // proposés dépendent du mode de jeu (ThemeManager.AvailableThemesFor),
+        // donc la LISTE elle-même doit être reconstruite ici, pas seulement
+        // la sélection — et elle corrige au passage le thème enregistré s'il
+        // n'est plus valide pour le nouveau mode.
+        InitializeThemeCombo();
         SyncTitleBarColor();
 
         // Le profil de commandes actif a pu changer (SwitchGameMode) : la
@@ -2005,11 +2010,23 @@ public partial class MainWindow : Window
     /// </summary>
     private void InitializeThemeCombo()
     {
+        var allowedThemes = ThemeManager.AvailableThemesFor(_state.GameMode.CurrentMode).ToList();
+
         ThemeCombo.SelectionChanged -= ThemeCombo_SelectionChanged;
         ThemeCombo.Items.Clear();
-        foreach (var (id, label) in ThemeManager.AvailableThemes)
+        foreach (var (id, label) in allowedThemes)
             ThemeCombo.Items.Add(new ComboBoxItem { Content = label, Tag = id });
         ThemeCombo.SelectionChanged += ThemeCombo_SelectionChanged;
+
+        // Le thème enregistré peut ne plus être proposé pour ce mode (ex. un
+        // profil resté sur un thème retiré depuis) : on retombe sur le
+        // premier thème disponible plutôt que de laisser le sélecteur vide.
+        if (allowedThemes.All(t => t.Id != _state.Ai.UiTheme))
+        {
+            _state.Ai.UiTheme = allowedThemes[0].Id;
+            SaveAiAndLog();
+            ThemeManager.Apply(_state.Ai.UiTheme);
+        }
         SelectThemeComboItem(_state.Ai.UiTheme);
     }
 
