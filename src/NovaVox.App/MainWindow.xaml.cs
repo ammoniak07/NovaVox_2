@@ -1876,16 +1876,16 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Indicateur d'écoute (remplace le simple point de couleur d'origine) :
-    /// null = chargement (anneau orange tournant), true = écoute active
-    /// (anneau bleu tournant), false = arrêté (point statique, rien ne
-    /// tourne). Pilote aussi la couleur du bouton Engager/Couper l'écoute,
-    /// qui doit rester rouge sombre tant qu'on n'est pas à l'arrêt.
+    /// null = chargement (anneau orange tournant autour du point), true =
+    /// écoute active (anneau bleu tournant), false = arrêté (anneau masqué,
+    /// rien ne tourne). Le point de statut, lui, reste toujours affiché.
+    /// Pilote aussi la couleur du bouton Engager/Couper l'écoute, qui doit
+    /// rester rouge sombre tant qu'on n'est pas à l'arrêt.
     /// </summary>
     private void SetListenIndicator(bool? listening)
     {
         if (listening is null || listening == true)
         {
-            StatusDot.Visibility = Visibility.Collapsed;
             StatusSpinner.Stroke = (Brush)FindResource(listening is null ? "AmberBrush" : "AccentBrush");
             StatusSpinner.Visibility = Visibility.Visible;
             StatusSpinnerRotate.BeginAnimation(RotateTransform.AngleProperty,
@@ -1896,7 +1896,6 @@ public partial class MainWindow : Window
         {
             StatusSpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, null);
             StatusSpinner.Visibility = Visibility.Collapsed;
-            StatusDot.Visibility = Visibility.Visible;
             ListenToggleButton.ClearValue(Button.BackgroundProperty);
         }
     }

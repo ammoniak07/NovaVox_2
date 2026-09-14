@@ -135,20 +135,21 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Grid Width="14" Height="14" VerticalAlignment="Center">
-                            <!-- Arrêté : simple point, statique. -->
-                            <Ellipse x:Name="StatusDot" Fill="{DynamicResource MutedBrush}" />
-                            <!-- Chargement/Écoute en cours : anneau tournant (Stroke/rotation pilotés
-                                 depuis le code, voir SetListenIndicator dans MainWindow.xaml.cs),
-                                 orange pendant le chargement du modèle Vosk, bleu tant que l'écoute
-                                 est active ; jamais affiché à l'arrêt (StatusDot reprend alors). -->
-                            <Ellipse x:Name="StatusSpinner" StrokeThickness="2.2"
+                        <Grid Width="26" Height="26" VerticalAlignment="Center">
+                            <!-- Anneau tournant, plus grand que le point et centré autour de lui
+                                 (Stroke/rotation pilotés depuis le code, voir SetListenIndicator
+                                 dans MainWindow.xaml.cs) : orange pendant le chargement du modèle
+                                 Vosk, bleu tant que l'écoute est active ; masqué et immobile à l'arrêt. -->
+                            <Ellipse x:Name="StatusSpinner" StrokeThickness="2.4"
                                      StrokeDashArray="2,1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                      Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
                                 <Ellipse.RenderTransform>
                                     <RotateTransform x:Name="StatusSpinnerRotate" Angle="0" />
                                 </Ellipse.RenderTransform>
                             </Ellipse>
+                            <!-- Point de statut : toujours affiché, quel que soit l'état. -->
+                            <Ellipse x:Name="StatusDot" Width="14" Height="14" Fill="{DynamicResource MutedBrush}"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
                         <StackPanel Margin="12,0,0,0">
                             <TextBlock x:Name="StatusLabelText" Text="Arrêté" FontWeight="Bold" />
