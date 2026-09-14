@@ -95,3 +95,58 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Lancer {#MyAppName}"; Flags: no
 
 [Messages]
 FinishedLabel=L'installation est terminée.%n%nIMPORTANT : le modèle de reconnaissance vocale Vosk et le moteur de synthèse vocale Piper ne sont PAS inclus dans cet installeur — l'application te proposera de les télécharger automatiquement dès le premier lancement (Réglages > 🔊 Sons).
+
+[Code]
+// [Files] ci-dessus ecrase/ajoute les fichiers de la nouvelle version par-
+// dessus {app} (comportement Inno Setup par defaut), mais ne supprime
+// jamais un fichier qui existait dans une ancienne version et n'existe
+// plus dans la nouvelle -- une mise a jour 0.0.1 -> 0.0.2 laissait donc
+// trainer les anciens .exe/.dll (renommes ou supprimes entre deux
+// publications .NET) a cote des nouveaux au lieu de partir d'un dossier
+// propre. On nettoie donc {app} juste avant la copie (CurStepChanged,
+// ssInstall), en preservant explicitement les memes fichiers/dossiers de
+// configuration utilisateur que l'exclusion de [Files] plus haut.
+function IsPreservedTopLevelEntry(const Name: String): Boolean;
+begin
+  Result :=
+    SameText(Name, 'commands.json') or
+    SameText(Name, 'ai_config.json') or
+    SameText(Name, 'audio_config.json') or
+    SameText(Name, 'overlay_config.json') or
+    SameText(Name, 'window_config.json') or
+    SameText(Name, 'profiles_config.json') or
+    SameText(Name, 'profiles') or
+    SameText(Name, 'Log');
+end;
+
+procedure CleanPreviousInstall(const AppDir: String);
+var
+  FindRec: TFindRec;
+  FullPath: String;
+begin
+  if not DirExists(AppDir) then
+    exit;
+  if FindFirst(AppDir + '\*', FindRec) then
+  begin
+    try
+      repeat
+        if (FindRec.Name <> '.') and (FindRec.Name <> '..') and not IsPreservedTopLevelEntry(FindRec.Name) then
+        begin
+          FullPath := AppDir + '\' + FindRec.Name;
+          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+            DelTree(FullPath, True, True, True)
+          else
+            DeleteFile(FullPath);
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    CleanPreviousInstall(ExpandConstant('{app}'));
+end;
