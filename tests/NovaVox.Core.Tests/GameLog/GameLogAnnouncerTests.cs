@@ -15,6 +15,18 @@ public class GameLogAnnouncerTests
         Assert.Equal("VOUS QUITTEZ LA ZONE D'ARMISTICE", result);
     }
 
+    [Theory]
+    [InlineData(
+        "CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux. <EM4>[SP]</EM4>",
+        "CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux.")]
+    [InlineData(
+        "Contrat accepté : Frappe de précision sur Pete Clairmont <EM4>[SP]</EM4> <EM3>[1000 xp]</EM3>",
+        "Contrat accepté : Frappe de précision sur Pete Clairmont")]
+    public void CleanHudNotificationText_StripsEmphasisTags(string raw, string expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.CleanHudNotificationText(raw));
+    }
+
     [Fact]
     public void Build_HudNotification_RegistersNewOverrideAndSpeaksRawTextFirstTime()
     {
@@ -176,6 +188,23 @@ public class GameLogAnnouncerTests
 
         Assert.Single(overrides);
         Assert.Equal("Bienvenue capitaine", overrides["Bienvenue à bord"]);
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_ReKeysEntryStillCarryingEmphasisTag()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux. <EM4>[SP]</EM4>"]
+                = "CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux.",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.Equal(
+            "CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux.",
+            overrides["CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux."]);
     }
 
     [Fact]

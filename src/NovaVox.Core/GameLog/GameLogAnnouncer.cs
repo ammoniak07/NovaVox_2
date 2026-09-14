@@ -45,6 +45,17 @@ public static partial class GameLogAnnouncer
     private static partial Regex MultiSpaceRegex();
 
     /// <summary>
+    /// Marqueurs de mise en emphase du HUD ("&lt;EM4&gt;[SP]&lt;/EM4&gt;",
+    /// "&lt;EM3&gt;[1000 xp]&lt;/EM3&gt;"...) accolés à la fin de beaucoup de
+    /// notifications de contrat — toujours du bruit, jamais à lire à voix
+    /// haute, et identiques d'une mission à l'autre : sans ce nettoyage,
+    /// chaque mission finissait par une correction HUD manuelle rien que
+    /// pour retirer ce même tag.
+    /// </summary>
+    [GeneratedRegex(@"<EM\d+>.*?</EM\d+>", RegexOptions.IgnoreCase)]
+    private static partial Regex EmphasisTagRegex();
+
+    /// <summary>
     /// Rapports de délit du HUD ("X a commis Y contre vous...") : seul le
     /// nom du joueur en tête de phrase change d'une rencontre à l'autre
     /// pour un même type de délit.
@@ -81,6 +92,7 @@ public static partial class GameLogAnnouncer
     {
         text = (text ?? "").Trim();
         if (text.Length == 0) return "";
+        text = EmphasisTagRegex().Replace(text, "");
         text = TrailingColonRegex().Replace(text, "");
         text = InternalNewlineRegex().Replace(text, " ");
         return MultiSpaceRegex().Replace(text, " ").Trim();
@@ -186,20 +198,25 @@ public static partial class GameLogAnnouncer
 
     /// <summary>
     /// Fusionne dans <paramref name="overrides"/> (AiConfig.GameLogHudOverrides)
-    /// toute correction HUD enregistrée sous sa forme brute (nom de joueur
-    /// inclus dans la clé) avant l'introduction du regroupement par
-    /// gabarit — appelée au chargement de la config (AiConfigStore.Load)
-    /// pour nettoyer les doublons déjà accumulés, en plus d'empêcher
-    /// BuildHudAnnouncement d'en recréer de nouveaux. Ne fusionne jamais
-    /// deux personnalisations différentes : si la forme "{name}..."
-    /// canonique existe déjà, l'entrée héritée est simplement supprimée
-    /// (jamais écrasée) plutôt que de choisir arbitrairement laquelle garder.
+    /// toute correction HUD enregistrée sous une forme dépassée : soit
+    /// avec des tags de mise en emphase du HUD toujours présents dans la
+    /// clé (avant l'introduction du nettoyage EmphasisTagRegex — même
+    /// texte de contrat à chaque fois, mais un tag bruit en plus qui
+    /// suffisait à en faire une clé différente), soit avec un nom de
+    /// joueur inclus dans la clé (avant le regroupement par gabarit
+    /// "{name}...", voir NameTemplates). Appelée au chargement de la
+    /// config (AiConfigStore.Load) pour nettoyer les doublons déjà
+    /// accumulés, en plus d'empêcher BuildHudAnnouncement d'en recréer de
+    /// nouveaux. Ne fusionne jamais deux personnalisations différentes :
+    /// si la forme canonique existe déjà, l'entrée héritée est simplement
+    /// supprimée (jamais écrasée) plutôt que de choisir arbitrairement
+    /// laquelle garder.
     /// </summary>
     public static void MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
     {
         foreach (var rawKey in overrides.Keys.ToList())
         {
-            var (templateKey, _) = ExtractNameTemplate(rawKey);
+            var (templateKey, _) = ExtractNameTemplate(CleanHudNotificationText(rawKey));
             if (templateKey == rawKey) continue;
 
             if (!overrides.ContainsKey(templateKey))
