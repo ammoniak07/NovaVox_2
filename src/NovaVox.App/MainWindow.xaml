@@ -99,7 +99,7 @@
                         </Grid>
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="NOVAVOX V2" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
-                            <TextBlock Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock x:Name="TopbarSubtitleText" Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -111,7 +111,7 @@
                             <ComboBoxItem Content="🚀 Star Citizen" Tag="sc" />
                             <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
                         </ComboBox>
-                        <Button Content="🌟 Assistant Gemini" Margin="8,0,0,0" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
+                        <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Margin="8,0,0,0" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
                         <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />
@@ -465,7 +465,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="⚙️ Réglages" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="SettingsTitleText" Grid.Column="0" Text="⚙️ Réglages" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
                         <Button x:Name="CloseSettingsButton" Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSettings_Click" />
                     </Grid>
 
@@ -485,10 +485,10 @@
                     </Border>
 
                     <TabControl x:Name="SettingsTabControl" Grid.Row="2" Background="Transparent" Margin="10,4,10,10">
-                        <TabItem Header="🔊 Sons">
+                        <TabItem x:Name="SonsSettingsTab" Header="🔊 Sons">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
-                                <TextBlock Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
+                                <TextBlock x:Name="VoskModelLabelText" Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
                                 <TextBlock x:Name="ModelPathText" Text="Aucun modèle sélectionné" Foreground="{DynamicResource MutedBrush}"
                                            TextWrapping="Wrap" Margin="0,0,0,4" />
                                 <ItemsControl x:Name="VoskModelsList" Margin="0,4,0,0">
@@ -719,7 +719,7 @@
                                 <CheckBox x:Name="ShowSystemLogCheckbox" Content="Afficher le journal système"
                                           Checked="ShowSystemLogCheckbox_Changed" Unchecked="ShowSystemLogCheckbox_Changed" />
 
-                                <TextBlock Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
+                                <TextBlock x:Name="UiLanguageLabelText" Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">
                                     <ComboBoxItem Content="Français" Tag="fr" />
                                     <ComboBoxItem Content="English" Tag="en" />
@@ -1114,7 +1114,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Button Grid.Column="0" Content="Effacer" Click="KbClear_Click" />
-                        <Button Grid.Column="2" Content="Annuler" Click="KbCancel_Click" Margin="0,0,6,0" />
+                        <Button x:Name="KbCancelButton" Grid.Column="2" Content="Annuler" Click="KbCancel_Click" Margin="0,0,6,0" />
                         <Button x:Name="KbConfirmButton" Grid.Column="3" Content="Valider" Style="{StaticResource AccentPillButtonStyle}" Click="KbConfirm_Click" IsEnabled="False" />
                     </Grid>
                 </Grid>

@@ -38,4 +38,17 @@ public static class PiperVoiceCatalog
     };
 
     public static PiperVoiceInfo? Find(string? id) => Voices.FirstOrDefault(v => v.Id == id);
+
+    /// <summary>
+    /// Voix proposées pour une langue d'interface donnée (repli sur le
+    /// français si la langue est inconnue ou n'a aucune voix curatée) —
+    /// même principe que VoskModelCatalog.ModelsForLanguage, à la demande
+    /// explicite de ne montrer/proposer au téléchargement que les voix de
+    /// la langue actuellement sélectionnée plutôt que la liste complète.
+    /// </summary>
+    public static IReadOnlyList<PiperVoiceInfo> VoicesForLanguage(string? lang)
+    {
+        var matches = Voices.Where(v => v.Lang == lang).ToList();
+        return matches.Count > 0 ? matches : Voices.Where(v => v.Lang == "fr").ToList();
+    }
 }

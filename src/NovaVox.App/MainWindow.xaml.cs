@@ -28,6 +28,7 @@ using NovaVox.Core.Config;
 using NovaVox.Core.GameLog;
 using NovaVox.Core.Gemini;
 using NovaVox.Core.Hotkeys;
+using NovaVox.Core.Localization;
 using NovaVox.Core.Speech;
 using NovaVox.Core.Tts;
 using NovaVox.Core.Update;
@@ -168,6 +169,7 @@ public partial class MainWindow : Window
         BuildVirtualKeyboard();
         InitializeOverlay();
         LoadSettingsIntoControls();
+        ApplyUiTranslations();
         InitializeVoiceOrchestrator();
         InitializeVoskCatalog();
         InitializePiperCatalog();
@@ -1703,6 +1705,9 @@ public partial class MainWindow : Window
         InitializeCommandsList();
         SelectActiveProfileInCombo();
         LoadSettingsIntoControls();
+        ApplyUiTranslations();
+        InitializeVoskCatalog();
+        InitializePiperCatalog();
 
         AppendLog($"Mode de jeu : {(starCitizen ? "Star Citizen" : "Autre jeu")}.", "info");
     }
@@ -1728,7 +1733,46 @@ public partial class MainWindow : Window
         {
             _state.Ai.UiLanguage = tag;
             SaveAiAndLog();
+            ApplyUiTranslations();
+            // Les modèles Vosk et voix Piper proposés/téléchargeables sont liés à
+            // la langue de l'interface (VoskModelCatalog.ModelsForLanguage,
+            // PiperVoiceCatalog.VoicesForLanguage) : sans ce rafraîchissement,
+            // les deux listes restaient celles de l'ancienne langue jusqu'au
+            // prochain redémarrage de l'appli.
+            InitializeVoskCatalog();
+            InitializePiperCatalog();
         }
+    }
+
+    /// <summary>
+    /// Applique la traduction (UiLocalization) à tous les éléments d'interface
+    /// couverts par la localisation .NET (voir UiLocalization pour la liste) :
+    /// appelée à l'initialisation (OnLoaded) et à chaque changement de langue.
+    /// Ne touche jamais au texte des lignes de commandes ni au contenu des
+    /// panneaux Gemini/Game.log, non couverts pour l'instant.
+    /// </summary>
+    private void ApplyUiTranslations()
+    {
+        var lang = _state.Ai.UiLanguage;
+        string T(string key) => UiLocalization.T(lang, key);
+
+        TopbarSubtitleText.Text = T("topbar.subtitle");
+        GeminiHeaderButton.Content = T("topbar.gemini");
+        GameLogHeaderButton.Content = T("topbar.gamelog");
+        SettingsButton.ToolTip = T("topbar.settings");
+        ThemeCombo.ToolTip = T("topbar.theme");
+        SettingsTitleText.Text = T("settings.title");
+        SonsSettingsTab.Header = T("settings.tab.sons");
+        GeminiSettingsTab.Header = T("settings.tab.gemini");
+        GameLogSettingsTab.Header = T("settings.tab.gamelog");
+        UiLanguageLabelText.Text = T("settings.language.label");
+        VoskModelLabelText.Text = T("settings.model.label");
+        ShowSystemLogCheckbox.Content = T("settings.showlog");
+        KbCancelButton.Content = T("kb.cancel");
+        KbConfirmButton.Content = T("kb.confirm");
+
+        ListenToggleButton.Content = T(_voiceOrchestrator?.IsListening == true ? "engage.stop" : "engage.start");
+        RefreshListenStatusText(); // relit _listenIndicatorState (pas l'état visuel de l'anneau) dans la nouvelle langue
     }
 
     private void AutolaunchCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -1768,10 +1812,8 @@ public partial class MainWindow : Window
         _voiceOrchestrator.Log += (_, e) => Dispatcher.BeginInvoke(() => AppendLog(e.Message, e.Kind));
         _voiceOrchestrator.ListeningChanged += (_, listening) => Dispatcher.BeginInvoke(() =>
         {
-            ListenToggleButton.Content = listening ? "■ Couper l'écoute" : "▶ Engager l'écoute";
-            StatusLabelText.Text = listening ? "Écoute active" : "Arrêté";
-            StatusText.Text = listening ? "Écoute en cours" : "Système en veille";
-            SetListenIndicator(listening);
+            ListenToggleButton.Content = UiLocalization.T(_state.Ai.UiLanguage, listening ? "engage.stop" : "engage.start");
+            SetListenIndicator(listening); // met aussi à jour StatusLabelText/StatusText (voir RefreshListenStatusText)
             _overlayWindow?.SetListening(listening);
             // L'écoute complète et le mètre de niveau léger ne doivent jamais
             // capter le micro en même temps : l'une alimente le mètre pendant
@@ -1854,9 +1896,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                SetListenIndicator(null); // chargement : anneau orange + bouton rouge sombre
-                StatusLabelText.Text = "Chargement...";
-                StatusText.Text = "Initialisation du modèle";
+                SetListenIndicator(null); // chargement : anneau orange + bouton rouge sombre + texte "Chargement..."
                 var started = await Task.Run(() => _voiceOrchestrator.Start());
                 if (!started)
                 {
@@ -1864,8 +1904,6 @@ public partial class MainWindow : Window
                     // sélectionné, exception...) : personne d'autre ne sort l'indicateur
                     // de l'état "chargement", il faut le faire ici.
                     SetListenIndicator(false);
-                    StatusLabelText.Text = "Arrêté";
-                    StatusText.Text = "Système en veille";
                 }
             }
         }
@@ -1875,16 +1913,26 @@ public partial class MainWindow : Window
         }
     }
 
+    // État courant de l'indicateur d'écoute (voir SetListenIndicator), gardé
+    // à part pour que RefreshListenStatusText/ApplyUiTranslations puissent
+    // retraduire StatusLabelText/StatusText sans redeviner l'état à partir
+    // de la couleur/visibilité de l'anneau.
+    private bool? _listenIndicatorState = false; // false = arrêté par défaut, jamais null tant que SetListenIndicator(null) (chargement) n'a pas été appelé explicitement
+
     /// <summary>
     /// Indicateur d'écoute (remplace le simple point de couleur d'origine) :
     /// null = chargement (anneau orange tournant autour du point), true =
     /// écoute active (anneau bleu tournant), false = arrêté (anneau masqué,
     /// rien ne tourne). Le point de statut, lui, reste toujours affiché.
-    /// Pilote aussi la couleur du bouton Engager/Couper l'écoute, qui doit
-    /// rester rouge sombre tant qu'on n'est pas à l'arrêt.
+    /// Pilote aussi la couleur du bouton Engager/Couper l'écoute (rouge
+    /// sombre tant qu'on n'est pas à l'arrêt) et le texte StatusLabelText/
+    /// StatusText correspondant (voir RefreshListenStatusText), traduit
+    /// dans la langue courante de l'interface.
     /// </summary>
     private void SetListenIndicator(bool? listening)
     {
+        _listenIndicatorState = listening;
+
         if (listening is null || listening == true)
         {
             StatusSpinner.Stroke = (Brush)FindResource(listening is null ? "AmberBrush" : "AccentBrush");
@@ -1899,6 +1947,21 @@ public partial class MainWindow : Window
             StatusSpinner.Visibility = Visibility.Collapsed;
             ListenToggleButton.ClearValue(Button.BackgroundProperty);
         }
+
+        RefreshListenStatusText();
+    }
+
+    private void RefreshListenStatusText()
+    {
+        var lang = _state.Ai.UiLanguage;
+        var (labelKey, subKey) = _listenIndicatorState switch
+        {
+            null => ("status.loading.label", "status.loading.sub"),
+            true => ("status.active.label", "status.active.sub"),
+            _ => ("status.idle.label", "status.idle.sub"),
+        };
+        StatusLabelText.Text = UiLocalization.T(lang, labelKey);
+        StatusText.Text = UiLocalization.T(lang, subKey);
     }
 
     private void BrowseModel_Click(object sender, RoutedEventArgs e)
@@ -2675,7 +2738,7 @@ public partial class MainWindow : Window
     private void InitializePiperCatalog()
     {
         _piperVoiceRows.Clear();
-        foreach (var voice in PiperVoiceCatalog.Voices)
+        foreach (var voice in PiperVoiceCatalog.VoicesForLanguage(_state.Ai.UiLanguage))
         {
             _piperVoiceRows.Add(new PiperVoiceRowVm
             {
