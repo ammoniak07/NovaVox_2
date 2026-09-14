@@ -1148,8 +1148,8 @@
         </Border>
 
         <!-- Notification "mise à jour disponible" : contrairement aux recouvrements
-             ci-dessus (SettingsOverlay...), pas de fond semi-transparent plein écran
-             -- juste une carte flottante en haut à droite qui n'empêche jamais
+             ci-dessus (SettingsOverlay...), pas de fond semi-transparent plein écran,
+             juste une carte flottante en haut à droite qui n'empêche jamais
              d'utiliser le reste de la fenêtre pendant qu'elle est affichée. Montrée
              par ShowUpdateToast (MainWindow.xaml.cs), appelée après la vérification
              automatique au démarrage et après un clic manuel sur "Vérifier les mises
