@@ -1829,16 +1829,33 @@ public partial class MainWindow : Window
 
     private void ClearLog_Click(object sender, RoutedEventArgs e) => LogList.Document.Blocks.Clear();
 
-    private void ListenToggleButton_Click(object sender, RoutedEventArgs e)
+    private async void ListenToggleButton_Click(object sender, RoutedEventArgs e)
     {
         if (_voiceOrchestrator is null) return;
-        if (_voiceOrchestrator.IsListening)
+
+        // VoiceOrchestrator.Start() charge le modèle Vosk de façon synchrone
+        // (VoskModelCache.GetOrLoad -> new Model(...), plusieurs secondes au
+        // premier chargement ou après un changement de modèle) et ouvre le
+        // micro : appelé directement ici, ça bloquait tout le thread WPF
+        // (fenêtre figée) le temps que l'écoute démarre. Les évènements de
+        // VoiceOrchestrator sont déjà remontés via Dispatcher.BeginInvoke
+        // (voir InitializeVoiceOrchestrator), donc Start()/Stop() peuvent
+        // tourner sur un thread d'arrière-plan sans risque pour l'UI.
+        ListenToggleButton.IsEnabled = false;
+        try
         {
-            _voiceOrchestrator.Stop();
+            if (_voiceOrchestrator.IsListening)
+            {
+                await Task.Run(() => _voiceOrchestrator.Stop());
+            }
+            else
+            {
+                await Task.Run(() => _voiceOrchestrator.Start());
+            }
         }
-        else
+        finally
         {
-            _voiceOrchestrator.Start();
+            ListenToggleButton.IsEnabled = true;
         }
     }
 
