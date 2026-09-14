@@ -135,12 +135,12 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Grid Width="26" Height="26" VerticalAlignment="Center">
+                        <Grid Width="52" Height="52" VerticalAlignment="Center">
                             <!-- Anneau tournant, plus grand que le point et centré autour de lui
                                  (Stroke/rotation pilotés depuis le code, voir SetListenIndicator
                                  dans MainWindow.xaml.cs) : orange pendant le chargement du modèle
                                  Vosk, bleu tant que l'écoute est active ; masqué et immobile à l'arrêt. -->
-                            <Ellipse x:Name="StatusSpinner" StrokeThickness="2.4"
+                            <Ellipse x:Name="StatusSpinner" StrokeThickness="3.2"
                                      StrokeDashArray="2,1.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                      Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
                                 <Ellipse.RenderTransform>
