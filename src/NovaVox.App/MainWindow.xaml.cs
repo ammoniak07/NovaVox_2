@@ -175,11 +175,11 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
         InitializeGeminiChat();
         InitializeGameLog();
-        LoadPanelsBackgroundImage();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
-        InitializeThemeCombo();
+        InitializeThemeCombo(); // peut corriger _state.Ai.UiTheme (voir la méthode) : avant LoadPanelsBackgroundImage, qui en dépend
         ThemeManager.Apply(_state.Ai.UiTheme);
+        LoadPanelsBackgroundImage();
         SyncTitleBarColor();
 
         var version = VersionUtil.GetAppVersion(Path.Combine(NovaVoxPaths.BaseDirectory, "patch_maj.txt"));
@@ -1668,7 +1668,6 @@ public partial class MainWindow : Window
         SaveAiAndLog();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
-        LoadPanelsBackgroundImage();
     }
 
     /// <summary>
@@ -1693,15 +1692,17 @@ public partial class MainWindow : Window
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
         _overlayWindow?.LoadFromConfig();
-        LoadPanelsBackgroundImage();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
         ThemeManager.Apply(_state.Ai.UiTheme);
         // InitializeThemeCombo (pas juste SelectThemeComboItem) : les thèmes
         // proposés dépendent du mode de jeu (ThemeManager.AvailableThemesFor),
         // donc la LISTE elle-même doit être reconstruite ici, pas seulement
         // la sélection — et elle corrige au passage le thème enregistré s'il
-        // n'est plus valide pour le nouveau mode.
+        // n'est plus valide pour le nouveau mode. LoadPanelsBackgroundImage
+        // doit donc venir APRÈS (le fond dépend du thème final, potentiellement
+        // corrigé par InitializeThemeCombo).
         InitializeThemeCombo();
+        LoadPanelsBackgroundImage();
         SyncTitleBarColor();
 
         // Le profil de commandes actif a pu changer (SwitchGameMode) : la
@@ -2050,6 +2051,7 @@ public partial class MainWindow : Window
         SaveAiAndLog();
         ThemeManager.Apply(newTheme);
         SyncTitleBarColor();
+        LoadPanelsBackgroundImage(); // le fond dépend du thème actif, voir BackgroundSuffixByTheme
         AppendLog($"Thème : {ThemeManager.AvailableThemes.FirstOrDefault(t => t.Id == newTheme).Label}.", "diagnostic");
     }
 
@@ -2178,24 +2180,37 @@ public partial class MainWindow : Window
     private void HookDestinationAliasRow(DestinationAliasRowVm row) =>
         row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(DestinationAliasRowVm.CustomName)) row.IsDirty = true; };
 
+    // Suffixe de fichier "backgroundN.*" par thème (ThemeManager.AvailableThemes) :
+    // dark/military reprennent les fichiers déjà utilisés avant que le fond
+    // dépende du thème (background.*/background2.*), cyberpunk/ocean/amber/
+    // light sont les nouveaux (background3.* à background6.*).
+    private static readonly IReadOnlyDictionary<string, string> BackgroundSuffixByTheme = new Dictionary<string, string>
+    {
+        ["dark"] = "",
+        ["military"] = "2",
+        ["cyberpunk"] = "3",
+        ["ocean"] = "4",
+        ["amber"] = "5",
+        ["light"] = "6",
+    };
+
     /// <summary>
     /// Image de fond affichée derrière les listes Commandes/Journal
     /// (raccourcies pour la révéler, voir MainWindow.xaml) — lue directement
     /// depuis un fichier local plutôt qu'embarquée dans l'appli, pour que
     /// l'utilisateur puisse la changer en déposant simplement un fichier
-    /// "background.jpg"/"background.png" (profil Star Citizen) ou
-    /// "background2.jpg"/"background2.png" (tout profil où le Game.log est
-    /// désactivé, ex. "autre jeu" — background2.* absent : retombe sur
-    /// l'image par défaut) à côté de NovaVox.exe, sans recompiler. Aucune
-    /// des deux : rien ne s'affiche. Réappelée à chaque changement de
-    /// profil (voir ProfileCombo_SelectionChanged) : remet explicitement
-    /// Source (même null) pour effacer une image restée affichée.
+    /// "background.jpg/.png" à "background6.jpg/.png" (un par thème, voir
+    /// BackgroundSuffixByTheme) à côté de NovaVox.exe, sans recompiler.
+    /// Fichier du thème actif absent : retombe sur "background.*" (thème
+    /// Sombre) ; celui-là aussi absent : rien ne s'affiche. Réappelée à
+    /// chaque changement de thème/profil (ThemeCombo_SelectionChanged,
+    /// ProfileCombo_SelectionChanged) : remet explicitement Source (même
+    /// null) pour effacer une image restée affichée.
     /// </summary>
     private void LoadPanelsBackgroundImage()
     {
-        var bitmap = _state.Ai.GameLogEnabled
-            ? null
-            : TryLoadLocalImage("background2.jpg", "background2.jpeg", "background2.png");
+        var suffix = BackgroundSuffixByTheme.TryGetValue(_state.Ai.UiTheme, out var s) ? s : "";
+        var bitmap = TryLoadLocalImage($"background{suffix}.jpg", $"background{suffix}.jpeg", $"background{suffix}.png");
         PanelsBackgroundImage.Source = bitmap ?? TryLoadLocalImage("background.jpg", "background.jpeg", "background.png");
     }
 
