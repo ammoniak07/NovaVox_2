@@ -114,6 +114,70 @@ public class GameLogAnnouncerTests
         Assert.Null(GameLogAnnouncer.Build(evt, config));
     }
 
+    [Theory]
+    [InlineData("AMI AJOUTÉ ! Tinou214", "AMI AJOUTÉ ! {name}")]
+    [InlineData("Calibration du voyage quantique démarrée par Tinou214.", "Calibration du voyage quantique démarrée par {name}.")]
+    [InlineData("Calibration du voyage quantique terminée par Tinou214.", "Calibration du voyage quantique terminée par {name}.")]
+    public void Build_HudNotification_KnownNamePattern_NormalizesIntoTemplate(string rawText, string expectedTemplateKey)
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = rawText };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.True(result!.IsNewHudOverride);
+        Assert.Equal(expectedTemplateKey, result.HudOverrideKey);
+        Assert.Equal(rawText, result.Text); // première rencontre : nom réinjecté tel quel
+
+        // Un autre nom pour le même motif ne doit pas créer une deuxième entrée.
+        var second = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = rawText.Replace("Tinou214", "AutrePilote") };
+        var secondResult = GameLogAnnouncer.Build(second, config);
+        Assert.False(secondResult!.IsNewHudOverride);
+        Assert.Single(config.GameLogHudOverrides);
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_PromotesRawKeyToTemplateWhenTemplateAbsent()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["MAEDAYMAEDAY a commis Vol contre vous."] = "{name} a commis Vol contre vous.",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.True(overrides.ContainsKey("{name} a commis Vol contre vous."));
+        Assert.False(overrides.ContainsKey("MAEDAYMAEDAY a commis Vol contre vous."));
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_DropsRawKeyWithoutOverwritingExistingTemplate()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["{name} a commis Vol contre vous."] = "Attention, {name} vous a volé quelque chose !",
+            ["MAEDAYMAEDAY a commis Vol contre vous."] = "MAEDAYMAEDAY a commis Vol contre vous.",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.Equal("Attention, {name} vous a volé quelque chose !", overrides["{name} a commis Vol contre vous."]);
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_LeavesUnrelatedEntriesUntouched()
+    {
+        var overrides = new Dictionary<string, string> { ["Bienvenue à bord"] = "Bienvenue capitaine" };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.Equal("Bienvenue capitaine", overrides["Bienvenue à bord"]);
+    }
+
     [Fact]
     public void Build_ZoneChange_RegistersDestinationAliasOnFirstSighting()
     {

@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using NovaVox.Core.GameLog;
 using static NovaVox.Core.Json.JsonHelpers;
 
 namespace NovaVox.Core.Config;
@@ -103,6 +104,11 @@ public sealed class AiConfigStore
             config.GameLogPlayerHandle = GetString(data["game_log_player_handle"]).Trim();
             config.GameLogPhrases = ToStringDict(data["game_log_phrases"] as JsonObject);
             config.GameLogHudOverrides = ToStringDict(data["game_log_hud_overrides"] as JsonObject);
+            // Nettoie les corrections HUD enregistrées avant le regroupement par
+            // gabarit ({name}...) — sans ça, une correction faite du temps où la
+            // clé était le texte brut (nom de joueur inclus) reste un doublon
+            // séparé pour toujours, jamais fusionnée avec la forme canonique.
+            GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
 
             config.GeminiApiKey = GetString(data["gemini_api_key"]).Trim();

@@ -201,4 +201,27 @@ public class ConfigStoreTests : IDisposable
         var reloaded = new AiConfigStore(_dir).Load();
         Assert.Equal("Pyro Un", reloaded.GameLogHudOverrides["Pyro I"]);
     }
+
+    [Fact]
+    public void AiConfig_LoadMergesLegacyNameTemplateHudOverrides()
+    {
+        // Corrections HUD enregistrées avant le regroupement par gabarit
+        // ({name}...) : une entrée séparée par nom de joueur rencontré,
+        // pour le même type d'événement — doivent être fusionnées au
+        // chargement plutôt que de rester des doublons pour toujours.
+        File.WriteAllText(Path.Combine(_dir, "ai_config.json"), """
+        {
+            "game_log_hud_overrides": {
+                "MAEDAYMAEDAY a commis Blessures corporelles graves contre vous.": "{name} a commis Blessures corporelles graves contre vous.",
+                "Brick_Century a commis Vol de biens contre vous.": "{name} a commis Vol de biens contre vous."
+            }
+        }
+        """);
+
+        var config = new AiConfigStore(_dir).Load();
+
+        Assert.Equal(2, config.GameLogHudOverrides.Count);
+        Assert.True(config.GameLogHudOverrides.ContainsKey("{name} a commis Blessures corporelles graves contre vous."));
+        Assert.True(config.GameLogHudOverrides.ContainsKey("{name} a commis Vol de biens contre vous."));
+    }
 }

@@ -52,6 +52,30 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^(?<name>\S+) a commis (?<rest>.+)$")]
     private static partial Regex CrimeReportRegex();
 
+    [GeneratedRegex(@"^AMI AJOUTÉ ! (?<name>.+)$")]
+    private static partial Regex FriendAddedRegex();
+
+    [GeneratedRegex(@"^Calibration du voyage quantique démarrée par (?<name>.+)\.$")]
+    private static partial Regex QuantumCalibrationStartedRegex();
+
+    [GeneratedRegex(@"^Calibration du voyage quantique terminée par (?<name>.+)\.$")]
+    private static partial Regex QuantumCalibrationFinishedRegex();
+
+    /// <summary>
+    /// Motifs de texte HUD connus où seul un nom (joueur, pilote, ami...)
+    /// varie d'une rencontre à l'autre pour un même type de notification —
+    /// essayés dans l'ordre par ExtractNameTemplate. Étendre la
+    /// détection revient à ajouter une entrée ici, sans toucher au reste
+    /// du mécanisme (BuildHudAnnouncement, MergeLegacyNameTemplateOverrides).
+    /// </summary>
+    private static readonly (Regex Pattern, Func<Match, string> BuildTemplateKey)[] NameTemplates =
+    {
+        (CrimeReportRegex(), m => $"{{name}} a commis {m.Groups["rest"].Value}"),
+        (FriendAddedRegex(), _ => "AMI AJOUTÉ ! {name}"),
+        (QuantumCalibrationStartedRegex(), _ => "Calibration du voyage quantique démarrée par {name}."),
+        (QuantumCalibrationFinishedRegex(), _ => "Calibration du voyage quantique terminée par {name}."),
+    };
+
     /// <summary>Port de _clean_hud_notification_text.</summary>
     public static string CleanHudNotificationText(string? text)
     {
@@ -144,15 +168,43 @@ public static partial class GameLogAnnouncer
     }
 
     /// <summary>
-    /// Remplace le nom de joueur en tête d'un rapport de délit ("X a commis
-    /// Y contre vous...") par l'espace réservé {name}, pour qu'une seule
-    /// correction de lecture couvre le même délit quel que soit le joueur.
-    /// Toute autre notification HUD n'a pas de nom détectable et reste
-    /// inchangée (clé = son propre texte, comme avant).
+    /// Remplace le nom détecté (joueur, pilote, ami...) dans un texte HUD
+    /// connu (voir NameTemplates) par l'espace réservé {name}, pour qu'une
+    /// seule correction de lecture couvre toutes les rencontres quel que
+    /// soit le nom. Tout autre texte HUD n'a pas de nom détectable et
+    /// reste inchangé (clé = son propre texte, comme avant).
     /// </summary>
     private static (string TemplateKey, string? PlayerName) ExtractNameTemplate(string rawText)
     {
-        var match = CrimeReportRegex().Match(rawText);
-        return match.Success ? ($"{{name}} a commis {match.Groups["rest"].Value}", match.Groups["name"].Value) : (rawText, null);
+        foreach (var (pattern, buildTemplateKey) in NameTemplates)
+        {
+            var match = pattern.Match(rawText);
+            if (match.Success) return (buildTemplateKey(match), match.Groups["name"].Value);
+        }
+        return (rawText, null);
+    }
+
+    /// <summary>
+    /// Fusionne dans <paramref name="overrides"/> (AiConfig.GameLogHudOverrides)
+    /// toute correction HUD enregistrée sous sa forme brute (nom de joueur
+    /// inclus dans la clé) avant l'introduction du regroupement par
+    /// gabarit — appelée au chargement de la config (AiConfigStore.Load)
+    /// pour nettoyer les doublons déjà accumulés, en plus d'empêcher
+    /// BuildHudAnnouncement d'en recréer de nouveaux. Ne fusionne jamais
+    /// deux personnalisations différentes : si la forme "{name}..."
+    /// canonique existe déjà, l'entrée héritée est simplement supprimée
+    /// (jamais écrasée) plutôt que de choisir arbitrairement laquelle garder.
+    /// </summary>
+    public static void MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
+    {
+        foreach (var rawKey in overrides.Keys.ToList())
+        {
+            var (templateKey, _) = ExtractNameTemplate(rawKey);
+            if (templateKey == rawKey) continue;
+
+            if (!overrides.ContainsKey(templateKey))
+                overrides[templateKey] = overrides[rawKey];
+            overrides.Remove(rawKey);
+        }
     }
 }
