@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.0.4
+------
+- Optimisation de la lecture du game log
 v0.0.3
 ------
 - optimisation de l'installateur
