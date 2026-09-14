@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.0.3
+------
+- optimisation de l'installateur
 v0.0.2
 ------
 - Les nouvelles commandes/titres apparaissent désormais en haut de la liste.
