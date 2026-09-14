@@ -73,6 +73,7 @@ public sealed class AiConfigStore
     {
         var config = new AiConfig();
         if (!File.Exists(_path)) return config;
+        var hudOverridesMigrated = false;
         try
         {
             var data = ParseFile(_path) as JsonObject;
@@ -106,9 +107,12 @@ public sealed class AiConfigStore
             config.GameLogHudOverrides = ToStringDict(data["game_log_hud_overrides"] as JsonObject);
             // Nettoie les corrections HUD enregistrées avant le regroupement par
             // gabarit ({name}...) — sans ça, une correction faite du temps où la
-            // clé était le texte brut (nom de joueur inclus) reste un doublon
-            // séparé pour toujours, jamais fusionnée avec la forme canonique.
-            GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
+            // clé était le texte brut (nom de joueur ou de mission inclus) reste
+            // un doublon séparé pour toujours, jamais fusionné avec la forme
+            // canonique. Persisté tout de suite (pas seulement en mémoire) :
+            // sinon ai_config.json sur disque garde les anciennes entrées tant
+            // qu'aucun autre réglage n'a par ailleurs déclenché une sauvegarde.
+            hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
 
             config.GeminiApiKey = GetString(data["gemini_api_key"]).Trim();
@@ -133,6 +137,7 @@ public sealed class AiConfigStore
         {
             return new AiConfig();
         }
+        if (hudOverridesMigrated) Save(config);
         return config;
     }
 

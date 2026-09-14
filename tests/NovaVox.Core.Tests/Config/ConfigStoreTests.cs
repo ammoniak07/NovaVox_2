@@ -223,5 +223,14 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(2, config.GameLogHudOverrides.Count);
         Assert.True(config.GameLogHudOverrides.ContainsKey("{name} a commis Blessures corporelles graves contre vous."));
         Assert.True(config.GameLogHudOverrides.ContainsKey("{name} a commis Vol de biens contre vous."));
+
+        // La fusion doit être réécrite sur disque tout de suite (pas seulement
+        // gardée en mémoire) : sinon ai_config.json garde les vieilles entrées
+        // tant que l'utilisateur ne change aucun autre réglage — ce qui, vu de
+        // l'extérieur (ou en rouvrant juste le fichier), donne l'impression
+        // que la fusion "n'a pas marché" alors qu'elle a bien eu lieu en mémoire.
+        var onDisk = File.ReadAllText(Path.Combine(_dir, "ai_config.json"));
+        Assert.Contains("{name} a commis Blessures corporelles graves contre vous.", onDisk);
+        Assert.DoesNotContain("MAEDAYMAEDAY", onDisk);
     }
 }

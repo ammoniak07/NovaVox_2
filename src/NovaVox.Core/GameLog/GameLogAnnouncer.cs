@@ -251,10 +251,15 @@ public static partial class GameLogAnnouncer
     /// recréer de nouveaux. Ne fusionne jamais deux personnalisations
     /// différentes : si la forme canonique existe déjà, l'entrée héritée
     /// est simplement supprimée (jamais écrasée) plutôt que de choisir
-    /// arbitrairement laquelle garder.
+    /// arbitrairement laquelle garder. Retourne true si quelque chose a
+    /// changé — l'appelant (AiConfigStore.Load) doit alors réécrire tout
+    /// de suite ai_config.json, sinon le fichier sur disque resterait
+    /// avec les anciennes entrées tant qu'aucun autre réglage n'a
+    /// déclenché de sauvegarde.
     /// </summary>
-    public static void MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
+    public static bool MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
     {
+        var changed = false;
         foreach (var rawKey in overrides.Keys.ToList())
         {
             var (templateKey, _) = ExtractHudTemplate(CleanHudNotificationText(rawKey));
@@ -263,6 +268,8 @@ public static partial class GameLogAnnouncer
             if (!overrides.ContainsKey(templateKey))
                 overrides[templateKey] = overrides[rawKey];
             overrides.Remove(rawKey);
+            changed = true;
         }
+        return changed;
     }
 }
