@@ -72,19 +72,57 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^Calibration du voyage quantique terminée par (?<name>.+)\.$")]
     private static partial Regex QuantumCalibrationFinishedRegex();
 
+    // Notifications d'objectif/contrat : un préfixe fixe toujours identique,
+    // suivi du nom de la mission/l'objectif du moment — c'est CE nom qui
+    // change à chaque nouvelle mission, jamais le préfixe. Sans regrouper
+    // par préfixe, chaque mission crée une correction HUD séparée pour
+    // toujours (voir HudTemplates ci-dessous).
+    [GeneratedRegex(@"^Nouvel objectif\s*:\s*(?<name>.+)$")]
+    private static partial Regex NewObjectiveRegex();
+
+    [GeneratedRegex(@"^Objectif terminé\s*:\s*(?<name>.+)$")]
+    private static partial Regex ObjectiveCompletedRegex();
+
+    [GeneratedRegex(@"^Objectif retiré\s*:\s*(?<name>.+)$")]
+    private static partial Regex ObjectiveRemovedRegex();
+
+    [GeneratedRegex(@"^CONTRAT PARTAGÉ\s*:\s*(?<name>.+)$")]
+    private static partial Regex ContractSharedRegex();
+
+    [GeneratedRegex(@"^Contrat accepté\s*:\s*(?<name>.+)$")]
+    private static partial Regex ContractAcceptedRegex();
+
+    [GeneratedRegex(@"^CONTRAT TERMINÉ\s*:\s*(?<name>.+)$")]
+    private static partial Regex ContractCompletedRegex();
+
+    [GeneratedRegex(@"^CONTRAT ÉCHOUÉ\s*:\s*(?<name>.+)$")]
+    private static partial Regex ContractFailedRegex();
+
+    [GeneratedRegex(@"^ENTRÉE DU JOURNAL AJOUTÉE\s*:\s*(?<name>.+)$")]
+    private static partial Regex JournalEntryAddedRegex();
+
     /// <summary>
-    /// Motifs de texte HUD connus où seul un nom (joueur, pilote, ami...)
-    /// varie d'une rencontre à l'autre pour un même type de notification —
-    /// essayés dans l'ordre par ExtractNameTemplate. Étendre la
-    /// détection revient à ajouter une entrée ici, sans toucher au reste
-    /// du mécanisme (BuildHudAnnouncement, MergeLegacyNameTemplateOverrides).
+    /// Motifs de texte HUD connus où seule une partie variable (nom de
+    /// joueur/pilote/ami, ou nom de mission/objectif) change d'une
+    /// rencontre à l'autre pour un même type de notification — essayés
+    /// dans l'ordre par ExtractHudTemplate. Étendre la détection revient à
+    /// ajouter une entrée ici, sans toucher au reste du mécanisme
+    /// (BuildHudAnnouncement, MergeLegacyNameTemplateOverrides).
     /// </summary>
-    private static readonly (Regex Pattern, Func<Match, string> BuildTemplateKey)[] NameTemplates =
+    private static readonly (Regex Pattern, Func<Match, string> BuildTemplateKey)[] HudTemplates =
     {
         (CrimeReportRegex(), m => $"{{name}} a commis {m.Groups["rest"].Value}"),
         (FriendAddedRegex(), _ => "AMI AJOUTÉ ! {name}"),
         (QuantumCalibrationStartedRegex(), _ => "Calibration du voyage quantique démarrée par {name}."),
         (QuantumCalibrationFinishedRegex(), _ => "Calibration du voyage quantique terminée par {name}."),
+        (NewObjectiveRegex(), _ => "Nouvel objectif : {name}"),
+        (ObjectiveCompletedRegex(), _ => "Objectif terminé : {name}"),
+        (ObjectiveRemovedRegex(), _ => "Objectif retiré : {name}"),
+        (ContractSharedRegex(), _ => "CONTRAT PARTAGÉ : {name}"),
+        (ContractAcceptedRegex(), _ => "Contrat accepté : {name}"),
+        (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}"),
+        (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}"),
+        (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>
@@ -156,7 +194,7 @@ public static partial class GameLogAnnouncer
         var rawText = CleanHudNotificationText(evt.Text);
         if (rawText.Length == 0) return null;
 
-        var (templateKey, playerName) = ExtractNameTemplate(rawText);
+        var (templateKey, capturedValue) = ExtractHudTemplate(rawText);
 
         var isNew = false;
         if (!config.GameLogHudOverrides.ContainsKey(templateKey))
@@ -166,7 +204,7 @@ public static partial class GameLogAnnouncer
         }
 
         var storedTemplate = config.GameLogHudOverrides.GetValueOrDefault(templateKey, templateKey);
-        var spokenText = playerName is not null ? storedTemplate.Replace("{name}", playerName) : storedTemplate;
+        var spokenText = capturedValue is not null ? storedTemplate.Replace("{name}", capturedValue) : storedTemplate;
 
         const string key = "hud_notification";
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
@@ -180,15 +218,17 @@ public static partial class GameLogAnnouncer
     }
 
     /// <summary>
-    /// Remplace le nom détecté (joueur, pilote, ami...) dans un texte HUD
-    /// connu (voir NameTemplates) par l'espace réservé {name}, pour qu'une
-    /// seule correction de lecture couvre toutes les rencontres quel que
-    /// soit le nom. Tout autre texte HUD n'a pas de nom détectable et
-    /// reste inchangé (clé = son propre texte, comme avant).
+    /// Remplace la partie variable détectée (nom de joueur/pilote/ami, ou
+    /// nom de mission/objectif) dans un texte HUD connu (voir HudTemplates)
+    /// par l'espace réservé {name}, pour qu'une seule correction de
+    /// lecture couvre toutes les rencontres quelle que soit cette valeur —
+    /// donc une seule entrée "Nouvel objectif : {name}" pour TOUTES les
+    /// missions plutôt qu'une par mission. Tout autre texte HUD n'a pas de
+    /// motif reconnu et reste inchangé (clé = son propre texte, comme avant).
     /// </summary>
-    private static (string TemplateKey, string? PlayerName) ExtractNameTemplate(string rawText)
+    private static (string TemplateKey, string? CapturedValue) ExtractHudTemplate(string rawText)
     {
-        foreach (var (pattern, buildTemplateKey) in NameTemplates)
+        foreach (var (pattern, buildTemplateKey) in HudTemplates)
         {
             var match = pattern.Match(rawText);
             if (match.Success) return (buildTemplateKey(match), match.Groups["name"].Value);
@@ -203,20 +243,21 @@ public static partial class GameLogAnnouncer
     /// clé (avant l'introduction du nettoyage EmphasisTagRegex — même
     /// texte de contrat à chaque fois, mais un tag bruit en plus qui
     /// suffisait à en faire une clé différente), soit avec un nom de
-    /// joueur inclus dans la clé (avant le regroupement par gabarit
-    /// "{name}...", voir NameTemplates). Appelée au chargement de la
-    /// config (AiConfigStore.Load) pour nettoyer les doublons déjà
-    /// accumulés, en plus d'empêcher BuildHudAnnouncement d'en recréer de
-    /// nouveaux. Ne fusionne jamais deux personnalisations différentes :
-    /// si la forme canonique existe déjà, l'entrée héritée est simplement
-    /// supprimée (jamais écrasée) plutôt que de choisir arbitrairement
-    /// laquelle garder.
+    /// joueur ou un nom de mission/objectif inclus dans la clé (avant le
+    /// regroupement par gabarit "{name}...", voir HudTemplates). Appelée
+    /// au chargement de la config (AiConfigStore.Load) pour nettoyer les
+    /// doublons déjà accumulés — dont la longue liste d'une entrée par
+    /// mission jouée —, en plus d'empêcher BuildHudAnnouncement d'en
+    /// recréer de nouveaux. Ne fusionne jamais deux personnalisations
+    /// différentes : si la forme canonique existe déjà, l'entrée héritée
+    /// est simplement supprimée (jamais écrasée) plutôt que de choisir
+    /// arbitrairement laquelle garder.
     /// </summary>
     public static void MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
     {
         foreach (var rawKey in overrides.Keys.ToList())
         {
-            var (templateKey, _) = ExtractNameTemplate(CleanHudNotificationText(rawKey));
+            var (templateKey, _) = ExtractHudTemplate(CleanHudNotificationText(rawKey));
             if (templateKey == rawKey) continue;
 
             if (!overrides.ContainsKey(templateKey))

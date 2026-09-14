@@ -149,6 +149,35 @@ public class GameLogAnnouncerTests
         Assert.Single(config.GameLogHudOverrides);
     }
 
+    [Theory]
+    [InlineData("Nouvel objectif", "Nouvel objectif : {name}")]
+    [InlineData("Objectif terminé", "Objectif terminé : {name}")]
+    [InlineData("Objectif retiré", "Objectif retiré : {name}")]
+    [InlineData("CONTRAT PARTAGÉ", "CONTRAT PARTAGÉ : {name}")]
+    [InlineData("Contrat accepté", "Contrat accepté : {name}")]
+    [InlineData("CONTRAT TERMINÉ", "CONTRAT TERMINÉ : {name}")]
+    [InlineData("CONTRAT ÉCHOUÉ", "CONTRAT ÉCHOUÉ : {name}")]
+    [InlineData("ENTRÉE DU JOURNAL AJOUTÉE", "ENTRÉE DU JOURNAL AJOUTÉE : {name}")]
+    public void Build_HudNotification_ObjectiveOrContractPrefix_CollapsesAcrossDifferentMissions(string prefix, string expectedTemplateKey)
+    {
+        var config = NewConfig();
+
+        var first = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = $"{prefix} : Rejoindre : Ceinture d'astéroïdes de Yela" };
+        var firstResult = GameLogAnnouncer.Build(first, config);
+        Assert.True(firstResult!.IsNewHudOverride);
+        Assert.Equal(expectedTemplateKey, firstResult.HudOverrideKey);
+        Assert.Single(config.GameLogHudOverrides);
+
+        // Une mission complètement différente (pas juste un nom qui change) pour le
+        // même préfixe ne doit toujours créer AUCUNE nouvelle entrée — c'est le
+        // nombre d'entrées qui grossissait à chaque nouvelle mission auparavant.
+        var second = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = $"{prefix} : Neutraliser le gang de piratage de vaisseaux." };
+        var secondResult = GameLogAnnouncer.Build(second, config);
+        Assert.False(secondResult!.IsNewHudOverride);
+        Assert.Single(config.GameLogHudOverrides);
+        Assert.Equal($"{prefix} : Neutraliser le gang de piratage de vaisseaux.", secondResult.Text);
+    }
+
     [Fact]
     public void MergeLegacyNameTemplateOverrides_PromotesRawKeyToTemplateWhenTemplateAbsent()
     {
@@ -193,18 +222,18 @@ public class GameLogAnnouncerTests
     [Fact]
     public void MergeLegacyNameTemplateOverrides_ReKeysEntryStillCarryingEmphasisTag()
     {
+        // Texte choisi pour ne matcher AUCUN préfixe d'objectif/contrat connu
+        // (voir HudTemplates) : ce test isole le nettoyage du tag d'emphase,
+        // sans le regroupement par préfixe couvert par les autres tests.
         var overrides = new Dictionary<string, string>
         {
-            ["CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux. <EM4>[SP]</EM4>"]
-                = "CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux.",
+            ["Raffinage terminé à HUR-L2 <EM4>[SP]</EM4>"] = "Raffinage terminé à HUR-L2",
         };
 
         GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
 
         Assert.Single(overrides);
-        Assert.Equal(
-            "CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux.",
-            overrides["CONTRAT PARTAGÉ : Niv. Jaune : Neutraliser le gang de piratage de vaisseaux."]);
+        Assert.Equal("Raffinage terminé à HUR-L2", overrides["Raffinage terminé à HUR-L2"]);
     }
 
     [Fact]
