@@ -790,7 +790,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="🌟 Assistant Gemini" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="GeminiChatTitleText" Grid.Column="0" Text="🌟 Assistant Gemini" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseGeminiChat_Click" />
                     </Grid>
 

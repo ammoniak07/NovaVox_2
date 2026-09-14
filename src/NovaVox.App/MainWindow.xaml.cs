@@ -1587,6 +1587,7 @@ public partial class MainWindow : Window
         var value = GeminiNameBox.Text.Trim();
         _state.Ai.GeminiName = value.Length == 0 ? AiConfig.DefaultGeminiName : value;
         SaveAiAndLog();
+        RefreshGeminiAssistantLabel();
     }
 
     private void GeminiResponseLengthCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1757,7 +1758,7 @@ public partial class MainWindow : Window
         string T(string key) => UiLocalization.T(lang, key);
 
         TopbarSubtitleText.Text = T("topbar.subtitle");
-        GeminiHeaderButton.Content = T("topbar.gemini");
+        RefreshGeminiAssistantLabel();
         GameLogHeaderButton.Content = T("topbar.gamelog");
         SettingsButton.ToolTip = T("topbar.settings");
         ThemeCombo.ToolTip = T("topbar.theme");
@@ -1773,6 +1774,23 @@ public partial class MainWindow : Window
 
         ListenToggleButton.Content = T(_voiceOrchestrator?.IsListening == true ? "engage.stop" : "engage.start");
         RefreshListenStatusText(); // relit _listenIndicatorState (pas l'état visuel de l'anneau) dans la nouvelle langue
+    }
+
+    /// <summary>
+    /// "🌟 Assistant Gemini" (bouton d'en-tête + titre de la fenêtre de
+    /// discussion) reprend le nom personnalisé donné à l'assistant
+    /// (Réglages > IA Gemini > GeminiNameBox) à la place de "Gemini" —
+    /// appelée à chaque changement de langue (ApplyUiTranslations) et à
+    /// chaque modification du nom (GeminiNameBox_LostFocus). Simple
+    /// remplacement de sous-chaîne : "Gemini" apparaît tel quel, comme mot
+    /// entier, dans les 6 traductions de topbar.gemini.
+    /// </summary>
+    private void RefreshGeminiAssistantLabel()
+    {
+        var name = string.IsNullOrWhiteSpace(_state.Ai.GeminiName) ? AiConfig.DefaultGeminiName : _state.Ai.GeminiName;
+        var label = UiLocalization.T(_state.Ai.UiLanguage, "topbar.gemini").Replace("Gemini", name);
+        GeminiHeaderButton.Content = label;
+        GeminiChatTitleText.Text = label;
     }
 
     private void AutolaunchCheckbox_Changed(object sender, RoutedEventArgs e)
