@@ -179,6 +179,26 @@ public class GameLogAnnouncerTests
     }
 
     [Fact]
+    public void Build_HudNotification_ShipChannelJoined_CollapsesAcrossDifferentShipsAndIgnoresPilotName()
+    {
+        var config = NewConfig();
+
+        var first = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "CANAL 'Drake Cutter : Ammoniak' rejoint." };
+        var firstResult = GameLogAnnouncer.Build(first, config);
+        Assert.True(firstResult!.IsNewHudOverride);
+        Assert.Equal("CANAL '{name}' rejoint.", firstResult.HudOverrideKey);
+        Assert.Equal("CANAL 'Drake Cutter' rejoint.", firstResult.Text); // le pilote n'est jamais annoncé
+        Assert.Single(config.GameLogHudOverrides);
+
+        // Un vaisseau différent, avec un pilote différent, ne doit toujours créer aucune nouvelle entrée.
+        var second = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "CANAL 'Anvil Paladin : Tinou214' rejoint." };
+        var secondResult = GameLogAnnouncer.Build(second, config);
+        Assert.False(secondResult!.IsNewHudOverride);
+        Assert.Single(config.GameLogHudOverrides);
+        Assert.Equal("CANAL 'Anvil Paladin' rejoint.", secondResult.Text);
+    }
+
+    [Fact]
     public void MergeLegacyNameTemplateOverrides_PromotesRawKeyToTemplateWhenTemplateAbsent()
     {
         var overrides = new Dictionary<string, string>
@@ -234,6 +254,46 @@ public class GameLogAnnouncerTests
 
         Assert.Single(overrides);
         Assert.Equal("Raffinage terminé à HUR-L2", overrides["Raffinage terminé à HUR-L2"]);
+    }
+
+    [Theory]
+    [InlineData("CANAL 'Drake Cutter : Ammoniak' rejoint.", "CANAL 'MISC Hull C : Ammoniak' rejoint.", "CANAL '{name}' rejoint.")]
+    [InlineData("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", "Vous avez quitté le CANAL 'MISC Hull C : Ammoniak'.", "Vous avez quitté le CANAL '{name}'.")]
+    public void MergeLegacyNameTemplateOverrides_ShipEntries_FallBackToDefaultWhenNoCustomizationIsSubstitutable(
+        string firstRawKey, string secondRawKey, string expectedTemplateKey)
+    {
+        // Deux vaisseaux personnalisés chacun avec un texte DIFFÉRENT (pas le
+        // texte par défaut, contrairement aux "Nouvel objectif" jamais
+        // personnalisés) : aucun des deux ne peut survivre tel quel comme
+        // personnalisation commune, sous peine d'annoncer le mauvais
+        // vaisseau pour toutes les rencontres futures — doit retomber sur
+        // le gabarit par défaut plutôt que de figer arbitrairement l'un
+        // des deux.
+        var overrides = new Dictionary<string, string>
+        {
+            [firstRawKey] = "Bienvenue à bord du Drake Cutter.",
+            [secondRawKey] = "Bienvenue à bord du Hull C.",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.Equal(expectedTemplateKey, overrides[expectedTemplateKey]);
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_ShipEntries_KeepsSubstitutableCustomizationOverNonSubstitutableOne()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["CANAL 'Drake Cutter : Ammoniak' rejoint."] = "Bienvenue à bord du Drake Cutter.", // pas substituable
+            ["CANAL 'MISC Hull C : Ammoniak' rejoint."] = "Bienvenue à bord de {name} !", // substituable
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.Equal("Bienvenue à bord de {name} !", overrides["CANAL '{name}' rejoint."]);
     }
 
     [Fact]

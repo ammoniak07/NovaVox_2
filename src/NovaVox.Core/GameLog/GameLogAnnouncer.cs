@@ -101,9 +101,21 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^ENTRÉE DU JOURNAL AJOUTÉE\s*:\s*(?<name>.+)$")]
     private static partial Regex JournalEntryAddedRegex();
 
+    // Canal de discussion d'un vaisseau ("CANAL 'Drake Cutter : Ammoniak'
+    // rejoint.") : seul le nom du vaisseau change d'un vaisseau à l'autre —
+    // le nom du pilote qui suit (généralement le joueur lui-même) n'a pas
+    // d'intérêt à être annoncé et est donc purement ignoré ici (ni capturé,
+    // ni reproduit dans le gabarit), plutôt que de faire partie d'un {name}
+    // qui inclurait aussi bien le vaisseau que le pilote.
+    [GeneratedRegex(@"^CANAL '(?<name>.+) : [^']+' rejoint\.$")]
+    private static partial Regex ShipChannelJoinedRegex();
+
+    [GeneratedRegex(@"^Vous avez quitté le CANAL '(?<name>.+) : [^']+'\.$")]
+    private static partial Regex ShipChannelLeftRegex();
+
     /// <summary>
     /// Motifs de texte HUD connus où seule une partie variable (nom de
-    /// joueur/pilote/ami, ou nom de mission/objectif) change d'une
+    /// joueur/pilote/ami/vaisseau, ou nom de mission/objectif) change d'une
     /// rencontre à l'autre pour un même type de notification — essayés
     /// dans l'ordre par ExtractHudTemplate. Étendre la détection revient à
     /// ajouter une entrée ici, sans toucher au reste du mécanisme
@@ -123,6 +135,8 @@ public static partial class GameLogAnnouncer
         (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}"),
         (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}"),
         (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
+        (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint."),
+        (ShipChannelLeftRegex(), _ => "Vous avez quitté le CANAL '{name}'."),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>
@@ -243,19 +257,29 @@ public static partial class GameLogAnnouncer
     /// clé (avant l'introduction du nettoyage EmphasisTagRegex — même
     /// texte de contrat à chaque fois, mais un tag bruit en plus qui
     /// suffisait à en faire une clé différente), soit avec un nom de
-    /// joueur ou un nom de mission/objectif inclus dans la clé (avant le
-    /// regroupement par gabarit "{name}...", voir HudTemplates). Appelée
-    /// au chargement de la config (AiConfigStore.Load) pour nettoyer les
-    /// doublons déjà accumulés — dont la longue liste d'une entrée par
-    /// mission jouée —, en plus d'empêcher BuildHudAnnouncement d'en
-    /// recréer de nouveaux. Ne fusionne jamais deux personnalisations
-    /// différentes : si la forme canonique existe déjà, l'entrée héritée
-    /// est simplement supprimée (jamais écrasée) plutôt que de choisir
-    /// arbitrairement laquelle garder. Retourne true si quelque chose a
-    /// changé — l'appelant (AiConfigStore.Load) doit alors réécrire tout
-    /// de suite ai_config.json, sinon le fichier sur disque resterait
-    /// avec les anciennes entrées tant qu'aucun autre réglage n'a
-    /// déclenché de sauvegarde.
+    /// joueur, de mission/objectif ou de vaisseau inclus dans la clé
+    /// (avant le regroupement par gabarit "{name}...", voir HudTemplates).
+    /// Appelée au chargement de la config (AiConfigStore.Load) pour
+    /// nettoyer les doublons déjà accumulés, en plus d'empêcher
+    /// BuildHudAnnouncement d'en recréer de nouveaux.
+    ///
+    /// Quand plusieurs entrées héritées se regroupent sous la même clé
+    /// canonique — typiquement un texte personnalisé DIFFÉREMMENT pour
+    /// chaque vaisseau ("Bienvenue à bord du Hull C.", "... du Corsair.")
+    /// plutôt qu'un texte par défaut identique à la clé — une seule peut
+    /// survivre comme personnalisation commune à toutes les rencontres
+    /// futures. Choisit alors en priorité une valeur qui contient bien le
+    /// réservoir {name} (donc capable de réintégrer le vaisseau/nom réel à
+    /// chaque nouvelle rencontre) ; si aucune n'en contient, retombe sur la
+    /// forme par défaut plutôt que de figer arbitrairement le texte d'un
+    /// seul vaisseau pour tous les autres, ce qui annoncerait alors
+    /// systématiquement le mauvais vaisseau.
+    ///
+    /// Retourne true si quelque chose a changé — l'appelant
+    /// (AiConfigStore.Load) doit alors réécrire tout de suite
+    /// ai_config.json, sinon le fichier sur disque resterait avec les
+    /// anciennes entrées tant qu'aucun autre réglage n'a déclenché de
+    /// sauvegarde.
     /// </summary>
     public static bool MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
     {
@@ -265,11 +289,39 @@ public static partial class GameLogAnnouncer
             var (templateKey, _) = ExtractHudTemplate(CleanHudNotificationText(rawKey));
             if (templateKey == rawKey) continue;
 
-            if (!overrides.ContainsKey(templateKey))
-                overrides[templateKey] = overrides[rawKey];
+            var rawValue = overrides[rawKey];
+            var currentValue = overrides.GetValueOrDefault(templateKey, templateKey);
+            // Ne remplace la valeur en place que par une STRICTEMENT meilleure
+            // (voir RankMergeCandidate) — sinon, sur une entrée déjà présente
+            // avec une meilleure valeur, rawValue perdrait pour de bonnes
+            // raisons mais la clé ne serait alors jamais créée du tout côté
+            // "premier candidat rencontré" : on l'insère donc quand même une
+            // fois, au pire avec la forme par défaut (jamais avec une valeur
+            // pire que le défaut).
+            if (RankMergeCandidate(rawValue, templateKey) > RankMergeCandidate(currentValue, templateKey))
+                overrides[templateKey] = rawValue;
+            else if (!overrides.ContainsKey(templateKey))
+                overrides[templateKey] = currentValue;
+
             overrides.Remove(rawKey);
             changed = true;
         }
         return changed;
     }
+
+    /// <summary>
+    /// Départage plusieurs valeurs héritées candidates à devenir LA
+    /// personnalisation commune d'une même clé canonique (voir
+    /// MergeLegacyNameTemplateOverrides) : 2 = personnalisée ET réutilisable
+    /// pour toute rencontre future (contient {name}, donc jamais figée sur
+    /// une seule rencontre) ; 1 = pas encore personnalisée (valeur = clé,
+    /// le repli sûr par défaut) ; 0 = personnalisée mais figée sur UNE seule
+    /// rencontre passée (un vaisseau, un joueur...) — le pire cas, puisque
+    /// la garder telle quelle annoncerait alors la même chose à tort pour
+    /// toutes les autres rencontres, jamais préférée à la valeur par défaut.
+    /// </summary>
+    private static int RankMergeCandidate(string value, string templateKey) =>
+        value != templateKey && value.Contains("{name}") ? 2 :
+        value == templateKey ? 1 :
+        0;
 }
