@@ -70,6 +70,24 @@
     <Content Include="..\..\background2.jpg" Link="background2.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background2.jpg')" />
     <Content Include="..\..\background2.jpeg" Link="background2.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background2.jpeg')" />
     <Content Include="..\..\background2.png" Link="background2.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background2.png')" />
+
+    <!-- Un fond par thème (BackgroundSuffixByTheme, MainWindow.xaml.cs) :
+         background3.* (Cyberpunk) à background6.* (Clair). Mêmes oublis
+         possibles que ci-dessus si un thème est ajouté sans étendre cette
+         liste -- penser à ajouter les 3 entrées (jpg/jpeg/png) ici à chaque
+         nouveau thème. -->
+    <Content Include="..\..\background3.jpg" Link="background3.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background3.jpg')" />
+    <Content Include="..\..\background3.jpeg" Link="background3.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background3.jpeg')" />
+    <Content Include="..\..\background3.png" Link="background3.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background3.png')" />
+    <Content Include="..\..\background4.jpg" Link="background4.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background4.jpg')" />
+    <Content Include="..\..\background4.jpeg" Link="background4.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background4.jpeg')" />
+    <Content Include="..\..\background4.png" Link="background4.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background4.png')" />
+    <Content Include="..\..\background5.jpg" Link="background5.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background5.jpg')" />
+    <Content Include="..\..\background5.jpeg" Link="background5.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background5.jpeg')" />
+    <Content Include="..\..\background5.png" Link="background5.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background5.png')" />
+    <Content Include="..\..\background6.jpg" Link="background6.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background6.jpg')" />
+    <Content Include="..\..\background6.jpeg" Link="background6.jpeg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background6.jpeg')" />
+    <Content Include="..\..\background6.png" Link="background6.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\background6.png')" />
   </ItemGroup>
 
 </Project>
