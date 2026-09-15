@@ -57,13 +57,12 @@ public partial class App : Application
             return;
         }
 
-        // Écoute en tâche de fond (thread dédié plutôt que le thread IU,
-        // potentiellement bloqué dans WaitForStarCitizenIfRequested juste
-        // en dessous) les demandes d'affichage envoyées par une tentative
-        // de second lancement. BeginInvoke est mis en file d'attente sur
-        // le Dispatcher même s'il n'a pas encore démarré sa boucle de
-        // messages (ex. pendant l'attente de Star Citizen) : il s'exécute
-        // dès qu'elle démarre, une fois MainAppWindow réellement créée.
+        // Écoute en tâche de fond (thread dédié, pas le thread IU) les
+        // demandes d'affichage envoyées par une tentative de second
+        // lancement. BeginInvoke est mis en file d'attente sur le
+        // Dispatcher même s'il n'a pas encore démarré sa boucle de
+        // messages (tout début du lancement, avant que MainAppWindow soit
+        // construite un peu plus bas) : il s'exécute dès qu'elle démarre.
         _showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
         new Thread(() =>
         {
@@ -94,18 +93,38 @@ public partial class App : Application
             args.SetObserved();
         };
 
-        // Lancée avec --wait-for-sc (raccourci de veille, voir
-        // StarCitizenAutolaunch) : reste en veille silencieuse, sans
-        // aucune fenêtre, jusqu'à détecter Star Citizen — bloquant par
-        // conception, comme _wait_for_star_citizen_if_requested (app.py).
-        StarCitizenAutolaunch.WaitForStarCitizenIfRequested(e.Args);
-
         MainAppWindow = new MainWindow();
         MainWindow = MainAppWindow;
 
+        // Toujours créée tout de suite, même en veille (--wait-for-sc,
+        // ci-dessous) : sans ça, un lancement au démarrage de Windows
+        // restait un processus totalement invisible (ni fenêtre, ni icône
+        // tray) pendant potentiellement toute la session, tant que Star
+        // Citizen n'était pas lancé — impossible à ouvrir ou même à
+        // repérer autrement qu'en tuant le processus dans le Gestionnaire
+        // des tâches (voir remontée utilisateur). L'icône seule permet
+        // maintenant de quitter ou de forcer l'affichage à tout moment.
         _tray = new TrayIconService(onShow: ShowMainWindow, onQuit: QuitApplication);
 
-        MainAppWindow.Show();
+        if (e.Args.Contains("--wait-for-sc"))
+        {
+            // Reste en veille (icône tray visible, fenêtre masquée) jusqu'à
+            // détecter Star Citizen — sur un fil DÉDIÉ plutôt que de
+            // bloquer OnStartup comme avant : bloquer ici geler aussi la
+            // boucle de messages WPF avant même qu'elle démarre, donc ni
+            // l'icône tray ni un second lancement demandant l'affichage
+            // (voir le fil d'écoute juste au-dessus) ne pouvaient réagir
+            // tant que Star Citizen n'avait pas démarré.
+            Task.Run(() =>
+            {
+                StarCitizenAutolaunch.WaitForStarCitizenIfRequested(e.Args);
+                Dispatcher.BeginInvoke(ShowMainWindow);
+            });
+        }
+        else
+        {
+            MainAppWindow.Show();
+        }
 
         // Si le raccourci de veille est déjà activé, le recrée avec le
         // chemin actuel de l'exécutable (ex. après une mise à jour
