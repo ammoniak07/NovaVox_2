@@ -3,6 +3,13 @@ NOVAVOX — Notes de mise à jour
 v0.0.4
 ------
 - Optimisation de la lecture du game log
+- Les profils de commandes sont désormais cloisonnés par mode de jeu : un profil créé en Star Citizen n'apparaît plus dans "Autre jeu", et inversement.
+- Sélecteur de couleur visuel pour l'apparence de l'overlay (pastille + palette + prédéfinis), à la place des codes hexadécimaux à saisir à la main.
+- Nouveau sélecteur de thème en en-tête, avec 6 palettes (Sombre, Clair, Militaire, Cyberpunk, Ambre, Océan) — le mode "Autre jeu" démarre sur le thème Militaire par défaut.
+- Le thème suit désormais le mode de jeu actif et se mémorise séparément pour Star Citizen et "Autre jeu".
+- Regroupement des notifications répétitives du Game.log (missions, contrats, vaisseaux, mouvements de groupe...) : une seule correction de lecture à personnaliser au lieu d'une nouvelle entrée à chaque rencontre.
+- Recherche ajoutée dans le panneau 🛰 Game.log (phrases annoncées, corrections HUD, alias de destinations).
+- Correctif : NovaVox pouvait rester totalement invisible (ni fenêtre, ni icône dans la barre des tâches) au démarrage de Windows en attendant Star Citizen — l'icône s'affiche désormais tout de suite.
 v0.0.3
 ------
 - optimisation de l'installateur
