@@ -21,4 +21,8 @@ public sealed class DestinationAliasRowVm : INotifyPropertyChanged
     /// <summary>Modifié depuis le dernier "Enregistrer" (ou jamais encore enregistré) — cadre rouge tant que vrai, voir MainWindow.xaml.</summary>
     private bool _isDirty;
     public bool IsDirty { get => _isDirty; set { _isDirty = value; Raise(); } }
+
+    /// <summary>Correspond à la recherche du Game.log (RawKey/CustomName) — voir RefreshGameLogSearchVisibility, MainWindow.xaml.cs.</summary>
+    private bool _rowVisible = true;
+    public bool RowVisible { get => _rowVisible; set { _rowVisible = value; Raise(); } }
 }

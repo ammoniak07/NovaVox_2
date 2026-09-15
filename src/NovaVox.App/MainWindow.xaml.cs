@@ -2332,7 +2332,13 @@ public partial class MainWindow : Window
             HookDestinationAliasRow(row);
             _destinationAliasRows.Insert(0, row);
         }
-        if (result.IsNewHudOverride || result.IsNewDestinationAlias) SaveAiAndLog();
+        if (result.IsNewHudOverride || result.IsNewDestinationAlias)
+        {
+            SaveAiAndLog();
+            // Une recherche active dans le panneau Game.log doit continuer à
+            // filtrer les entrées qui viennent d'apparaître en direct.
+            RefreshGameLogSearchVisibility();
+        }
 
         if (_state.Ai.GameLogAnnounceEvents && result.Text.Length > 0)
         {
@@ -2403,6 +2409,30 @@ public partial class MainWindow : Window
     }
 
     private void CloseGameLog_Click(object sender, RoutedEventArgs e) => GameLogOverlay.Visibility = Visibility.Collapsed;
+
+    private void GameLogSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        GameLogSearchPlaceholder.Visibility = GameLogSearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RefreshGameLogSearchVisibility();
+    }
+
+    /// <summary>
+    /// Filtre les 3 listes du panneau Game.log (phrases, corrections HUD,
+    /// alias de destinations) sur une recherche commune — même mécanique
+    /// que RefreshCommandsVisibility (RowVisible par ligne, jamais les
+    /// ObservableCollection elles-mêmes). Une ligne correspond si le texte
+    /// recherché apparaît dans n'importe lequel de ses champs affichés.
+    /// </summary>
+    private void RefreshGameLogSearchVisibility()
+    {
+        var query = NormalizeForSearch(GameLogSearchBox.Text.Trim());
+        foreach (var row in _gameLogPhraseRows)
+            row.RowVisible = query.Length == 0 || NormalizeForSearch(row.Label).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.Text).Contains(query, StringComparison.Ordinal);
+        foreach (var row in _hudOverrideRows)
+            row.RowVisible = query.Length == 0 || NormalizeForSearch(row.RawText).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.CustomText).Contains(query, StringComparison.Ordinal);
+        foreach (var row in _destinationAliasRows)
+            row.RowVisible = query.Length == 0 || NormalizeForSearch(row.RawKey).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.CustomName).Contains(query, StringComparison.Ordinal);
+    }
 
     private void EnsureTestTts()
     {

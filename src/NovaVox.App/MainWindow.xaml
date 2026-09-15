@@ -856,6 +856,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -870,7 +871,19 @@
 
                     <TextBlock x:Name="GameLogStatusText" Grid.Row="1" Margin="0,6,0,10" Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
 
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <!-- Recherche commune aux 3 listes ci-dessous (phrases, corrections HUD,
+                         alias de destinations) — voir RefreshGameLogSearchVisibility,
+                         MainWindow.xaml.cs. Ne réordonne/ne filtre rien côté données
+                         (_gameLogPhraseRows/_hudOverrideRows/_destinationAliasRows intacts),
+                         seulement RowVisible par ligne, même mécanique que CommandsSearchBox. -->
+                    <Grid Grid.Row="2" Margin="0,0,0,10">
+                        <TextBox x:Name="GameLogSearchBox" Padding="8,6" TextChanged="GameLogSearchBox_TextChanged" />
+                        <TextBlock x:Name="GameLogSearchPlaceholder" Text="🔍 Rechercher dans toutes les entrées du Game.log..."
+                                   Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="📢 Phrases annoncées pour les événements du Game.log" FontWeight="Bold" Margin="0,0,0,4" />
                             <TextBlock Text="Modifie le texte lu à voix haute pour chaque type d'événement détecté. Les champs entre accolades (ex. {dest}) sont remplacés automatiquement ; laisse un champ vide puis enregistre pour revenir au texte par défaut."
@@ -878,7 +891,8 @@
                             <ItemsControl x:Name="GameLogPhrasesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                        <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
@@ -921,7 +935,8 @@
                             <ItemsControl x:Name="GameLogHudOverridesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
@@ -976,7 +991,8 @@
                             <ItemsControl x:Name="GameLogDestinationAliasesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                        <Border BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
