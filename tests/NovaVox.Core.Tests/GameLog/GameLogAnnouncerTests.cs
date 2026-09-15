@@ -198,6 +198,77 @@ public class GameLogAnnouncerTests
         Assert.Equal("CANAL 'Anvil Paladin' rejoint.", secondResult.Text);
     }
 
+    [Theory]
+    [InlineData("Nouveau chef de groupe : Ammoniak", "Nouveau chef de groupe : Zeilos", "Nouveau chef de groupe : {name}")]
+    [InlineData("Un joueur a rejoint Tinou214 a rejoint le Groupe.", "Un joueur a rejoint Bistic a rejoint le Groupe.", "Un joueur a rejoint {name} a rejoint le Groupe.")]
+    [InlineData("A quitté le groupe : Tork a quitté le Groupe", "A quitté le groupe : BobbyBop a quitté le Groupe", "A quitté le groupe : {name} a quitté le Groupe")]
+    [InlineData("Zeilos ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?", "Ammoniak ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?", "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?")]
+    public void Build_HudNotification_GroupPrefix_CollapsesAcrossDifferentMembers(string firstText, string secondText, string expectedTemplateKey)
+    {
+        var config = NewConfig();
+
+        var firstResult = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = firstText }, config);
+        Assert.True(firstResult!.IsNewHudOverride);
+        Assert.Equal(expectedTemplateKey, firstResult.HudOverrideKey);
+        Assert.Single(config.GameLogHudOverrides);
+
+        var secondResult = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = secondText }, config);
+        Assert.False(secondResult!.IsNewHudOverride);
+        Assert.Single(config.GameLogHudOverrides);
+        Assert.Equal(secondText, secondResult.Text);
+    }
+
+    [Fact]
+    public void Build_HudNotification_PlayerJoinedShipChannelViaGroup_CollapsesWithThreeIndependentPlaceholders()
+    {
+        var config = NewConfig();
+
+        var first = new GameLogEvent
+        {
+            Type = GameLogEventTypes.HudNotification,
+            Text = "Un joueur a rejoint Bistic a rejoint le CANAL 'RSI Constellation Taurus : Tinou214'.",
+        };
+        var firstResult = GameLogAnnouncer.Build(first, config);
+        Assert.True(firstResult!.IsNewHudOverride);
+        Assert.Equal("Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'.", firstResult.HudOverrideKey);
+        Assert.Equal(first.Text, firstResult.Text);
+        Assert.Single(config.GameLogHudOverrides);
+
+        // Membre, vaisseau ET propriétaire tous différents à la fois : toujours
+        // aucune nouvelle entrée, et les 3 valeurs sont bien réinjectées correctement.
+        var second = new GameLogEvent
+        {
+            Type = GameLogEventTypes.HudNotification,
+            Text = "Un joueur a rejoint Torkkol a rejoint le CANAL 'RSI Perseus : Zeilos'.",
+        };
+        var secondResult = GameLogAnnouncer.Build(second, config);
+        Assert.False(secondResult!.IsNewHudOverride);
+        Assert.Single(config.GameLogHudOverrides);
+        Assert.Equal(second.Text, secondResult.Text);
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_ThreePlaceholderPattern_RequiresAllThreeToBeConsideredSubstitutable()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            // Personnalisé mais ne réintègre que le membre, pas le vaisseau ni le
+            // propriétaire — pas sûr pour une future rencontre avec un autre vaisseau.
+            ["Un joueur a rejoint Bistic a rejoint le CANAL 'RSI Constellation Taurus : Tinou214'."]
+                = "{member} a rejoint le Constellation Taurus de Tinou214",
+            // Celui-ci réintègre bien les 3.
+            ["Un joueur a rejoint Torkkol a rejoint le CANAL 'RSI Perseus : Zeilos'."]
+                = "{member} a rejoint le {ship} de {owner}",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Single(overrides);
+        Assert.Equal(
+            "{member} a rejoint le {ship} de {owner}",
+            overrides["Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'."]);
+    }
+
     [Fact]
     public void MergeLegacyNameTemplateOverrides_PromotesRawKeyToTemplateWhenTemplateAbsent()
     {
@@ -331,5 +402,67 @@ public class GameLogAnnouncerTests
         var config = NewConfig();
         var evt = new GameLogEvent { Type = GameLogEventTypes.NicknameDetected, Nickname = "Ammoniak007" };
         Assert.Null(GameLogAnnouncer.Build(evt, config));
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_RealWorldGroupEntries_CollapseIntoExpectedTemplates()
+    {
+        // Extrait fidèle d'un vrai game_log_hud_overrides utilisateur (avant ce
+        // regroupement) : plusieurs membres/vaisseaux différents pour les mêmes
+        // motifs de groupe, certains édités à la main avec une coquille
+        // (guillemet simple en trop en fin de valeur) — ne doit jamais faire
+        // planter la fusion, seulement la clé compte pour détecter le motif.
+        var overrides = new Dictionary<string, string>
+        {
+            ["Nouveau chef de groupe : Ammoniak"] = "Ammoniak est le Nouveau chef de groupe",
+            ["Nouveau chef de groupe : Zeilos"] = "Zeilos est le Nouveau chef de groupe",
+            ["Un joueur a rejoint Tinou214 a rejoint le Groupe."] = "Tinou214 a rejoint le Groupe.",
+            ["Un joueur a rejoint Bistic a rejoint le Groupe."] = "Bistic a rejoint le Groupe.",
+            ["A quitté le groupe : Tork a quitté le Groupe"] = "Tork a quitté le Groupe",
+            ["A quitté le groupe : BobbyBop a quitté le Groupe"] = "BobbyBop a quitté le Groupe",
+            ["A quitté le groupe : 1CC-Luche08 a quitté le Groupe"] = "1CC-Luche08 a quitté le Groupe",
+            ["A quitté le groupe : Zeilos a quitté le Groupe"] = "Zeilos a quitté le Groupe",
+            ["A quitté le groupe : Bistic a quitté le Groupe"] = "Bistic a quitté le Groupe",
+            ["Un joueur a rejoint Bistic a rejoint le CANAL 'RSI Constellation Taurus : Tinou214'."]
+                = "Bistic a rejoint Bistic a rejoint le Constellation Taurus de Tinou214",
+            ["Un joueur a rejoint 1CC-Luche08 a rejoint le CANAL 'RSI Constellation Taurus : Tinou214'."]
+                = "Un joueur a rejoint 1CC-Luche08 a rejoint le Constellation Taurus de Tinou214",
+            ["Un joueur a rejoint Torkkol a rejoint le CANAL 'RSI Perseus : Zeilos'."]
+                = "Torkkol a rejoint le Perseus de Zeilos",
+            ["A quitté le groupe : Torkkol a quitté le CANAL 'RSI Perseus : Zeilos'"]
+                = "A quitté le groupe : Torkkol a quitté le CANAL 'RSI Perseus : Zeilos'",
+            ["A quitté le groupe : BobbyBop a quitté le CANAL 'RSI Perseus : Zeilos'"]
+                = "A quitté le groupe : BobbyBop a quitté le CANAL 'RSI Perseus : Zeilos'",
+            ["A quitté le groupe : 1CC-Luche08 a quitté le CANAL 'RSI Perseus : Zeilos'"]
+                = "A quitté le groupe : 1CC-Luche08 a quitté le CANAL 'RSI Perseus : Zeilos'",
+            ["A quitté le groupe : 1CC-Luche08 a quitté le CANAL 'RSI Constellation Taurus : Tinou214'"]
+                = "1CC-Luche08 a quitté le RSI Constellation Taurus de Tinou214'", // coquille : guillemet en trop
+            ["A quitté le groupe : Bistic a quitté le CANAL 'RSI Constellation Taurus : Tinou214'"]
+                = "Bistic a quitté le Constellation Taurus de Tinou214'", // idem
+            ["A quitté le groupe : Bistic a quitté le CANAL 'RSI Perseus : Zeilos'"]
+                = "Bistic a quitté le Perseus de Zeilos",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        // 18 entrées héritées -> 5 motifs de groupe distincts (chef, rejoint
+        // groupe, quitté groupe, rejoint canal de vaisseau via groupe, quitté
+        // canal de vaisseau via groupe).
+        Assert.Equal(5, overrides.Count);
+        Assert.Contains("Nouveau chef de groupe : {name}", overrides.Keys);
+        Assert.Contains("Un joueur a rejoint {name} a rejoint le Groupe.", overrides.Keys);
+        Assert.Contains("A quitté le groupe : {name} a quitté le Groupe", overrides.Keys);
+        Assert.Contains("Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'.", overrides.Keys);
+        Assert.Contains("A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'", overrides.Keys);
+
+        // Aucune des valeurs héritées ci-dessus ne réintègre les 3 réservoirs à
+        // la fois : doit retomber sur le gabarit neutre, jamais figer un
+        // membre/vaisseau/propriétaire précis pour toutes les rencontres futures.
+        Assert.Equal(
+            "Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'.",
+            overrides["Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'."]);
+        Assert.Equal(
+            "A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'",
+            overrides["A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'"]);
     }
 }

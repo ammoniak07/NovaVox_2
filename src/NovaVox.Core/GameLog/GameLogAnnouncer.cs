@@ -55,6 +55,10 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"<EM\d+>.*?</EM\d+>", RegexOptions.IgnoreCase)]
     private static partial Regex EmphasisTagRegex();
 
+    /// <summary>Trouve les réservoirs "{xxx}" littéralement présents dans une clé de gabarit — voir RankMergeCandidate.</summary>
+    [GeneratedRegex(@"\{[A-Za-z0-9_]+\}")]
+    private static partial Regex PlaceholderRegex();
+
     /// <summary>
     /// Rapports de délit du HUD ("X a commis Y contre vous...") : seul le
     /// nom du joueur en tête de phrase change d'une rencontre à l'autre
@@ -113,16 +117,48 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^Vous avez quitté le CANAL '(?<name>.+) : [^']+'\.$")]
     private static partial Regex ShipChannelLeftRegex();
 
+    [GeneratedRegex(@"^Nouveau chef de groupe\s*:\s*(?<name>.+)$")]
+    private static partial Regex NewGroupLeaderRegex();
+
+    [GeneratedRegex(@"^Un joueur a rejoint (?<name>.+) a rejoint le Groupe\.$")]
+    private static partial Regex PlayerJoinedGroupRegex();
+
+    [GeneratedRegex(@"^A quitté le groupe\s*:\s*(?<name>.+) a quitté le Groupe$")]
+    private static partial Regex PlayerLeftGroupRegex();
+
+    // Rejoindre/quitter le canal d'un vaisseau EN PASSANT PAR un mouvement de
+    // groupe ("Un joueur a rejoint Bistic a rejoint le CANAL 'RSI
+    // Constellation Taurus : Tinou214'.") : contrairement à
+    // ShipChannelJoinedRegex/ShipChannelLeftRegex (son propre vaisseau), TROIS
+    // parties varient ici indépendamment — le membre qui bouge, le vaisseau,
+    // et son pilote/propriétaire — d'où 3 réservoirs {member}/{ship}/{owner}
+    // plutôt qu'un seul {name} (voir ExtractHudTemplate, qui gère
+    // désormais un nombre quelconque de groupes nommés par motif).
+    [GeneratedRegex(@"^Un joueur a rejoint (?<member>.+) a rejoint le CANAL '(?<ship>.+) : (?<owner>[^']+)'\.$")]
+    private static partial Regex PlayerJoinedShipChannelViaGroupRegex();
+
+    [GeneratedRegex(@"^A quitté le groupe\s*:\s*(?<member>.+) a quitté le CANAL '(?<ship>.+) : (?<owner>[^']+)'$")]
+    private static partial Regex PlayerLeftShipChannelViaGroupRegex();
+
+    [GeneratedRegex(@"^(?<name>.+) ! INVITATION À UN GROUPE REÇUE\s*:\s*Accepter l'invitation \?$")]
+    private static partial Regex GroupInviteReceivedRegex();
+
     /// <summary>
-    /// Motifs de texte HUD connus où seule une partie variable (nom de
-    /// joueur/pilote/ami/vaisseau, ou nom de mission/objectif) change d'une
-    /// rencontre à l'autre pour un même type de notification — essayés
-    /// dans l'ordre par ExtractHudTemplate. Étendre la détection revient à
-    /// ajouter une entrée ici, sans toucher au reste du mécanisme
-    /// (BuildHudAnnouncement, MergeLegacyNameTemplateOverrides).
+    /// Motifs de texte HUD connus où une ou plusieurs parties variables (nom
+    /// de joueur/pilote/ami/vaisseau, ou nom de mission/objectif) changent
+    /// d'une rencontre à l'autre pour un même type de notification — essayés
+    /// dans l'ordre par ExtractHudTemplate. Chaque groupe nommé du motif
+    /// (autre que "rest", ci-dessous) devient un réservoir "{nomDuGroupe}"
+    /// dans le texte annoncé, réintégré à chaque rencontre — un motif peut
+    /// donc en définir plusieurs (voir PlayerJoinedShipChannelViaGroupRegex).
+    /// Étendre la détection revient à ajouter une entrée ici, sans toucher
+    /// au reste du mécanisme (BuildHudAnnouncement, MergeLegacyNameTemplateOverrides).
     /// </summary>
     private static readonly (Regex Pattern, Func<Match, string> BuildTemplateKey)[] HudTemplates =
     {
+        // "rest" n'est PAS un réservoir substitué au moment de l'annonce : il
+        // sert seulement ici à construire une clé de gabarit distincte par
+        // type de délit (voir ExtractHudTemplate/NamedCaptures, qui l'ignore).
         (CrimeReportRegex(), m => $"{{name}} a commis {m.Groups["rest"].Value}"),
         (FriendAddedRegex(), _ => "AMI AJOUTÉ ! {name}"),
         (QuantumCalibrationStartedRegex(), _ => "Calibration du voyage quantique démarrée par {name}."),
@@ -137,6 +173,12 @@ public static partial class GameLogAnnouncer
         (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
         (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint."),
         (ShipChannelLeftRegex(), _ => "Vous avez quitté le CANAL '{name}'."),
+        (NewGroupLeaderRegex(), _ => "Nouveau chef de groupe : {name}"),
+        (PlayerJoinedGroupRegex(), _ => "Un joueur a rejoint {name} a rejoint le Groupe."),
+        (PlayerLeftGroupRegex(), _ => "A quitté le groupe : {name} a quitté le Groupe"),
+        (PlayerJoinedShipChannelViaGroupRegex(), _ => "Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'."),
+        (PlayerLeftShipChannelViaGroupRegex(), _ => "A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'"),
+        (GroupInviteReceivedRegex(), _ => "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?"),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>
@@ -208,7 +250,7 @@ public static partial class GameLogAnnouncer
         var rawText = CleanHudNotificationText(evt.Text);
         if (rawText.Length == 0) return null;
 
-        var (templateKey, capturedValue) = ExtractHudTemplate(rawText);
+        var (templateKey, captures) = ExtractHudTemplate(rawText);
 
         var isNew = false;
         if (!config.GameLogHudOverrides.ContainsKey(templateKey))
@@ -218,7 +260,9 @@ public static partial class GameLogAnnouncer
         }
 
         var storedTemplate = config.GameLogHudOverrides.GetValueOrDefault(templateKey, templateKey);
-        var spokenText = capturedValue is not null ? storedTemplate.Replace("{name}", capturedValue) : storedTemplate;
+        var spokenText = storedTemplate;
+        foreach (var (placeholder, value) in captures)
+            spokenText = spokenText.Replace($"{{{placeholder}}}", value);
 
         const string key = "hud_notification";
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
@@ -232,23 +276,37 @@ public static partial class GameLogAnnouncer
     }
 
     /// <summary>
-    /// Remplace la partie variable détectée (nom de joueur/pilote/ami, ou
-    /// nom de mission/objectif) dans un texte HUD connu (voir HudTemplates)
-    /// par l'espace réservé {name}, pour qu'une seule correction de
-    /// lecture couvre toutes les rencontres quelle que soit cette valeur —
-    /// donc une seule entrée "Nouvel objectif : {name}" pour TOUTES les
-    /// missions plutôt qu'une par mission. Tout autre texte HUD n'a pas de
-    /// motif reconnu et reste inchangé (clé = son propre texte, comme avant).
+    /// Remplace la ou les parties variables détectées (nom de joueur/pilote/
+    /// ami/vaisseau, ou nom de mission/objectif) dans un texte HUD connu
+    /// (voir HudTemplates) par leurs réservoirs "{xxx}", pour qu'une seule
+    /// correction de lecture couvre toutes les rencontres quelles que
+    /// soient ces valeurs — donc une seule entrée "Nouvel objectif : {name}"
+    /// pour TOUTES les missions plutôt qu'une par mission, ou une seule
+    /// entrée à trois réservoirs pour "Un joueur a rejoint {member} a
+    /// rejoint le CANAL '{ship} : {owner}'." quel que soit le membre, le
+    /// vaisseau ou son propriétaire. Tout autre texte HUD n'a pas de motif
+    /// reconnu et reste inchangé (clé = son propre texte, comme avant).
     /// </summary>
-    private static (string TemplateKey, string? CapturedValue) ExtractHudTemplate(string rawText)
+    private static (string TemplateKey, IReadOnlyDictionary<string, string> Captures) ExtractHudTemplate(string rawText)
     {
         foreach (var (pattern, buildTemplateKey) in HudTemplates)
         {
             var match = pattern.Match(rawText);
-            if (match.Success) return (buildTemplateKey(match), match.Groups["name"].Value);
+            if (match.Success) return (buildTemplateKey(match), NamedCaptures(match));
         }
-        return (rawText, null);
+        return (rawText, new Dictionary<string, string>());
     }
+
+    /// <summary>
+    /// Tous les groupes NOMMÉS d'un Match, sauf "rest" (CrimeReportRegex) qui
+    /// sert seulement à construire une clé de gabarit distincte par type de
+    /// délit — jamais un réservoir "{rest}" réellement présent dans le texte
+    /// annoncé, donc jamais à substituer ici.
+    /// </summary>
+    private static Dictionary<string, string> NamedCaptures(Match match) =>
+        match.Groups.Cast<Group>()
+            .Where(g => g.Success && g.Name != "rest" && !int.TryParse(g.Name, out _))
+            .ToDictionary(g => g.Name, g => g.Value);
 
     /// <summary>
     /// Fusionne dans <paramref name="overrides"/> (AiConfig.GameLogHudOverrides)
@@ -313,15 +371,20 @@ public static partial class GameLogAnnouncer
     /// Départage plusieurs valeurs héritées candidates à devenir LA
     /// personnalisation commune d'une même clé canonique (voir
     /// MergeLegacyNameTemplateOverrides) : 2 = personnalisée ET réutilisable
-    /// pour toute rencontre future (contient {name}, donc jamais figée sur
-    /// une seule rencontre) ; 1 = pas encore personnalisée (valeur = clé,
-    /// le repli sûr par défaut) ; 0 = personnalisée mais figée sur UNE seule
-    /// rencontre passée (un vaisseau, un joueur...) — le pire cas, puisque
-    /// la garder telle quelle annoncerait alors la même chose à tort pour
-    /// toutes les autres rencontres, jamais préférée à la valeur par défaut.
+    /// pour toute rencontre future (contient TOUS les réservoirs "{xxx}" de
+    /// templateKey — un gabarit à plusieurs réservoirs, voir
+    /// PlayerJoinedShipChannelViaGroupRegex, doit tous les retrouver pour
+    /// être sûr, pas juste un seul) ; 1 = pas encore personnalisée (valeur =
+    /// clé, le repli sûr par défaut) ; 0 = personnalisée mais figée sur UNE
+    /// seule rencontre passée (un vaisseau, un joueur...) — le pire cas,
+    /// puisque la garder telle quelle annoncerait alors la même chose à
+    /// tort pour toutes les autres rencontres, jamais préférée à la valeur
+    /// par défaut.
     /// </summary>
-    private static int RankMergeCandidate(string value, string templateKey) =>
-        value != templateKey && value.Contains("{name}") ? 2 :
-        value == templateKey ? 1 :
-        0;
+    private static int RankMergeCandidate(string value, string templateKey)
+    {
+        if (value == templateKey) return 1;
+        var placeholders = PlaceholderRegex().Matches(templateKey).Select(m => m.Value).Distinct().ToList();
+        return placeholders.Count > 0 && placeholders.All(value.Contains) ? 2 : 0;
+    }
 }
