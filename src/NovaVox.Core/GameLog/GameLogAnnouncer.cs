@@ -143,6 +143,12 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^(?<name>.+) ! INVITATION À UN GROUPE REÇUE\s*:\s*Accepter l'invitation \?$")]
     private static partial Regex GroupInviteReceivedRegex();
 
+    [GeneratedRegex(@"^Groupe\s*:\s*(?<name>.+) s'est connecté\.?$")]
+    private static partial Regex GroupMemberConnectedRegex();
+
+    [GeneratedRegex(@"^Groupe\s*:\s*(?<name>.+) s'est déconnecté\.?$")]
+    private static partial Regex GroupMemberDisconnectedRegex();
+
     /// <summary>
     /// Motifs de texte HUD connus où une ou plusieurs parties variables (nom
     /// de joueur/pilote/ami/vaisseau, ou nom de mission/objectif) changent
@@ -179,6 +185,8 @@ public static partial class GameLogAnnouncer
         (PlayerJoinedShipChannelViaGroupRegex(), _ => "Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'."),
         (PlayerLeftShipChannelViaGroupRegex(), _ => "A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'"),
         (GroupInviteReceivedRegex(), _ => "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?"),
+        (GroupMemberConnectedRegex(), _ => "Groupe : {name} s'est connecté."),
+        (GroupMemberDisconnectedRegex(), _ => "Groupe : {name} s'est déconnecté."),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>
