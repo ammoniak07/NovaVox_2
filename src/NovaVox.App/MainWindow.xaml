@@ -581,6 +581,8 @@
                                 <TextBlock x:Name="GeminiModelDescText" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
                                 <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
+                                <TextBlock Text="Ton prénom" Margin="0,12,0,4" />
+                                <TextBox x:Name="UserNameBox" LostFocus="UserNameBox_LostFocus" ToolTip="Gemini t'appellera par ce prénom dans ses réponses — laisse vide pour ne pas le préciser." />
                                 <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />
                                 <ComboBox x:Name="GeminiResponseLengthCombo" SelectionChanged="GeminiResponseLengthCombo_SelectionChanged">
                                     <ComboBoxItem Content="Courte" Tag="short" />

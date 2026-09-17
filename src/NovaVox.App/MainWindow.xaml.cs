@@ -1303,6 +1303,7 @@ public partial class MainWindow : Window
             if (GeminiModelCombo.ItemsSource is null) GeminiModelCombo.ItemsSource = GeminiModels.AvailableModels;
             GeminiModelCombo.SelectedItem = GeminiModels.AvailableModels.FirstOrDefault(m => m.Id == ai.GeminiModel) ?? GeminiModels.AvailableModels[0];
             GeminiNameBox.Text = ai.GeminiName;
+            UserNameBox.Text = ai.UserName;
             SelectComboItemByTag(GeminiResponseLengthCombo, ai.GeminiResponseLength);
             GeminiContextBox.Text = ai.GeminiCustomContext;
             ConfirmCommandsCheckbox.IsChecked = ai.ConfirmCommands;
@@ -1588,6 +1589,14 @@ public partial class MainWindow : Window
         _state.Ai.GeminiName = value.Length == 0 ? AiConfig.DefaultGeminiName : value;
         SaveAiAndLog();
         RefreshGeminiAssistantLabel();
+    }
+
+    /// <summary>Prénom transmis dans le prompt système de Gemini (GeminiPrompt.BuildSystemPrompt) — voir AiConfig.UserName. Vide = pas de mention dans le prompt.</summary>
+    private void UserNameBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Ai.UserName = UserNameBox.Text.Trim();
+        SaveAiAndLog();
     }
 
     private void GeminiResponseLengthCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
