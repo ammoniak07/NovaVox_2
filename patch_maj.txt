@@ -2,7 +2,8 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.0.5
 ------
-
+- Regroupement des connexions/déconnexions au groupe dans le Game.log : une seule correction de lecture par type d'événement, au lieu d'une entrée par membre reconnecté.
+- Ajout d'un champ "Ton prénom" dans Réglages > 🌟 IA Gemini : Gemini peut à nouveau t'appeler par ton prénom dans ses réponses si tu le renseignes.
 v0.0.4
 ------
 - Optimisation de la lecture du game log
