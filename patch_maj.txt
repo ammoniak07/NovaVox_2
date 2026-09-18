@@ -6,6 +6,7 @@ v0.0.5
 - Ajout d'un champ "Ton prénom" dans Réglages > 🌟 IA Gemini : Gemini peut à nouveau t'appeler par ton prénom dans ses réponses si tu le renseignes.
 - Correctif : "Alias de destinations" n'ajoute plus d'entrée pour les lieux déjà reconnus (catalogue intégré ou points de saut) — seules les destinations vraiment inconnues y apparaissent désormais.
 - Nettoyage automatique de "Alias de destinations" au démarrage : les entrées qui ne faisaient que dupliquer un lieu déjà dans le catalogue intégré sont retirées.
+- Nettoyage étendu de "Alias de destinations" : les points de saut déjà reconnus par l'algorithme (rs_..._jp...) sont maintenant aussi retirés, et les doublons créés uniquement par un numéro d'instance aléatoire (ex. balises de mission, marqueurs de groupe) sont fusionnés en une seule entrée.
 v0.0.4
 ------
 - Optimisation de la lecture du game log

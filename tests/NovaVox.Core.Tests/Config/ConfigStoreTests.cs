@@ -259,4 +259,36 @@ public class ConfigStoreTests : IDisposable
         Assert.DoesNotContain("ooc stanton 1 hurston", onDisk);
         Assert.Contains("ma station perso", onDisk);
     }
+
+    [Fact]
+    public void AiConfig_LoadPrunesJumpPointResolvableDestinationAliasesAndCollapsesInstanceSuffixes()
+    {
+        // Deux cas restés visibles après le premier correctif : des points de
+        // saut déjà résolubles par l'algorithme (absents de KnownLocationAliases
+        // mais couverts quand même), et des lieux génériques dupliqués parce que
+        // seul le numéro d'instance aléatoire final changeait d'une rencontre à
+        // l'autre — les deux doivent être nettoyés au chargement.
+        File.WriteAllText(Path.Combine(_dir, "ai_config.json"), """
+        {
+            "game_log_destination_aliases": {
+                "rs ext pyro stan jp1": "Stanton Gateway",
+                "mission qt bounty beacon 816657711603": "Bounty Beacon",
+                "mission qt bounty beacon 816663687671": "Bounty Beacon",
+                "ma station perso": "Ma station perso"
+            }
+        }
+        """);
+
+        var config = new AiConfigStore(_dir).Load();
+
+        Assert.Equal(2, config.GameLogDestinationAliases.Count);
+        Assert.True(config.GameLogDestinationAliases.ContainsKey("mission qt bounty beacon"));
+        Assert.True(config.GameLogDestinationAliases.ContainsKey("ma station perso"));
+
+        var onDisk = File.ReadAllText(Path.Combine(_dir, "ai_config.json"));
+        Assert.DoesNotContain("rs ext pyro stan jp1", onDisk);
+        Assert.DoesNotContain("816657711603", onDisk);
+        Assert.DoesNotContain("816663687671", onDisk);
+        Assert.Contains("mission qt bounty beacon", onDisk);
+    }
 }

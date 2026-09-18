@@ -103,4 +103,67 @@ public class GameLogDestinationsTests
         Assert.False(changed);
         Assert.Single(userAliases);
     }
+
+    [Fact]
+    public void PruneAliasesCoveredByCatalog_RemovesJumpPointResolvableEntries()
+    {
+        // Points de saut absents de KnownLocationAliases mais déjà résolus par
+        // l'algorithme (JumpPointIdRegex + SystemNames) — des entrées enregistrées
+        // avant le correctif de MaybeRegisterDestinationAlias, dont une avec un
+        // texte devenu faux ("Stanton Gateway" au lieu de "Castra Gateway").
+        var userAliases = new Dictionary<string, string>
+        {
+            ["rs ext pyro stan jp1"] = "Stanton Gateway",
+            ["rs ext nyx pyro jp1"] = "Pyro Gateway",
+            ["rs ext nyx castra jp1"] = "Stanton Gateway", // faux, doit être retiré pour laisser l'algorithme reprendre la main
+            ["ma station perso"] = "Ma station perso",
+        };
+
+        var changed = GameLogDestinations.PruneAliasesCoveredByCatalog(userAliases);
+
+        Assert.True(changed);
+        Assert.Single(userAliases);
+        Assert.True(userAliases.ContainsKey("ma station perso"));
+    }
+
+    [Theory]
+    [InlineData("MISSION_QT_Bounty_Beacon_816657711603", "mission qt bounty beacon")]
+    [InlineData("NavPoint_Dynamic_811091209650", "navpoint dynamic")]
+    [InlineData("ab_mine_stanton3_med_005", "ab mine stanton3 med 005")] // suffixe court (3 chiffres) : pas un numéro d'instance, conservé
+    public void NormalizeForAliasLookup_StripsLongInstanceSuffixFromKey(string rawId, string expectedKey)
+    {
+        Assert.Equal(expectedKey, GameLogDestinations.NormalizeForAliasLookup(rawId));
+    }
+
+    [Fact]
+    public void CollapseInstanceSuffixedAliases_MergesDuplicatesIntoCanonicalKey()
+    {
+        var userAliases = new Dictionary<string, string>
+        {
+            ["mission qt bounty beacon 816657711603"] = "Bounty Beacon",
+            ["mission qt bounty beacon 816663687671"] = "Bounty Beacon",
+            ["partymembermarker 781819795315"] = "PartyMemberMarker",
+            ["partymembermarker 781800303699"] = "PartyMemberMarker",
+            ["ma station perso"] = "Ma station perso",
+        };
+
+        var changed = GameLogDestinations.CollapseInstanceSuffixedAliases(userAliases);
+
+        Assert.True(changed);
+        Assert.Equal(3, userAliases.Count);
+        Assert.True(userAliases.ContainsKey("mission qt bounty beacon"));
+        Assert.True(userAliases.ContainsKey("partymembermarker"));
+        Assert.True(userAliases.ContainsKey("ma station perso"));
+    }
+
+    [Fact]
+    public void CollapseInstanceSuffixedAliases_ReturnsFalseWhenNothingToCollapse()
+    {
+        var userAliases = new Dictionary<string, string> { ["ma station perso"] = "Ma station perso" };
+
+        var changed = GameLogDestinations.CollapseInstanceSuffixedAliases(userAliases);
+
+        Assert.False(changed);
+        Assert.Single(userAliases);
+    }
 }

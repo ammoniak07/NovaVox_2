@@ -116,11 +116,17 @@ public sealed class AiConfigStore
             hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
             // Nettoie les alias de destinations qui ne faisaient que dupliquer un
-            // lieu déjà dans le catalogue intégré (GameLogDestinations.KnownLocationAliases)
-            // — accumulés avant que MaybeRegisterDestinationAlias n'arrête d'en
-            // recréer pour ces lieux-là. Persisté tout de suite, comme la fusion
-            // des corrections HUD ci-dessus.
-            destinationAliasesMigrated = GameLogDestinations.PruneAliasesCoveredByCatalog(config.GameLogDestinationAliases);
+            // lieu déjà dans le catalogue intégré ou résoluble par l'algorithme
+            // de point de saut (GameLogDestinations.KnownLocationAliases /
+            // PruneAliasesCoveredByCatalog) — accumulés avant que
+            // MaybeRegisterDestinationAlias n'arrête d'en recréer pour ces
+            // lieux-là. Fusionne aussi les doublons qui ne différaient que par
+            // un numéro d'instance aléatoire final (CollapseInstanceSuffixedAliases).
+            // Ne PAS court-circuiter avec ||: les deux doivent s'exécuter.
+            // Persisté tout de suite, comme la fusion des corrections HUD ci-dessus.
+            var destinationAliasesPruned = GameLogDestinations.PruneAliasesCoveredByCatalog(config.GameLogDestinationAliases);
+            var destinationAliasesCollapsed = GameLogDestinations.CollapseInstanceSuffixedAliases(config.GameLogDestinationAliases);
+            destinationAliasesMigrated = destinationAliasesPruned || destinationAliasesCollapsed;
 
             config.GeminiApiKey = GetString(data["gemini_api_key"]).Trim();
             var model = GetString(data["gemini_model"]).Trim();

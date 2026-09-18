@@ -24,6 +24,9 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"_\d{6,}$")]
     private static partial Regex InstanceSuffixRegex();
 
+    [GeneratedRegex(@"\s\d{6,}$")]
+    private static partial Regex InstanceSuffixSpaceRegex();
+
     [GeneratedRegex("^MISSION_QT_")]
     private static partial Regex MissionQtPrefixRegex();
 
@@ -125,19 +128,56 @@ public static partial class GameLogDestinations
 
     /// <summary>
     /// Retire de <paramref name="userAliases"/> (AiConfig.GameLogDestinationAliases)
-    /// toute entrée dont la clé existe déjà dans KnownLocationAliases — ces
+    /// toute entrée dont la clé existe déjà dans KnownLocationAliases, ou
+    /// est résoluble par l'algorithme de point de saut (rs_..._jp...) — ces
     /// entrées personnelles ne faisaient que dupliquer un nom déjà géré
-    /// d'origine (parfois avec un texte devenu périmé si le catalogue a été
-    /// amélioré depuis leur création), sans plus jamais en être la source
-    /// une fois supprimées : GameLogAnnouncer.MaybeRegisterDestinationAlias
-    /// n'en recrée plus pour un lieu déjà couvert par le catalogue (voir ce
-    /// correctif). Retourne true si quelque chose a été supprimé.
+    /// d'origine (parfois avec un texte devenu périmé, voire faux pour un
+    /// point de saut ajouté à SystemNames après coup), sans plus jamais en
+    /// être la source une fois supprimées : GameLogAnnouncer.MaybeRegisterDestinationAlias
+    /// n'en recrée plus pour un lieu déjà couvert par le catalogue ou
+    /// l'algorithme (voir ce correctif). Retourne true si quelque chose a
+    /// été supprimé.
     /// </summary>
     public static bool PruneAliasesCoveredByCatalog(Dictionary<string, string> userAliases)
     {
-        var toRemove = userAliases.Keys.Where(KnownLocationAliases.ContainsKey).ToList();
+        var toRemove = userAliases.Keys.Where(k => KnownLocationAliases.ContainsKey(k) || IsJumpPointResolvable(k)).ToList();
         foreach (var key in toRemove) userAliases.Remove(key);
         return toRemove.Count > 0;
+    }
+
+    /// <summary>
+    /// True si <paramref name="normalizedKey"/> (déjà passé par NormalizeForAliasLookup,
+    /// donc séparé par des espaces) correspond au format d'un point de saut
+    /// dont le système d'arrivée est connu — reconstruit la forme à
+    /// underscore attendue par JumpPointIdRegex plutôt que de dupliquer le motif.
+    /// </summary>
+    private static bool IsJumpPointResolvable(string normalizedKey)
+    {
+        var jumpMatch = JumpPointIdRegex().Match(normalizedKey.Replace(' ', '_'));
+        return jumpMatch.Success && SystemNames.ContainsKey(jumpMatch.Groups["sys2"].Value);
+    }
+
+    /// <summary>
+    /// Fusionne dans <paramref name="userAliases"/> les entrées dont la clé
+    /// ne diffère que par un numéro d'instance aléatoire final (6 chiffres
+    /// ou plus, ex. "mission qt bounty beacon 816657711603") — chaque
+    /// nouvelle rencontre du même lieu générique créait sa propre entrée
+    /// avant que NormalizeForAliasLookup ne retire ce suffixe de la clé.
+    /// Retourne true si quelque chose a changé.
+    /// </summary>
+    public static bool CollapseInstanceSuffixedAliases(Dictionary<string, string> userAliases)
+    {
+        var changed = false;
+        foreach (var key in userAliases.Keys.ToList())
+        {
+            var collapsed = InstanceSuffixSpaceRegex().Replace(key, "");
+            if (collapsed == key) continue;
+            if (!userAliases.ContainsKey(collapsed))
+                userAliases[collapsed] = userAliases[key];
+            userAliases.Remove(key);
+            changed = true;
+        }
+        return changed;
     }
 
     public static readonly IReadOnlyDictionary<string, string> SystemNames = new Dictionary<string, string>
@@ -183,7 +223,11 @@ public static partial class GameLogDestinations
     public static string NormalizeForAliasLookup(string rawId)
     {
         var s = Regex.Replace(rawId.ToLowerInvariant(), @"[_\-]+", " ");
-        return Regex.Replace(s, @"\s+", " ").Trim();
+        s = Regex.Replace(s, @"\s+", " ").Trim();
+        // Retire un numéro d'instance aléatoire final (comme le fait déjà
+        // HumanizeDestination pour le texte affiché) pour que deux
+        // rencontres du même lieu générique partagent la même clé d'alias.
+        return InstanceSuffixSpaceRegex().Replace(s, "");
     }
 
     private static string StripObjectContainerPrefix(string rawId) =>
