@@ -123,6 +123,23 @@ public static partial class GameLogDestinations
         ["levski all 001"] = "Levski",
     };
 
+    /// <summary>
+    /// Retire de <paramref name="userAliases"/> (AiConfig.GameLogDestinationAliases)
+    /// toute entrée dont la clé existe déjà dans KnownLocationAliases — ces
+    /// entrées personnelles ne faisaient que dupliquer un nom déjà géré
+    /// d'origine (parfois avec un texte devenu périmé si le catalogue a été
+    /// amélioré depuis leur création), sans plus jamais en être la source
+    /// une fois supprimées : GameLogAnnouncer.MaybeRegisterDestinationAlias
+    /// n'en recrée plus pour un lieu déjà couvert par le catalogue (voir ce
+    /// correctif). Retourne true si quelque chose a été supprimé.
+    /// </summary>
+    public static bool PruneAliasesCoveredByCatalog(Dictionary<string, string> userAliases)
+    {
+        var toRemove = userAliases.Keys.Where(KnownLocationAliases.ContainsKey).ToList();
+        foreach (var key in toRemove) userAliases.Remove(key);
+        return toRemove.Count > 0;
+    }
+
     public static readonly IReadOnlyDictionary<string, string> SystemNames = new Dictionary<string, string>
     {
         ["arc"] = "ArcCorp",

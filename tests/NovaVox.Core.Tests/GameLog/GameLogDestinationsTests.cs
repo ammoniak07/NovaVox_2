@@ -75,4 +75,32 @@ public class GameLogDestinationsTests
     {
         Assert.Equal("café", GameLogText.FixMojibake("café"));
     }
+
+    [Fact]
+    public void PruneAliasesCoveredByCatalog_RemovesEntriesAlreadyInKnownLocationAliases()
+    {
+        var userAliases = new Dictionary<string, string>
+        {
+            ["ooc stanton 1 hurston"] = "Hurston", // déjà dans le catalogue
+            ["ab collector gas stanton4"] = "Wikelo emporium kinga station", // idem, texte périmé
+            ["ma station perso"] = "Ma station perso", // lieu vraiment inconnu, à garder
+        };
+
+        var changed = GameLogDestinations.PruneAliasesCoveredByCatalog(userAliases);
+
+        Assert.True(changed);
+        Assert.Single(userAliases);
+        Assert.True(userAliases.ContainsKey("ma station perso"));
+    }
+
+    [Fact]
+    public void PruneAliasesCoveredByCatalog_ReturnsFalseWhenNothingToRemove()
+    {
+        var userAliases = new Dictionary<string, string> { ["ma station perso"] = "Ma station perso" };
+
+        var changed = GameLogDestinations.PruneAliasesCoveredByCatalog(userAliases);
+
+        Assert.False(changed);
+        Assert.Single(userAliases);
+    }
 }

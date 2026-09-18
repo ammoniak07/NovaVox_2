@@ -74,6 +74,7 @@ public sealed class AiConfigStore
         var config = new AiConfig();
         if (!File.Exists(_path)) return config;
         var hudOverridesMigrated = false;
+        var destinationAliasesMigrated = false;
         try
         {
             var data = ParseFile(_path) as JsonObject;
@@ -114,6 +115,12 @@ public sealed class AiConfigStore
             // qu'aucun autre réglage n'a par ailleurs déclenché une sauvegarde.
             hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
+            // Nettoie les alias de destinations qui ne faisaient que dupliquer un
+            // lieu déjà dans le catalogue intégré (GameLogDestinations.KnownLocationAliases)
+            // — accumulés avant que MaybeRegisterDestinationAlias n'arrête d'en
+            // recréer pour ces lieux-là. Persisté tout de suite, comme la fusion
+            // des corrections HUD ci-dessus.
+            destinationAliasesMigrated = GameLogDestinations.PruneAliasesCoveredByCatalog(config.GameLogDestinationAliases);
 
             config.GeminiApiKey = GetString(data["gemini_api_key"]).Trim();
             var model = GetString(data["gemini_model"]).Trim();
@@ -137,7 +144,7 @@ public sealed class AiConfigStore
         {
             return new AiConfig();
         }
-        if (hudOverridesMigrated) Save(config);
+        if (hudOverridesMigrated || destinationAliasesMigrated) Save(config);
         return config;
     }
 

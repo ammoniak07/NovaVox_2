@@ -233,4 +233,30 @@ public class ConfigStoreTests : IDisposable
         Assert.Contains("{name} a commis Blessures corporelles graves contre vous.", onDisk);
         Assert.DoesNotContain("MAEDAYMAEDAY", onDisk);
     }
+
+    [Fact]
+    public void AiConfig_LoadPrunesDestinationAliasesAlreadyInBuiltInCatalog()
+    {
+        // "ooc stanton 1 hurston" est déjà dans GameLogDestinations.KnownLocationAliases :
+        // une entrée personnelle pour ce lieu ne fait que dupliquer (parfois avec un
+        // texte périmé) ce que le catalogue intégré sait déjà annoncer — doit être
+        // supprimée au chargement, contrairement à un lieu vraiment inconnu.
+        File.WriteAllText(Path.Combine(_dir, "ai_config.json"), """
+        {
+            "game_log_destination_aliases": {
+                "ooc stanton 1 hurston": "Hurston",
+                "ma station perso": "Ma station perso"
+            }
+        }
+        """);
+
+        var config = new AiConfigStore(_dir).Load();
+
+        Assert.Single(config.GameLogDestinationAliases);
+        Assert.True(config.GameLogDestinationAliases.ContainsKey("ma station perso"));
+
+        var onDisk = File.ReadAllText(Path.Combine(_dir, "ai_config.json"));
+        Assert.DoesNotContain("ooc stanton 1 hurston", onDisk);
+        Assert.Contains("ma station perso", onDisk);
+    }
 }
