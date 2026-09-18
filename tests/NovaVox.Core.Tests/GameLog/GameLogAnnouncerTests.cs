@@ -370,8 +370,14 @@ public class GameLogAnnouncerTests
     }
 
     [Fact]
-    public void Build_ZoneChange_RegistersDestinationAliasOnFirstSighting()
+    public void Build_ZoneChange_KnownDestination_NeverRegistersRedundantAlias()
     {
+        // "OOC_Stanton_1_Hurston" est déjà dans GameLogDestinations.KnownLocationAliases
+        // ("Hurston") : ne doit JAMAIS créer d'entrée personnelle, même à la
+        // première rencontre — sinon "Alias de destinations" grossit d'une
+        // entrée par destination croisée, y compris celles déjà parfaitement
+        // gérées d'origine (voir remontée utilisateur : "pourquoi l'app
+        // m'ajoute encore des noms").
         var config = NewConfig();
         var evt = new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = "OOC_Stanton_1_Hurston" };
 
@@ -379,9 +385,27 @@ public class GameLogAnnouncerTests
 
         Assert.NotNull(result);
         Assert.Equal("Arrivée à destination : Hurston", result!.Text);
-        Assert.True(result.IsNewDestinationAlias);
-        Assert.True(config.GameLogDestinationAliases.ContainsKey("ooc stanton 1 hurston"));
+        Assert.False(result.IsNewDestinationAlias);
+        Assert.Empty(config.GameLogDestinationAliases);
         Assert.Equal("Hurston", result.ResolvedZone);
+    }
+
+    [Fact]
+    public void Build_ZoneChange_UnknownDestination_StillRegistersAliasOnFirstSighting()
+    {
+        // À l'inverse : une destination qu'AUCUN mécanisme intégré ne sait
+        // résoudre (ni catalogue, ni point de saut, ni format OOC_...) doit
+        // toujours être ajoutée à "Alias de destinations", prête à être
+        // renommée — c'est le seul cas où une entrée a un intérêt réel.
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = "Some_Random_Depot_Site" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.True(result!.IsNewDestinationAlias);
+        Assert.True(result.UnresolvedDestinationWarning);
+        Assert.True(config.GameLogDestinationAliases.ContainsKey("some random depot site"));
     }
 
     [Fact]

@@ -237,7 +237,17 @@ public static partial class GameLogAnnouncer
             ResolvedZone: isZone && hasDest ? resolved : null);
     }
 
-    /// <summary>Port de _maybe_register_destination_alias.</summary>
+    /// <summary>
+    /// Port de _maybe_register_destination_alias — corrigé pour ne
+    /// vraiment enregistrer une entrée personnelle QUE quand aucun
+    /// mécanisme de résolution intégré (GameLogDestinations.KnownLocationAliases,
+    /// point de saut, format OOC_...) ne sait déjà donner un nom correct.
+    /// Le port initial ajoutait une entrée pour CHAQUE nouvelle destination
+    /// croisée sans condition — y compris celles déjà parfaitement gérées
+    /// d'origine — donc "Alias de destinations" grossissait sans arrêt même
+    /// pour des lieux qui n'avaient besoin d'aucune correction (voir
+    /// remontée utilisateur : "pourquoi l'app m'ajoute encore des noms").
+    /// </summary>
     private static (bool IsNew, string? Key, bool UnresolvedWarning) MaybeRegisterDestinationAlias(
         string? rawId, string? currentName, string? obstructionLabel, AiConfig config)
     {
@@ -248,6 +258,8 @@ public static partial class GameLogAnnouncer
         if (key is null || config.GameLogDestinationAliases.ContainsKey(key)) return (false, null, false);
 
         var unresolvedWarning = GameLogDestinations.DestinationIsUnresolved(rawId, config.GameLogDestinationAliases);
+        if (!unresolvedWarning) return (false, null, false);
+
         config.GameLogDestinationAliases[key] = (currentName ?? "").Trim();
         return (true, key, unresolvedWarning);
     }
