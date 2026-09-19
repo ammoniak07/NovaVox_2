@@ -149,6 +149,15 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^Groupe\s*:\s*(?<name>.+) s'est déconnecté\.?$")]
     private static partial Regex GroupMemberDisconnectedRegex();
 
+    // Lancement de groupe dans l'univers persistant : deux notifications HUD
+    // distinctes pour le même évènement, chacune avec le nom du chef qui
+    // l'a initié à un endroit différent de la phrase.
+    [GeneratedRegex(@"^Initié par (?<name>.+) Lancement du groupe\s*:\s*Suivre le groupe dans l'univers persistant \?$")]
+    private static partial Regex GroupLaunchFollowPromptRegex();
+
+    [GeneratedRegex(@"^Lancement du groupe Initié par le chef du parti (?<name>.+)\.$")]
+    private static partial Regex GroupLaunchInitiatedByLeaderRegex();
+
     /// <summary>
     /// Motifs de texte HUD connus où une ou plusieurs parties variables (nom
     /// de joueur/pilote/ami/vaisseau, ou nom de mission/objectif) changent
@@ -187,6 +196,8 @@ public static partial class GameLogAnnouncer
         (GroupInviteReceivedRegex(), _ => "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?"),
         (GroupMemberConnectedRegex(), _ => "Groupe : {name} s'est connecté."),
         (GroupMemberDisconnectedRegex(), _ => "Groupe : {name} s'est déconnecté."),
+        (GroupLaunchFollowPromptRegex(), _ => "Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?"),
+        (GroupLaunchInitiatedByLeaderRegex(), _ => "Lancement du groupe Initié par le chef du parti {name}."),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>

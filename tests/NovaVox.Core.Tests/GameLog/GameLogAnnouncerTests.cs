@@ -205,6 +205,14 @@ public class GameLogAnnouncerTests
     [InlineData("Zeilos ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?", "Ammoniak ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?", "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?")]
     [InlineData("Groupe : Dionico31 s'est connecté.", "Groupe : Zeilos s'est connecté.", "Groupe : {name} s'est connecté.")]
     [InlineData("Groupe : Dionico31 s'est déconnecté.", "Groupe : Zeilos s'est déconnecté.", "Groupe : {name} s'est déconnecté.")]
+    [InlineData(
+        "Initié par Spakhugar Lancement du groupe: Suivre le groupe dans l'univers persistant ?",
+        "Initié par Tinou214 Lancement du groupe: Suivre le groupe dans l'univers persistant ?",
+        "Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?")]
+    [InlineData(
+        "Lancement du groupe Initié par le chef du parti Spakhugar.",
+        "Lancement du groupe Initié par le chef du parti Tinou214.",
+        "Lancement du groupe Initié par le chef du parti {name}.")]
     public void Build_HudNotification_GroupPrefix_CollapsesAcrossDifferentMembers(string firstText, string secondText, string expectedTemplateKey)
     {
         var config = NewConfig();
@@ -473,20 +481,28 @@ public class GameLogAnnouncerTests
             ["Groupe : Zeilos s'est connecté."] = "Groupe : Zeilos s'est connecté.",
             ["Groupe : Torkkol s'est connecté."] = "Groupe : Torkkol s'est connecté.",
             ["Groupe : 1CC-Luche08 s'est connecté."] = "Groupe : 1CC-Luche08 s'est connecté.",
+            // Lancement de groupe dans l'univers persistant (remontée utilisateur suivante).
+            ["Initié par Spakhugar Lancement du groupe: Suivre le groupe dans l'univers persistant ?"]
+                = "Initié par Spakhugar Lancement du groupe: Suivre le groupe dans l'univers persistant ?",
+            ["Lancement du groupe Initié par le chef du parti Spakhugar."]
+                = "Lancement du groupe Initié par le chef du parti Spakhugar.",
         };
 
         GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
 
-        // 22 entrées héritées -> 6 motifs de groupe distincts (chef, rejoint
+        // 24 entrées héritées -> 8 motifs de groupe distincts (chef, rejoint
         // groupe, quitté groupe, rejoint canal de vaisseau via groupe, quitté
-        // canal de vaisseau via groupe, connecté).
-        Assert.Equal(6, overrides.Count);
+        // canal de vaisseau via groupe, connecté, les deux formes de lancement
+        // de groupe dans l'univers persistant).
+        Assert.Equal(8, overrides.Count);
         Assert.Contains("Nouveau chef de groupe : {name}", overrides.Keys);
         Assert.Contains("Un joueur a rejoint {name} a rejoint le Groupe.", overrides.Keys);
         Assert.Contains("A quitté le groupe : {name} a quitté le Groupe", overrides.Keys);
         Assert.Contains("Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'.", overrides.Keys);
         Assert.Contains("A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'", overrides.Keys);
         Assert.Contains("Groupe : {name} s'est connecté.", overrides.Keys);
+        Assert.Contains("Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?", overrides.Keys);
+        Assert.Contains("Lancement du groupe Initié par le chef du parti {name}.", overrides.Keys);
 
         // Aucune des valeurs héritées ci-dessus ne réintègre les 3 réservoirs à
         // la fois : doit retomber sur le gabarit neutre, jamais figer un
