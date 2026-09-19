@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.0.7
+------
+
 v0.0.6
 ------
 - Nettoyage automatique de "Alias de destinations" au démarrage : les entrées qui ne faisaient que dupliquer un lieu déjà dans le catalogue intégré sont retirées.
