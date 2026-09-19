@@ -639,6 +639,15 @@
                                           Checked="GameLogAnnounceCheckbox_Changed" Unchecked="GameLogAnnounceCheckbox_Changed" />
                                 <TextBlock Text="Pseudo RSI" Margin="0,16,0,4" />
                                 <TextBox x:Name="PlayerHandleBox" LostFocus="PlayerHandleBox_LostFocus" />
+
+                                <TextBlock Text="Emplacement du Game.log" Margin="0,16,0,4" />
+                                <TextBlock Text="Laisse vide pour une détection automatique (tous les disques sont essayés). À renseigner seulement si Star Citizen est installé ailleurs qu'un emplacement standard."
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="GameLogPathBox" Width="280" LostFocus="GameLogPathBox_LostFocus"
+                                             ToolTip="Chemin complet vers Game.log (ex. D:\StarCitizen\LIVE\Game.log)" />
+                                    <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogPathBrowseButton_Click" />
+                                </StackPanel>
                             </StackPanel>
                         </TabItem>
 

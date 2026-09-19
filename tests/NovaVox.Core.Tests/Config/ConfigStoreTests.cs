@@ -203,6 +203,20 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_RoundTripsGameLogCustomPath()
+    {
+        var store = new AiConfigStore(_dir);
+        store.Save(new AiConfig { GameLogCustomPath = @"D:\Jeux\StarCitizen\LIVE\Game.log" });
+        Assert.Equal(@"D:\Jeux\StarCitizen\LIVE\Game.log", new AiConfigStore(_dir).Load().GameLogCustomPath);
+    }
+
+    [Fact]
+    public void AiConfig_GameLogCustomPathDefaultsToEmpty()
+    {
+        Assert.Equal("", new AiConfigStore(_dir).Load().GameLogCustomPath);
+    }
+
+    [Fact]
     public void AiConfig_LoadMergesLegacyNameTemplateHudOverrides()
     {
         // Corrections HUD enregistrées avant le regroupement par gabarit

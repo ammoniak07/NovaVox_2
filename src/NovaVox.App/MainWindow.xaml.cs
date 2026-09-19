@@ -1314,6 +1314,7 @@ public partial class MainWindow : Window
             GameLogEnabledCheckbox.IsChecked = ai.GameLogEnabled;
             GameLogAnnounceCheckbox.IsChecked = ai.GameLogAnnounceEvents;
             PlayerHandleBox.Text = ai.GameLogPlayerHandle;
+            GameLogPathBox.Text = ai.GameLogCustomPath;
 
             var overlay = _state.Overlay;
             OverlayEnabledCheckbox.IsChecked = overlay.Enabled;
@@ -1740,6 +1741,49 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GameLogPlayerHandle = PlayerHandleBox.Text.Trim();
         SaveAiAndLog();
+    }
+
+    /// <summary>
+    /// Chemin manuel vers Game.log (Réglages > 🛰 Game.log) : GameLogPaths.FindGameLogPath
+    /// ne teste que les emplacements d'installation standards sur chaque
+    /// disque — insuffisant pour une installation Star Citizen dans un
+    /// dossier personnalisé. Prioritaire sur la détection automatique dès
+    /// que renseigné (voir StartGameLogWatcher), vide = comportement
+    /// inchangé.
+    /// </summary>
+    private void GameLogPathBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Ai.GameLogCustomPath = GameLogPathBox.Text.Trim();
+        SaveAiAndLog();
+        // La surveillance déjà démarrée ne reprend pas le nouveau chemin
+        // toute seule (elle tourne dans son propre fil) : on la relance si
+        // elle était active, comme un changement de pseudo RSI le ferait
+        // implicitement au prochain redémarrage sinon.
+        if (_state.Ai.GameLogEnabled)
+        {
+            StopGameLogWatcher();
+            StartGameLogWatcher();
+        }
+    }
+
+    private void GameLogPathBrowseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Sélectionne le fichier Game.log",
+            Filter = "Game.log|Game.log|Tous les fichiers|*.*",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        GameLogPathBox.Text = dialog.FileName;
+        _state.Ai.GameLogCustomPath = dialog.FileName;
+        SaveAiAndLog();
+        if (_state.Ai.GameLogEnabled)
+        {
+            StopGameLogWatcher();
+            StartGameLogWatcher();
+        }
     }
 
     private void UiLanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -2267,8 +2311,10 @@ public partial class MainWindow : Window
     private void StartGameLogWatcher()
     {
         if (_gameLogWatcher is not null) return;
+        var customPath = _state.Ai.GameLogCustomPath;
         _gameLogWatcher = new GameLogWatcher(
             onEvent: evt => Dispatcher.BeginInvoke(() => OnGameLogEvent(evt)),
+            logPath: string.IsNullOrWhiteSpace(customPath) ? null : customPath,
             playerName: _state.Ai.GameLogPlayerHandle);
         _gameLogWatcher.Start();
         if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = _gameLogWatcher;

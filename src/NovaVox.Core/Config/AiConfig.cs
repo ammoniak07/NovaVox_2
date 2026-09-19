@@ -35,6 +35,8 @@ public sealed class AiConfig
     public bool GameLogEnabled { get; set; }
     public bool GameLogAnnounceEvents { get; set; } = true;
     public string GameLogPlayerHandle { get; set; } = "";
+    /// <summary>Chemin manuel vers Game.log — vide par défaut (détection automatique, voir GameLogPaths.FindGameLogPath), à renseigner quand Star Citizen est installé ailleurs qu'un des emplacements standards.</summary>
+    public string GameLogCustomPath { get; set; } = "";
     public Dictionary<string, string> GameLogPhrases { get; set; } = new();
     public Dictionary<string, string> GameLogHudOverrides { get; set; } = new();
     public Dictionary<string, string> GameLogDestinationAliases { get; set; } = new();
@@ -104,6 +106,7 @@ public sealed class AiConfigStore
             config.GameLogEnabled = GetBool(data["game_log_enabled"]);
             config.GameLogAnnounceEvents = GetBool(data["game_log_announce_events"], true);
             config.GameLogPlayerHandle = GetString(data["game_log_player_handle"]).Trim();
+            config.GameLogCustomPath = GetString(data["game_log_custom_path"]).Trim();
             config.GameLogPhrases = ToStringDict(data["game_log_phrases"] as JsonObject);
             config.GameLogHudOverrides = ToStringDict(data["game_log_hud_overrides"] as JsonObject);
             // Nettoie les corrections HUD enregistrées avant le regroupement par
@@ -172,6 +175,7 @@ public sealed class AiConfigStore
             ["game_log_enabled"] = config.GameLogEnabled,
             ["game_log_announce_events"] = config.GameLogAnnounceEvents,
             ["game_log_player_handle"] = config.GameLogPlayerHandle,
+            ["game_log_custom_path"] = config.GameLogCustomPath,
             ["game_log_phrases"] = FromStringDict(config.GameLogPhrases),
             ["game_log_hud_overrides"] = FromStringDict(config.GameLogHudOverrides),
             ["game_log_destination_aliases"] = FromStringDict(config.GameLogDestinationAliases),
