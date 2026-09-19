@@ -166,10 +166,6 @@ echo   -^> ERREUR : la compilation de l'installateur (variante GitHub) a echoue.
 :iscc2_done
 
 echo.
-echo Notification Discord...
-powershell -NoProfile -ExecutionPolicy Bypass -File "notify_discord.ps1" -Version "%APPVER%" -NotesFile "%NOTES_FILE%"
-
-echo.
 REM ============================================================
 REM  Publication automatique sur GitHub Releases, en plus du site
 REM  officiel ci-dessus. La variante "site officiel" de l'installeur
@@ -232,6 +228,14 @@ goto :gh_done
 echo   -^> Output\NovaVoxNET_Setup_GitHub.exe introuvable, publication GitHub ignoree.
 
 :gh_done
+
+REM Notification Discord APRES la publication GitHub Releases (et non
+REM avant, comme precedemment) : la release doit deja etre en ligne
+REM (exe joint) au moment ou le message Discord annonce la nouvelle
+REM version, plutot que d'annoncer une sortie encore en cours de publication.
+echo.
+echo Notification Discord...
+powershell -NoProfile -ExecutionPolicy Bypass -File "notify_discord.ps1" -Version "%APPVER%" -NotesFile "%NOTES_FILE%"
 
 echo.
 echo ============================================================
