@@ -97,6 +97,7 @@ public static partial class GameLogDestinations
         ["pyro6"] = "Terminus",
 
         ["rs ext pyro6 leo"] = "Ruine Station",
+        ["rs ext pyro3 leo"] = "Orbituary",
 
         ["rs ext pyro2 l4"] = "Checkmate",
         ["rs ext pyro3 l1"] = "Station-service Starlight",
