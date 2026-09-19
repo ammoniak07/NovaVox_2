@@ -88,6 +88,10 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<HudOverrideRowVm> _hudOverrideRows = new();
     private readonly ObservableCollection<DestinationAliasRowVm> _destinationAliasRows = new();
 
+    private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
+    /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
+    private string? _selectedShipCheatSheetName;
+
     /// <summary>
     /// Mis à true uniquement par le "Quitter" du menu tray (voir
     /// App.QuitApplication) : sans ça, le bouton X de la fenêtre masque
@@ -175,6 +179,7 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
         InitializeGeminiChat();
         InitializeGameLog();
+        InitializeShipCheatSheets();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
         InitializeThemeCombo(); // peut corriger _state.Ai.UiTheme (voir la méthode) : avant LoadPanelsBackgroundImage, qui en dépend
@@ -2232,6 +2237,129 @@ public partial class MainWindow : Window
 
     private void HookDestinationAliasRow(DestinationAliasRowVm row) =>
         row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(DestinationAliasRowVm.CustomName)) row.IsDirty = true; };
+
+    // ------------------------------------------------------- Aide-mémoire vaisseaux
+
+    private void InitializeShipCheatSheets()
+    {
+        ShipCheatSheetPointsList.ItemsSource = _shipCheatSheetPointRows;
+        var initial = _state.Ai.ShipCheatSheets.ContainsKey(_state.Ai.ActiveShipCheatSheet)
+            ? _state.Ai.ActiveShipCheatSheet
+            : _state.Ai.ShipCheatSheets.Keys.FirstOrDefault();
+        RefreshShipCheatSheetCombo(initial);
+    }
+
+    /// <summary>
+    /// Reconstruit la liste des vaisseaux et sélectionne <paramref name="selectName"/>
+    /// s'il existe encore. Réaffecter ItemsSource puis SelectedItem peut
+    /// déclencher ShipCheatSheetCombo_SelectionChanged une ou deux fois
+    /// côté WPF (dont un passage intermédiaire à null lors du changement
+    /// d'ItemsSource) — plutôt que de laisser cet évènement piloter le
+    /// chargement (comme ProfileCombo_SelectionChanged le fait pour les
+    /// profils de commandes), le gestionnaire est détaché pendant la
+    /// reconstruction et ApplySelectedShipCheatSheet est appelé une seule
+    /// fois explicitement ensuite : un seul chargement/sauvegarde/
+    /// rafraîchissement d'overlay, jamais deux.
+    /// </summary>
+    private void RefreshShipCheatSheetCombo(string? selectName)
+    {
+        var names = _state.Ai.ShipCheatSheets.Keys.OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList();
+        ShipCheatSheetCombo.SelectionChanged -= ShipCheatSheetCombo_SelectionChanged;
+        ShipCheatSheetCombo.ItemsSource = names;
+        ShipCheatSheetCombo.SelectedItem = selectName is not null && names.Contains(selectName) ? selectName : names.FirstOrDefault();
+        ShipCheatSheetCombo.SelectionChanged += ShipCheatSheetCombo_SelectionChanged;
+        ApplySelectedShipCheatSheet();
+    }
+
+    private void ShipCheatSheetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplySelectedShipCheatSheet();
+
+    private void ApplySelectedShipCheatSheet()
+    {
+        _selectedShipCheatSheetName = ShipCheatSheetCombo.SelectedItem as string;
+        LoadShipCheatSheetPoints(_selectedShipCheatSheetName);
+        _state.Ai.ActiveShipCheatSheet = _selectedShipCheatSheetName ?? "";
+        SaveAiAndLog();
+        RefreshOverlayShipSheet();
+    }
+
+    private void LoadShipCheatSheetPoints(string? shipName)
+    {
+        _shipCheatSheetPointRows.Clear();
+        if (shipName is not null && _state.Ai.ShipCheatSheets.TryGetValue(shipName, out var points))
+        {
+            foreach (var (label, description) in points)
+                _shipCheatSheetPointRows.Add(new ShipCheatSheetPointRowVm { Label = label, Description = description });
+        }
+    }
+
+    private void AddShipCheatSheet_Click(object sender, RoutedEventArgs e)
+    {
+        var name = NewShipNameBox.Text.Trim();
+        if (name.Length == 0) return;
+        if (!_state.Ai.ShipCheatSheets.ContainsKey(name))
+            _state.Ai.ShipCheatSheets[name] = new Dictionary<string, string>();
+        NewShipNameBox.Text = "";
+        RefreshShipCheatSheetCombo(name);
+    }
+
+    private void DeleteShipCheatSheet_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedShipCheatSheetName is null) return;
+        _state.Ai.ShipCheatSheets.Remove(_selectedShipCheatSheetName);
+        if (_state.Ai.ActiveShipCheatSheet == _selectedShipCheatSheetName) _state.Ai.ActiveShipCheatSheet = "";
+        SaveAiAndLog();
+        RefreshShipCheatSheetCombo(null);
+    }
+
+    private void AddShipCheatSheetPoint_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedShipCheatSheetName is null)
+        {
+            AppendLog("Choisis ou ajoute d'abord un vaisseau (🚀 Vaisseaux) avant d'ajouter un repère.", "warning");
+            return;
+        }
+        _shipCheatSheetPointRows.Add(new ShipCheatSheetPointRowVm());
+    }
+
+    private void DeleteShipCheatSheetPoint_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ShipCheatSheetPointRowVm row) return;
+        _shipCheatSheetPointRows.Remove(row);
+        CommitShipCheatSheetPoints();
+    }
+
+    private void ShipCheatSheetRow_LostFocus(object sender, RoutedEventArgs e) => CommitShipCheatSheetPoints();
+
+    /// <summary>
+    /// Reconstruit entièrement AiConfig.ShipCheatSheets[vaisseau courant] à
+    /// partir de _shipCheatSheetPointRows plutôt que de mettre à jour une
+    /// seule entrée : un repère renommé (clé = son libellé) n'a pas d'ancien
+    /// identifiant stable à retrouver, donc c'est l'ensemble des lignes
+    /// affichées qui fait foi à chaque modification. Les lignes dont le
+    /// libellé est encore vide (repère tout juste ajouté, pas encore
+    /// nommé) sont ignorées plutôt que sauvegardées sous une clé vide.
+    /// </summary>
+    private void CommitShipCheatSheetPoints()
+    {
+        if (_selectedShipCheatSheetName is null) return;
+        var points = new Dictionary<string, string>();
+        foreach (var row in _shipCheatSheetPointRows)
+        {
+            var label = row.Label.Trim();
+            if (label.Length == 0) continue;
+            points[label] = row.Description.Trim();
+        }
+        _state.Ai.ShipCheatSheets[_selectedShipCheatSheetName] = points;
+        SaveAiAndLog();
+        RefreshOverlayShipSheet();
+    }
+
+    private void RefreshOverlayShipSheet()
+    {
+        var points = _selectedShipCheatSheetName is not null && _state.Ai.ShipCheatSheets.TryGetValue(_selectedShipCheatSheetName, out var p)
+            ? p : new Dictionary<string, string>();
+        _overlayWindow?.SetShipSheet(_selectedShipCheatSheetName, points);
+    }
 
     // Suffixe de fichier "backgroundN.*" par thème (ThemeManager.AvailableThemes) :
     // dark/military reprennent les fichiers déjà utilisés avant que le fond

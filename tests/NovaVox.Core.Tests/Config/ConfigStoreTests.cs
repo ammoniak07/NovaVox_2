@@ -217,6 +217,39 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_RoundTripsShipCheatSheets()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig { ActiveShipCheatSheet = "Perseus" };
+        config.ShipCheatSheets["Perseus"] = new Dictionary<string, string>
+        {
+            ["Tourelle dorsale"] = "Sur le dessus, accès par l'échelle centrale",
+            ["Tourelle ventrale"] = "Sous la coque, accès par la soute",
+        };
+        config.ShipCheatSheets["Constellation Taurus"] = new Dictionary<string, string>
+        {
+            ["Tribord"] = "Côté droit en regardant vers l'avant",
+        };
+        store.Save(config);
+
+        var reloaded = new AiConfigStore(_dir).Load();
+
+        Assert.Equal("Perseus", reloaded.ActiveShipCheatSheet);
+        Assert.Equal(2, reloaded.ShipCheatSheets.Count);
+        Assert.Equal("Sur le dessus, accès par l'échelle centrale", reloaded.ShipCheatSheets["Perseus"]["Tourelle dorsale"]);
+        Assert.Equal("Sous la coque, accès par la soute", reloaded.ShipCheatSheets["Perseus"]["Tourelle ventrale"]);
+        Assert.Equal("Côté droit en regardant vers l'avant", reloaded.ShipCheatSheets["Constellation Taurus"]["Tribord"]);
+    }
+
+    [Fact]
+    public void AiConfig_ShipCheatSheetsDefaultToEmpty()
+    {
+        var config = new AiConfigStore(_dir).Load();
+        Assert.Empty(config.ShipCheatSheets);
+        Assert.Equal("", config.ActiveShipCheatSheet);
+    }
+
+    [Fact]
     public void AiConfig_LoadMergesLegacyNameTemplateHudOverrides()
     {
         // Corrections HUD enregistrées avant le regroupement par gabarit

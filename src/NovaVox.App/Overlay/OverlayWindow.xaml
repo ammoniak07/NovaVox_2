@@ -129,7 +129,7 @@
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
-                <Grid x:Name="RowLastCmd">
+                <Grid x:Name="RowLastCmd" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -141,6 +141,33 @@
                     </StackPanel>
                     <CheckBox x:Name="LastCmdRowCheckbox" Grid.Column="1" Tag="lastCmd" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
+                              Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
+                </Grid>
+                <Grid x:Name="RowShipSheet">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🚀" Width="16" TextAlignment="Center" />
+                            <TextBlock x:Name="ShipSheetTitle" Text="Aucun vaisseau sélectionné" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="#DBE4EE" />
+                        </StackPanel>
+                        <!-- Liée directement à un Dictionary&lt;string,string&gt; (repère -> description,
+                             voir OverlayWindow.xaml.cs SetShipSheet) : {Binding Key}/{Binding Value}
+                             fonctionnent tels quels sur les KeyValuePair énumérés. -->
+                        <ItemsControl x:Name="ShipSheetPointsList" Margin="22,2,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,2,0,0" Foreground="#DBE4EE" TextWrapping="Wrap" MaxWidth="180">
+                                        <Run Text="{Binding Key, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" : " /><Run Text="{Binding Value, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    <CheckBox x:Name="ShipSheetRowCheckbox" Grid.Column="1" Tag="shipSheet" Style="{StaticResource OverlayRowCheckboxStyle}"
+                              VerticalAlignment="Top" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
             </StackPanel>

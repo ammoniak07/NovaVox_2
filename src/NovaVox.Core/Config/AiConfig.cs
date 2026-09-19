@@ -50,6 +50,10 @@ public sealed class AiConfig
     public string GeminiCustomContext { get; set; } = "";
     public int GeminiRequestCount { get; set; }
     public string GeminiRequestDay { get; set; } = "";
+    /// <summary>Aide-mémoire vaisseaux (Réglages > 🚀 Vaisseaux) : nom de vaisseau -> repère -> description (ex. "Tourelle dorsale" -> "sur le dessus, accès par l'échelle centrale"). Le vaisseau affiché dans l'overlay est désigné par ActiveShipCheatSheet.</summary>
+    public Dictionary<string, Dictionary<string, string>> ShipCheatSheets { get; set; } = new();
+    /// <summary>Nom du vaisseau (clé de ShipCheatSheets) actuellement affiché dans l'overlay — vide ou absent de ShipCheatSheets = rien affiché.</summary>
+    public string ActiveShipCheatSheet { get; set; } = "";
 }
 
 /// <summary>
@@ -148,6 +152,9 @@ public sealed class AiConfigStore
             config.GeminiCustomContext = GetString(data["gemini_custom_context"]);
             config.GeminiRequestCount = Math.Max(0, GetInt(data["gemini_request_count"]) ?? 0);
             config.GeminiRequestDay = GetString(data["gemini_request_day"]).Trim();
+
+            config.ShipCheatSheets = ToNestedStringDict(data["ship_cheat_sheets"] as JsonObject);
+            config.ActiveShipCheatSheet = GetString(data["active_ship_cheat_sheet"]).Trim();
         }
         catch
         {
@@ -188,6 +195,8 @@ public sealed class AiConfigStore
             ["gemini_custom_context"] = config.GeminiCustomContext,
             ["gemini_request_count"] = config.GeminiRequestCount,
             ["gemini_request_day"] = config.GeminiRequestDay,
+            ["ship_cheat_sheets"] = FromNestedStringDict(config.ShipCheatSheets),
+            ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }
@@ -206,6 +215,23 @@ public sealed class AiConfigStore
         var obj = new JsonObject();
         foreach (var (key, value) in dict)
             obj[key] = value;
+        return obj;
+    }
+
+    private static Dictionary<string, Dictionary<string, string>> ToNestedStringDict(JsonObject? obj)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>();
+        if (obj is null) return result;
+        foreach (var (key, value) in obj)
+            result[key] = ToStringDict(value as JsonObject);
+        return result;
+    }
+
+    private static JsonObject FromNestedStringDict(Dictionary<string, Dictionary<string, string>> dict)
+    {
+        var obj = new JsonObject();
+        foreach (var (key, value) in dict)
+            obj[key] = FromStringDict(value);
         return obj;
     }
 }

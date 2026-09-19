@@ -651,6 +651,52 @@
                             </StackPanel>
                         </TabItem>
 
+                        <TabItem x:Name="ShipCheatSheetsSettingsTab" Header="🚀 Vaisseaux">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Aide-mémoire vaisseaux" FontWeight="Bold" />
+                                    <TextBlock Text="Note tes propres repères (tourelles, côtés, accès...) pour un vaisseau — le vaisseau choisi ci-dessous est celui affiché dans l'overlay en jeu."
+                                               Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,12" />
+
+                                    <TextBlock Text="Vaisseau affiché dans l'overlay" Margin="0,0,0,4" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <ComboBox x:Name="ShipCheatSheetCombo" Width="220" SelectionChanged="ShipCheatSheetCombo_SelectionChanged" />
+                                        <Button Content="Supprimer ce vaisseau" Margin="6,0,0,0" Click="DeleteShipCheatSheet_Click" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBox x:Name="NewShipNameBox" Width="220" ToolTip="Nom du nouveau vaisseau (ex. Perseus)" />
+                                        <Button Content="+ Ajouter un vaisseau" Margin="6,0,0,0" Click="AddShipCheatSheet_Click" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="Repères" FontWeight="Bold" Margin="0,20,0,10" />
+                                    <ItemsControl x:Name="ShipCheatSheetPointsList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource PanelAltBrush}"
+                                                        CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Repère (ex. Tourelle dorsale, Tribord...)" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                                                        <TextBox Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus" Margin="0,2,0,6" />
+                                                        <TextBlock Text="Description" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                                                        <Grid Margin="0,2,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBox Grid.Column="0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                                                     LostFocus="ShipCheatSheetRow_LostFocus" Margin="0,0,8,0" />
+                                                            <Button Grid.Column="1" Content="Supprimer" Click="DeleteShipCheatSheetPoint_Click" />
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Content="+ Ajouter un repère" HorizontalAlignment="Left" Click="AddShipCheatSheetPoint_Click" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
                         <TabItem Header="⬡ NovaVox">
                             <StackPanel Margin="10">
                                 <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />

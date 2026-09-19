@@ -107,6 +107,11 @@ public partial class OverlayWindow : Window
         yield return PhraseValue;
         yield return ZoneLabel; yield return ZoneValue;
         yield return LastCmdValue;
+        yield return ShipSheetTitle;
+        // Les lignes de repères (ShipSheetPointsList) sont générées par
+        // DataTemplate à chaque SetShipSheet, pas des TextBlock nommés
+        // fixes : elles gardent leur couleur #DBE4EE codée en dur dans le
+        // gabarit plutôt que de suivre la couleur de texte choisie.
     }
 
     public void ApplyRowVisibility(Dictionary<string, bool> visibleRows)
@@ -117,6 +122,7 @@ public partial class OverlayWindow : Window
         RowPhrase.Visibility = RowVisibility(visibleRows, "phrase");
         RowZone.Visibility = RowVisibility(visibleRows, "zone");
         RowLastCmd.Visibility = RowVisibility(visibleRows, "lastCmd");
+        RowShipSheet.Visibility = RowVisibility(visibleRows, "shipSheet");
     }
 
     private static Visibility RowVisibility(Dictionary<string, bool> rows, string key) =>
@@ -130,6 +136,7 @@ public partial class OverlayWindow : Window
         yield return (RowPhrase, PhraseRowCheckbox, "phrase");
         yield return (RowZone, ZoneRowCheckbox, "zone");
         yield return (RowLastCmd, LastCmdRowCheckbox, "lastCmd");
+        yield return (RowShipSheet, ShipSheetRowCheckbox, "shipSheet");
     }
 
     /// <summary>
@@ -222,6 +229,19 @@ public partial class OverlayWindow : Window
     public void SetPhrase(string? text) => PhraseValue.Text = string.IsNullOrEmpty(text) ? "…" : text;
     public void SetZone(string? text) => ZoneValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
     public void SetLastCommand(string? text) => LastCmdValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
+
+    /// <summary>
+    /// Aide-mémoire vaisseau (Réglages > 🚀 Vaisseaux, AiConfig.ShipCheatSheets/
+    /// ActiveShipCheatSheet) : affiche/masque restent décidés comme les
+    /// autres lignes par ApplyRowVisibility/RefreshRowVisualsForEditMode
+    /// (config "shipSheet") — ce point ne fait que remplir le contenu, sans
+    /// jamais toucher à la visibilité de RowShipSheet.
+    /// </summary>
+    public void SetShipSheet(string? shipName, IReadOnlyDictionary<string, string> points)
+    {
+        ShipSheetTitle.Text = string.IsNullOrEmpty(shipName) ? "Aucun vaisseau sélectionné" : shipName;
+        ShipSheetPointsList.ItemsSource = points;
+    }
 
     public void UpdateClock() => TimeValue.Text = DateTime.Now.ToString("HH:mm:ss");
 

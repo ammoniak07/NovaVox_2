@@ -7,6 +7,7 @@ v0.0.6
 - Regroupement des deux notifications de lancement de groupe dans l'univers persistant ("Initié par ... Lancement du groupe...", "Lancement du groupe Initié par le chef du parti ...") : une seule correction de lecture par forme, au lieu d'une entrée par chef de groupe.
 - Ajout de "Orbituary" (rs ext pyro3 leo) au catalogue intégré de destinations.
 - Ajout d'un champ "Emplacement du Game.log" dans Réglages > 🛰 Game.log (avec bouton Parcourir…) : permet d'indiquer le chemin manuellement quand Star Citizen n'est pas installé dans un des emplacements standards détectés automatiquement.
+- Nouvel onglet Réglages > 🚀 Vaisseaux : aide-mémoire personnel par vaisseau (tourelles, tribord/babord, accès...), affichable directement dans l'overlay en jeu.
 v0.0.5
 ------
 - Regroupement des connexions/déconnexions au groupe dans le Game.log : une seule correction de lecture par type d'événement, au lieu d'une entrée par membre reconnecté.

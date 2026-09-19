@@ -6,7 +6,7 @@ namespace NovaVox.Core.Config;
 
 public sealed class OverlayConfig
 {
-    public static readonly string[] RowKeys = { "time", "listening", "mic", "phrase", "zone", "lastCmd" };
+    public static readonly string[] RowKeys = { "time", "listening", "mic", "phrase", "zone", "lastCmd", "shipSheet" };
 
     public const string DefaultBgColor = "#0a0e14";
     public const int DefaultBgOpacity = 72;
