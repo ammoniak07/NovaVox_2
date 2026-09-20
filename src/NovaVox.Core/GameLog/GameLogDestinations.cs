@@ -44,6 +44,7 @@ public static partial class GameLogDestinations
         ["loc rr s3 l1"] = "Wide Forest Station",
         ["loc rr s3 l3"] = "Modern Express Station",
         ["loc rr s3 l4"] = "Faint Glen Station",
+        ["loc rr s3 l5"] = "yellow core station",
         ["loc rr s4 l1"] = "Shallow Frontier Station",
         ["loc rr s4 l2"] = "Long Forest Station",
         ["loc rr s4 l4"] = "Crossroads Station",
@@ -54,9 +55,11 @@ public static partial class GameLogDestinations
         ["loc rs ext stan pyro jp1"] = "Pyro Gateway",
 
         ["ooc stanton"] = "l'étoile Stanton",
+        ["ooc stanton2 l2"] = "CRU L 2",
         ["ooc stanton2 l3"] = "CRU L3",
         ["ab collector gas stanton1"] = "Wikelo's Emporium - Dasi Station",
         ["ab collector gas stanton4"] = "Wikelo's Emporium - Kinga Station",
+        ["ab collector gas stanton5"] = "Wikelo emporium selo station",
         ["ab mine stanton3 med 005"] = "Base minière DYV-JKE",
         ["rs ext arc l001"] = "Lively Pathway Station",
 
