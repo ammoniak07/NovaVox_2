@@ -95,6 +95,38 @@ public class GameLogLineProcessorTests
     }
 
     [Fact]
+    public void HudNotification_AlternatingRepeatsWithinWindow_AreSuppressedThenResumeAfterGap()
+    {
+        // Vérifié en vrai Game.log : un flapping de connectivité fait alterner
+        // "CommLink Restauré"/"CommLink hors service" des centaines de fois en
+        // rafale — un dédoublonnage naïf sur le SEUL texte précédent ne suffit
+        // pas puisque les deux textes alternent (jamais deux fois d'affilée).
+        var processor = new GameLogLineProcessor();
+        string Notification(string text, int id, string ts) =>
+            $"<{ts}> [Notice] <SHUDEvent_OnNotification> Added notification \"{text}\" [{id}] to queue. New queue size: 1, MissionId: [x]";
+
+        var first = processor.ProcessLine(Notification("CommLink Restauré: ", 1, "2026-09-20T18:30:31.900Z"));
+        Assert.NotNull(first);
+
+        var secondText = processor.ProcessLine(Notification("CommLink hors service: ", 2, "2026-09-20T18:30:31.910Z"));
+        Assert.NotNull(secondText);
+
+        // Rafale : mêmes deux textes qui reviennent quasi instantanément -> supprimés.
+        for (var i = 0; i < 50; i++)
+        {
+            var restored = processor.ProcessLine(Notification("CommLink Restauré: ", 3 + i * 2, "2026-09-20T18:30:31.950Z"));
+            Assert.Null(restored);
+            var down = processor.ProcessLine(Notification("CommLink hors service: ", 4 + i * 2, "2026-09-20T18:30:31.950Z"));
+            Assert.Null(down);
+        }
+
+        // Un vrai calme revient (> fenêtre de 5s) : la prochaine occurrence s'annonce de nouveau normalement.
+        var later = processor.ProcessLine(Notification("CommLink hors service: ", 999, "2026-09-20T18:30:40.000Z"));
+        Assert.NotNull(later);
+        Assert.Equal("CommLink hors service:", later!.Text);
+    }
+
+    [Fact]
     public void PlayerNickname_DetectedOnlyWhenNotAlreadyKnown()
     {
         var processor = new GameLogLineProcessor();

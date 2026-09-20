@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace NovaVox.Core.GameLog;
@@ -19,13 +20,28 @@ public sealed partial class GameLogLineProcessor
     private const int HudNotificationMaxContinuationLines = 6;
 
     /// <summary>
+    /// Fenêtre anti-rafale pour les notifications HUD : vérifié en vrai
+    /// Game.log, un aller-retour de connectivité ("CommLink Restauré" /
+    /// "CommLink hors service") peut spammer des centaines de lignes
+    /// "Added notification" en alternance sur plus d'une minute (bug
+    /// réseau côté client, pas un vrai évènement à annoncer à chaque
+    /// occurrence). Une même annonce (texte identique) revenant dans cette
+    /// fenêtre depuis sa DERNIÈRE occurrence (pas la première) est
+    /// ignorée — donc silencieuse tant que le flapping continue plus vite
+    /// que cet intervalle, mais réarmée dès qu'un vrai calme revient (ex.
+    /// une reconnexion isolée, des minutes plus tard, s'annonce à nouveau
+    /// normalement).
+    /// </summary>
+    private static readonly TimeSpan HudNotificationRepeatSuppressWindow = TimeSpan.FromSeconds(5);
+
+    /// <summary>
     /// Candidat non vérifié pour le démarrage réel du saut quantique —
     /// désactivé par défaut, comme DEPARTURE_DETECTION_ENABLED côté
     /// Python, faute d'avoir pu confronter le pattern à un vrai log.
     /// </summary>
     public const bool DepartureDetectionEnabled = false;
 
-    [GeneratedRegex(@"^<([\d\-T:.Z]+)>")]
+    [GeneratedRegex(@"^<(?<ts>[\d\-T:.Z]+)>")]
     private static partial Regex TimestampRegex();
 
     [GeneratedRegex("<Quantum Drive Arrived")]
@@ -71,6 +87,7 @@ public sealed partial class GameLogLineProcessor
     private string? _lastStartLocation;
     private (string? Destination, string? ObstructionLabel)? _lastRouteSignature;
     private string? _pendingNotification;
+    private readonly Dictionary<string, DateTimeOffset> _lastHudNotificationSeenAt = new();
 
     /// <summary>Traite une ligne et retourne l'événement détecté, ou null si rien à signaler.</summary>
     public GameLogEvent? ProcessLine(string line)
@@ -86,7 +103,7 @@ public sealed partial class GameLogLineProcessor
             if (closeMatch.Success)
             {
                 var text = GameLogText.FixMojibake(closeMatch.Groups["text"].Value.Trim());
-                return new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = text };
+                return BuildHudNotificationEvent(text, line);
             }
             _pendingNotification = rawText;
             return null;
@@ -161,13 +178,51 @@ public sealed partial class GameLogLineProcessor
             _pendingNotification += "\n" + closeMatch.Groups["text"].Value;
             var text = GameLogText.FixMojibake(_pendingNotification!.Trim());
             _pendingNotification = null;
-            return new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = text };
+            return BuildHudNotificationEvent(text, line);
         }
 
         _pendingNotification += "\n" + continuation.TrimEnd('\n');
         if (_pendingNotification!.Count(c => c == '\n') > HudNotificationMaxContinuationLines)
             _pendingNotification = null; // motif de fermeture jamais apparu : on abandonne plutôt que d'accumuler indéfiniment.
         return null;
+    }
+
+    /// <summary>
+    /// Construit l'évènement hud_notification pour <paramref name="text"/>,
+    /// SAUF si ce même texte (déjà nettoyé) vient d'être annoncé il y a
+    /// moins de <see cref="HudNotificationRepeatSuppressWindow"/> — voir ce
+    /// champ pour le cas vérifié qui a motivé ce filtre (spam "CommLink
+    /// Restauré"/"CommLink hors service"). Le délai est mesuré sur
+    /// l'horodatage du Game.log lui-même (pas l'horloge de la machine) :
+    /// robuste même si plusieurs lignes en rafale sont lues d'un coup bien
+    /// après avoir été écrites (ex. démarrage de NovaVox après une
+    /// longue absence, gros retard de lecture).
+    /// </summary>
+    private GameLogEvent? BuildHudNotificationEvent(string text, string sourceLine)
+    {
+        var timestamp = ParseLineTimestamp(sourceLine);
+        if (timestamp is { } ts)
+        {
+            if (_lastHudNotificationSeenAt.TryGetValue(text, out var lastSeen)
+                && ts - lastSeen < HudNotificationRepeatSuppressWindow)
+            {
+                _lastHudNotificationSeenAt[text] = ts;
+                return null;
+            }
+            _lastHudNotificationSeenAt[text] = ts;
+        }
+        return new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = text };
+    }
+
+    private static DateTimeOffset? ParseLineTimestamp(string line)
+    {
+        var match = TimestampRegex().Match(line);
+        if (!match.Success) return null;
+        return DateTimeOffset.TryParse(
+            match.Groups["ts"].Value, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var ts)
+            ? ts
+            : null;
     }
 
     private GameLogEvent? ProcessRouteCalculated(Match routeCalculated)
