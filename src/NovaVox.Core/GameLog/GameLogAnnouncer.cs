@@ -158,6 +158,12 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^Lancement du groupe Initié par le chef du parti (?<name>.+)\.$")]
     private static partial Regex GroupLaunchInitiatedByLeaderRegex();
 
+    // Transfert d'aUEC à un autre joueur ("Vous avez envoyé Droz64: 2,000,000
+    // aUEC.") : le pseudo du destinataire ET le montant changent à chaque
+    // transfert — deux réservoirs {name}/{montant} plutôt qu'un seul.
+    [GeneratedRegex(@"^Vous avez envoyé (?<name>.+)\s*:\s*(?<montant>[\d,]+) aUEC\.?$")]
+    private static partial Regex AuecSentRegex();
+
     /// <summary>
     /// Motifs de texte HUD connus où une ou plusieurs parties variables (nom
     /// de joueur/pilote/ami/vaisseau, ou nom de mission/objectif) changent
@@ -198,6 +204,7 @@ public static partial class GameLogAnnouncer
         (GroupMemberDisconnectedRegex(), _ => "Groupe : {name} s'est déconnecté."),
         (GroupLaunchFollowPromptRegex(), _ => "Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?"),
         (GroupLaunchInitiatedByLeaderRegex(), _ => "Lancement du groupe Initié par le chef du parti {name}."),
+        (AuecSentRegex(), _ => "Vous avez envoyé {name}: {montant} aUEC"),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>

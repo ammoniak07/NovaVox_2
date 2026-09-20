@@ -213,6 +213,10 @@ public class GameLogAnnouncerTests
         "Lancement du groupe Initié par le chef du parti Spakhugar.",
         "Lancement du groupe Initié par le chef du parti Tinou214.",
         "Lancement du groupe Initié par le chef du parti {name}.")]
+    [InlineData(
+        "Vous avez envoyé Droz64: 2,000,000 aUEC",
+        "Vous avez envoyé Zeilos: 500 aUEC",
+        "Vous avez envoyé {name}: {montant} aUEC")]
     public void Build_HudNotification_GroupPrefix_CollapsesAcrossDifferentMembers(string firstText, string secondText, string expectedTemplateKey)
     {
         var config = NewConfig();
