@@ -59,7 +59,7 @@ public static partial class GameLogDestinations
         ["ooc stanton2 l3"] = "CRU L3",
         ["ab collector gas stanton1"] = "Wikelo's Emporium - Dasi Station",
         ["ab collector gas stanton4"] = "Wikelo's Emporium - Kinga Station",
-        ["ab collector gas stanton5"] = "Wikelo emporium selo station",
+        ["ab collector gas stanton2"] = "Wikelo emporium selo station",
         ["ab mine stanton3 med 005"] = "Base minière DYV-JKE",
         ["rs ext arc l001"] = "Lively Pathway Station",
 
