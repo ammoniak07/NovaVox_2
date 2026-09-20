@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.0.7
 ------
+- Ajout de "CRU L 2" (ooc stanton2 l2), "Yellow Core Station" (loc rr s3 l5) et "Wikelo's Emporium - Selo Station" (ab collector gas stanton2) au catalogue intégré de destinations.
 
 v0.0.6
 ------
