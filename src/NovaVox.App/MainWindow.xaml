@@ -672,11 +672,17 @@
                                     <ItemsControl x:Name="ShipCheatSheetPointsList">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource PanelAltBrush}"
+                                                <Border BorderThickness="1,1,1,1" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource PanelAltBrush}"
                                                         CornerRadius="6" Padding="10" Margin="0,0,0,8">
                                                     <StackPanel>
-                                                        <TextBlock Text="Repère (ex. Tourelle dorsale, Tribord...)" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
-                                                        <TextBox Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus" Margin="0,2,0,6" />
+                                                        <!-- Repère : traité comme le "titre" de la fiche (accent + gras) pour
+                                                             qu'il saute aux yeux face à la description juste en dessous —
+                                                             les deux étaient auparavant deux TextBox identiques avec juste
+                                                             une petite légende grise au-dessus, difficiles à distinguer d'un
+                                                             coup d'œil (retour utilisateur). -->
+                                                        <TextBlock Text="📍 REPÈRE (ex. Tourelle dorsale, Tribord...)" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold" />
+                                                        <TextBox Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus"
+                                                                 FontWeight="Bold" BorderBrush="{DynamicResource AccentBrush}" Margin="0,2,0,10" />
                                                         <TextBlock Text="Description" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
                                                         <Grid Margin="0,2,0,0">
                                                             <Grid.ColumnDefinitions>
@@ -684,7 +690,7 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <TextBox Grid.Column="0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                                                     LostFocus="ShipCheatSheetRow_LostFocus" Margin="0,0,8,0" />
+                                                                     LostFocus="ShipCheatSheetRow_LostFocus" Foreground="{DynamicResource MutedBrush}" Margin="0,0,8,0" />
                                                             <Button Grid.Column="1" Content="Supprimer" Click="DeleteShipCheatSheetPoint_Click" />
                                                         </Grid>
                                                     </StackPanel>
