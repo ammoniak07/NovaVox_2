@@ -157,12 +157,15 @@
                              OverlayWindow.xaml.cs SetShipSheet) : le libellé du repère
                              prend SA PROPRE couleur (réglable indépendamment par repère
                              dans Réglages > 🚀 Vaisseaux, HexColorToBrush défini dans
-                             App.xaml), la description reste en gris neutre. -->
+                             App.xaml), la description reste en gris neutre — sur sa
+                             PROPRE ligne (LineBreak) plutôt qu'à la suite sur la même
+                             ligne, plus lisible pour une description un peu longue dans
+                             la largeur étroite de l'overlay (MaxWidth). -->
                         <ItemsControl x:Name="ShipSheetPointsList" Margin="22,2,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Margin="0,2,0,0" Foreground="#DBE4EE" TextWrapping="Wrap" MaxWidth="180">
-                                        <Run Text="{Binding Label, Mode=OneWay}" FontWeight="SemiBold" Foreground="{Binding Color, Mode=OneWay, Converter={StaticResource HexColorToBrush}}" /><Run Text=" : " /><Run Text="{Binding Description, Mode=OneWay}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="#DBE4EE" TextWrapping="Wrap" MaxWidth="180">
+                                        <Run Text="{Binding Label, Mode=OneWay}" FontWeight="SemiBold" Foreground="{Binding Color, Mode=OneWay, Converter={StaticResource HexColorToBrush}}" /><LineBreak /><Run Text="{Binding Description, Mode=OneWay}" />
                                     </TextBlock>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
