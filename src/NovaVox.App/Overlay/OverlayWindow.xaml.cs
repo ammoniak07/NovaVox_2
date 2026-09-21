@@ -135,6 +135,28 @@ public partial class OverlayWindow : Window
     private static Visibility RowVisibility(Dictionary<string, bool> rows, string key) =>
         !rows.TryGetValue(key, out var visible) || visible ? Visibility.Visible : Visibility.Collapsed;
 
+    /// <summary>
+    /// Bascule l'affichage d'UNE ligne (ex. "shipSheet") sans passer par le
+    /// mode édition de l'overlay (voir RowVisibilityCheckbox_Changed) —
+    /// utilisée par la case à cocher dédiée de Réglages > 🚀 Vaisseaux, pour
+    /// afficher/masquer l'aide-mémoire vaisseaux dans l'overlay sans avoir
+    /// à déverrouiller/reverrouiller. Met à jour _visibleRows (source de
+    /// vérité en mémoire de cette fenêtre) et la case à cocher équivalente
+    /// du mode édition, si elle est actuellement visible, pour que les deux
+    /// entrées point restent cohérentes entre elles. La persistance disque
+    /// est laissée à l'appelant (voir MainWindow.ShipSheetOverlayVisibleCheckbox_Changed,
+    /// qui passe par AppState.SaveOverlay — même fichier overlay_config.json).
+    /// </summary>
+    public void SetRowVisible(string key, bool visible)
+    {
+        _visibleRows[key] = visible;
+        ApplyRowVisibility(_visibleRows);
+        RefreshRowVisualsForEditMode();
+    }
+
+    /// <summary>État actuel (en mémoire) d'une ligne — pour initialiser la case à cocher dédiée de Réglages > 🚀 Vaisseaux à l'ouverture.</summary>
+    public bool IsRowVisible(string key) => !_visibleRows.TryGetValue(key, out var visible) || visible;
+
     private IEnumerable<(Grid Row, CheckBox Checkbox, string Key)> RowEntries()
     {
         yield return (RowTime, TimeRowCheckbox, "time");

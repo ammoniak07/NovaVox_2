@@ -1329,6 +1329,7 @@ public partial class MainWindow : Window
             OverlayTextColorBox.Text = overlay.TextColor;
             OverlayTextColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(overlay.TextColor)!);
             OverlayTextOpacitySlider.Value = overlay.TextOpacity;
+            ShipSheetOverlayVisibleCheckbox.IsChecked = overlay.VisibleRows.GetValueOrDefault("shipSheet", true);
             SelectComboItemByTag(UiLanguageCombo, ai.UiLanguage);
             ShowSystemLogCheckbox.IsChecked = ai.ShowSystemLog;
             ApplyShowSystemLog(ai.ShowSystemLog);
@@ -2346,6 +2347,15 @@ public partial class MainWindow : Window
         if (_state.Ai.ActiveShipCheatSheet == _selectedShipCheatSheetName) _state.Ai.ActiveShipCheatSheet = "";
         SaveAiAndLog();
         RefreshShipCheatSheetCombo(null);
+    }
+
+    private void ShipSheetOverlayVisibleCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        var visible = ShipSheetOverlayVisibleCheckbox.IsChecked ?? true;
+        _state.Overlay.VisibleRows["shipSheet"] = visible;
+        SaveOverlayAndLog();
+        _overlayWindow?.SetRowVisible("shipSheet", visible);
     }
 
     private void AddShipCheatSheetPoint_Click(object sender, RoutedEventArgs e)

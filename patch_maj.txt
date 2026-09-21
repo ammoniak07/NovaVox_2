@@ -10,6 +10,7 @@ v0.0.7
 - Aide-mémoire vaisseaux : chaque repère a maintenant sa propre couleur, réglable indépendamment via une pastille à côté de son nom — la couleur choisie s'applique aussi bien dans les Réglages que dans l'overlay en jeu.
 - Correctif : la pastille de couleur d'un repère ne réagissait pas au clic (le sélecteur de couleur partagé était déclaré dans l'onglet NovaVox, invisible tant qu'on était sur l'onglet Vaisseaux).
 - Aide-mémoire vaisseaux : dans l'overlay en jeu, la description de chaque repère passe désormais automatiquement à la ligne sous son nom, au lieu de rester à la suite sur la même ligne.
+- Nouvelle case "Afficher dans l'overlay en jeu" (Réglages > 🚀 Vaisseaux) : affiche/masque l'aide-mémoire vaisseaux dans l'overlay directement, sans avoir à déverrouiller puis reverrouiller l'overlay comme pour les autres lignes.
 
 v0.0.6
 ------

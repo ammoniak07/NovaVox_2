@@ -668,6 +668,14 @@
                                         <Button Content="+ Ajouter un vaisseau" Margin="6,0,0,0" Click="AddShipCheatSheet_Click" />
                                     </StackPanel>
 
+                                    <!-- Bascule directement OverlayWindow.SetRowVisible ("shipSheet") : contrairement
+                                         aux autres lignes de l'overlay (masquables seulement en mode "déplacer",
+                                         voir RowVisibilityCheckbox_Changed dans OverlayWindow.xaml.cs), l'aide-mémoire
+                                         vaisseaux a sa propre case ICI, dans les Réglages, pour ne pas avoir à
+                                         déverrouiller/reverrouiller l'overlay juste pour l'afficher/la masquer. -->
+                                    <CheckBox x:Name="ShipSheetOverlayVisibleCheckbox" Content="Afficher dans l'overlay en jeu" Margin="0,10,0,0"
+                                              Checked="ShipSheetOverlayVisibleCheckbox_Changed" Unchecked="ShipSheetOverlayVisibleCheckbox_Changed" />
+
                                     <TextBlock Text="Repères" FontWeight="Bold" Margin="0,20,0,10" />
                                     <ItemsControl x:Name="ShipCheatSheetPointsList">
                                         <ItemsControl.ItemTemplate>
