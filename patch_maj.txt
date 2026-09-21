@@ -5,6 +5,7 @@ v0.0.7
 - Ajout de "CRU L 2" (ooc stanton2 l2), "Yellow Core Station" (loc rr s3 l5) et "Wikelo's Emporium - Selo Station" (ab collector gas stanton2) au catalogue intégré de destinations.
 - Regroupement de la notification HUD "Vous avez envoyé <joueur> : <montant> aUEC" : une seule correction de lecture (avec {name} et {montant}) au lieu d'une entrée par destinataire/montant.
 - Correctif : un flapping de connectivité (bug réseau côté client de Star Citizen) pouvait spammer "CommLink Restauré"/"CommLink hors service" des centaines de fois en quelques secondes dans le journal et à voix haute — ces répétitions rapprochées d'une même notification sont désormais filtrées.
+- Traduction (fr/en/nl/es/it/de) de l'onglet Réglages > 🔊 Sons en entier (modèle de reconnaissance vocale, micro, mode d'écoute, touche assignée, disposition clavier, voix de sortie) — première étape d'une traduction progressive du reste de l'interface (Gemini, Game.log, liste de commandes restent à traduire).
 
 v0.0.6
 ------

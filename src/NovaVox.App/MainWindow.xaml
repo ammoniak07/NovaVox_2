@@ -513,14 +513,14 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Button Content="Parcourir un dossier déjà téléchargé..." HorizontalAlignment="Left" Margin="0,8,0,0" Click="BrowseModel_Click" />
+                                <Button x:Name="BrowseModelButton" Content="Parcourir un dossier déjà téléchargé..." HorizontalAlignment="Left" Margin="0,8,0,0" Click="BrowseModel_Click" />
 
-                                <TextBlock Text="Micro" FontWeight="Bold" Margin="0,16,0,6" />
+                                <TextBlock x:Name="MicSectionLabelText" Text="Micro" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ComboBox x:Name="InputDeviceCombo" Margin="0,0,0,8" SelectionChanged="InputDeviceCombo_SelectionChanged" />
-                                <TextBlock Text="Amplification micro" />
+                                <TextBlock x:Name="MicGainLabelText" Text="Amplification micro" />
                                 <Slider x:Name="MicGainSlider" Minimum="0.1" Maximum="3.0" ValueChanged="MicGainSlider_ValueChanged" />
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <TextBlock Text="Seuil de sensibilité (couper le son sous ce niveau)" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="MicGateLabelText" Text="Seuil de sensibilité (couper le son sous ce niveau)" VerticalAlignment="Center" />
                                     <TextBlock x:Name="MicGateValueText" Text="Désactivé" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <!-- Mètre de niveau micro en direct : fond = piste, MicLevelFillBar = niveau
@@ -534,33 +534,33 @@
                                     <Border x:Name="MicGateMarkerLine" Background="{DynamicResource DangerBrush}" Width="2" HorizontalAlignment="Left" />
                                 </Grid>
                                 <Slider x:Name="MicGateSlider" Minimum="0" Maximum="4000" ValueChanged="MicGateSlider_ValueChanged" />
-                                <TextBlock Text="Lance l'écoute (ou ouvre simplement ces réglages), regarde la barre pendant que la vidéo/le bruit joue, puis pendant que tu parles normalement. Règle le curseur juste au-dessus du niveau du bruit de fond mais en-dessous du niveau de ta voix — tout ce qui reste sous le curseur sera ignoré par la reconnaissance."
+                                <TextBlock x:Name="MicGateHintText" Text="Lance l'écoute (ou ouvre simplement ces réglages), regarde la barre pendant que la vidéo/le bruit joue, puis pendant que tu parles normalement. Règle le curseur juste au-dessus du niveau du bruit de fond mais en-dessous du niveau de ta voix — tout ce qui reste sous le curseur sera ignoré par la reconnaissance."
                                            Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
 
-                                <TextBlock Text="Mode d'écoute" FontWeight="Bold" Margin="0,16,0,6" />
+                                <TextBlock x:Name="ListenModeLabelText" Text="Mode d'écoute" FontWeight="Bold" Margin="0,16,0,6" />
                                 <RadioButton x:Name="ListenAlwaysRadio" Content="Toujours active" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="always" />
                                 <RadioButton x:Name="ListenToggleRadio" Content="Touche bascule" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="toggle_key" Margin="0,4,0,0" />
                                 <RadioButton x:Name="ListenPttRadio" Content="Push-to-talk" GroupName="ListenMode" Checked="ListenMode_Checked" Tag="push_to_talk" Margin="0,4,0,0" />
-                                <TextBlock Text="Touche assignée" FontWeight="SemiBold" Margin="0,6,0,2" />
+                                <TextBlock x:Name="ListenHotkeyLabelText" Text="Touche assignée" FontWeight="SemiBold" Margin="0,6,0,2" />
                                 <TextBlock x:Name="ListenHotkeyValueText" Text="Non définie" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6" />
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="CaptureJoystickButton" Content="🕹 Bouton joystick" Click="CaptureJoystickButton_Click" Margin="0,0,6,0" />
-                                    <Button Content="Effacer" Click="ClearListenHotkey_Click" />
+                                    <Button x:Name="ClearListenHotkeyButton" Content="Effacer" Click="ClearListenHotkey_Click" />
                                 </StackPanel>
-                                <TextBlock Text="Ou saisis une combinaison clavier (ex : ctrl+f9) :" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="ListenHotkeyKeyboardHintText" Text="Ou saisis une combinaison clavier (ex : ctrl+f9) :" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
                                 <TextBox x:Name="ListenHotkeyBox" Margin="0,4,0,0" LostFocus="ListenHotkeyBox_LostFocus" />
 
-                                <TextBlock Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />
+                                <TextBlock x:Name="KbLayoutLabelText" Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ComboBox x:Name="KbLayoutCombo" SelectionChanged="KbLayoutCombo_SelectionChanged">
                                     <ComboBoxItem Content="AZERTY (France)" Tag="azerty_fr" />
                                     <ComboBoxItem Content="AZERTY (Belgique)" Tag="azerty_be" />
                                     <ComboBoxItem Content="QWERTY" Tag="qwerty" />
                                 </ComboBox>
 
-                                <TextBlock Text="Voix (sortie)" FontWeight="Bold" Margin="0,16,0,6" />
-                                <TextBlock Text="Périphérique de sortie" />
+                                <TextBlock x:Name="VoiceOutputSectionLabelText" Text="Voix (sortie)" FontWeight="Bold" Margin="0,16,0,6" />
+                                <TextBlock x:Name="OutputDeviceLabelText" Text="Périphérique de sortie" />
                                 <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
-                                <TextBlock Text="Volume de la voix" />
+                                <TextBlock x:Name="TtsVolumeLabelText" Text="Volume de la voix" />
                                 <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
                                 <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
                             </StackPanel>

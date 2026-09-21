@@ -2,15 +2,18 @@ namespace NovaVox.Core.Localization;
 
 /// <summary>
 /// Traductions de l'interface .NET/WPF — port partiel de gui/i18n.js (app.py
-/// Python), mêmes langues (fr/en/nl/es/it/de) et mêmes clés là où un
-/// contrôle WPF équivalent existe. Couverture actuelle : barre du haut,
-/// indicateur d'écoute (statut + bouton Engager/Couper), titre et onglets
-/// des Réglages, langue de l'interface, modèle vocal (Vosk), affichage du
-/// journal système, fenêtre de sélection de touche. Comme côté Python, le
-/// reste de l'interface (Gemini/Game.log détaillés, listes de commandes,
-/// messages du journal) reste en français pour l'instant — étendre Strings
-/// ci-dessous progressivement, sans casser ce qui existe déjà (une clé
-/// absente retombe silencieusement sur le français).
+/// Python), mêmes langues (fr/en/nl/es/it/de), avec des clés propres à
+/// l'édition .NET là où un contrôle WPF équivalent existe (l'édition .NET va
+/// plus loin que le Python sur cette partie, voir onglet 🔊 Sons ci-dessous).
+/// Couverture actuelle : barre du haut, indicateur d'écoute (statut + bouton
+/// Engager/Couper), titre et onglets des Réglages, langue de l'interface,
+/// onglet Réglages > 🔊 Sons en entier (modèle Vosk, micro, mode d'écoute,
+/// touche assignée, disposition clavier, voix de sortie), affichage du
+/// journal système, fenêtre de sélection de touche. Le reste de l'interface
+/// (onglets Gemini/Game.log détaillés, listes de commandes, messages du
+/// journal) reste en français pour l'instant — étendre Strings ci-dessous
+/// progressivement, sans casser ce qui existe déjà (une clé absente retombe
+/// silencieusement sur le français).
 /// </summary>
 public static class UiLocalization
 {
@@ -43,6 +46,29 @@ public static class UiLocalization
                 ["settings.showlog"] = "Afficher le journal système",
                 ["kb.cancel"] = "Annuler",
                 ["kb.confirm"] = "Valider",
+                ["settings.sons.noModelSelected"] = "Aucun modèle sélectionné",
+                ["settings.sons.browseFolder"] = "Parcourir un dossier déjà téléchargé...",
+                ["settings.sons.mic.label"] = "Micro",
+                ["settings.sons.mic.gain"] = "Amplification micro",
+                ["settings.sons.mic.gateThreshold"] = "Seuil de sensibilité (couper le son sous ce niveau)",
+                ["settings.sons.mic.gateDisabled"] = "Désactivé",
+                ["settings.sons.mic.gateHint"] = "Lance l'écoute (ou ouvre simplement ces réglages), regarde la barre pendant que la vidéo/le bruit joue, puis pendant que tu parles normalement. Règle le curseur juste au-dessus du niveau du bruit de fond mais en-dessous du niveau de ta voix — tout ce qui reste sous le curseur sera ignoré par la reconnaissance.",
+                ["settings.sons.listenMode.label"] = "Mode d'écoute",
+                ["settings.sons.listenMode.always"] = "Toujours active",
+                ["settings.sons.listenMode.toggle"] = "Touche bascule",
+                ["settings.sons.listenMode.ptt"] = "Push-to-talk",
+                ["settings.sons.hotkey.label"] = "Touche assignée",
+                ["settings.sons.hotkey.none"] = "Non définie",
+                ["settings.sons.hotkey.joystickButton"] = "🕹 Bouton joystick",
+                ["settings.sons.hotkey.joystickButtonFormat"] = "🕹 Bouton {0}",
+                ["settings.sons.hotkey.joystickCapturing"] = "⏳ Appuie sur le bouton... (annuler)",
+                ["settings.sons.hotkey.clear"] = "Effacer",
+                ["settings.sons.hotkey.keyboardHint"] = "Ou saisis une combinaison clavier (ex : ctrl+f9) :",
+                ["settings.sons.kbLayout.label"] = "Disposition clavier",
+                ["settings.sons.voice.label"] = "Voix (sortie)",
+                ["settings.sons.voice.outputDevice"] = "Périphérique de sortie",
+                ["settings.sons.voice.volume"] = "Volume de la voix",
+                ["settings.sons.voice.aec"] = "Annulation d'écho (expérimentale)",
             },
             ["en"] = new Dictionary<string, string>
             {
@@ -68,6 +94,29 @@ public static class UiLocalization
                 ["settings.showlog"] = "Show system log",
                 ["kb.cancel"] = "Cancel",
                 ["kb.confirm"] = "Confirm",
+                ["settings.sons.noModelSelected"] = "No model selected",
+                ["settings.sons.browseFolder"] = "Browse an already downloaded folder...",
+                ["settings.sons.mic.label"] = "Microphone",
+                ["settings.sons.mic.gain"] = "Microphone gain",
+                ["settings.sons.mic.gateThreshold"] = "Sensitivity threshold (mute below this level)",
+                ["settings.sons.mic.gateDisabled"] = "Disabled",
+                ["settings.sons.mic.gateHint"] = "Start listening (or just open these settings), watch the bar while the video/noise plays, then while you speak normally. Set the slider just above the background noise level but below your voice level — anything below the slider is ignored by recognition.",
+                ["settings.sons.listenMode.label"] = "Listening mode",
+                ["settings.sons.listenMode.always"] = "Always active",
+                ["settings.sons.listenMode.toggle"] = "Toggle key",
+                ["settings.sons.listenMode.ptt"] = "Push-to-talk",
+                ["settings.sons.hotkey.label"] = "Assigned key",
+                ["settings.sons.hotkey.none"] = "Not set",
+                ["settings.sons.hotkey.joystickButton"] = "🕹 Joystick button",
+                ["settings.sons.hotkey.joystickButtonFormat"] = "🕹 Button {0}",
+                ["settings.sons.hotkey.joystickCapturing"] = "⏳ Press the button... (cancel)",
+                ["settings.sons.hotkey.clear"] = "Clear",
+                ["settings.sons.hotkey.keyboardHint"] = "Or type a keyboard combination (e.g.: ctrl+f9):",
+                ["settings.sons.kbLayout.label"] = "Keyboard layout",
+                ["settings.sons.voice.label"] = "Voice (output)",
+                ["settings.sons.voice.outputDevice"] = "Output device",
+                ["settings.sons.voice.volume"] = "Voice volume",
+                ["settings.sons.voice.aec"] = "Echo cancellation (experimental)",
             },
             ["nl"] = new Dictionary<string, string>
             {
@@ -93,6 +142,29 @@ public static class UiLocalization
                 ["settings.showlog"] = "Systeemlogboek weergeven",
                 ["kb.cancel"] = "Annuleren",
                 ["kb.confirm"] = "Bevestigen",
+                ["settings.sons.noModelSelected"] = "Geen model geselecteerd",
+                ["settings.sons.browseFolder"] = "Een reeds gedownloade map doorbladeren...",
+                ["settings.sons.mic.label"] = "Microfoon",
+                ["settings.sons.mic.gain"] = "Microfoonversterking",
+                ["settings.sons.mic.gateThreshold"] = "Gevoeligheidsdrempel (dempen onder dit niveau)",
+                ["settings.sons.mic.gateDisabled"] = "Uitgeschakeld",
+                ["settings.sons.mic.gateHint"] = "Start het luisteren (of open gewoon deze instellingen), kijk naar de balk terwijl de video/het geluid speelt, en daarna terwijl je normaal spreekt. Zet de schuifregelaar net boven het niveau van achtergrondgeluid maar onder het niveau van je stem — alles onder de schuifregelaar wordt genegeerd door de herkenning.",
+                ["settings.sons.listenMode.label"] = "Luistermodus",
+                ["settings.sons.listenMode.always"] = "Altijd actief",
+                ["settings.sons.listenMode.toggle"] = "Wisseltoets",
+                ["settings.sons.listenMode.ptt"] = "Push-to-talk",
+                ["settings.sons.hotkey.label"] = "Toegewezen toets",
+                ["settings.sons.hotkey.none"] = "Niet ingesteld",
+                ["settings.sons.hotkey.joystickButton"] = "🕹 Joystickknop",
+                ["settings.sons.hotkey.joystickButtonFormat"] = "🕹 Knop {0}",
+                ["settings.sons.hotkey.joystickCapturing"] = "⏳ Druk op de knop... (annuleren)",
+                ["settings.sons.hotkey.clear"] = "Wissen",
+                ["settings.sons.hotkey.keyboardHint"] = "Of typ een toetsencombinatie (bijv.: ctrl+f9):",
+                ["settings.sons.kbLayout.label"] = "Toetsenbordindeling",
+                ["settings.sons.voice.label"] = "Stem (uitvoer)",
+                ["settings.sons.voice.outputDevice"] = "Uitvoerapparaat",
+                ["settings.sons.voice.volume"] = "Stemvolume",
+                ["settings.sons.voice.aec"] = "Echo-onderdrukking (experimenteel)",
             },
             ["es"] = new Dictionary<string, string>
             {
@@ -118,6 +190,29 @@ public static class UiLocalization
                 ["settings.showlog"] = "Mostrar el registro del sistema",
                 ["kb.cancel"] = "Cancelar",
                 ["kb.confirm"] = "Confirmar",
+                ["settings.sons.noModelSelected"] = "Ningún modelo seleccionado",
+                ["settings.sons.browseFolder"] = "Examinar una carpeta ya descargada...",
+                ["settings.sons.mic.label"] = "Micrófono",
+                ["settings.sons.mic.gain"] = "Amplificación del micrófono",
+                ["settings.sons.mic.gateThreshold"] = "Umbral de sensibilidad (silenciar por debajo de este nivel)",
+                ["settings.sons.mic.gateDisabled"] = "Desactivado",
+                ["settings.sons.mic.gateHint"] = "Inicia la escucha (o simplemente abre estos ajustes), observa la barra mientras suena el vídeo/ruido, y luego mientras hablas normalmente. Ajusta el control justo por encima del nivel de ruido de fondo pero por debajo del nivel de tu voz — todo lo que quede por debajo del control será ignorado por el reconocimiento.",
+                ["settings.sons.listenMode.label"] = "Modo de escucha",
+                ["settings.sons.listenMode.always"] = "Siempre activo",
+                ["settings.sons.listenMode.toggle"] = "Tecla de alternancia",
+                ["settings.sons.listenMode.ptt"] = "Push-to-talk",
+                ["settings.sons.hotkey.label"] = "Tecla asignada",
+                ["settings.sons.hotkey.none"] = "No definida",
+                ["settings.sons.hotkey.joystickButton"] = "🕹 Botón del joystick",
+                ["settings.sons.hotkey.joystickButtonFormat"] = "🕹 Botón {0}",
+                ["settings.sons.hotkey.joystickCapturing"] = "⏳ Pulsa el botón... (cancelar)",
+                ["settings.sons.hotkey.clear"] = "Borrar",
+                ["settings.sons.hotkey.keyboardHint"] = "O escribe una combinación de teclado (ej.: ctrl+f9):",
+                ["settings.sons.kbLayout.label"] = "Distribución del teclado",
+                ["settings.sons.voice.label"] = "Voz (salida)",
+                ["settings.sons.voice.outputDevice"] = "Dispositivo de salida",
+                ["settings.sons.voice.volume"] = "Volumen de la voz",
+                ["settings.sons.voice.aec"] = "Cancelación de eco (experimental)",
             },
             ["it"] = new Dictionary<string, string>
             {
@@ -143,6 +238,29 @@ public static class UiLocalization
                 ["settings.showlog"] = "Mostra il registro di sistema",
                 ["kb.cancel"] = "Annulla",
                 ["kb.confirm"] = "Conferma",
+                ["settings.sons.noModelSelected"] = "Nessun modello selezionato",
+                ["settings.sons.browseFolder"] = "Sfoglia una cartella già scaricata...",
+                ["settings.sons.mic.label"] = "Microfono",
+                ["settings.sons.mic.gain"] = "Amplificazione microfono",
+                ["settings.sons.mic.gateThreshold"] = "Soglia di sensibilità (silenzia sotto questo livello)",
+                ["settings.sons.mic.gateDisabled"] = "Disattivato",
+                ["settings.sons.mic.gateHint"] = "Avvia l'ascolto (o apri semplicemente queste impostazioni), osserva la barra mentre il video/rumore viene riprodotto, poi mentre parli normalmente. Imposta il cursore appena sopra il livello del rumore di fondo ma sotto il livello della tua voce — tutto ciò che resta sotto il cursore verrà ignorato dal riconoscimento.",
+                ["settings.sons.listenMode.label"] = "Modalità di ascolto",
+                ["settings.sons.listenMode.always"] = "Sempre attivo",
+                ["settings.sons.listenMode.toggle"] = "Tasto di attivazione",
+                ["settings.sons.listenMode.ptt"] = "Push-to-talk",
+                ["settings.sons.hotkey.label"] = "Tasto assegnato",
+                ["settings.sons.hotkey.none"] = "Non definito",
+                ["settings.sons.hotkey.joystickButton"] = "🕹 Pulsante joystick",
+                ["settings.sons.hotkey.joystickButtonFormat"] = "🕹 Pulsante {0}",
+                ["settings.sons.hotkey.joystickCapturing"] = "⏳ Premi il pulsante... (annulla)",
+                ["settings.sons.hotkey.clear"] = "Cancella",
+                ["settings.sons.hotkey.keyboardHint"] = "Oppure inserisci una combinazione di tasti (es.: ctrl+f9):",
+                ["settings.sons.kbLayout.label"] = "Layout tastiera",
+                ["settings.sons.voice.label"] = "Voce (uscita)",
+                ["settings.sons.voice.outputDevice"] = "Dispositivo di uscita",
+                ["settings.sons.voice.volume"] = "Volume della voce",
+                ["settings.sons.voice.aec"] = "Cancellazione dell'eco (sperimentale)",
             },
             ["de"] = new Dictionary<string, string>
             {
@@ -168,6 +286,29 @@ public static class UiLocalization
                 ["settings.showlog"] = "Systemprotokoll anzeigen",
                 ["kb.cancel"] = "Abbrechen",
                 ["kb.confirm"] = "Bestätigen",
+                ["settings.sons.noModelSelected"] = "Kein Modell ausgewählt",
+                ["settings.sons.browseFolder"] = "Bereits heruntergeladenen Ordner durchsuchen...",
+                ["settings.sons.mic.label"] = "Mikrofon",
+                ["settings.sons.mic.gain"] = "Mikrofonverstärkung",
+                ["settings.sons.mic.gateThreshold"] = "Empfindlichkeitsschwelle (unterhalb dieses Pegels stummschalten)",
+                ["settings.sons.mic.gateDisabled"] = "Deaktiviert",
+                ["settings.sons.mic.gateHint"] = "Starte das Zuhören (oder öffne einfach diese Einstellungen), beobachte die Leiste während das Video/Geräusch läuft, dann während du normal sprichst. Stelle den Regler knapp über dem Hintergrundgeräuschpegel, aber unter deinem Stimmpegel ein — alles unterhalb des Reglers wird von der Erkennung ignoriert.",
+                ["settings.sons.listenMode.label"] = "Zuhörmodus",
+                ["settings.sons.listenMode.always"] = "Immer aktiv",
+                ["settings.sons.listenMode.toggle"] = "Umschalttaste",
+                ["settings.sons.listenMode.ptt"] = "Push-to-talk",
+                ["settings.sons.hotkey.label"] = "Zugewiesene Taste",
+                ["settings.sons.hotkey.none"] = "Nicht festgelegt",
+                ["settings.sons.hotkey.joystickButton"] = "🕹 Joystick-Taste",
+                ["settings.sons.hotkey.joystickButtonFormat"] = "🕹 Taste {0}",
+                ["settings.sons.hotkey.joystickCapturing"] = "⏳ Drücke die Taste... (abbrechen)",
+                ["settings.sons.hotkey.clear"] = "Löschen",
+                ["settings.sons.hotkey.keyboardHint"] = "Oder gib eine Tastenkombination ein (z. B.: strg+f9):",
+                ["settings.sons.kbLayout.label"] = "Tastaturlayout",
+                ["settings.sons.voice.label"] = "Stimme (Ausgabe)",
+                ["settings.sons.voice.outputDevice"] = "Ausgabegerät",
+                ["settings.sons.voice.volume"] = "Stimmlautstärke",
+                ["settings.sons.voice.aec"] = "Echounterdrückung (experimentell)",
             },
         };
 

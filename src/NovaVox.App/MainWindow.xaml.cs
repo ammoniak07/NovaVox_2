@@ -1405,7 +1405,9 @@ public partial class MainWindow : Window
     {
         var pct = Math.Clamp(MicGateSlider.Value / MicGateMax, 0.0, 1.0);
         MicGateMarkerLine.Margin = new Thickness(MicLevelMeterTrack.ActualWidth * pct, 0, 0, 0);
-        MicGateValueText.Text = MicGateSlider.Value > 0 ? ((int)MicGateSlider.Value).ToString() : "Désactivé";
+        MicGateValueText.Text = MicGateSlider.Value > 0
+            ? ((int)MicGateSlider.Value).ToString()
+            : UiLocalization.T(_state.Ai.UiLanguage, "settings.sons.mic.gateDisabled");
     }
 
     /// <summary>
@@ -1458,10 +1460,13 @@ public partial class MainWindow : Window
 
     private void UpdateListenHotkeyDisplay()
     {
+        var lang = _state.Ai.UiLanguage;
         var hotkey = _state.Audio.ListenHotkey;
-        if (string.IsNullOrEmpty(hotkey)) { ListenHotkeyValueText.Text = "Non définie"; return; }
+        if (string.IsNullOrEmpty(hotkey)) { ListenHotkeyValueText.Text = UiLocalization.T(lang, "settings.sons.hotkey.none"); return; }
         var joyInfo = JoystickHotkeyCodec.Decode(hotkey);
-        ListenHotkeyValueText.Text = joyInfo is not null ? $"🕹 Bouton {joyInfo.Button}" : hotkey;
+        ListenHotkeyValueText.Text = joyInfo is not null
+            ? string.Format(UiLocalization.T(lang, "settings.sons.hotkey.joystickButtonFormat"), joyInfo.Button)
+            : hotkey;
     }
 
     private void ClearListenHotkey_Click(object sender, RoutedEventArgs e)
@@ -1487,7 +1492,7 @@ public partial class MainWindow : Window
         if (_voiceOrchestrator is null) return;
 
         _joystickCaptureCts = new CancellationTokenSource();
-        CaptureJoystickButton.Content = "⏳ Appuie sur le bouton... (annuler)";
+        CaptureJoystickButton.Content = UiLocalization.T(_state.Ai.UiLanguage, "settings.sons.hotkey.joystickCapturing");
         AppendLog("Appuie maintenant sur le bouton du joystick à assigner (15 secondes, ou clique à nouveau pour annuler)...", "info");
         try
         {
@@ -1526,7 +1531,7 @@ public partial class MainWindow : Window
         finally
         {
             _joystickCaptureCts = null;
-            CaptureJoystickButton.Content = "🕹 Bouton joystick";
+            CaptureJoystickButton.Content = UiLocalization.T(_state.Ai.UiLanguage, "settings.sons.hotkey.joystickButton");
         }
     }
 
@@ -1813,8 +1818,10 @@ public partial class MainWindow : Window
     /// Applique la traduction (UiLocalization) à tous les éléments d'interface
     /// couverts par la localisation .NET (voir UiLocalization pour la liste) :
     /// appelée à l'initialisation (OnLoaded) et à chaque changement de langue.
-    /// Ne touche jamais au texte des lignes de commandes ni au contenu des
-    /// panneaux Gemini/Game.log, non couverts pour l'instant.
+    /// Couvre désormais aussi l'onglet Réglages > 🔊 Sons en entier. Ne touche
+    /// toujours pas au texte des lignes de commandes ni au contenu des
+    /// panneaux Gemini/Game.log (onglets), ni aux messages du journal
+    /// système — non couverts pour l'instant, à étendre progressivement.
     /// </summary>
     private void ApplyUiTranslations()
     {
@@ -1838,6 +1845,31 @@ public partial class MainWindow : Window
 
         ListenToggleButton.Content = T(_voiceOrchestrator?.IsListening == true ? "engage.stop" : "engage.start");
         RefreshListenStatusText(); // relit _listenIndicatorState (pas l'état visuel de l'anneau) dans la nouvelle langue
+
+        // Onglet 🔊 Sons.
+        BrowseModelButton.Content = T("settings.sons.browseFolder");
+        ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath)
+            ? T("settings.sons.noModelSelected")
+            : _state.Audio.ModelPath;
+        MicSectionLabelText.Text = T("settings.sons.mic.label");
+        MicGainLabelText.Text = T("settings.sons.mic.gain");
+        MicGateLabelText.Text = T("settings.sons.mic.gateThreshold");
+        MicGateHintText.Text = T("settings.sons.mic.gateHint");
+        UpdateMicGateMarker(); // réévalue "Désactivé"/valeur numérique dans la nouvelle langue
+        ListenModeLabelText.Text = T("settings.sons.listenMode.label");
+        ListenAlwaysRadio.Content = T("settings.sons.listenMode.always");
+        ListenToggleRadio.Content = T("settings.sons.listenMode.toggle");
+        ListenPttRadio.Content = T("settings.sons.listenMode.ptt");
+        ListenHotkeyLabelText.Text = T("settings.sons.hotkey.label");
+        CaptureJoystickButton.Content = T("settings.sons.hotkey.joystickButton");
+        ClearListenHotkeyButton.Content = T("settings.sons.hotkey.clear");
+        ListenHotkeyKeyboardHintText.Text = T("settings.sons.hotkey.keyboardHint");
+        UpdateListenHotkeyDisplay(); // réévalue "Non définie"/touche dans la nouvelle langue
+        KbLayoutLabelText.Text = T("settings.sons.kbLayout.label");
+        VoiceOutputSectionLabelText.Text = T("settings.sons.voice.label");
+        OutputDeviceLabelText.Text = T("settings.sons.voice.outputDevice");
+        TtsVolumeLabelText.Text = T("settings.sons.voice.volume");
+        AecEnabledCheckbox.Content = T("settings.sons.voice.aec");
     }
 
     /// <summary>
@@ -1914,7 +1946,7 @@ public partial class MainWindow : Window
         });
 
         ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath)
-            ? "Aucun modèle sélectionné"
+            ? UiLocalization.T(_state.Ai.UiLanguage, "settings.sons.noModelSelected")
             : _state.Audio.ModelPath;
     }
 
@@ -2992,7 +3024,9 @@ public partial class MainWindow : Window
             _state.Audio.ModelPath = null;
             SaveAudioAndLog();
         }
-        ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath) ? "Aucun modèle sélectionné" : _state.Audio.ModelPath;
+        ModelPathText.Text = string.IsNullOrEmpty(_state.Audio.ModelPath)
+            ? UiLocalization.T(_state.Ai.UiLanguage, "settings.sons.noModelSelected")
+            : _state.Audio.ModelPath;
         AppendLog($"Modèle Vosk « {row.Label} » désinstallé.", "info");
     }
 
