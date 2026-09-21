@@ -8,6 +8,7 @@ v0.0.7
 - Traduction (fr/en/nl/es/it/de) de l'onglet Réglages > 🔊 Sons en entier (modèle de reconnaissance vocale, micro, mode d'écoute, touche assignée, disposition clavier, voix de sortie) — première étape d'une traduction progressive du reste de l'interface (Gemini, Game.log, liste de commandes restent à traduire).
 - Aide-mémoire vaisseaux (Réglages > 🚀 Vaisseaux) : le champ "Repère" de chaque fiche est désormais mis en valeur (accent + gras) pour bien le distinguer de la "Description" juste en dessous — les deux se ressemblaient trop pour les différencier d'un coup d'œil.
 - Aide-mémoire vaisseaux : chaque repère a maintenant sa propre couleur, réglable indépendamment via une pastille à côté de son nom — la couleur choisie s'applique aussi bien dans les Réglages que dans l'overlay en jeu.
+- Correctif : la pastille de couleur d'un repère ne réagissait pas au clic (le sélecteur de couleur partagé était déclaré dans l'onglet NovaVox, invisible tant qu'on était sur l'onglet Vaisseaux).
 
 v0.0.6
 ------
