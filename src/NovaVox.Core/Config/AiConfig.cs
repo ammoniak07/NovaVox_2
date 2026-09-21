@@ -52,6 +52,8 @@ public sealed class AiConfig
     public string GeminiRequestDay { get; set; } = "";
     /// <summary>Aide-mémoire vaisseaux (Réglages > 🚀 Vaisseaux) : nom de vaisseau -> repère -> description (ex. "Tourelle dorsale" -> "sur le dessus, accès par l'échelle centrale"). Le vaisseau affiché dans l'overlay est désigné par ActiveShipCheatSheet.</summary>
     public Dictionary<string, Dictionary<string, string>> ShipCheatSheets { get; set; } = new();
+    /// <summary>Couleur (hex, ex. "#2DD4FF") de chaque repère de ShipCheatSheets, indépendante d'un repère à l'autre — nom de vaisseau -> repère -> couleur. Une entrée absente (repère jamais recoloré, ou config antérieure à cette fonctionnalité) retombe sur ShipCheatSheetPointRowVm.DefaultColor côté UI/overlay.</summary>
+    public Dictionary<string, Dictionary<string, string>> ShipCheatSheetColors { get; set; } = new();
     /// <summary>Nom du vaisseau (clé de ShipCheatSheets) actuellement affiché dans l'overlay — vide ou absent de ShipCheatSheets = rien affiché.</summary>
     public string ActiveShipCheatSheet { get; set; } = "";
 }
@@ -154,6 +156,7 @@ public sealed class AiConfigStore
             config.GeminiRequestDay = GetString(data["gemini_request_day"]).Trim();
 
             config.ShipCheatSheets = ToNestedStringDict(data["ship_cheat_sheets"] as JsonObject);
+            config.ShipCheatSheetColors = ToNestedStringDict(data["ship_cheat_sheet_colors"] as JsonObject);
             config.ActiveShipCheatSheet = GetString(data["active_ship_cheat_sheet"]).Trim();
         }
         catch
@@ -196,6 +199,7 @@ public sealed class AiConfigStore
             ["gemini_request_count"] = config.GeminiRequestCount,
             ["gemini_request_day"] = config.GeminiRequestDay,
             ["ship_cheat_sheets"] = FromNestedStringDict(config.ShipCheatSheets),
+            ["ship_cheat_sheet_colors"] = FromNestedStringDict(config.ShipCheatSheetColors),
             ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));

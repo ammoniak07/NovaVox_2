@@ -1,6 +1,7 @@
 <Application x:Class="NovaVox.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:NovaVox.App.Converters"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <ResourceDictionary>
@@ -11,6 +12,10 @@
                 <ResourceDictionary Source="Resources/Theme.Dark.xaml" />
                 <ResourceDictionary Source="Resources/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Global (pas juste MainWindow.xaml) : réutilisé par
+                 OverlayWindow.xaml pour la couleur par repère de l'aide-
+                 mémoire vaisseaux, voir ShipCheatSheetPointRowVm.Color. -->
+            <converters:HexColorToBrushConverter x:Key="HexColorToBrush" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

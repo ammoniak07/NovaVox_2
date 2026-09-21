@@ -2319,8 +2319,13 @@ public partial class MainWindow : Window
         _shipCheatSheetPointRows.Clear();
         if (shipName is not null && _state.Ai.ShipCheatSheets.TryGetValue(shipName, out var points))
         {
+            _state.Ai.ShipCheatSheetColors.TryGetValue(shipName, out var colors);
             foreach (var (label, description) in points)
-                _shipCheatSheetPointRows.Add(new ShipCheatSheetPointRowVm { Label = label, Description = description });
+            {
+                var color = colors is not null && colors.TryGetValue(label, out var c) && c.Length > 0
+                    ? c : ShipCheatSheetPointRowVm.DefaultColor;
+                _shipCheatSheetPointRows.Add(new ShipCheatSheetPointRowVm { Label = label, Description = description, Color = color });
+            }
         }
     }
 
@@ -2375,13 +2380,16 @@ public partial class MainWindow : Window
     {
         if (_selectedShipCheatSheetName is null) return;
         var points = new Dictionary<string, string>();
+        var colors = new Dictionary<string, string>();
         foreach (var row in _shipCheatSheetPointRows)
         {
             var label = row.Label.Trim();
             if (label.Length == 0) continue;
             points[label] = row.Description.Trim();
+            colors[label] = row.Color;
         }
         _state.Ai.ShipCheatSheets[_selectedShipCheatSheetName] = points;
+        _state.Ai.ShipCheatSheetColors[_selectedShipCheatSheetName] = colors;
         SaveAiAndLog();
         RefreshOverlayShipSheet();
     }
@@ -2390,7 +2398,12 @@ public partial class MainWindow : Window
     {
         var points = _selectedShipCheatSheetName is not null && _state.Ai.ShipCheatSheets.TryGetValue(_selectedShipCheatSheetName, out var p)
             ? p : new Dictionary<string, string>();
-        _overlayWindow?.SetShipSheet(_selectedShipCheatSheetName, points);
+        _state.Ai.ShipCheatSheetColors.TryGetValue(_selectedShipCheatSheetName ?? "", out var colors);
+        var display = points.Select(kv => new ShipSheetPoint(
+            kv.Key, kv.Value,
+            colors is not null && colors.TryGetValue(kv.Key, out var c) && c.Length > 0 ? c : ShipCheatSheetPointRowVm.DefaultColor
+        )).ToList();
+        _overlayWindow?.SetShipSheet(_selectedShipCheatSheetName, display);
     }
 
     // Suffixe de fichier "backgroundN.*" par thème (ThemeManager.AvailableThemes) :
@@ -2748,10 +2761,17 @@ public partial class MainWindow : Window
 
     // --------------------------------------------- Sélecteur de couleur (overlay)
 
-    // "bg" ou "text" : quelle pastille a ouvert ColorPickerPopup, donc où
-    // renvoyer la couleur choisie. Évite de dupliquer tout le picker par
-    // cible (un seul Popup partagé, voir MainWindow.xaml).
+    // "bg", "text" ou "shiprow" : quelle pastille a ouvert ColorPickerPopup,
+    // donc où renvoyer la couleur choisie. Évite de dupliquer tout le
+    // picker par cible (un seul Popup partagé, voir MainWindow.xaml).
     private string? _colorPickerTarget;
+
+    // Uniquement pour _colorPickerTarget == "shiprow" : LA ligne de repère
+    // (parmi _shipCheatSheetPointRows) concernée par la sélection en cours
+    // — "bg"/"text" n'ont besoin que de la chaîne cible (un seul réglage
+    // global chacun), mais chaque repère est indépendant des autres, donc
+    // il faut retenir PRÉCISÉMENT lequel a ouvert le picker.
+    private ShipCheatSheetPointRowVm? _colorPickerTargetRow;
 
     // Coupe la boucle de rétroaction slider -> hex -> slider quand on pousse
     // une couleur dans les sliders par programme (preset cliqué, hex saisi).
@@ -2762,6 +2782,13 @@ public partial class MainWindow : Window
 
     private void OverlayTextColorSwatch_Click(object sender, RoutedEventArgs e) =>
         OpenColorPicker("text", OverlayTextColorSwatch, _state.Overlay.TextColor);
+
+    private void ShipCheatSheetPointColorSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ShipCheatSheetPointRowVm row } element) return;
+        _colorPickerTargetRow = row;
+        OpenColorPicker("shiprow", element, row.Color);
+    }
 
     private void OpenColorPicker(string target, UIElement placementTarget, string currentHex)
     {
@@ -2795,7 +2822,13 @@ public partial class MainWindow : Window
     private void ColorPickerHexBox_LostFocus(object sender, RoutedEventArgs e)
     {
         if (_colorPickerTarget is null) return;
-        var fallback = _colorPickerTarget == "bg" ? _state.Overlay.BgColor : _state.Overlay.TextColor;
+        var fallback = _colorPickerTarget switch
+        {
+            "bg" => _state.Overlay.BgColor,
+            "text" => _state.Overlay.TextColor,
+            "shiprow" => _colorPickerTargetRow?.Color ?? ShipCheatSheetPointRowVm.DefaultColor,
+            _ => ShipCheatSheetPointRowVm.DefaultColor,
+        };
         var hex = OverlayConfigStore.ValidateHexColor(ColorPickerHexBox.Text.Trim(), fallback);
         ApplyColorPickerHex(hex, updateSliders: true);
     }
@@ -2808,10 +2841,13 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Pousse une couleur choisie dans le picker (slider, preset ou hex
-    /// saisi) vers la pastille/case texte/état de la cible en cours
-    /// (Fond ou Texte), puis réutilise OverlayAppearance_Changed pour la
-    /// persistance et l'application live à l'overlay — même chemin que la
-    /// saisie hex manuelle d'avant.
+    /// saisi) vers la pastille/case texte/état de la cible en cours (Fond
+    /// de l'overlay, Texte de l'overlay, ou UN repère précis de l'aide-
+    /// mémoire vaisseaux), puis persiste/applique en direct — via
+    /// OverlayAppearance_Changed pour "bg"/"text" (comme avant), via
+    /// CommitShipCheatSheetPoints pour "shiprow" (sauvegarde
+    /// AiConfig.ShipCheatSheetColors + rafraîchit l'overlay immédiatement,
+    /// sans attendre un LostFocus sur un autre champ).
     /// </summary>
     private void ApplyColorPickerHex(string hex, bool updateSliders)
     {
@@ -2829,17 +2865,26 @@ public partial class MainWindow : Window
             _updatingColorPicker = false;
         }
 
-        if (_colorPickerTarget == "bg")
+        switch (_colorPickerTarget)
         {
-            OverlayBgColorBox.Text = hex;
-            OverlayBgColorSwatch.Background = new SolidColorBrush(color);
+            case "bg":
+                OverlayBgColorBox.Text = hex;
+                OverlayBgColorSwatch.Background = new SolidColorBrush(color);
+                OverlayAppearance_Changed(this, new RoutedEventArgs());
+                break;
+            case "text":
+                OverlayTextColorBox.Text = hex;
+                OverlayTextColorSwatch.Background = new SolidColorBrush(color);
+                OverlayAppearance_Changed(this, new RoutedEventArgs());
+                break;
+            case "shiprow":
+                if (_colorPickerTargetRow is not null)
+                {
+                    _colorPickerTargetRow.Color = hex; // pousse la pastille/le libellé en gras (bindings) vers la nouvelle couleur
+                    CommitShipCheatSheetPoints(); // persiste + met à jour l'overlay en jeu tout de suite
+                }
+                break;
         }
-        else
-        {
-            OverlayTextColorBox.Text = hex;
-            OverlayTextColorSwatch.Background = new SolidColorBrush(color);
-        }
-        OverlayAppearance_Changed(this, new RoutedEventArgs());
     }
 
     // ---------------------------------------------- Export/import config

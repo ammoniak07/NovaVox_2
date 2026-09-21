@@ -230,6 +230,14 @@ public class ConfigStoreTests : IDisposable
         {
             ["Tribord"] = "Côté droit en regardant vers l'avant",
         };
+        // Couleur réglée seulement pour "Tourelle dorsale" : "Tourelle
+        // ventrale" reste sans entrée, comme un repère jamais recoloré
+        // (voir AiConfig_ShipCheatSheetsDefaultToEmpty pour le cas d'une
+        // config antérieure à cette fonctionnalité).
+        config.ShipCheatSheetColors["Perseus"] = new Dictionary<string, string>
+        {
+            ["Tourelle dorsale"] = "#FF4D4D",
+        };
         store.Save(config);
 
         var reloaded = new AiConfigStore(_dir).Load();
@@ -239,6 +247,9 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal("Sur le dessus, accès par l'échelle centrale", reloaded.ShipCheatSheets["Perseus"]["Tourelle dorsale"]);
         Assert.Equal("Sous la coque, accès par la soute", reloaded.ShipCheatSheets["Perseus"]["Tourelle ventrale"]);
         Assert.Equal("Côté droit en regardant vers l'avant", reloaded.ShipCheatSheets["Constellation Taurus"]["Tribord"]);
+        Assert.Equal("#FF4D4D", reloaded.ShipCheatSheetColors["Perseus"]["Tourelle dorsale"]);
+        Assert.False(reloaded.ShipCheatSheetColors["Perseus"].ContainsKey("Tourelle ventrale"));
+        Assert.False(reloaded.ShipCheatSheetColors.ContainsKey("Constellation Taurus"));
     }
 
     [Fact]
@@ -246,6 +257,7 @@ public class ConfigStoreTests : IDisposable
     {
         var config = new AiConfigStore(_dir).Load();
         Assert.Empty(config.ShipCheatSheets);
+        Assert.Empty(config.ShipCheatSheetColors);
         Assert.Equal("", config.ActiveShipCheatSheet);
     }
 

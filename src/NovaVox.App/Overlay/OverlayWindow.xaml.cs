@@ -11,6 +11,9 @@ using NovaVox.Core.Config;
 
 namespace NovaVox.App.Overlay;
 
+/// <summary>Un repère de l'aide-mémoire vaisseaux prêt à afficher dans l'overlay — voir SetShipSheet, ShipCheatSheetPointRowVm côté Réglages.</summary>
+public readonly record struct ShipSheetPoint(string Label, string Description, string Color);
+
 /// <summary>
 /// Overlay affiché par-dessus Star Citizen (état du micro, dernière
 /// phrase reconnue, zone) — port de la fenêtre pywebview overlay.html +
@@ -110,8 +113,12 @@ public partial class OverlayWindow : Window
         yield return ShipSheetTitle;
         // Les lignes de repères (ShipSheetPointsList) sont générées par
         // DataTemplate à chaque SetShipSheet, pas des TextBlock nommés
-        // fixes : elles gardent leur couleur #DBE4EE codée en dur dans le
-        // gabarit plutôt que de suivre la couleur de texte choisie.
+        // fixes, donc pas dans cette énumération. Leur description garde la
+        // couleur neutre #DBE4EE codée en dur dans le gabarit (comme avant),
+        // mais le libellé du repère suit désormais SA PROPRE couleur
+        // (ShipSheetPoint.Color, réglable indépendamment par repère dans
+        // Réglages > 🚀 Vaisseaux) plutôt que la couleur de texte globale de
+        // l'overlay — comportement voulu, pas un oubli.
     }
 
     public void ApplyRowVisibility(Dictionary<string, bool> visibleRows)
@@ -237,7 +244,7 @@ public partial class OverlayWindow : Window
     /// (config "shipSheet") — ce point ne fait que remplir le contenu, sans
     /// jamais toucher à la visibilité de RowShipSheet.
     /// </summary>
-    public void SetShipSheet(string? shipName, IReadOnlyDictionary<string, string> points)
+    public void SetShipSheet(string? shipName, IReadOnlyList<ShipSheetPoint> points)
     {
         ShipSheetTitle.Text = string.IsNullOrEmpty(shipName) ? "Aucun vaisseau sélectionné" : shipName;
         ShipSheetPointsList.ItemsSource = points;

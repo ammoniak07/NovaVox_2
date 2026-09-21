@@ -153,14 +153,16 @@
                             <TextBlock Text="🚀" Width="16" TextAlignment="Center" />
                             <TextBlock x:Name="ShipSheetTitle" Text="Aucun vaisseau sélectionné" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="#DBE4EE" />
                         </StackPanel>
-                        <!-- Liée directement à un Dictionary&lt;string,string&gt; (repère -> description,
-                             voir OverlayWindow.xaml.cs SetShipSheet) : {Binding Key}/{Binding Value}
-                             fonctionnent tels quels sur les KeyValuePair énumérés. -->
+                        <!-- Liée à une IReadOnlyList&lt;ShipSheetPoint&gt; (voir
+                             OverlayWindow.xaml.cs SetShipSheet) : le libellé du repère
+                             prend SA PROPRE couleur (réglable indépendamment par repère
+                             dans Réglages > 🚀 Vaisseaux, HexColorToBrush défini dans
+                             App.xaml), la description reste en gris neutre. -->
                         <ItemsControl x:Name="ShipSheetPointsList" Margin="22,2,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Margin="0,2,0,0" Foreground="#DBE4EE" TextWrapping="Wrap" MaxWidth="180">
-                                        <Run Text="{Binding Key, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" : " /><Run Text="{Binding Value, Mode=OneWay}" />
+                                        <Run Text="{Binding Label, Mode=OneWay}" FontWeight="SemiBold" Foreground="{Binding Color, Mode=OneWay, Converter={StaticResource HexColorToBrush}}" /><Run Text=" : " /><Run Text="{Binding Description, Mode=OneWay}" />
                                     </TextBlock>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

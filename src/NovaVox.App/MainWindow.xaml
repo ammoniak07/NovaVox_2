@@ -681,8 +681,25 @@
                                                              une petite légende grise au-dessus, difficiles à distinguer d'un
                                                              coup d'œil (retour utilisateur). -->
                                                         <TextBlock Text="📍 REPÈRE (ex. Tourelle dorsale, Tribord...)" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold" />
-                                                        <TextBox Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus"
-                                                                 FontWeight="Bold" BorderBrush="{DynamicResource AccentBrush}" Margin="0,2,0,10" />
+                                                        <Grid Margin="0,2,0,10">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <!-- Le texte du repère reprend directement sa couleur choisie
+                                                                 (aperçu immédiat, même couleur que dans l'overlay) plutôt
+                                                                 que la teinte d'accent fixe utilisée avant. -->
+                                                            <TextBox Grid.Column="0" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus"
+                                                                     FontWeight="Bold" Foreground="{Binding Color, Converter={StaticResource HexColorToBrush}}"
+                                                                     BorderBrush="{DynamicResource AccentBrush}" Margin="0,0,8,0" />
+                                                            <!-- Pastille = couleur affichée pour CE repère (indépendante des
+                                                                 autres) à la fois ici et dans l'overlay en jeu — voir
+                                                                 ShipCheatSheetPointColorSwatch_Click/ApplyColorPickerHex. -->
+                                                            <Button Grid.Column="1" Width="30" Height="30" Style="{StaticResource ColorSwatchButtonStyle}"
+                                                                    Background="{Binding Color, Converter={StaticResource HexColorToBrush}}"
+                                                                    ToolTip="Couleur de ce repère (aussi affichée dans l'overlay en jeu)"
+                                                                    Click="ShipCheatSheetPointColorSwatch_Click" />
+                                                        </Grid>
                                                         <TextBlock Text="Description" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
                                                         <Grid Margin="0,2,0,0">
                                                             <Grid.ColumnDefinitions>
