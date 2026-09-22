@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource BaseWindowStyle}"
         Title="NovaVox"
-        Width="1000" Height="930">
+        Width="1000" Height="930"
+        SizeChanged="MainWindow_SizeChanged">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 

@@ -70,6 +70,13 @@ public partial class MainWindow : Window
     /// <summary>true tant que la configuration obligatoire du premier lancement (modèle Vosk + moteur Piper) n'est pas terminée — voir StartFirstLaunchSetupIfNeeded/MaybeCompleteFirstLaunchSetup.</summary>
     private bool _firstLaunchSetupActive;
 
+    /// <summary>
+    /// true quand les boutons Assistant/Vaisseaux/Game.log de la barre du
+    /// haut sont réduits à leur seule icône (fenêtre trop étroite pour
+    /// tout afficher) — voir UpdateHeaderButtonsCompactMode/SetHeaderButtonLabel.
+    /// </summary>
+    private bool _headerButtonsCompact;
+
     private readonly VoskModelInstaller _voskInstaller = new();
     private readonly PiperInstaller _piperInstaller = new();
     private readonly ObservableCollection<VoskModelRowVm> _voskModelRows = new();
@@ -1832,7 +1839,7 @@ public partial class MainWindow : Window
 
         TopbarSubtitleText.Text = T("topbar.subtitle");
         RefreshGeminiAssistantLabel();
-        GameLogHeaderButton.Content = T("topbar.gamelog");
+        SetHeaderButtonLabel(GameLogHeaderButton, T("topbar.gamelog"));
         SettingsButton.ToolTip = T("topbar.settings");
         ThemeCombo.ToolTip = T("topbar.theme");
         SettingsTitleText.Text = T("settings.title");
@@ -1887,9 +1894,47 @@ public partial class MainWindow : Window
     {
         var name = string.IsNullOrWhiteSpace(_state.Ai.GeminiName) ? AiConfig.DefaultGeminiName : _state.Ai.GeminiName;
         var label = UiLocalization.T(_state.Ai.UiLanguage, "topbar.gemini").Replace("Gemini", name);
-        GeminiHeaderButton.Content = label;
-        GeminiChatTitleText.Text = label;
+        SetHeaderButtonLabel(GeminiHeaderButton, label);
+        GeminiChatTitleText.Text = label; // titre de la fenêtre de discussion : toujours complet, jamais réduit
     }
+
+    /// <summary>
+    /// Applique fullLabel (ex. "🌟 Assistant Gemini") à un bouton de la
+    /// barre du haut, réduit à son seul emoji (avant le premier espace) si
+    /// _headerButtonsCompact — voir UpdateHeaderButtonsCompactMode. Le
+    /// texte complet reste toujours disponible via l'infobulle.
+    /// </summary>
+    private void SetHeaderButtonLabel(Button button, string fullLabel)
+    {
+        button.ToolTip = fullLabel;
+        button.Content = _headerButtonsCompact ? fullLabel.Split(' ')[0] : fullLabel;
+    }
+
+    /// <summary>
+    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log de la barre
+    /// du haut à leur seule icône quand la fenêtre est trop étroite pour
+    /// tout afficher — sinon ces boutons (largeur "Auto" dans leur Grid,
+    /// donc jamais compressés) recouvraient le logo/titre (colonne "*",
+    /// elle compressible en premier) au lieu de leur laisser de la place
+    /// (retour utilisateur, capture d'écran à l'appui). Deux seuils
+    /// différents pour compacter/étendre (hystérésis) : sans ça, un
+    /// redimensionnement qui s'arrête pile sur la limite ferait osciller
+    /// les boutons en boucle entre les deux états.
+    /// </summary>
+    private void UpdateHeaderButtonsCompactMode(double windowWidth)
+    {
+        const double CompactBelowWidth = 900;
+        const double ExpandAboveWidth = 1000;
+        var shouldBeCompact = _headerButtonsCompact ? windowWidth < ExpandAboveWidth : windowWidth < CompactBelowWidth;
+        if (shouldBeCompact == _headerButtonsCompact) return;
+        _headerButtonsCompact = shouldBeCompact;
+
+        RefreshGeminiAssistantLabel();
+        SetHeaderButtonLabel(GameLogHeaderButton, UiLocalization.T(_state.Ai.UiLanguage, "topbar.gamelog"));
+        SetHeaderButtonLabel(ShipCheatSheetHeaderButton, "🚀 Vaisseaux");
+    }
+
+    private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeaderButtonsCompactMode(e.NewSize.Width);
 
     private void AutolaunchCheckbox_Changed(object sender, RoutedEventArgs e)
     {
