@@ -4,7 +4,8 @@ v0.0.8
 ------
 - Nouveau curseur "Taille" (Réglages > 🖥 Overlay > Apparence) : ajuste la taille de l'overlay entier — texte, icônes et espacements s'agrandissent ou rétrécissent ensemble, proportionnellement.
 - Correctif critique : NovaVox ne démarrait plus du tout (plantage immédiat au lancement) à cause du curseur "Taille" ci-dessus.
-- Nouvel onglet Réglages > 🖥 Overlay : regroupe tous les réglages de l'overlay en jeu (activer, déplacer, couleurs, opacité, taille), auparavant éparpillés dans l'onglet NovaVox avec les réglages généraux de l'appli. Positionné juste après l'onglet Vaisseaux, à côté d'IA Gemini et Game.log.
+- Nouvel onglet Réglages > 🖥 Overlay : regroupe tous les réglages de l'overlay en jeu (activer, déplacer, couleurs, opacité, taille), auparavant éparpillés dans l'onglet NovaVox avec les réglages généraux de l'appli.
+- L'aide-mémoire vaisseaux quitte les Réglages : nouveau bouton "🚀 Vaisseaux" dans la barre du haut, à côté de "Assistant Gemini" et "Game.log" — s'ouvre directement en jeu comme ces deux-là, plus besoin de passer par les Réglages.
 
 v0.0.7
 ------

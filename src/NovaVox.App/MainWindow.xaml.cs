@@ -2649,6 +2649,10 @@ public partial class MainWindow : Window
 
     private void CloseGameLog_Click(object sender, RoutedEventArgs e) => GameLogOverlay.Visibility = Visibility.Collapsed;
 
+    private void OpenShipCheatSheet_Click(object sender, RoutedEventArgs e) => ShipCheatSheetOverlay.Visibility = Visibility.Visible;
+
+    private void CloseShipCheatSheet_Click(object sender, RoutedEventArgs e) => ShipCheatSheetOverlay.Visibility = Visibility.Collapsed;
+
     private void GameLogSearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         GameLogSearchPlaceholder.Visibility = GameLogSearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;

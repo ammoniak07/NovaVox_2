@@ -112,6 +112,7 @@
                             <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
                         </ComboBox>
                         <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Margin="8,0,0,0" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
+                        <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
                         <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />
@@ -651,88 +652,13 @@
                             </StackPanel>
                         </TabItem>
 
-                        <TabItem x:Name="ShipCheatSheetsSettingsTab" Header="🚀 Vaisseaux">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <StackPanel Margin="10">
-                                    <TextBlock Text="Aide-mémoire vaisseaux" FontWeight="Bold" />
-                                    <TextBlock Text="Note tes propres repères (tourelles, côtés, accès...) pour un vaisseau — le vaisseau choisi ci-dessous est celui affiché dans l'overlay en jeu."
-                                               Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,12" />
-
-                                    <TextBlock Text="Vaisseau affiché dans l'overlay" Margin="0,0,0,4" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <ComboBox x:Name="ShipCheatSheetCombo" Width="220" SelectionChanged="ShipCheatSheetCombo_SelectionChanged" />
-                                        <Button Content="Supprimer ce vaisseau" Margin="6,0,0,0" Click="DeleteShipCheatSheet_Click" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                        <TextBox x:Name="NewShipNameBox" Width="220" ToolTip="Nom du nouveau vaisseau (ex. Perseus)" />
-                                        <Button Content="+ Ajouter un vaisseau" Margin="6,0,0,0" Click="AddShipCheatSheet_Click" />
-                                    </StackPanel>
-
-                                    <!-- Bascule directement OverlayWindow.SetRowVisible ("shipSheet") : contrairement
-                                         aux autres lignes de l'overlay (masquables seulement en mode "déplacer",
-                                         voir RowVisibilityCheckbox_Changed dans OverlayWindow.xaml.cs), l'aide-mémoire
-                                         vaisseaux a sa propre case ICI, dans les Réglages, pour ne pas avoir à
-                                         déverrouiller/reverrouiller l'overlay juste pour l'afficher/la masquer. -->
-                                    <CheckBox x:Name="ShipSheetOverlayVisibleCheckbox" Content="Afficher dans l'overlay en jeu" Margin="0,10,0,0"
-                                              Checked="ShipSheetOverlayVisibleCheckbox_Changed" Unchecked="ShipSheetOverlayVisibleCheckbox_Changed" />
-
-                                    <TextBlock Text="Repères" FontWeight="Bold" Margin="0,20,0,10" />
-                                    <ItemsControl x:Name="ShipCheatSheetPointsList">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border BorderThickness="1,1,1,1" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource PanelAltBrush}"
-                                                        CornerRadius="6" Padding="10" Margin="0,0,0,8">
-                                                    <StackPanel>
-                                                        <!-- Repère : traité comme le "titre" de la fiche (accent + gras) pour
-                                                             qu'il saute aux yeux face à la description juste en dessous —
-                                                             les deux étaient auparavant deux TextBox identiques avec juste
-                                                             une petite légende grise au-dessus, difficiles à distinguer d'un
-                                                             coup d'œil (retour utilisateur). -->
-                                                        <TextBlock Text="📍 REPÈRE (ex. Tourelle dorsale, Tribord...)" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold" />
-                                                        <Grid Margin="0,2,0,10">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" />
-                                                                <ColumnDefinition Width="Auto" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <!-- Le texte du repère reprend directement sa couleur choisie
-                                                                 (aperçu immédiat, même couleur que dans l'overlay) plutôt
-                                                                 que la teinte d'accent fixe utilisée avant. -->
-                                                            <TextBox Grid.Column="0" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus"
-                                                                     FontWeight="Bold" Foreground="{Binding Color, Converter={StaticResource HexColorToBrush}}"
-                                                                     BorderBrush="{DynamicResource AccentBrush}" Margin="0,0,8,0" />
-                                                            <!-- Pastille = couleur affichée pour CE repère (indépendante des
-                                                                 autres) à la fois ici et dans l'overlay en jeu — voir
-                                                                 ShipCheatSheetPointColorSwatch_Click/ApplyColorPickerHex. -->
-                                                            <Button Grid.Column="1" Width="30" Height="30" Style="{StaticResource ColorSwatchButtonStyle}"
-                                                                    Background="{Binding Color, Converter={StaticResource HexColorToBrush}}"
-                                                                    ToolTip="Couleur de ce repère (aussi affichée dans l'overlay en jeu)"
-                                                                    Click="ShipCheatSheetPointColorSwatch_Click" />
-                                                        </Grid>
-                                                        <TextBlock Text="Description" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
-                                                        <Grid Margin="0,2,0,0">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" />
-                                                                <ColumnDefinition Width="Auto" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBox Grid.Column="0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                                                     LostFocus="ShipCheatSheetRow_LostFocus" Foreground="{DynamicResource MutedBrush}" Margin="0,0,8,0" />
-                                                            <Button Grid.Column="1" Content="Supprimer" Click="DeleteShipCheatSheetPoint_Click" />
-                                                        </Grid>
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Button Content="+ Ajouter un repère" HorizontalAlignment="Left" Click="AddShipCheatSheetPoint_Click" />
-                                </StackPanel>
-                            </ScrollViewer>
-                        </TabItem>
-
                         <!-- Toutes les options de l'overlay en jeu regroupées ici (avant :
                              éparpillées dans l'onglet NovaVox, avec les réglages généraux de
-                             l'appli) — juste après Vaisseaux (dont l'aide-mémoire s'affiche
-                             justement DANS cet overlay), comme Gemini/Game.log qui alimentent
-                             eux aussi son contenu. -->
+                             l'appli). L'aide-mémoire vaisseaux (dont le contenu s'affiche
+                             justement DANS cet overlay) a, lui, son propre recouvrement
+                             ShipCheatSheetOverlay lancé depuis la barre du haut — voir
+                             OpenShipCheatSheet_Click — comme Gemini/Game.log, pas un onglet
+                             de Réglages. -->
                         <TabItem x:Name="OverlaySettingsTab" Header="🖥 Overlay">
                             <StackPanel Margin="10">
                                 <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
@@ -1158,6 +1084,106 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Recouvrement "Aide-mémoire vaisseaux" — fenêtre d'UTILISATION, distincte des réglages
+             (ouvert depuis la barre du haut, comme Gemini/Game.log, plutôt qu'un onglet de
+             Réglages : c'est du contenu à consulter/éditer pendant le jeu, pas un simple bouton
+             marche/arrêt — voir OpenShipCheatSheet_Click/CloseShipCheatSheet_Click). -->
+        <Border x:Name="ShipCheatSheetOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="480" MaxHeight="780" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="16,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="🚀 AIDE-MÉMOIRE VAISSEAUX" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseShipCheatSheet_Click" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1" Text="Note tes propres repères (tourelles, côtés, accès...) pour un vaisseau — le vaisseau choisi ci-dessous est celui affiché dans l'overlay en jeu."
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
+
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="Vaisseau affiché dans l'overlay" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox x:Name="ShipCheatSheetCombo" Width="220" SelectionChanged="ShipCheatSheetCombo_SelectionChanged" />
+                                <Button Content="Supprimer ce vaisseau" Margin="6,0,0,0" Click="DeleteShipCheatSheet_Click" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBox x:Name="NewShipNameBox" Width="220" ToolTip="Nom du nouveau vaisseau (ex. Perseus)" />
+                                <Button Content="+ Ajouter un vaisseau" Margin="6,0,0,0" Click="AddShipCheatSheet_Click" />
+                            </StackPanel>
+
+                            <!-- Bascule directement OverlayWindow.SetRowVisible ("shipSheet") : contrairement
+                                 aux autres lignes de l'overlay (masquables seulement en mode "déplacer",
+                                 voir RowVisibilityCheckbox_Changed dans OverlayWindow.xaml.cs), l'aide-mémoire
+                                 vaisseaux a sa propre case ICI pour ne pas avoir à déverrouiller/reverrouiller
+                                 l'overlay juste pour l'afficher/la masquer. -->
+                            <CheckBox x:Name="ShipSheetOverlayVisibleCheckbox" Content="Afficher dans l'overlay en jeu" Margin="0,10,0,0"
+                                      Checked="ShipSheetOverlayVisibleCheckbox_Changed" Unchecked="ShipSheetOverlayVisibleCheckbox_Changed" />
+
+                            <TextBlock Text="Repères" FontWeight="Bold" Margin="0,20,0,10" />
+                            <ItemsControl x:Name="ShipCheatSheetPointsList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderThickness="1,1,1,1" BorderBrush="{DynamicResource BorderBrush}" Background="{DynamicResource PanelAltBrush}"
+                                                CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <!-- Repère : traité comme le "titre" de la fiche (accent + gras) pour
+                                                     qu'il saute aux yeux face à la description juste en dessous —
+                                                     les deux étaient auparavant deux TextBox identiques avec juste
+                                                     une petite légende grise au-dessus, difficiles à distinguer d'un
+                                                     coup d'œil (retour utilisateur). -->
+                                                <TextBlock Text="📍 REPÈRE (ex. Tourelle dorsale, Tribord...)" Foreground="{DynamicResource AccentBrush}" FontSize="10" FontWeight="Bold" />
+                                                <Grid Margin="0,2,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <!-- Le texte du repère reprend directement sa couleur choisie
+                                                         (aperçu immédiat, même couleur que dans l'overlay) plutôt
+                                                         que la teinte d'accent fixe utilisée avant. -->
+                                                    <TextBox Grid.Column="0" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" LostFocus="ShipCheatSheetRow_LostFocus"
+                                                             FontWeight="Bold" Foreground="{Binding Color, Converter={StaticResource HexColorToBrush}}"
+                                                             BorderBrush="{DynamicResource AccentBrush}" Margin="0,0,8,0" />
+                                                    <!-- Pastille = couleur affichée pour CE repère (indépendante des
+                                                         autres) à la fois ici et dans l'overlay en jeu — voir
+                                                         ShipCheatSheetPointColorSwatch_Click/ApplyColorPickerHex. -->
+                                                    <Button Grid.Column="1" Width="30" Height="30" Style="{StaticResource ColorSwatchButtonStyle}"
+                                                            Background="{Binding Color, Converter={StaticResource HexColorToBrush}}"
+                                                            ToolTip="Couleur de ce repère (aussi affichée dans l'overlay en jeu)"
+                                                            Click="ShipCheatSheetPointColorSwatch_Click" />
+                                                </Grid>
+                                                <TextBlock Text="Description" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                                                <Grid Margin="0,2,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                                             LostFocus="ShipCheatSheetRow_LostFocus" Foreground="{DynamicResource MutedBrush}" Margin="0,0,8,0" />
+                                                    <Button Grid.Column="1" Content="Supprimer" Click="DeleteShipCheatSheetPoint_Click" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+ Ajouter un repère" HorizontalAlignment="Left" Click="AddShipCheatSheetPoint_Click" />
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
