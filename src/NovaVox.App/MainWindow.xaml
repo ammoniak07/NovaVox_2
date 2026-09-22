@@ -728,13 +728,18 @@
                             </ScrollViewer>
                         </TabItem>
 
-                        <TabItem Header="⬡ NovaVox">
+                        <!-- Toutes les options de l'overlay en jeu regroupées ici (avant :
+                             éparpillées dans l'onglet NovaVox, avec les réglages généraux de
+                             l'appli) — juste après Vaisseaux (dont l'aide-mémoire s'affiche
+                             justement DANS cet overlay), comme Gemini/Game.log qui alimentent
+                             eux aussi son contenu. -->
+                        <TabItem x:Name="OverlaySettingsTab" Header="🖥 Overlay">
                             <StackPanel Margin="10">
                                 <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
                                 <CheckBox x:Name="OverlayEnabledCheckbox" Content="Activer l'overlay" Checked="OverlayEnabledCheckbox_Changed" Unchecked="OverlayEnabledCheckbox_Changed" />
                                 <Button x:Name="ToggleOverlayEditButton" Content="Déplacer l'overlay" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOverlayEditButton_Click" />
 
-                                <TextBlock Text="Apparence" Margin="0,16,0,4" />
+                                <TextBlock Text="Apparence" FontWeight="Bold" Margin="0,16,0,4" />
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Fond :" VerticalAlignment="Center" />
                                     <Button x:Name="OverlayBgColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
@@ -763,9 +768,13 @@
                                             Width="140" Margin="6,0" ValueChanged="OverlayScale_Changed" />
                                     <TextBlock x:Name="OverlayScaleValueText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                 </StackPanel>
+                            </StackPanel>
+                        </TabItem>
 
+                        <TabItem Header="⬡ NovaVox">
+                            <StackPanel Margin="10">
                                 <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
-                                          Margin="0,16,0,0" Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
+                                          Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
 
                                 <TextBlock Text="Interface" FontWeight="Bold" Margin="0,16,0,6" />
                                 <CheckBox x:Name="ShowSystemLogCheckbox" Content="Afficher le journal système"
