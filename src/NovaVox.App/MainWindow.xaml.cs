@@ -1923,8 +1923,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateHeaderButtonsCompactMode(double windowWidth)
     {
-        const double CompactBelowWidth = 900;
-        const double ExpandAboveWidth = 1000;
+        const double CompactBelowWidth = 1100;
+        const double ExpandAboveWidth = 1100;
         var shouldBeCompact = _headerButtonsCompact ? windowWidth < ExpandAboveWidth : windowWidth < CompactBelowWidth;
         if (shouldBeCompact == _headerButtonsCompact) return;
         _headerButtonsCompact = shouldBeCompact;
