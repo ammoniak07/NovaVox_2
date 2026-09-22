@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.0.8
+------
+
 v0.0.7
 ------
 - Ajout de "CRU L 2" (ooc stanton2 l2), "Yellow Core Station" (loc rr s3 l5) et "Wikelo's Emporium - Selo Station" (ab collector gas stanton2) au catalogue intégré de destinations.
@@ -11,7 +14,6 @@ v0.0.7
 - Correctif : la pastille de couleur d'un repère ne réagissait pas au clic (le sélecteur de couleur partagé était déclaré dans l'onglet NovaVox, invisible tant qu'on était sur l'onglet Vaisseaux).
 - Aide-mémoire vaisseaux : dans l'overlay en jeu, la description de chaque repère passe désormais automatiquement à la ligne sous son nom, au lieu de rester à la suite sur la même ligne.
 - Nouvelle case "Afficher dans l'overlay en jeu" (Réglages > 🚀 Vaisseaux) : affiche/masque l'aide-mémoire vaisseaux dans l'overlay directement, sans avoir à déverrouiller puis reverrouiller l'overlay comme pour les autres lignes.
-
 v0.0.6
 ------
 - Nettoyage automatique de "Alias de destinations" au démarrage : les entrées qui ne faisaient que dupliquer un lieu déjà dans le catalogue intégré sont retirées.
