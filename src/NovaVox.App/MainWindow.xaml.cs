@@ -2772,6 +2772,17 @@ public partial class MainWindow : Window
 
     private void OverlayScale_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        // OverlayScaleValueText peut encore être null ici : poser
+        // Minimum/Maximum sur le Slider dans le XAML coerce Value (donc
+        // déclenche CET évènement) PENDANT InitializeComponent lui-même,
+        // avant que ce TextBlock (déclaré juste après dans MainWindow.xaml)
+        // n'ait été assigné par le générateur de code XAML — vérifié en
+        // plantage réel (NullReferenceException dans InitializeComponent,
+        // qui empêchait NovaVox de démarrer). LoadSettingsIntoControls
+        // (appelée après coup, depuis OnLoaded) redéclenchera cet
+        // évènement une fois la fenêtre entièrement construite, avec cette
+        // fois un texte à jour.
+        if (OverlayScaleValueText is null) return;
         OverlayScaleValueText.Text = $"{(int)Math.Round(OverlayScaleSlider.Value * 100)}%";
         if (_loadingSettings || _overlayWindow is null) return;
         _state.Overlay.Scale = OverlayScaleSlider.Value;
