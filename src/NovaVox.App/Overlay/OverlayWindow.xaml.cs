@@ -67,6 +67,7 @@ public partial class OverlayWindow : Window
             Top = config.Y.Value;
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
+        ApplyScale(config.Scale);
         _visibleRows = new Dictionary<string, bool>(config.VisibleRows);
         ApplyRowVisibility(_visibleRows);
         RefreshRowVisualsForEditMode();
@@ -100,6 +101,23 @@ public partial class OverlayWindow : Window
         var textBrush = new SolidColorBrush(textColor);
         foreach (var tb in RowTextBlocks())
             tb.Foreground = textBrush;
+    }
+
+    /// <summary>
+    /// Met l'overlay entier (texte, icônes, espacements) à l'échelle
+    /// <paramref name="scale"/> — voir le ScaleTransform sur le Grid
+    /// racine (OverlayWindow.xaml) : un LayoutTransform recalcule aussi la
+    /// taille finale de la fenêtre (SizeToContent="WidthAndHeight"), donc
+    /// pas de contenu coupé ni de fenêtre restée à sa taille d'origine.
+    /// Valeur hors de [OverlayConfig.MinScale, MaxScale] rejetée en
+    /// silence (repli sur l'échelle déjà appliquée) plutôt que de risquer
+    /// une fenêtre illisible (trop petite) ou hors-écran (trop grande).
+    /// </summary>
+    public void ApplyScale(double scale)
+    {
+        if (scale < OverlayConfig.MinScale || scale > OverlayConfig.MaxScale) return;
+        OverlayScaleTransform.ScaleX = scale;
+        OverlayScaleTransform.ScaleY = scale;
     }
 
     private IEnumerable<TextBlock> RowTextBlocks()

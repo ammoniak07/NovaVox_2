@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.0.8
 ------
+- Nouveau curseur "Taille" (Réglages > ⬡ NovaVox > Apparence) : ajuste la taille de l'overlay entier — texte, icônes et espacements s'agrandissent ou rétrécissent ensemble, proportionnellement.
 
 v0.0.7
 ------

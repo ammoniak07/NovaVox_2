@@ -89,6 +89,26 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(OverlayConfig.DefaultBgColor, config.BgColor);
         Assert.Equal(100, config.BgOpacity);
         Assert.Equal(0, config.TextOpacity);
+        Assert.Equal(OverlayConfig.DefaultScale, config.Scale);
+    }
+
+    [Fact]
+    public void OverlayConfig_RoundTripsScale()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, scale: 1.3);
+        Assert.Equal(1.3, store.Load().Scale);
+    }
+
+    [Fact]
+    public void OverlayConfig_ClampsScaleToValidRange()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, scale: 99.0);
+        Assert.Equal(OverlayConfig.MaxScale, store.Load().Scale);
+
+        store.Save(enabled: true, scale: 0.01);
+        Assert.Equal(OverlayConfig.MinScale, store.Load().Scale);
     }
 
     [Fact]
@@ -112,7 +132,7 @@ public class ConfigStoreTests : IDisposable
     public void OverlayConfig_SaveWithoutAppearance_PreservesPreviouslySavedAppearance()
     {
         var store = new OverlayConfigStore(_dir);
-        store.Save(enabled: true, bgColor: "#123456", bgOpacity: 40, textColor: "#abcdef", textOpacity: 55);
+        store.Save(enabled: true, bgColor: "#123456", bgOpacity: 40, textColor: "#abcdef", textOpacity: 55, scale: 1.4);
 
         store.Save(enabled: true, x: 100, y: 200); // ex. OverlayWindow.OnClosing : position seulement
 
@@ -123,6 +143,7 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(40, config.BgOpacity);
         Assert.Equal("#abcdef", config.TextColor);
         Assert.Equal(55, config.TextOpacity);
+        Assert.Equal(1.4, config.Scale);
     }
 
     [Fact]

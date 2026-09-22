@@ -12,6 +12,9 @@ public sealed class OverlayConfig
     public const int DefaultBgOpacity = 72;
     public const string DefaultTextColor = "#dbe4ee";
     public const int DefaultTextOpacity = 100;
+    public const double DefaultScale = 1.0;
+    public const double MinScale = 0.7;
+    public const double MaxScale = 1.6;
 
     public bool Enabled { get; set; }
     public int? X { get; set; }
@@ -21,6 +24,8 @@ public sealed class OverlayConfig
     public int BgOpacity { get; set; } = DefaultBgOpacity;
     public string TextColor { get; set; } = DefaultTextColor;
     public int TextOpacity { get; set; } = DefaultTextOpacity;
+    /// <summary>Facteur d'échelle de l'overlay entier (texte, icônes, espacements) — voir OverlayWindow.ApplyScale (ScaleTransform sur le Grid racine). 1.0 = taille d'origine.</summary>
+    public double Scale { get; set; } = DefaultScale;
 }
 
 /// <summary>Port de load_overlay_config/save_overlay_config (app.py).</summary>
@@ -43,6 +48,12 @@ public sealed partial class OverlayConfigStore
     {
         var d = GetDouble(value);
         return d is null ? fallback : Math.Clamp((int)Math.Round(d.Value), 0, 100);
+    }
+
+    public static double ValidateScale(JsonNode? value, double fallback)
+    {
+        var d = GetDouble(value);
+        return d is null ? fallback : Math.Clamp(d.Value, OverlayConfig.MinScale, OverlayConfig.MaxScale);
     }
 
     public OverlayConfig Load()
@@ -69,6 +80,7 @@ public sealed partial class OverlayConfigStore
             config.BgOpacity = ValidateOpacityPercent(data?["bg_opacity"], OverlayConfig.DefaultBgOpacity);
             config.TextColor = ValidateHexColor(GetStringOrNull(data?["text_color"]), OverlayConfig.DefaultTextColor);
             config.TextOpacity = ValidateOpacityPercent(data?["text_opacity"], OverlayConfig.DefaultTextOpacity);
+            config.Scale = ValidateScale(data?["scale"], OverlayConfig.DefaultScale);
         }
         catch
         {
@@ -88,7 +100,8 @@ public sealed partial class OverlayConfigStore
     /// </summary>
     public void Save(
         bool enabled, int? x = null, int? y = null, Dictionary<string, bool>? visibleRows = null,
-        string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null)
+        string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null,
+        double? scale = null)
     {
         var existing = File.Exists(_path) ? TryParseFile(_path) : null;
 
@@ -119,6 +132,9 @@ public sealed partial class OverlayConfigStore
         data["text_opacity"] = textOpacity is not null
             ? Math.Clamp(textOpacity.Value, 0, 100)
             : ValidateOpacityPercent(existing?["text_opacity"], OverlayConfig.DefaultTextOpacity);
+        data["scale"] = scale is not null
+            ? Math.Clamp(scale.Value, OverlayConfig.MinScale, OverlayConfig.MaxScale)
+            : ValidateScale(existing?["scale"], OverlayConfig.DefaultScale);
 
         try
         {

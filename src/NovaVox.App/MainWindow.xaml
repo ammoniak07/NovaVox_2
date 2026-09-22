@@ -753,6 +753,16 @@
                                     <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
                                     <Slider x:Name="OverlayTextOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
                                 </StackPanel>
+                                <!-- Une seule échelle pour tout l'overlay (texte, icônes, espacements) —
+                                     voir OverlayWindow.ApplyScale (ScaleTransform), pas de FontSize
+                                     séparé à gérer : agrandir la règle agrandit tout proportionnellement,
+                                     comme demandé ("overlay plus grand, texte plus grand"). -->
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Taille :" VerticalAlignment="Center" />
+                                    <Slider x:Name="OverlayScaleSlider" Minimum="0.7" Maximum="1.6" SmallChange="0.05" LargeChange="0.1"
+                                            Width="140" Margin="6,0" ValueChanged="OverlayScale_Changed" />
+                                    <TextBlock x:Name="OverlayScaleValueText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
 
                                 <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
                                           Margin="0,16,0,0" Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />

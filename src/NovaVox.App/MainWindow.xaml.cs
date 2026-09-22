@@ -1329,6 +1329,7 @@ public partial class MainWindow : Window
             OverlayTextColorBox.Text = overlay.TextColor;
             OverlayTextColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(overlay.TextColor)!);
             OverlayTextOpacitySlider.Value = overlay.TextOpacity;
+            OverlayScaleSlider.Value = overlay.Scale;
             ShipSheetOverlayVisibleCheckbox.IsChecked = overlay.VisibleRows.GetValueOrDefault("shipSheet", true);
             SelectComboItemByTag(UiLanguageCombo, ai.UiLanguage);
             ShowSystemLogCheckbox.IsChecked = ai.ShowSystemLog;
@@ -2768,6 +2769,15 @@ public partial class MainWindow : Window
 
     private void OverlayAppearance_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) =>
         OverlayAppearance_Changed(sender, new RoutedEventArgs());
+
+    private void OverlayScale_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        OverlayScaleValueText.Text = $"{(int)Math.Round(OverlayScaleSlider.Value * 100)}%";
+        if (_loadingSettings || _overlayWindow is null) return;
+        _state.Overlay.Scale = OverlayScaleSlider.Value;
+        SaveOverlayAndLog();
+        _overlayWindow.ApplyScale(_state.Overlay.Scale);
+    }
 
     // --------------------------------------------- Sélecteur de couleur (overlay)
 

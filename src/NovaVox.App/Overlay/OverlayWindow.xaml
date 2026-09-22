@@ -8,8 +8,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
-        SizeToContent="Height"
-        Width="230">
+        SizeToContent="WidthAndHeight">
     <Window.Resources>
         <!-- Case à cocher compacte pour choisir les lignes affichées, visible
              uniquement en mode "déplacer" (déverrouillé) — voir SetEditMode/
@@ -50,7 +49,20 @@
         </Style>
     </Window.Resources>
     <Grid>
+        <!-- Échelle de l'overlay (Réglages > ⬡ NovaVox > Apparence, curseur
+             "Taille de l'overlay" -> OverlayWindow.ApplyScale) : un
+             LayoutTransform, PAS un RenderTransform, pour que le texte se
+             redessine net à la taille finale (pas d'agrandissement flou de
+             pixels déjà rendus) et que la fenêtre (SizeToContent=
+             "WidthAndHeight", voir plus haut) recalcule sa taille réelle
+             une fois le contenu mis à l'échelle — Width="230" reste sur
+             PanelBorder ci-dessous (taille de CONCEPTION à l'échelle 1.0),
+             plus sur la Window elle-même. -->
+        <Grid.LayoutTransform>
+            <ScaleTransform x:Name="OverlayScaleTransform" ScaleX="1" ScaleY="1" />
+        </Grid.LayoutTransform>
         <Border x:Name="PanelBorder"
+                Width="230"
                 CornerRadius="10"
                 BorderThickness="1"
                 BorderBrush="#592DD4FF"
