@@ -8,7 +8,6 @@ v0.0.8
 - Nouvel onglet Réglages > 🖥 Overlay : regroupe tous les réglages de l'overlay en jeu (activer, déplacer, couleurs, opacité, taille), auparavant éparpillés dans l'onglet NovaVox avec les réglages généraux de l'appli.
 - L'aide-mémoire vaisseaux quitte les Réglages : nouveau bouton "🚀 Vaisseaux" dans la barre du haut, à côté de "Assistant Gemini" et "Game.log" — s'ouvre directement en jeu comme ces deux-là, plus besoin de passer par les Réglages.
 - Correctif : en rétrécissant la fenêtre, les boutons de la barre du haut (Assistant/Vaisseaux/Game.log) recouvraient le logo et le titre "NOVAVOX V2" au lieu de leur laisser de la place. Ces boutons se réduisent maintenant à leur seule icône quand la fenêtre est trop étroite (texte complet toujours visible en infobulle au survol).
-
 v0.0.7
 ------
 - Ajout de "CRU L 2" (ooc stanton2 l2), "Yellow Core Station" (loc rr s3 l5) et "Wikelo's Emporium - Selo Station" (ab collector gas stanton2) au catalogue intégré de destinations.
