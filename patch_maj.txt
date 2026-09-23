@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.0.8
 ------
+- La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.
 - Nouveau curseur "Taille" (Réglages > 🖥 Overlay > Apparence) : ajuste la taille de l'overlay entier — texte, icônes et espacements s'agrandissent ou rétrécissent ensemble, proportionnellement.
 - Correctif critique : NovaVox ne démarrait plus du tout (plantage immédiat au lancement) à cause du curseur "Taille" ci-dessus.
 - Nouvel onglet Réglages > 🖥 Overlay : regroupe tous les réglages de l'overlay en jeu (activer, déplacer, couleurs, opacité, taille), auparavant éparpillés dans l'onglet NovaVox avec les réglages généraux de l'appli.

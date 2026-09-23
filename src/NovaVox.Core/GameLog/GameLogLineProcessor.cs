@@ -69,6 +69,18 @@ public sealed partial class GameLogLineProcessor
     [GeneratedRegex("nickname=\"(?<nickname>[^\"]+)\"")]
     private static partial Regex PlayerNicknameRegex();
 
+    /// <summary>
+    /// Ligne de connexion au serveur ("Legacy login response") émise une
+    /// fois par session, dès l'apparition du personnage — contient le lieu
+    /// de spawn au format "OOC_Système_Corps..." déjà géré par
+    /// GameLogDestinations (OocLocationRegex). Permet à l'overlay d'afficher
+    /// la bonne zone dès la connexion, sans attendre un premier saut
+    /// quantique (jusque-là, ZoneChange n'était émis qu'à l'arrivée d'un
+    /// saut — la zone restait donc vide/périmée tant qu'on ne voyageait pas).
+    /// </summary>
+    [GeneratedRegex(@"<Legacy login response>.*?Location\[(?<location>[^\]]+)\]")]
+    private static partial Regex SpawnLoginLocationRegex();
+
     [GeneratedRegex("<SHUDEvent_OnNotification> Added notification \"(?<text>.*)$")]
     private static partial Regex HudNotificationStartRegex();
 
@@ -157,6 +169,15 @@ public sealed partial class GameLogLineProcessor
                 ObstructionLabel = _lastObstructionLabel,
                 StartLocation = _lastStartLocation,
             };
+        }
+
+        var spawnLogin = SpawnLoginLocationRegex().Match(line);
+        if (spawnLogin.Success)
+        {
+            var spawnLocation = spawnLogin.Groups["location"].Value;
+            State.CurrentZone = spawnLocation;
+            State.Connected = true;
+            return new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = spawnLocation };
         }
 
         if (string.IsNullOrEmpty(PlayerName))

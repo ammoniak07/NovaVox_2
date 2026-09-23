@@ -144,4 +144,20 @@ public class GameLogLineProcessorTests
         var processor = new GameLogLineProcessor();
         Assert.Null(processor.ProcessLine("<2026-08-15T16:10:00.000Z> [Notice] <Actor Init> nothing interesting here"));
     }
+
+    [Fact]
+    public void SpawnLoginLocation_EmitsZoneChangeWithoutWaitingForQuantumJump()
+    {
+        var processor = new GameLogLineProcessor();
+        var evt = processor.ProcessLine(
+            "<2026-09-23T16:31:34.000Z> [Notice] <Legacy login response> [CIG-net] User Login Success - " +
+            "Handle[Ammoniak] Location[OOC_Stanton_2_Crusader] Base[] Character[Ammoniak] ChannelID[123] " +
+            "MinValidHandle[0] MaxValidHandle[0] [Team_GameServices][Login]");
+
+        Assert.NotNull(evt);
+        Assert.Equal(GameLogEventTypes.ZoneChange, evt!.Type);
+        Assert.Equal("OOC_Stanton_2_Crusader", evt.Zone);
+        Assert.True(processor.State.Connected);
+        Assert.Equal("OOC_Stanton_2_Crusader", processor.State.CurrentZone);
+    }
 }
