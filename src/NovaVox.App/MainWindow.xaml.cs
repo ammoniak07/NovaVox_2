@@ -593,6 +593,9 @@ public partial class MainWindow : Window
     private DispatcherTimer? _dragScrollTimer;
     private int _dragScrollDirection;
 
+    /// <summary>Aperçu semi-transparent de la ligne glissée, qui suit le curseur — même principe que le fantôme de l'overlay (OverlayWindow.ShowDragGhost), réutilisant directement sa fenêtre (OverlayDragGhostWindow), mais alimenté en position via DragWheelScrollHook plutôt qu'un MouseMove WPF normal (voir son commentaire : DoDragDrop n'en délivre plus pendant sa boucle modale).</summary>
+    private OverlayDragGhostWindow? _commandDragGhost;
+
     private void DragHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragStartPoint = e.GetPosition(null);
@@ -611,20 +614,69 @@ public partial class MainWindow : Window
         _dragCandidateRow = null; // évite de redéclencher DoDragDrop tant que le glisser en cours n'est pas terminé
         _dragScrollViewer ??= FindVisualChild<ScrollViewer>(CommandsList);
         var scrollViewer = _dragScrollViewer;
-        using var wheelHook = new DragWheelScrollHook(delta =>
-        {
-            // Même sens que le défilement standard d'un ScrollViewer : molette
-            // vers l'avant (delta > 0) fait remonter le contenu.
-            scrollViewer?.ScrollToVerticalOffset(scrollViewer.VerticalOffset - delta / 120.0 * DragAutoScrollStep);
-        });
+        // ContainerFromItem plutôt que FindAncestor(e.OriginalSource) : garantit
+        // le conteneur de LA ligne réellement saisie (row), sans dépendre d'où
+        // exactement se trouve le curseur à cet instant précis du glisser.
+        ShowCommandDragGhost(CommandsList.ItemContainerGenerator.ContainerFromItem(row) as ListBoxItem, PointToScreen(pos));
+        using var dragHook = new DragWheelScrollHook(
+            onWheelDelta: delta =>
+            {
+                // Même sens que le défilement standard d'un ScrollViewer : molette
+                // vers l'avant (delta > 0) fait remonter le contenu.
+                scrollViewer?.ScrollToVerticalOffset(scrollViewer.VerticalOffset - delta / 120.0 * DragAutoScrollStep);
+            },
+            onMouseMove: MoveCommandDragGhostTo);
         try
         {
             DragDrop.DoDragDrop(CommandsList, row, DragDropEffects.Move);
         }
         finally
         {
+            CloseCommandDragGhost();
             StopDragAutoScroll();
         }
+    }
+
+    /// <summary>
+    /// Instantané (RenderTargetBitmap) de la ligne au moment où le glisser
+    /// commence — voir OverlayWindow.ShowDragGhost pour le principe général ;
+    /// pas besoin ici du recadrage "fenêtre entière" de l'overlay (pas
+    /// d'échelle appliquée par un ancêtre dans MainWindow). Positionné tout
+    /// de suite sur <paramref name="initialScreenPos"/> (calculée depuis
+    /// l'évènement MouseMove WPF normal qui a déclenché ce glisser, avant
+    /// que DoDragDrop ne coupe ces évènements) avant Show() : sans ça, la
+    /// fenêtre apparaîtrait un instant à sa position par défaut (0,0) avant
+    /// le premier rapport de position du crochet bas niveau.
+    /// </summary>
+    private void ShowCommandDragGhost(ListBoxItem? item, Point initialScreenPos)
+    {
+        if (item is null) return;
+        var width = Math.Max(1.0, item.ActualWidth);
+        var height = Math.Max(1.0, item.ActualHeight);
+        var dpi = VisualTreeHelper.GetDpi(item);
+        var bitmap = new RenderTargetBitmap(
+            (int)Math.Ceiling(width * dpi.DpiScaleX), (int)Math.Ceiling(height * dpi.DpiScaleY),
+            dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+        bitmap.Render(item);
+
+        _commandDragGhost = new OverlayDragGhostWindow();
+        _commandDragGhost.SetImage(bitmap);
+        MoveCommandDragGhostTo((int)initialScreenPos.X, (int)initialScreenPos.Y);
+        _commandDragGhost.Show();
+    }
+
+    /// <summary><paramref name="screenX"/>/<paramref name="screenY"/> en pixels physiques (comme DragWheelScrollHook.onMouseMove les fournit) — même décalage (14,14) DIP que le fantôme de l'overlay pour ne pas recouvrir le curseur.</summary>
+    private void MoveCommandDragGhostTo(int screenX, int screenY)
+    {
+        if (_commandDragGhost is null) return;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        _commandDragGhost.MoveTo(screenX / dpi.DpiScaleX + 14, screenY / dpi.DpiScaleY + 14);
+    }
+
+    private void CloseCommandDragGhost()
+    {
+        _commandDragGhost?.Close();
+        _commandDragGhost = null;
     }
 
     private void CommandsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _dragCandidateRow = null;
