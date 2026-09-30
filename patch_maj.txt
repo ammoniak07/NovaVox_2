@@ -11,6 +11,7 @@ v0.1.0
 - Correctif : l'aperçu de glisser (ci-dessus) rendait la ligne SANS tenir compte du curseur "Taille de l'overlay" — tronqué/vide dès que l'échelle n'était pas à 100 %. Montre maintenant fidèlement la ligne complète (icône, texte, case à cocher), quelle que soit l'échelle choisie.
 - Correctif : la bande de colonne vide (glisser-déposer) s'affichait dès le déverrouillage de l'overlay, pas seulement pendant un glisser réel — elle n'apparaît désormais que pendant qu'une ligne est activement en train d'être déplacée.
 - Nouveau curseur "Largeur" (Réglages > 🖥 Overlay > Apparence) : règle toi-même la largeur minimale de la colonne principale par défaut (150 à 600px, 330px par défaut) — une ligne au texte plus long continue bien sûr de faire grandir la colonne au-delà.
+- Overlay déverrouillé : chaque ligne a désormais sa propre pastille de couleur de texte, directement dans l'overlay — clique dessus pour lui choisir une couleur indépendante de la couleur de texte globale (Réglages > 🖥 Overlay), avec un bouton "Rétablir la couleur par défaut" pour revenir à la couleur globale. Choix mémorisé d'une session à l'autre.
 v0.0.9
 ------
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.

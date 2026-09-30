@@ -146,6 +146,49 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(400, loaded.BaseWidth);
     }
 
+    // Couleur de texte par ligne (pastille dans l'overlay en mode édition,
+    // voir OverlayWindow.SetRowTextColor) — une ligne absente du dictionnaire
+    // utilise la couleur globale (TextColor), jamais de valeur null stockée.
+    [Fact]
+    public void OverlayConfig_RoundTripsRowTextColors()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowTextColors: new Dictionary<string, string> { ["mic"] = "#ff0000", ["zone"] = "#00ff00" });
+
+        var loaded = store.Load().RowTextColors;
+
+        Assert.Equal("#ff0000", loaded["mic"]);
+        Assert.Equal("#00ff00", loaded["zone"]);
+        Assert.False(loaded.ContainsKey("time")); // absente de l'appel : pas de couleur personnalisée -> couleur globale
+        Assert.Equal(2, loaded.Count);
+    }
+
+    [Fact]
+    public void OverlayConfig_RowTextColors_DropsInvalidHexAndUnknownKeys()
+    {
+        File.WriteAllText(Path.Combine(_dir, "overlay_config.json"),
+            """{"row_text_colors": {"mic": "not-a-color", "zone": "#00ff00", "some_removed_row": "#123456"}}""");
+        var loaded = new OverlayConfigStore(_dir).Load().RowTextColors;
+
+        Assert.Equal("#00ff00", loaded["zone"]);
+        Assert.False(loaded.ContainsKey("mic"));
+        Assert.False(loaded.ContainsKey("some_removed_row"));
+        Assert.Single(loaded);
+    }
+
+    [Fact]
+    public void OverlayConfig_SaveWithoutRowTextColors_PreservesPreviouslySavedColors()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowTextColors: new Dictionary<string, string> { ["mic"] = "#abcdef" });
+
+        store.Save(enabled: true, scale: 1.1); // ne touche pas rowTextColors
+
+        var loaded = store.Load();
+        Assert.Equal(1.1, loaded.Scale);
+        Assert.Equal("#abcdef", loaded.RowTextColors["mic"]);
+    }
+
     [Fact]
     public void OverlayConfig_PreservesUnknownRowsDefaultVisible()
     {

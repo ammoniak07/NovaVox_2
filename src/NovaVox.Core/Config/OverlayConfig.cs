@@ -49,6 +49,14 @@ public sealed class OverlayConfig
     /// </summary>
     public double BaseWidth { get; set; } = DefaultBaseWidth;
     /// <summary>
+    /// Couleur de texte personnalisée par ligne (clé -> hex), réglable
+    /// directement dans l'overlay en mode édition (pastille à côté de
+    /// chaque ligne — voir OverlayWindow.SetRowTextColor/RowColorTargets).
+    /// Une ligne ABSENTE d'ici utilise la couleur globale (TextColor) —
+    /// pas de valeur "null" stockée, juste l'absence de la clé.
+    /// </summary>
+    public Dictionary<string, string> RowTextColors { get; set; } = new();
+    /// <summary>
     /// Ordre GLOBAL des lignes (toutes colonnes confondues) — l'ordre
     /// RELATIF des lignes d'une même colonne (voir RowColumns) entre elles
     /// donne leur ordre d'affichage de haut en bas dans cette colonne. Voir
@@ -206,6 +214,26 @@ public sealed partial class OverlayConfigStore
         return d is null ? fallback : Math.Clamp(d.Value, OverlayConfig.MinBaseWidth, OverlayConfig.MaxBaseWidth);
     }
 
+    /// <summary>
+    /// Ne garde que les entrées dont la clé est une ligne connue ET dont la
+    /// valeur est un hex valide (#RRGGBB) — une entrée invalide/inconnue est
+    /// simplement OMISE (jamais de plantage), ce qui revient à laisser la
+    /// ligne concernée utiliser la couleur globale (RowTextColors ne stocke
+    /// jamais de valeur null, juste l'absence de la clé).
+    /// </summary>
+    public static Dictionary<string, string> ValidateRowTextColors(JsonObject? saved)
+    {
+        var result = new Dictionary<string, string>();
+        if (saved is null) return result;
+        foreach (var key in OverlayConfig.RowKeys)
+        {
+            var hex = GetStringOrNull(saved[key]);
+            if (hex is not null && HexColorRegex().IsMatch(hex))
+                result[key] = hex;
+        }
+        return result;
+    }
+
     public OverlayConfig Load()
     {
         var config = new OverlayConfig();
@@ -232,6 +260,7 @@ public sealed partial class OverlayConfigStore
             config.TextOpacity = ValidateOpacityPercent(data?["text_opacity"], OverlayConfig.DefaultTextOpacity);
             config.Scale = ValidateScale(data?["scale"], OverlayConfig.DefaultScale);
             config.BaseWidth = ValidateBaseWidth(data?["base_width"], OverlayConfig.DefaultBaseWidth);
+            config.RowTextColors = ValidateRowTextColors(data?["row_text_colors"] as JsonObject);
 
             config.RowOrder = OverlayConfig.NormalizeRowOrder(
                 data?["row_order"] is JsonArray savedOrder
@@ -298,7 +327,7 @@ public sealed partial class OverlayConfigStore
         string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null,
         double? scale = null, List<string>? rowOrder = null, Dictionary<string, int>? rowColumns = null,
         Dictionary<string, int>? rowWindow = null, Dictionary<int, (int X, int Y)>? satelliteWindows = null,
-        double? baseWidth = null)
+        double? baseWidth = null, Dictionary<string, string>? rowTextColors = null)
     {
         var existing = File.Exists(_path) ? TryParseFile(_path) : null;
 
@@ -335,6 +364,20 @@ public sealed partial class OverlayConfigStore
         data["base_width"] = baseWidth is not null
             ? Math.Clamp(baseWidth.Value, OverlayConfig.MinBaseWidth, OverlayConfig.MaxBaseWidth)
             : ValidateBaseWidth(existing?["base_width"], OverlayConfig.DefaultBaseWidth);
+
+        // Réutilise ValidateRowTextColors (même filtrage clé connue + hex
+        // valide que Load) aussi bien pour une valeur fournie que pour celle
+        // déjà enregistrée — un seul endroit qui décide ce qu'est une entrée
+        // valide, JsonObject servant juste d'intermédiaire ici.
+        var providedRowTextColors = rowTextColors is not null
+            ? new JsonObject(rowTextColors.Select(kv => new KeyValuePair<string, JsonNode?>(kv.Key, JsonValue.Create(kv.Value))))
+            : null;
+        var normalizedRowTextColors = rowTextColors is not null
+            ? ValidateRowTextColors(providedRowTextColors)
+            : ValidateRowTextColors(existing?["row_text_colors"] as JsonObject);
+        var rowTextColorsObject = new JsonObject();
+        foreach (var (key, hex) in normalizedRowTextColors) rowTextColorsObject[key] = JsonValue.Create(hex);
+        data["row_text_colors"] = rowTextColorsObject;
 
         var normalizedOrder = rowOrder is not null
             ? OverlayConfig.NormalizeRowOrder(rowOrder)

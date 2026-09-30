@@ -63,6 +63,34 @@
             <Setter Property="Visibility" Value="Collapsed" />
             <Setter Property="Background" Value="Transparent" />
         </Style>
+
+        <!-- Pastille de couleur de texte par ligne, visible uniquement en
+             mode "déplacer" (déverrouillé) comme la case à cocher et la
+             poignée — voir RowColorSwatch_Click/ApplyRowTextColor
+             (OverlayWindow.xaml.cs). Le fond (couleur RÉELLEMENT affichée
+             pour cette ligne, personnalisée ou globale) est posé par code ;
+             ce style ne fixe que la taille/le contour + la zone cliquable
+             (comme OverlayRowCheckboxStyle, un gabarit 20x20 plus grand que
+             la pastille visible 14x14, pour ne pas rater le clic). -->
+        <Style x:Key="OverlayRowColorSwatchStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Border Width="14" Height="14" CornerRadius="7"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="#802DD4FF" BorderThickness="1"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <!-- Échelle de l'overlay (Réglages > ⬡ NovaVox > Apparence, curseur
@@ -109,6 +137,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="TimeDragHandle" Grid.Column="0" Text="⠿" Tag="time" Style="{StaticResource OverlayRowDragHandleStyle}"
                                PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
@@ -116,7 +145,8 @@
                         <TextBlock Text="🕐" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="TimeValue" Text="--:--:--" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="TimeRowCheckbox" Grid.Column="2" Tag="time" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="TimeColorSwatch" Grid.Column="2" Tag="time" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="TimeRowCheckbox" Grid.Column="3" Tag="time" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -124,6 +154,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ListeningDragHandle" Grid.Column="0" Text="⠿" Tag="listening" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -133,7 +164,8 @@
                         <TextBlock x:Name="ListeningLabel" Text="Écoute :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="ListeningValue" Text="Arrêtée" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="ListeningRowCheckbox" Grid.Column="2" Tag="listening" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="ListeningColorSwatch" Grid.Column="2" Tag="listening" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="ListeningRowCheckbox" Grid.Column="3" Tag="listening" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -141,6 +173,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="MicDragHandle" Grid.Column="0" Text="⠿" Tag="mic" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -150,7 +183,8 @@
                         <TextBlock x:Name="MicLabel" Text="Micro :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="MicValue" Text="—" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="MicRowCheckbox" Grid.Column="2" Tag="mic" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="MicColorSwatch" Grid.Column="2" Tag="mic" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="MicRowCheckbox" Grid.Column="3" Tag="mic" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -158,6 +192,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="PhraseDragHandle" Grid.Column="0" Text="⠿" Tag="phrase" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -167,7 +202,8 @@
                         <TextBlock x:Name="PhraseValue" Text="…" Margin="6,0,0,0" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="150" />
                     </StackPanel>
-                    <CheckBox x:Name="PhraseRowCheckbox" Grid.Column="2" Tag="phrase" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="PhraseColorSwatch" Grid.Column="2" Tag="phrase" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="PhraseRowCheckbox" Grid.Column="3" Tag="phrase" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -175,6 +211,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ZoneDragHandle" Grid.Column="0" Text="⠿" Tag="zone" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -185,7 +222,8 @@
                         <TextBlock x:Name="ZoneValue" Text="—" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="120" />
                     </StackPanel>
-                    <CheckBox x:Name="ZoneRowCheckbox" Grid.Column="2" Tag="zone" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="ZoneColorSwatch" Grid.Column="2" Tag="zone" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="ZoneRowCheckbox" Grid.Column="3" Tag="zone" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -193,6 +231,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ArmisticeDragHandle" Grid.Column="0" Text="⠿" Tag="armistice" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -208,7 +247,8 @@
                         <TextBlock x:Name="ArmisticeLabel" Text="Armistice :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="ArmisticeValue" Text="—" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="ArmisticeRowCheckbox" Grid.Column="2" Tag="armistice" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="ArmisticeColorSwatch" Grid.Column="2" Tag="armistice" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="ArmisticeRowCheckbox" Grid.Column="3" Tag="armistice" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -216,6 +256,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="JuridictionDragHandle" Grid.Column="0" Text="⠿" Tag="juridiction" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -226,7 +267,8 @@
                         <TextBlock x:Name="JuridictionValue" Text="—" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="120" />
                     </StackPanel>
-                    <CheckBox x:Name="JuridictionRowCheckbox" Grid.Column="2" Tag="juridiction" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="JuridictionColorSwatch" Grid.Column="2" Tag="juridiction" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="JuridictionRowCheckbox" Grid.Column="3" Tag="juridiction" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -234,6 +276,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="LastCmdDragHandle" Grid.Column="0" Text="⠿" Tag="lastCmd" Style="{StaticResource OverlayRowDragHandleStyle}"
@@ -243,7 +286,8 @@
                         <TextBlock x:Name="LastCmdValue" Text="—" Margin="6,0,0,0" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="150" />
                     </StackPanel>
-                    <CheckBox x:Name="LastCmdRowCheckbox" Grid.Column="2" Tag="lastCmd" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="LastCmdColorSwatch" Grid.Column="2" Tag="lastCmd" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="LastCmdRowCheckbox" Grid.Column="3" Tag="lastCmd" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -251,6 +295,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="ShipSheetDragHandle" Grid.Column="0" Text="⠿" Tag="shipSheet" VerticalAlignment="Top"
@@ -279,7 +324,8 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                    <CheckBox x:Name="ShipSheetRowCheckbox" Grid.Column="2" Tag="shipSheet" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <Button x:Name="ShipSheetColorSwatch" Grid.Column="2" Tag="shipSheet" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Top" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="ShipSheetRowCheckbox" Grid.Column="3" Tag="shipSheet" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Top" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
@@ -299,5 +345,36 @@
              pour ne jamais entrer en conflit avec le fond "micro coupé" — voir
              #panel::after / #panel.cmd-flash (overlay.html). -->
         <Border x:Name="FlashOverlay" CornerRadius="10" Background="#8C0C5E31" Opacity="0" IsHitTestVisible="False" />
+
+        <!-- Sélecteur de couleur de texte PAR LIGNE (une pastille par ligne,
+             un seul popup partagé — voir RowColorSwatch_Click,
+             OverlayWindow.xaml.cs) : mini version, couleurs codées en dur
+             (cette fenêtre ne fusionne pas Theme.xaml, voir plus haut) du
+             sélecteur de MainWindow.xaml (ColorPickerPopup) — mêmes sliders
+             RVB + case hex, sans la grille de préréglages (moins de place
+             disponible dans l'overlay, et l'essentiel est déjà couvert par
+             les sliders/le hex). Bouton "Rétablir" en plus : une ligne SANS
+             couleur personnalisée suit la couleur globale de l'overlay
+             (Réglages > 🖥 Overlay), donc il faut un moyen d'y revenir. -->
+        <Popup x:Name="RowColorPickerPopup" StaysOpen="False" AllowsTransparency="True"
+               Placement="Bottom" PopupAnimation="Fade">
+            <Border Background="#0a0e14" BorderBrush="#2DD4FF" BorderThickness="1" CornerRadius="6" Padding="12">
+                <StackPanel Width="180">
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="RowColorPickerPreview" Width="30" Height="30" CornerRadius="4"
+                                BorderBrush="#592DD4FF" BorderThickness="1" />
+                        <TextBox x:Name="RowColorPickerHexBox" Width="90" Margin="8,0,0,0" VerticalAlignment="Center"
+                                 LostFocus="RowColorPickerHexBox_LostFocus" />
+                    </StackPanel>
+                    <TextBlock Text="Rouge" Foreground="#802DD4FF" FontSize="11" Margin="0,8,0,2" />
+                    <Slider x:Name="RowColorPickerRSlider" Minimum="0" Maximum="255" ValueChanged="RowColorPickerSlider_Changed" />
+                    <TextBlock Text="Vert" Foreground="#802DD4FF" FontSize="11" Margin="0,4,0,2" />
+                    <Slider x:Name="RowColorPickerGSlider" Minimum="0" Maximum="255" ValueChanged="RowColorPickerSlider_Changed" />
+                    <TextBlock Text="Bleu" Foreground="#802DD4FF" FontSize="11" Margin="0,4,0,2" />
+                    <Slider x:Name="RowColorPickerBSlider" Minimum="0" Maximum="255" ValueChanged="RowColorPickerSlider_Changed" />
+                    <Button Content="Rétablir la couleur par défaut" Margin="0,10,0,0" Click="RowColorPickerReset_Click" />
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Window>

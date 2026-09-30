@@ -74,6 +74,15 @@ public partial class OverlayWindow : Window
     private double _lastScale = OverlayConfig.DefaultScale;
     /// <summary>Largeur minimale de la colonne principale par défaut — voir RefreshColumnEditingStrips/ApplyBaseWidth (Réglages > 🖥 Overlay, curseur "Largeur").</summary>
     private double _baseWidth = OverlayConfig.DefaultBaseWidth;
+    // Dernière couleur/opacité de texte GLOBALE appliquée (Réglages > 🖥
+    // Overlay) — sert de repli pour toute ligne SANS couleur personnalisée
+    // (voir _rowTextColors/ApplyRowTextColor), donc mémorisée ici plutôt que
+    // de reconstruire un seul pinceau global comme avant ApplyAppearance.
+    private string _lastTextColorHex = OverlayConfig.DefaultTextColor;
+    private int _lastTextOpacity = OverlayConfig.DefaultTextOpacity;
+    /// <summary>Couleur de texte personnalisée par ligne (clé -> hex) — une ligne absente utilise _lastTextColorHex (couleur globale). Réglable via une pastille par ligne en mode édition (RowColorSwatch_Click) — voir OverlayConfig.RowTextColors.</summary>
+    private Dictionary<string, string> _rowTextColors = new();
+    private readonly Dictionary<string, RowColorTarget> _rowColorTargetByKey;
 
     public OverlayWindow(OverlayConfigStore store)
     {
@@ -82,8 +91,9 @@ public partial class OverlayWindow : Window
 
         _rowGridByKey = RowEntries().ToDictionary(r => r.Key, r => r.Row);
         _rowKeyByGrid = _rowGridByKey.ToDictionary(kv => kv.Value, kv => kv.Key);
+        _rowColorTargetByKey = RowColorTargets().ToDictionary(t => t.Key);
         _windows[0] = new OverlayWindowEntry(this, ColumnsPanel, ColumnPanels);
-        foreach (var (_, _, handle, _) in RowEntries())
+        foreach (var (_, _, handle, _, _) in RowEntries())
         {
             handle.MouseMove += RowDragHandle_MouseMove;
             handle.MouseLeftButtonUp += RowDragHandle_MouseLeftButtonUp;
@@ -133,6 +143,7 @@ public partial class OverlayWindow : Window
             Left = config.X.Value;
             Top = config.Y.Value;
         }
+        _rowTextColors = new Dictionary<string, string>(config.RowTextColors);
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
         ApplyScale(config.Scale);
         ApplyBaseWidth(config.BaseWidth);
@@ -274,25 +285,155 @@ public partial class OverlayWindow : Window
     {
         _lastBgColorHex = bgColorHex;
         _lastBgOpacity = bgOpacityPercent;
+        _lastTextColorHex = textColorHex;
+        _lastTextOpacity = textOpacityPercent;
 
         var bgColor = (Color)ColorConverter.ConvertFromString(bgColorHex)!;
         bgColor.A = (byte)Math.Clamp(bgOpacityPercent * 255 / 100, 0, 255);
         PanelBorder.Background = new SolidColorBrush(bgColor);
 
-        var textColor = (Color)ColorConverter.ConvertFromString(textColorHex)!;
-        textColor.A = (byte)Math.Clamp(textOpacityPercent * 255 / 100, 0, 255);
-        var textBrush = new SolidColorBrush(textColor);
-        foreach (var tb in RowTextBlocks())
-            tb.Foreground = textBrush;
+        RefreshAllRowTextColors();
 
         // Une fenêtre satellite ne suit pas la couleur de TEXTE ici : les
         // TextBlock de chaque ligne restent des champs de CETTE instance
         // (this) quelle que soit la fenêtre qui les héberge visuellement
-        // (voir _rowGridByKey) — la boucle RowTextBlocks() ci-dessus les
+        // (voir _rowGridByKey) — RefreshAllRowTextColors ci-dessus les
         // couvre donc déjà tous. Seul le fond du panneau (PanelBorder)
         // existe séparément dans chaque satellite.
         foreach (var satellite in _satellites.Values)
             satellite.ApplyBackground(bgColorHex, bgOpacityPercent);
+    }
+
+    /// <summary>Réapplique la couleur de texte (personnalisée ou globale) de TOUTES les lignes — voir ApplyRowTextColor.</summary>
+    private void RefreshAllRowTextColors()
+    {
+        foreach (var target in RowColorTargets())
+            ApplyRowTextColor(target);
+    }
+
+    /// <summary>
+    /// Couleur de texte RÉSOLUE d'une ligne : sa couleur personnalisée si
+    /// elle en a une (_rowTextColors, réglée via la pastille en mode
+    /// édition — voir RowColorSwatch_Click), sinon la couleur globale
+    /// (_lastTextColorHex/_lastTextOpacity, Réglages > 🖥 Overlay). Met
+    /// aussi à jour le FOND de sa pastille (à pleine opacité — repère visuel
+    /// toujours lisible même si le texte lui-même est semi-transparent),
+    /// pour qu'elle reflète en permanence la couleur RÉELLEMENT affichée,
+    /// personnalisée ou non.
+    /// </summary>
+    private void ApplyRowTextColor(RowColorTarget target)
+    {
+        var customHex = _rowTextColors.TryGetValue(target.Key, out var hex) ? hex : null;
+        var resolvedHex = customHex ?? _lastTextColorHex;
+        var color = (Color)ColorConverter.ConvertFromString(resolvedHex)!;
+        target.Swatch.Background = new SolidColorBrush(color);
+        color.A = (byte)Math.Clamp(_lastTextOpacity * 255 / 100, 0, 255);
+        var brush = new SolidColorBrush(color);
+        foreach (var tb in target.TextBlocks)
+            tb.Foreground = brush;
+    }
+
+    /// <summary>
+    /// Fixe (ou retire, si <paramref name="hex"/> est null) la couleur de
+    /// texte personnalisée de la ligne <paramref name="key"/> — appelée
+    /// depuis le picker (ApplyRowColorPickerHex/RowColorPickerReset_Click).
+    /// Persiste tout de suite (comme RowVisibilityCheckbox_Changed), pas
+    /// seulement à la fermeture de l'overlay.
+    /// </summary>
+    public void SetRowTextColor(string key, string? hex)
+    {
+        if (hex is not null) _rowTextColors[key] = hex; else _rowTextColors.Remove(key);
+        if (_rowColorTargetByKey.TryGetValue(key, out var target)) ApplyRowTextColor(target);
+
+        try
+        {
+            _store.Save(enabled: true, rowTextColors: _rowTextColors);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde de la couleur de la ligne '{key}' échouée ({ex.Message}).", "diagnostic");
+        }
+    }
+
+    // ------------------------------------- Sélecteur de couleur (par ligne)
+
+    // Quelle ligne (clé) a ouvert RowColorPickerPopup — un seul popup
+    // partagé par les 9 pastilles, comme MainWindow.ColorPickerPopup
+    // (_colorPickerTarget) mais pour une seule sorte de cible ici (toujours
+    // une ligne, jamais bg/shiprow), donc juste une clé de ligne suffit.
+    private string? _rowColorPickerTargetKey;
+
+    // Coupe la boucle de rétroaction slider -> hex -> slider quand on pousse
+    // une couleur dans les sliders par programme (reset, hex saisi) — même
+    // principe que MainWindow._updatingColorPicker.
+    private bool _updatingRowColorPicker;
+
+    private void RowColorSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_editMode) return;
+        if (sender is not FrameworkElement { Tag: string key } swatch) return;
+        _rowColorPickerTargetKey = key;
+        RowColorPickerPopup.PlacementTarget = swatch;
+        var currentHex = _rowTextColors.TryGetValue(key, out var custom) ? custom : _lastTextColorHex;
+        SetRowColorPickerSliders(currentHex);
+        RowColorPickerPopup.IsOpen = true;
+    }
+
+    private void SetRowColorPickerSliders(string hex)
+    {
+        var color = (Color)ColorConverter.ConvertFromString(hex)!;
+        _updatingRowColorPicker = true;
+        RowColorPickerRSlider.Value = color.R;
+        RowColorPickerGSlider.Value = color.G;
+        RowColorPickerBSlider.Value = color.B;
+        _updatingRowColorPicker = false;
+        RowColorPickerHexBox.Text = hex;
+        RowColorPickerPreview.Background = new SolidColorBrush(color);
+    }
+
+    private void RowColorPickerSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_updatingRowColorPicker || _rowColorPickerTargetKey is null) return;
+        var r = (byte)RowColorPickerRSlider.Value;
+        var g = (byte)RowColorPickerGSlider.Value;
+        var b = (byte)RowColorPickerBSlider.Value;
+        ApplyRowColorPickerHex($"#{r:X2}{g:X2}{b:X2}", updateSliders: false);
+    }
+
+    private void RowColorPickerHexBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_rowColorPickerTargetKey is null) return;
+        var fallback = _rowTextColors.TryGetValue(_rowColorPickerTargetKey, out var custom) ? custom : _lastTextColorHex;
+        var hex = OverlayConfigStore.ValidateHexColor(RowColorPickerHexBox.Text.Trim(), fallback);
+        ApplyRowColorPickerHex(hex, updateSliders: true);
+    }
+
+    /// <summary>Pousse une couleur choisie (slider ou hex saisi) vers l'aperçu du picker puis SetRowTextColor — même principe que MainWindow.ApplyColorPickerHex.</summary>
+    private void ApplyRowColorPickerHex(string hex, bool updateSliders)
+    {
+        if (_rowColorPickerTargetKey is null) return;
+        var color = (Color)ColorConverter.ConvertFromString(hex)!;
+        RowColorPickerPreview.Background = new SolidColorBrush(color);
+        if (RowColorPickerHexBox.Text != hex) RowColorPickerHexBox.Text = hex;
+
+        if (updateSliders)
+        {
+            _updatingRowColorPicker = true;
+            RowColorPickerRSlider.Value = color.R;
+            RowColorPickerGSlider.Value = color.G;
+            RowColorPickerBSlider.Value = color.B;
+            _updatingRowColorPicker = false;
+        }
+
+        SetRowTextColor(_rowColorPickerTargetKey, hex);
+    }
+
+    /// <summary>Retire la couleur personnalisée de la ligne en cours (elle retombe sur la couleur globale, Réglages > 🖥 Overlay) et referme le popup.</summary>
+    private void RowColorPickerReset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_rowColorPickerTargetKey is null) return;
+        SetRowTextColor(_rowColorPickerTargetKey, null);
+        RowColorPickerPopup.IsOpen = false;
     }
 
     /// <summary>
@@ -333,25 +474,31 @@ public partial class OverlayWindow : Window
         RefreshColumnEditingStrips();
     }
 
-    private IEnumerable<TextBlock> RowTextBlocks()
+    /// <summary>Une ligne : sa clé, ses TextBlock (couleur de texte globale ou personnalisée) et sa pastille (RowColorSwatch_Click) — voir RowColorTargets/ApplyRowTextColor.</summary>
+    private readonly record struct RowColorTarget(string Key, TextBlock[] TextBlocks, Button Swatch);
+
+    /// <summary>
+    /// Les lignes de repères de l'aide-mémoire vaisseaux (ShipSheetPointsList)
+    /// sont générées par DataTemplate à chaque SetShipSheet, pas des
+    /// TextBlock nommés fixes, donc pas ici — seul ShipSheetTitle (le nom du
+    /// vaisseau) suit la couleur de la ligne "shipSheet". Leur description
+    /// garde la couleur neutre #DBE4EE codée en dur dans le gabarit (comme
+    /// avant), mais le libellé du repère suit SA PROPRE couleur
+    /// (ShipSheetPoint.Color, réglable indépendamment par repère dans
+    /// Réglages > 🚀 Vaisseaux) plutôt que celle de la ligne — comportement
+    /// voulu, pas un oubli.
+    /// </summary>
+    private IEnumerable<RowColorTarget> RowColorTargets()
     {
-        yield return TimeValue;
-        yield return ListeningLabel; yield return ListeningValue;
-        yield return MicLabel; yield return MicValue;
-        yield return PhraseValue;
-        yield return ZoneLabel; yield return ZoneValue;
-        yield return ArmisticeLabel; yield return ArmisticeValue;
-        yield return JuridictionLabel; yield return JuridictionValue;
-        yield return LastCmdValue;
-        yield return ShipSheetTitle;
-        // Les lignes de repères (ShipSheetPointsList) sont générées par
-        // DataTemplate à chaque SetShipSheet, pas des TextBlock nommés
-        // fixes, donc pas dans cette énumération. Leur description garde la
-        // couleur neutre #DBE4EE codée en dur dans le gabarit (comme avant),
-        // mais le libellé du repère suit désormais SA PROPRE couleur
-        // (ShipSheetPoint.Color, réglable indépendamment par repère dans
-        // Réglages > 🚀 Vaisseaux) plutôt que la couleur de texte globale de
-        // l'overlay — comportement voulu, pas un oubli.
+        yield return new("time", new[] { TimeValue }, TimeColorSwatch);
+        yield return new("listening", new[] { ListeningLabel, ListeningValue }, ListeningColorSwatch);
+        yield return new("mic", new[] { MicLabel, MicValue }, MicColorSwatch);
+        yield return new("phrase", new[] { PhraseValue }, PhraseColorSwatch);
+        yield return new("zone", new[] { ZoneLabel, ZoneValue }, ZoneColorSwatch);
+        yield return new("armistice", new[] { ArmisticeLabel, ArmisticeValue }, ArmisticeColorSwatch);
+        yield return new("juridiction", new[] { JuridictionLabel, JuridictionValue }, JuridictionColorSwatch);
+        yield return new("lastCmd", new[] { LastCmdValue }, LastCmdColorSwatch);
+        yield return new("shipSheet", new[] { ShipSheetTitle }, ShipSheetColorSwatch);
     }
 
     public void ApplyRowVisibility(Dictionary<string, bool> visibleRows)
@@ -392,17 +539,17 @@ public partial class OverlayWindow : Window
     /// <summary>État actuel (en mémoire) d'une ligne — pour initialiser la case à cocher dédiée de Réglages > 🚀 Vaisseaux à l'ouverture.</summary>
     public bool IsRowVisible(string key) => !_visibleRows.TryGetValue(key, out var visible) || visible;
 
-    private IEnumerable<(Grid Row, CheckBox Checkbox, FrameworkElement DragHandle, string Key)> RowEntries()
+    private IEnumerable<(Grid Row, CheckBox Checkbox, FrameworkElement DragHandle, Button ColorSwatch, string Key)> RowEntries()
     {
-        yield return (RowTime, TimeRowCheckbox, TimeDragHandle, "time");
-        yield return (RowListening, ListeningRowCheckbox, ListeningDragHandle, "listening");
-        yield return (RowMic, MicRowCheckbox, MicDragHandle, "mic");
-        yield return (RowPhrase, PhraseRowCheckbox, PhraseDragHandle, "phrase");
-        yield return (RowZone, ZoneRowCheckbox, ZoneDragHandle, "zone");
-        yield return (RowArmistice, ArmisticeRowCheckbox, ArmisticeDragHandle, "armistice");
-        yield return (RowJuridiction, JuridictionRowCheckbox, JuridictionDragHandle, "juridiction");
-        yield return (RowLastCmd, LastCmdRowCheckbox, LastCmdDragHandle, "lastCmd");
-        yield return (RowShipSheet, ShipSheetRowCheckbox, ShipSheetDragHandle, "shipSheet");
+        yield return (RowTime, TimeRowCheckbox, TimeDragHandle, TimeColorSwatch, "time");
+        yield return (RowListening, ListeningRowCheckbox, ListeningDragHandle, ListeningColorSwatch, "listening");
+        yield return (RowMic, MicRowCheckbox, MicDragHandle, MicColorSwatch, "mic");
+        yield return (RowPhrase, PhraseRowCheckbox, PhraseDragHandle, PhraseColorSwatch, "phrase");
+        yield return (RowZone, ZoneRowCheckbox, ZoneDragHandle, ZoneColorSwatch, "zone");
+        yield return (RowArmistice, ArmisticeRowCheckbox, ArmisticeDragHandle, ArmisticeColorSwatch, "armistice");
+        yield return (RowJuridiction, JuridictionRowCheckbox, JuridictionDragHandle, JuridictionColorSwatch, "juridiction");
+        yield return (RowLastCmd, LastCmdRowCheckbox, LastCmdDragHandle, LastCmdColorSwatch, "lastCmd");
+        yield return (RowShipSheet, ShipSheetRowCheckbox, ShipSheetDragHandle, ShipSheetColorSwatch, "shipSheet");
     }
 
     /// <summary>
@@ -418,7 +565,7 @@ public partial class OverlayWindow : Window
         _suppressCheckboxEvents = true;
         try
         {
-            foreach (var (row, checkbox, dragHandle, key) in RowEntries())
+            foreach (var (row, checkbox, dragHandle, colorSwatch, key) in RowEntries())
             {
                 var visible = !_visibleRows.TryGetValue(key, out var v) || v;
                 if (_editMode)
@@ -428,6 +575,7 @@ public partial class OverlayWindow : Window
                     checkbox.Visibility = Visibility.Visible;
                     checkbox.IsChecked = visible;
                     dragHandle.Visibility = Visibility.Visible;
+                    colorSwatch.Visibility = Visibility.Visible;
                 }
                 else
                 {
@@ -435,6 +583,7 @@ public partial class OverlayWindow : Window
                     row.Opacity = 1.0;
                     checkbox.Visibility = Visibility.Collapsed;
                     dragHandle.Visibility = Visibility.Collapsed;
+                    colorSwatch.Visibility = Visibility.Collapsed;
                 }
             }
         }
@@ -452,7 +601,7 @@ public partial class OverlayWindow : Window
 
         var visible = checkbox.IsChecked == true;
         _visibleRows[key] = visible;
-        foreach (var (row, _, _, rowKey) in RowEntries())
+        foreach (var (row, _, _, _, rowKey) in RowEntries())
         {
             if (rowKey == key)
             {
