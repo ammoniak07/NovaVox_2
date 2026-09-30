@@ -639,49 +639,41 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Instantané (RenderTargetBitmap) de la ligne au moment où le glisser
-    /// commence — voir OverlayWindow.ShowDragGhost pour le principe général ;
-    /// pas besoin ici du recadrage "fenêtre entière" de l'overlay (pas
-    /// d'échelle appliquée par un ancêtre dans MainWindow). Positionné tout
-    /// de suite sur <paramref name="initialScreenPos"/> (calculée depuis
-    /// l'évènement MouseMove WPF normal qui a déclenché ce glisser, avant
-    /// que DoDragDrop ne coupe ces évènements) avant Show() : sans ça, la
-    /// fenêtre apparaîtrait un instant à sa position par défaut (0,0) avant
-    /// le premier rapport de position du crochet bas niveau.
-    /// Capturé à 96 DPI FIXE (jamais le DPI du moniteur courant) : WPF rend
-    /// un Visual de façon indépendante de la résolution, donc rester à 96
-    /// partout laisse WPF ré-adapter tout seul l'affichage final au
-    /// moniteur qui héberge RÉELLEMENT le fantôme, sans dimensions non
-    /// entières à gérer (mise à l'échelle à 125 %).
-    /// Dispatcher.Invoke à DispatcherPriority.Render (sans rien faire
-    /// d'autre) juste avant de capturer : FORCE l'achèvement d'un passage
-    /// de rendu en attente — un conteneur tout juste (re)généré par la
-    /// virtualisation de la ListBox peut avoir une mise en page déjà à jour
-    /// (ActualWidth/Height corrects — confirmé par diagnostic) mais un
-    /// passage de COMPOSITION (le thread de rendu séparé qui produit les
-    /// pixels réellement affichés) encore en attente au moment précis où
-    /// RenderTargetBitmap.Render() est appelé de façon synchrone — capturer
-    /// AVANT que ce passage ne soit terminé donne un instantané vide malgré
-    /// une taille correcte. Confirmé en conditions réelles : SEUL le tout
-    /// premier élément de la liste (jamais régénéré depuis le démarrage)
-    /// capturait correctement, tout le reste (titres ET commandes,
-    /// fraîchement (re)généré au fil du défilement/de l'affichage) restait
-    /// vide — pas une histoire de titre contre commande comme supposé au
-    /// départ.
+    /// commence — même technique que OverlayWindow.ShowDragGhost (celle qui
+    /// a effectivement réglé le même souci de fantôme vide côté overlay,
+    /// voir son commentaire) : rendre directement UNIQUEMENT l'élément
+    /// (RenderTargetBitmap.Render(item)) donnait un instantané vide pour
+    /// toute ligne sauf la toute première de la liste (même avec un
+    /// Dispatcher.Invoke à DispatcherPriority.Render avant — insuffisant à
+    /// lui seul, confirmé en conditions réelles) ; capturer la FENÊTRE
+    /// ENTIÈRE (déjà pleinement composée, étant ce qui est RÉELLEMENT
+    /// affiché à l'écran) puis RECADRER sur la ligne via TransformToAncestor
+    /// est fiable dans tous les cas.
+    /// Positionné tout de suite sur <paramref name="initialScreenPos"/>
+    /// (calculée depuis l'évènement MouseMove WPF normal qui a déclenché ce
+    /// glisser, avant que DoDragDrop ne coupe ces évènements) avant Show() :
+    /// sans ça, la fenêtre apparaîtrait un instant à sa position par défaut
+    /// (0,0) avant le premier rapport de position du crochet bas niveau.
     /// </summary>
     private void ShowCommandDragGhost(ListBoxItem? item, Point initialScreenPos)
     {
         if (item is null) return;
 
-        item.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+        var windowWidth = Math.Max(1.0, ActualWidth);
+        var windowHeight = Math.Max(1.0, ActualHeight);
+        var fullBitmap = new RenderTargetBitmap(
+            (int)Math.Ceiling(windowWidth), (int)Math.Ceiling(windowHeight), 96, 96, PixelFormats.Pbgra32);
+        fullBitmap.Render(this);
 
-        var width = Math.Max(1.0, item.ActualWidth);
-        var height = Math.Max(1.0, item.ActualHeight);
-        var bitmap = new RenderTargetBitmap(
-            (int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(item);
+        var topLeft = item.TransformToAncestor(this).Transform(new Point(0, 0));
+        var x = Math.Clamp((int)Math.Round(topLeft.X), 0, fullBitmap.PixelWidth - 1);
+        var y = Math.Clamp((int)Math.Round(topLeft.Y), 0, fullBitmap.PixelHeight - 1);
+        var w = Math.Clamp((int)Math.Ceiling(item.ActualWidth), 1, fullBitmap.PixelWidth - x);
+        var h = Math.Clamp((int)Math.Ceiling(item.ActualHeight), 1, fullBitmap.PixelHeight - y);
+        var cropped = new CroppedBitmap(fullBitmap, new Int32Rect(x, y, w, h));
 
         _commandDragGhost = new OverlayDragGhostWindow();
-        _commandDragGhost.SetImage(bitmap);
+        _commandDragGhost.SetImage(cropped);
         MoveCommandDragGhostTo((int)initialScreenPos.X, (int)initialScreenPos.Y);
         _commandDragGhost.Show();
     }
