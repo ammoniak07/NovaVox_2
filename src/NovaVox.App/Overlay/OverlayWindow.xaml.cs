@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using NovaVox.Core;
 using NovaVox.Core.Config;
@@ -49,6 +50,7 @@ public partial class OverlayWindow : Window
     private Dictionary<string, int> _rowWindow = OverlayConfig.RowKeys.ToDictionary(k => k, _ => 0);
     private string? _draggingKey;
     private FrameworkElement? _draggingHandle;
+    private OverlayDragGhostWindow? _dragGhost;
     private readonly Dictionary<string, Grid> _rowGridByKey;
     private readonly Dictionary<Grid, string> _rowKeyByGrid;
     private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3, Column4, Column5, Column6, Column7, Column8 };
@@ -83,6 +85,7 @@ public partial class OverlayWindow : Window
         {
             handle.MouseMove += RowDragHandle_MouseMove;
             handle.MouseLeftButtonUp += RowDragHandle_MouseLeftButtonUp;
+            handle.LostMouseCapture += RowDragHandle_LostMouseCapture;
         }
 
         SourceInitialized += (_, _) =>
@@ -207,17 +210,26 @@ public partial class OverlayWindow : Window
     /// colonnes restantes). S'applique à TOUTES les fenêtres connues (voir
     /// _windows), pas seulement celle-ci : chaque satellite rétrécit/
     /// s'agrandit exactement de la même façon.
+    /// UNE SEULE colonne vide affiche sa bande à la fois (la première
+    /// rencontrée de gauche à droite) — sinon les 8 colonnes vides
+    /// restantes s'affichaient TOUTES en même temps dès le déverrouillage,
+    /// bien plus large que nécessaire. Glisser une ligne dedans la remplit,
+    /// ce qui fait apparaître la colonne vide SUIVANTE au prochain appel :
+    /// la largeur ne grandit donc qu'une colonne à la fois, jamais toutes
+    /// d'un coup (ColumnIndexAtX ignore de toute façon les colonnes à
+    /// largeur nulle, donc ce choix ne bloque aucune cible atteignable).
     /// </summary>
     private void RefreshColumnEditingStrips()
     {
         foreach (var entry in _windows.Values)
         {
             var columns = entry.Columns;
+            var firstEmptyIndex = Array.FindIndex(columns, c => c.Children.Count == 0);
             for (var i = 0; i < columns.Length; i++)
             {
                 var column = columns[i];
                 var empty = column.Children.Count == 0;
-                var showsDropStrip = _editMode && empty;
+                var showsDropStrip = _editMode && empty && i == firstEmptyIndex;
                 column.MinWidth = showsDropStrip ? 28 : 0;
                 column.Background = showsDropStrip ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
                 column.Margin = i == 0 || (empty && !showsDropStrip) ? new Thickness(0) : new Thickness(10, 0, 0, 0);
@@ -590,6 +602,65 @@ public partial class OverlayWindow : Window
         _draggingHandle = handle;
         handle.CaptureMouse();
         e.Handled = true;
+        ShowDragGhost(key, handle.PointToScreen(e.GetPosition(handle)));
+    }
+
+    /// <summary>
+    /// Crée le fantôme (aperçu semi-transparent qui suit le curseur, voir
+    /// OverlayDragGhostWindow) à partir d'un INSTANTANÉ (RenderTargetBitmap)
+    /// de la ligne au moment où le glisser commence — un instantané fixe,
+    /// PAS un second exemplaire vivant du Grid : celui-ci continue par
+    /// ailleurs à changer réellement de colonne/fenêtre pendant le glisser
+    /// (voir MoveRowToColumnIndex), donc son apparence RENDUE à l'instant T0
+    /// (avant tout déplacement) est la seule chose stable à capturer ici.
+    /// </summary>
+    private void ShowDragGhost(string key, Point screenPos)
+    {
+        var element = _rowGridByKey[key];
+        var width = Math.Max(1.0, element.ActualWidth);
+        var height = Math.Max(1.0, element.ActualHeight);
+        var dpi = VisualTreeHelper.GetDpi(element);
+        var bitmap = new RenderTargetBitmap(
+            (int)Math.Ceiling(width * dpi.DpiScaleX), (int)Math.Ceiling(height * dpi.DpiScaleY),
+            dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+        bitmap.Render(element);
+
+        _dragGhost = new OverlayDragGhostWindow();
+        _dragGhost.SetImage(bitmap);
+        MoveDragGhostTo(screenPos);
+        _dragGhost.Show();
+    }
+
+    /// <summary>Décalé de (14, 14) DIP par rapport au curseur pour ne pas le recouvrir — convention habituelle d'un aperçu de glisser.</summary>
+    private void MoveDragGhostTo(Point screenPos)
+    {
+        if (_dragGhost is null) return;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        _dragGhost.MoveTo(screenPos.X / dpi.DpiScaleX + 14, screenPos.Y / dpi.DpiScaleY + 14);
+    }
+
+    private void CloseDragGhost()
+    {
+        _dragGhost?.Close();
+        _dragGhost = null;
+    }
+
+    /// <summary>
+    /// Capture perdue alors que le bouton est ENCORE enfoncé (ex. Alt-Tab en
+    /// cours de glisser, focus volé par une autre fenêtre) : nettoie l'état
+    /// de glisser et ferme le fantôme, sinon il resterait affiché à l'écran
+    /// indéfiniment puisque MouseLeftButtonUp ne se déclenchera jamais dans
+    /// ce cas. Ne fait volontairement RIEN quand le bouton est déjà relâché
+    /// (Mouse.LeftButton != Pressed) : c'est le cas NORMAL, où
+    /// RowDragHandle_MouseLeftButtonUp lui-même provoque cette perte de
+    /// capture via ReleaseMouseCapture() et gère déjà tout le nettoyage.
+    /// </summary>
+    private void RowDragHandle_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_draggingKey is null || Mouse.LeftButton != MouseButtonState.Pressed) return;
+        _draggingKey = null;
+        _draggingHandle = null;
+        CloseDragGhost();
     }
 
     /// <summary>
@@ -605,6 +676,8 @@ public partial class OverlayWindow : Window
     {
         if (_draggingKey is null || e.LeftButton != MouseButtonState.Pressed) return;
         var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
+        MoveDragGhostTo(screenPos);
+
         var targetWindowId = WindowIdAtScreenPoint(screenPos);
         if (targetWindowId is null) return;
 
@@ -624,6 +697,7 @@ public partial class OverlayWindow : Window
         _draggingHandle = null;
         _draggingKey = null;
         e.Handled = true;
+        CloseDragGhost();
 
         // Relâché en dehors de toute fenêtre connue : "sortir" la ligne de
         // l'overlay, comme demandé — crée une nouvelle fenêtre détachée à
