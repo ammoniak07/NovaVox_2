@@ -676,6 +676,31 @@ public partial class MainWindow : Window
             (int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(item);
         AppendLog($"[Diagnostic fantôme] item={item.GetType().Name}, ActualWidth={item.ActualWidth:F1}, ActualHeight={item.ActualHeight:F1}, bitmap={bitmap.PixelWidth}x{bitmap.PixelHeight}.", "warning");
+        // Diagnostic TEMPORAIRE (suite) : la taille captée est correcte
+        // (confirmé au tour précédent) — échantillonne quelques pixels pour
+        // savoir si le RENDU lui-même est vide (Render produit des pixels
+        // transparents malgré la bonne taille) ou si le bitmap est bon mais
+        // mal AFFICHÉ ensuite (fenêtre fantôme, Image). BGRA32 : B,G,R,A.
+        try
+        {
+            var samplePoints = new (string Label, int X, int Y)[]
+            {
+                ("centre", bitmap.PixelWidth / 2, bitmap.PixelHeight / 2),
+                ("haut-gauche 10,10", 10, 10),
+                ("texte ~ x=120", Math.Min(120, bitmap.PixelWidth - 1), bitmap.PixelHeight / 2),
+            };
+            var pixel = new byte[4];
+            var samples = samplePoints.Select(p =>
+            {
+                bitmap.CopyPixels(new Int32Rect(p.X, p.Y, 1, 1), pixel, 4, 0);
+                return $"{p.Label}=(B{pixel[0]},G{pixel[1]},R{pixel[2]},A{pixel[3]})";
+            });
+            AppendLog($"[Diagnostic fantôme] Pixels échantillonnés : {string.Join(" ", samples)}.", "warning");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[Diagnostic fantôme] Échantillonnage échoué : {ex.Message}", "warning");
+        }
 
         _commandDragGhost = new OverlayDragGhostWindow();
         _commandDragGhost.SetImage(bitmap);
