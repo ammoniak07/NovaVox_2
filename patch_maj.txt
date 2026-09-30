@@ -5,6 +5,7 @@ v0.0.9
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.
 - Correctif : la détection de la zone de spawn ci-dessus ne se déclenchait en réalité jamais (mauvaise ligne de Game.log ciblée) — l'overlay pouvait donc continuer d'afficher une zone périmée d'une session précédente (ex. "Pyro Gateway" au lieu de "Megumi Ravitaillement"). Détection corrigée à partir d'un vrai Game.log.
 - Nouvelle ligne "Juridiction" dans l'overlay en jeu : affiche la juridiction locale (ex. "Rough & Ready", "Aucune juridiction") détectée dans le Game.log, indépendamment du nom de la zone/station elle-même.
+- Correctif : la zone affichait "RR CRU LEO" (identifiant brut) au lieu de "Seraphim Station" — même souci que pour Megumi Ravitaillement (RR_P6_L5), mais sur les stations "Leo" identifiées par système plutôt que par numéro.
 
 v0.0.8
 ------

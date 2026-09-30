@@ -29,6 +29,15 @@ public class GameLogDestinationsTests
         Assert.Equal("Megumi Ravitaillement", GameLogDestinations.HumanizeDestination("RR_P6_L5"));
     }
 
+    // "RR_CRU_LEO" (vu en vrai, capture d'écran de l'overlay avec le joueur
+    // à Seraphim Station) désigne le même lieu que "rs_ext_cru-leo1" déjà au
+    // catalogue — sans numéro de station explicite cette fois (implicite "1").
+    [Fact]
+    public void HumanizeDestination_ResolvesLocationInventoryLeoStationIdFormat()
+    {
+        Assert.Equal("Seraphim Station", GameLogDestinations.HumanizeDestination("RR_CRU_LEO"));
+    }
+
     [Fact]
     public void DestinationAliasKey_ReturnsNullForAmbiguousId()
     {

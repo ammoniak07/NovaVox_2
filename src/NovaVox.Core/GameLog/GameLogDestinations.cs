@@ -42,13 +42,32 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^rr p(?<system>\d+) l(?<point>\d+)$")]
     private static partial Regex RrPyroStationIdRegex();
 
+    /// <summary>
+    /// Même sous-système que RrPyroStationIdRegex, mais pour les stations
+    /// "Leo" nommées par système plutôt que par numéro (ex. "RR_CRU_LEO" vu
+    /// dans un vrai Game.log, 30/09/2026, alors que le joueur était à
+    /// Seraphim Station = "rs ext cru leo1") — le numéro de station (souvent
+    /// implicite "1", seule variante rencontrée jusqu'ici) est parfois omis
+    /// par ce sous-système alors qu'il fait partie de la clé canonique.
+    /// </summary>
+    [GeneratedRegex(@"^rr (?<system>[a-z]+) leo(?<num>\d*)$")]
+    private static partial Regex RrLeoStationIdRegex();
+
     /// <summary>Réécrit un identifiant déjà normalisé (espaces) vers la forme canonique attendue par le reste de la résolution, si un format alternatif connu le désigne.</summary>
     private static string NormalizeKnownIdSynonyms(string normalized)
     {
-        var rrMatch = RrPyroStationIdRegex().Match(normalized);
-        return rrMatch.Success
-            ? $"rs ext pyro{rrMatch.Groups["system"].Value} l{rrMatch.Groups["point"].Value}"
-            : normalized;
+        var rrPyroMatch = RrPyroStationIdRegex().Match(normalized);
+        if (rrPyroMatch.Success)
+            return $"rs ext pyro{rrPyroMatch.Groups["system"].Value} l{rrPyroMatch.Groups["point"].Value}";
+
+        var rrLeoMatch = RrLeoStationIdRegex().Match(normalized);
+        if (rrLeoMatch.Success)
+        {
+            var num = rrLeoMatch.Groups["num"].Value;
+            return $"rs ext {rrLeoMatch.Groups["system"].Value} leo{(num.Length == 0 ? "1" : num)}";
+        }
+
+        return normalized;
     }
 
     /// <summary>Alias connus pour des identifiants internes qui ne ressemblent à rien une fois "underscore -> espace".</summary>
