@@ -218,10 +218,19 @@ public partial class OverlayWindow : Window
     /// la largeur ne grandit donc qu'une colonne à la fois, jamais toutes
     /// d'un coup (ColumnIndexAtX ignore de toute façon les colonnes à
     /// largeur nulle, donc ce choix ne bloque aucune cible atteignable).
+    /// La toute première colonne de la fenêtre PRINCIPALE (id 0, colonne 0)
+    /// reçoit en plus une largeur minimale de DefaultMainColumnMinWidth
+    /// TANT QU'ELLE N'EST PAS VIDE — l'overlay par défaut (disposition à une
+    /// seule colonne, avant tout glisser) démarre ainsi 100px plus large
+    /// qu'avant (l'ancienne largeur fixe était 230px) ; une fois vidée
+    /// (toutes ses lignes glissées ailleurs), elle redevient une colonne
+    /// comme les autres (largeur nulle hors édition).
     /// </summary>
+    private const double DefaultMainColumnMinWidth = 330; // ancienne largeur fixe (230) + 100px demandés
+
     private void RefreshColumnEditingStrips()
     {
-        foreach (var entry in _windows.Values)
+        foreach (var (id, entry) in _windows)
         {
             var columns = entry.Columns;
             var firstEmptyIndex = Array.FindIndex(columns, c => c.Children.Count == 0);
@@ -230,7 +239,8 @@ public partial class OverlayWindow : Window
                 var column = columns[i];
                 var empty = column.Children.Count == 0;
                 var showsDropStrip = _editMode && empty && i == firstEmptyIndex;
-                column.MinWidth = showsDropStrip ? 28 : 0;
+                var isDefaultMainColumn = id == 0 && i == 0 && !empty;
+                column.MinWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? DefaultMainColumnMinWidth : 0);
                 column.Background = showsDropStrip ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
                 column.Margin = i == 0 || (empty && !showsDropStrip) ? new Thickness(0) : new Thickness(10, 0, 0, 0);
             }
@@ -607,26 +617,42 @@ public partial class OverlayWindow : Window
 
     /// <summary>
     /// Crée le fantôme (aperçu semi-transparent qui suit le curseur, voir
-    /// OverlayDragGhostWindow) à partir d'un INSTANTANÉ (RenderTargetBitmap)
-    /// de la ligne au moment où le glisser commence — un instantané fixe,
-    /// PAS un second exemplaire vivant du Grid : celui-ci continue par
-    /// ailleurs à changer réellement de colonne/fenêtre pendant le glisser
-    /// (voir MoveRowToColumnIndex), donc son apparence RENDUE à l'instant T0
-    /// (avant tout déplacement) est la seule chose stable à capturer ici.
+    /// OverlayDragGhostWindow) — un instantané FIXE (RenderTargetBitmap) de
+    /// la ligne complète (icône, texte, case à cocher) telle que RÉELLEMENT
+    /// affichée à l'instant où le glisser commence, PAS un second exemplaire
+    /// vivant du Grid : celui-ci continue par ailleurs à changer réellement
+    /// de colonne/fenêtre pendant le glisser (voir MoveRowToColumnIndex).
+    /// Capture la fenêtre ENTIÈRE (Window.GetWindow(element) — la ligne peut
+    /// être hébergée par la fenêtre principale ou un satellite) puis
+    /// RECADRE sur la ligne via TransformToAncestor, plutôt que de rendre
+    /// directement l'élément seul : un rendu direct de l'élément ignore
+    /// l'échelle appliquée par un ANCÊTRE (OverlayScaleTransform, curseur
+    /// "Taille" de l'overlay), ce qui aurait produit un fantôme tronqué/vide
+    /// dès que l'échelle n'est pas 100 % — recadrer le rendu de la fenêtre
+    /// entière est fidèle pixel pour pixel, quelle que soit l'échelle.
     /// </summary>
     private void ShowDragGhost(string key, Point screenPos)
     {
         var element = _rowGridByKey[key];
-        var width = Math.Max(1.0, element.ActualWidth);
-        var height = Math.Max(1.0, element.ActualHeight);
+        if (Window.GetWindow(element) is not { } window) return;
+
         var dpi = VisualTreeHelper.GetDpi(element);
-        var bitmap = new RenderTargetBitmap(
-            (int)Math.Ceiling(width * dpi.DpiScaleX), (int)Math.Ceiling(height * dpi.DpiScaleY),
+        var windowWidth = Math.Max(1.0, window.ActualWidth);
+        var windowHeight = Math.Max(1.0, window.ActualHeight);
+        var fullBitmap = new RenderTargetBitmap(
+            (int)Math.Ceiling(windowWidth * dpi.DpiScaleX), (int)Math.Ceiling(windowHeight * dpi.DpiScaleY),
             dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
-        bitmap.Render(element);
+        fullBitmap.Render(window);
+
+        var topLeft = element.TransformToAncestor(window).Transform(new Point(0, 0));
+        var x = Math.Clamp((int)Math.Round(topLeft.X * dpi.DpiScaleX), 0, fullBitmap.PixelWidth - 1);
+        var y = Math.Clamp((int)Math.Round(topLeft.Y * dpi.DpiScaleY), 0, fullBitmap.PixelHeight - 1);
+        var w = Math.Clamp((int)Math.Ceiling(element.ActualWidth * dpi.DpiScaleX), 1, fullBitmap.PixelWidth - x);
+        var h = Math.Clamp((int)Math.Ceiling(element.ActualHeight * dpi.DpiScaleY), 1, fullBitmap.PixelHeight - y);
+        var cropped = new CroppedBitmap(fullBitmap, new Int32Rect(x, y, w, h));
 
         _dragGhost = new OverlayDragGhostWindow();
-        _dragGhost.SetImage(bitmap);
+        _dragGhost.SetImage(cropped);
         MoveDragGhostTo(screenPos);
         _dragGhost.Show();
     }

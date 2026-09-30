@@ -7,6 +7,8 @@ v0.1.0
 - Overlay déverrouillé : glisser une ligne complètement hors de l'overlay (ou d'une autre fenêtre détachée) crée désormais une toute nouvelle fenêtre séparée pour cette ligne, aussi malléable que l'overlay principal (glisser d'autres lignes dedans, la séparer en colonnes, ou en faire glisser une ligne vers une autre fenêtre) — une fenêtre détachée qui perd sa dernière ligne se referme automatiquement. Position de chaque fenêtre détachée mémorisée d'une session à l'autre.
 - Correctif : au déverrouillage, les colonnes vides s'affichaient TOUTES en même temps (jusqu'à 8 bandes vides d'un coup) — une seule colonne vide s'affiche désormais à la fois ; glisser une ligne dedans en fait apparaître une nouvelle, et ainsi de suite au fur et à mesure du besoin.
 - Overlay déverrouillé : un aperçu semi-transparent de la ligne suit maintenant le curseur pendant tout le glisser (avant : seule la ligne réelle changeait de place d'un coup, sans indice visuel entre-temps) — plus clair pour suivre le déplacement, en particulier vers une nouvelle fenêtre détachée.
+- Overlay par défaut (disposition à une seule colonne, avant tout glisser) 100px plus large qu'avant, pour laisser plus de place au texte.
+- Correctif : l'aperçu de glisser (ci-dessus) rendait la ligne SANS tenir compte du curseur "Taille de l'overlay" — tronqué/vide dès que l'échelle n'était pas à 100 %. Montre maintenant fidèlement la ligne complète (icône, texte, case à cocher), quelle que soit l'échelle choisie.
 v0.0.9
 ------
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.
