@@ -208,6 +208,87 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(2, loaded.RowColumns["mic"]);
     }
 
+    // Fenêtres détachées (glisser une ligne hors de l'overlay, voir
+    // OverlayWindow.DetachRowToNewWindow) : quelle fenêtre (0 = principale,
+    // sinon un identifiant de fenêtre satellite) héberge chaque ligne, et où
+    // se trouve chaque fenêtre satellite à l'écran.
+    [Fact]
+    public void OverlayConfig_RoundTripsRowWindow()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowWindow: new Dictionary<string, int> { ["mic"] = 1, ["zone"] = 2 });
+
+        var loaded = store.Load().RowWindow;
+
+        Assert.Equal(1, loaded["mic"]);
+        Assert.Equal(2, loaded["zone"]);
+        Assert.Equal(0, loaded["time"]); // absente de l'appel : fenêtre principale par défaut
+        Assert.Equal(OverlayConfig.RowKeys.Length, loaded.Count);
+    }
+
+    [Fact]
+    public void OverlayConfig_RowWindow_NegativeFallsBackToMainAndIgnoresUnknownKeys()
+    {
+        File.WriteAllText(Path.Combine(_dir, "overlay_config.json"),
+            """{"row_window": {"mic": 3, "zone": -1, "some_removed_row": 2}}""");
+        var loaded = new OverlayConfigStore(_dir).Load().RowWindow;
+
+        Assert.Equal(3, loaded["mic"]); // aucune borne supérieure, contrairement à RowColumns
+        Assert.Equal(0, loaded["zone"]);
+        Assert.False(loaded.ContainsKey("some_removed_row"));
+        Assert.Equal(OverlayConfig.RowKeys.Length, loaded.Count);
+    }
+
+    [Fact]
+    public void OverlayConfig_SaveWithoutRowWindow_PreservesPreviouslySavedWindow()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowWindow: new Dictionary<string, int> { ["mic"] = 2 });
+
+        store.Save(enabled: true, scale: 1.1); // ne touche pas rowWindow
+
+        var loaded = store.Load();
+        Assert.Equal(1.1, loaded.Scale);
+        Assert.Equal(2, loaded.RowWindow["mic"]);
+    }
+
+    [Fact]
+    public void OverlayConfig_RoundTripsSatelliteWindowPositions()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, satelliteWindows: new Dictionary<int, (int X, int Y)> { [1] = (100, 200), [2] = (300, 400) });
+
+        var loaded = store.Load().SatelliteWindows;
+
+        Assert.Equal((100, 200), loaded[1]);
+        Assert.Equal((300, 400), loaded[2]);
+        Assert.Equal(2, loaded.Count);
+    }
+
+    [Fact]
+    public void OverlayConfig_SatelliteWindowPositions_IgnoresNonPositiveOrMalformedIds()
+    {
+        File.WriteAllText(Path.Combine(_dir, "overlay_config.json"),
+            """{"satellite_windows": {"1": {"x": 10, "y": 20}, "0": {"x": 1, "y": 1}, "-2": {"x": 1, "y": 1}, "abc": {"x": 1, "y": 1}, "3": {"x": 1}}}""");
+        var loaded = new OverlayConfigStore(_dir).Load().SatelliteWindows;
+
+        Assert.Equal((10, 20), loaded[1]);
+        Assert.Single(loaded); // 0/-2 (identifiants invalides), "abc" (non numérique) et "3" (y manquant) ignorés
+    }
+
+    [Fact]
+    public void OverlayConfig_SaveWithoutSatelliteWindows_PreservesPreviouslySavedPositions()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, satelliteWindows: new Dictionary<int, (int X, int Y)> { [1] = (50, 60) });
+
+        store.Save(enabled: true, scale: 1.1); // ne touche pas satelliteWindows
+
+        var loaded = store.Load();
+        Assert.Equal(1.1, loaded.Scale);
+        Assert.Equal((50, 60), loaded.SatelliteWindows[1]);
+    }
+
     /// <summary>
     /// Régression : OverlayWindow.OnClosing ne sauvegarde que la position
     /// (enabled + x/y), sans repasser bgColor/bgOpacity/textColor/

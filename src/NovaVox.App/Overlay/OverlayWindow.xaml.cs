@@ -40,15 +40,36 @@ public partial class OverlayWindow : Window
 
     // Glisser-déposer des lignes en mode édition (RowDragHandle_*) : ordre
     // GLOBAL courant (toutes colonnes confondues, sert à retrouver l'ordre
-    // relatif DANS une colonne — voir OverlayConfig.RowOrder), colonne de
-    // chaque ligne, + élément en cours de déplacement (null hors glisser).
+    // relatif DANS une colonne — voir OverlayConfig.RowOrder), colonne et
+    // FENÊTRE (0 = principale, sinon un satellite détaché — voir
+    // OverlayConfig.RowWindow) de chaque ligne, + élément en cours de
+    // déplacement (null hors glisser).
     private List<string> _rowOrder = OverlayConfig.RowKeys.ToList();
     private Dictionary<string, int> _rowColumn = OverlayConfig.RowKeys.ToDictionary(k => k, _ => 0);
+    private Dictionary<string, int> _rowWindow = OverlayConfig.RowKeys.ToDictionary(k => k, _ => 0);
     private string? _draggingKey;
     private FrameworkElement? _draggingHandle;
     private readonly Dictionary<string, Grid> _rowGridByKey;
     private readonly Dictionary<Grid, string> _rowKeyByGrid;
-    private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3 };
+    private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3, Column4, Column5, Column6, Column7, Column8 };
+
+    /// <summary>Une fenêtre connue (principale ou satellite) pour la logique de glisser-déposer, indépendamment de son type concret.</summary>
+    private sealed record OverlayWindowEntry(Window Window, Panel ColumnsPanel, Panel[] Columns);
+
+    // Toutes les fenêtres connues (0 = cette instance elle-même, sinon un
+    // satellite créé par DetachRowToNewWindow) — _windows sert au
+    // glisser-déposer générique (géométrie), _satellites uniquement aux
+    // appels spécifiques (apparence, clic-traversant) qui n'existent que sur
+    // OverlaySatelliteWindow. Dernière apparence/échelle appliquée mémorisée
+    // pour qu'un satellite créé EN COURS DE SESSION (glisser une ligne hors
+    // de l'overlay) reçoive immédiatement le même rendu que la fenêtre
+    // principale, sans dépendre de l'ordre d'appel avec ApplyAppearance/
+    // ApplyScale (voir CreateSatelliteWindow).
+    private readonly Dictionary<int, OverlayWindowEntry> _windows = new();
+    private readonly Dictionary<int, OverlaySatelliteWindow> _satellites = new();
+    private string _lastBgColorHex = OverlayConfig.DefaultBgColor;
+    private int _lastBgOpacity = OverlayConfig.DefaultBgOpacity;
+    private double _lastScale = OverlayConfig.DefaultScale;
 
     public OverlayWindow(OverlayConfigStore store)
     {
@@ -57,6 +78,7 @@ public partial class OverlayWindow : Window
 
         _rowGridByKey = RowEntries().ToDictionary(r => r.Key, r => r.Row);
         _rowKeyByGrid = _rowGridByKey.ToDictionary(kv => kv.Value, kv => kv.Key);
+        _windows[0] = new OverlayWindowEntry(this, ColumnsPanel, ColumnPanels);
         foreach (var (_, _, handle, _) in RowEntries())
         {
             handle.MouseMove += RowDragHandle_MouseMove;
@@ -77,6 +99,26 @@ public partial class OverlayWindow : Window
         UpdateClock();
     }
 
+    /// <summary>
+    /// Affiche/masque l'overlay ET tous ses satellites actuels ensemble — un
+    /// satellite ne doit jamais rester visible (ou caché) indépendamment de
+    /// la case "Activer l'overlay" qui pilote cette fenêtre principale.
+    /// `new` (et non `override`) : Window.Show/Hide ne sont pas virtuelles ;
+    /// fonctionne car MainWindow détient _overlayWindow typé OverlayWindow
+    /// (pas Window), donc la résolution statique choisit bien ces surcharges.
+    /// </summary>
+    public new void Show()
+    {
+        base.Show();
+        foreach (var satellite in _satellites.Values) satellite.Show();
+    }
+
+    public new void Hide()
+    {
+        base.Hide();
+        foreach (var satellite in _satellites.Values) satellite.Hide();
+    }
+
     public void LoadFromConfig()
     {
         var config = _store.Load();
@@ -88,34 +130,61 @@ public partial class OverlayWindow : Window
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
         ApplyScale(config.Scale);
-        ApplyLayout(config.RowOrder, config.RowColumns);
+        ApplyLayout(config.RowOrder, config.RowColumns, config.RowWindow, config.SatelliteWindows);
         _visibleRows = new Dictionary<string, bool>(config.VisibleRows);
         ApplyRowVisibility(_visibleRows);
         RefreshRowVisualsForEditMode();
     }
 
     /// <summary>
-    /// Répartit les lignes dans leurs colonnes (<paramref name="columns"/>,
-    /// clé -> index 0..MaxColumns-1) en respectant leur ordre relatif au
-    /// sein de chaque colonne (<paramref name="order"/>, GLOBAL toutes
+    /// Répartit les lignes dans leurs fenêtres (<paramref name="rowWindow"/>,
+    /// 0 = principale) puis colonnes (<paramref name="columns"/>, clé ->
+    /// index 0..MaxColumns-1) en respectant leur ordre relatif au sein de
+    /// chaque colonne (<paramref name="order"/>, GLOBAL toutes fenêtres/
     /// colonnes confondues — l'ordre RELATIF des lignes d'une même colonne
     /// entre elles donne leur ordre d'affichage de haut en bas) en déplaçant
     /// les Grid déjà existants — pas de gabarit de données à reconstruire,
     /// juste l'ordre/le parent des enfants qui changent, donc tout le reste
-    /// (bindings, visibilité, couleurs) reste intact. Toute clé/colonne
-    /// manquante ou invalide est corrigée silencieusement par
-    /// OverlayConfig.NormalizeRowOrder/NormalizeRowColumns plutôt que de
-    /// faire disparaître une ligne.
+    /// (bindings, visibilité, couleurs) reste intact. Toute clé/colonne/
+    /// fenêtre manquante ou invalide est corrigée silencieusement par
+    /// OverlayConfig.NormalizeRowOrder/NormalizeRowColumns/NormalizeRowWindow
+    /// plutôt que de faire disparaître une ligne. Crée ou ferme les
+    /// satellites nécessaires AVANT de replacer les lignes, pour qu'une
+    /// fenêtre référencée existe toujours au moment d'y ajouter une ligne.
     /// </summary>
-    public void ApplyLayout(IReadOnlyList<string> order, IReadOnlyDictionary<string, int> columns)
+    public void ApplyLayout(
+        IReadOnlyList<string> order, IReadOnlyDictionary<string, int> columns,
+        IReadOnlyDictionary<string, int> rowWindow, IReadOnlyDictionary<int, (int X, int Y)> satelliteWindowPositions)
     {
-        _rowOrder = OverlayConfig.NormalizeRowOrder(order);
-        _rowColumn = OverlayConfig.NormalizeRowColumns(columns);
+        var normalizedOrder = OverlayConfig.NormalizeRowOrder(order);
+        var normalizedColumns = OverlayConfig.NormalizeRowColumns(columns);
+        var normalizedWindow = OverlayConfig.NormalizeRowWindow(rowWindow);
+
+        var neededWindowIds = normalizedWindow.Values.Where(id => id != 0).Distinct().ToList();
+        foreach (var existingId in _windows.Keys.Where(id => id != 0).ToList())
+        {
+            if (!neededWindowIds.Contains(existingId))
+                CloseSatellite(existingId);
+        }
+        foreach (var id in neededWindowIds)
+        {
+            if (_windows.ContainsKey(id)) continue;
+            var (x, y) = satelliteWindowPositions.TryGetValue(id, out var pos) && IsValidScreenPosition(pos.X, pos.Y)
+                ? pos
+                : ((int)Left + 40, (int)Top + 40);
+            CreateSatelliteWindow(id, x, y);
+        }
+
+        _rowOrder = normalizedOrder;
+        _rowColumn = normalizedColumns;
+        _rowWindow = normalizedWindow;
         foreach (var key in _rowOrder)
         {
             var element = _rowGridByKey[key];
             (element.Parent as Panel)?.Children.Remove(element);
-            ColumnPanels[_rowColumn[key]].Children.Add(element);
+            var windowColumns = _windows[_rowWindow[key]].Columns;
+            var columnIndex = Math.Clamp(_rowColumn[key], 0, windowColumns.Length - 1);
+            windowColumns[columnIndex].Children.Add(element);
         }
         RefreshColumnEditingStrips();
     }
@@ -127,15 +196,32 @@ public partial class OverlayWindow : Window
     /// nouvelle colonne) — sinon un StackPanel sans enfant occupe une
     /// largeur nulle et ne peut jamais recevoir de première ligne. Hors
     /// édition (ou dès qu'une ligne y est déposée), la colonne retrouve sa
-    /// largeur naturelle (0 si toujours vide, invisible).
+    /// largeur naturelle (0 si toujours vide, invisible) : AUCUNE colonne
+    /// n'a de largeur fixe (voir OverlayWindow.xaml), donc l'overlay
+    /// rétrécit réellement quand une colonne se vide, et ne s'élargit que
+    /// si une ligne y est glissée.
+    /// La marge gauche (espacement entre colonnes) est gérée ici plutôt
+    /// qu'en XAML pour la même raison : une colonne vide hors édition ne
+    /// doit laisser filtrer AUCUN espace, sinon l'overlay ne rétrécirait
+    /// que partiellement (une bande vide resterait visible entre les
+    /// colonnes restantes). S'applique à TOUTES les fenêtres connues (voir
+    /// _windows), pas seulement celle-ci : chaque satellite rétrécit/
+    /// s'agrandit exactement de la même façon.
     /// </summary>
     private void RefreshColumnEditingStrips()
     {
-        foreach (var column in ColumnPanels)
+        foreach (var entry in _windows.Values)
         {
-            var empty = column.Children.Count == 0;
-            column.MinWidth = _editMode && empty ? 28 : 0;
-            column.Background = _editMode && empty ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
+            var columns = entry.Columns;
+            for (var i = 0; i < columns.Length; i++)
+            {
+                var column = columns[i];
+                var empty = column.Children.Count == 0;
+                var showsDropStrip = _editMode && empty;
+                column.MinWidth = showsDropStrip ? 28 : 0;
+                column.Background = showsDropStrip ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
+                column.Margin = i == 0 || (empty && !showsDropStrip) ? new Thickness(0) : new Thickness(10, 0, 0, 0);
+            }
         }
     }
 
@@ -158,6 +244,9 @@ public partial class OverlayWindow : Window
 
     public void ApplyAppearance(string bgColorHex, int bgOpacityPercent, string textColorHex, int textOpacityPercent)
     {
+        _lastBgColorHex = bgColorHex;
+        _lastBgOpacity = bgOpacityPercent;
+
         var bgColor = (Color)ColorConverter.ConvertFromString(bgColorHex)!;
         bgColor.A = (byte)Math.Clamp(bgOpacityPercent * 255 / 100, 0, 255);
         PanelBorder.Background = new SolidColorBrush(bgColor);
@@ -167,6 +256,15 @@ public partial class OverlayWindow : Window
         var textBrush = new SolidColorBrush(textColor);
         foreach (var tb in RowTextBlocks())
             tb.Foreground = textBrush;
+
+        // Une fenêtre satellite ne suit pas la couleur de TEXTE ici : les
+        // TextBlock de chaque ligne restent des champs de CETTE instance
+        // (this) quelle que soit la fenêtre qui les héberge visuellement
+        // (voir _rowGridByKey) — la boucle RowTextBlocks() ci-dessus les
+        // couvre donc déjà tous. Seul le fond du panneau (PanelBorder)
+        // existe séparément dans chaque satellite.
+        foreach (var satellite in _satellites.Values)
+            satellite.ApplyBackground(bgColorHex, bgOpacityPercent);
     }
 
     /// <summary>
@@ -182,8 +280,11 @@ public partial class OverlayWindow : Window
     public void ApplyScale(double scale)
     {
         if (scale < OverlayConfig.MinScale || scale > OverlayConfig.MaxScale) return;
+        _lastScale = scale;
         OverlayScaleTransform.ScaleX = scale;
         OverlayScaleTransform.ScaleY = scale;
+        foreach (var satellite in _satellites.Values)
+            satellite.ApplyScale(scale);
     }
 
     private IEnumerable<TextBlock> RowTextBlocks()
@@ -402,6 +503,11 @@ public partial class OverlayWindow : Window
         RefreshBorderColor();
         if (_hwnd != IntPtr.Zero) WindowClickThrough.SetClickThrough(_hwnd, clickThrough: !editable);
         RefreshRowVisualsForEditMode();
+        foreach (var satellite in _satellites.Values)
+        {
+            satellite.SetClickThrough(!editable);
+            satellite.SetEditModeBorder(editable);
+        }
     }
 
     /// <summary>
@@ -427,6 +533,13 @@ public partial class OverlayWindow : Window
         }
     }
 
+    /// <summary>
+    /// Partagé avec chaque OverlaySatelliteWindow (abonné au même
+    /// gestionnaire — voir CreateSatelliteWindow) : DragMove() est appelé
+    /// sur <paramref name="sender"/> (la fenêtre qui a REÇU le clic), pas
+    /// implicitement sur "this", sinon un clic sur un satellite déplacerait
+    /// à tort la fenêtre principale.
+    /// </summary>
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (!_editMode) return;
@@ -441,7 +554,7 @@ public partial class OverlayWindow : Window
         if (IsWithinCheckbox(e.OriginalSource as DependencyObject)) return;
         try
         {
-            DragMove();
+            (sender as Window)?.DragMove();
         }
         catch (InvalidOperationException)
         {
@@ -479,27 +592,51 @@ public partial class OverlayWindow : Window
         e.Handled = true;
     }
 
+    /// <summary>
+    /// Prévisualise en direct le déplacement TANT QUE le curseur reste dans
+    /// les limites (écran) d'une fenêtre CONNUE (principale ou satellite) —
+    /// voir WindowIdAtScreenPoint. En dehors de toute fenêtre connue, ne
+    /// fait RIEN (la ligne reste à sa dernière position valide) : c'est au
+    /// relâchement (RowDragHandle_MouseLeftButtonUp) que ce cas déclenche la
+    /// création d'une nouvelle fenêtre détachée, pas pendant le glisser —
+    /// plus simple et robuste sans prévisualisation live inter-fenêtres.
+    /// </summary>
     private void RowDragHandle_MouseMove(object sender, MouseEventArgs e)
     {
         if (_draggingKey is null || e.LeftButton != MouseButtonState.Pressed) return;
-        var positionInColumns = e.GetPosition(ColumnsPanel);
-        var targetColumn = ColumnPanels[ColumnIndexAtX(positionInColumns.X)];
-        var targetIndex = RowIndexAtY(targetColumn, e.GetPosition(targetColumn).Y);
-        MoveRowToColumnIndex(_draggingKey, targetColumn, targetIndex);
+        var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
+        var targetWindowId = WindowIdAtScreenPoint(screenPos);
+        if (targetWindowId is null) return;
+
+        var entry = _windows[targetWindowId.Value];
+        var positionInColumns = entry.ColumnsPanel.PointFromScreen(screenPos);
+        var targetColumn = entry.Columns[ColumnIndexAtX(entry.ColumnsPanel, entry.Columns, positionInColumns.X)];
+        var targetIndex = RowIndexAtY(targetColumn, targetColumn.PointFromScreen(screenPos).Y);
+        MoveRowToColumnIndex(_draggingKey, targetWindowId.Value, targetColumn, targetIndex);
     }
 
     private void RowDragHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (_draggingKey is null) return;
+        var key = _draggingKey!;
+        var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
         _draggingHandle?.ReleaseMouseCapture();
         _draggingHandle = null;
         _draggingKey = null;
         e.Handled = true;
+
+        // Relâché en dehors de toute fenêtre connue : "sortir" la ligne de
+        // l'overlay, comme demandé — crée une nouvelle fenêtre détachée à
+        // cet endroit plutôt que de laisser la ligne où le dernier
+        // MouseMove valide l'avait laissée.
+        if (WindowIdAtScreenPoint(screenPos) is null)
+            DetachRowToNewWindow(key, screenPos);
+
         RefreshColumnEditingStrips(); // la colonne quittée peut être redevenue vide, celle rejointe ne l'est plus
 
         try
         {
-            _store.Save(enabled: true, rowOrder: _rowOrder, rowColumns: _rowColumn);
+            _store.Save(enabled: true, rowOrder: _rowOrder, rowColumns: _rowColumn, rowWindow: _rowWindow);
         }
         catch (Exception ex)
         {
@@ -508,22 +645,47 @@ public partial class OverlayWindow : Window
     }
 
     /// <summary>
-    /// Trouve la colonne (0..MaxColumns-1) dont le CENTRE horizontal a été
-    /// dépassé par <paramref name="x"/> (position dans ColumnsPanel) — la
-    /// dernière colonne active dont le centre est franchi l'emporte, sans
-    /// "zone morte" entre deux colonnes ni retour à la colonne 0 une fois la
-    /// première dépassée. N'examine que les colonnes actuellement visibles
-    /// (largeur non nulle) : une colonne encore masquée (hors édition ou
-    /// déjà vide sans bande de dépôt) ne peut pas être une cible.
+    /// Fenêtre (principale ou satellite) dont les limites ÉCRAN contiennent
+    /// <paramref name="screenPos"/>, ou null si aucune ne le fait (le
+    /// curseur est alors "hors de l'overlay"). Les bornes sont obtenues via
+    /// PointToScreen sur CHAQUE fenêtre (comme pour screenPos lui-même)
+    /// plutôt qu'en combinant Left/Top (unités indépendantes de la
+    /// résolution) avec des coordonnées écran (pixels physiques) : les deux
+    /// passent par la même transformation DPI, donc restent comparables même
+    /// sur un moniteur à mise à l'échelle non standard.
     /// </summary>
-    private int ColumnIndexAtX(double x)
+    private int? WindowIdAtScreenPoint(Point screenPos)
+    {
+        foreach (var (id, entry) in _windows)
+        {
+            var topLeft = entry.Window.PointToScreen(new Point(0, 0));
+            var bottomRight = entry.Window.PointToScreen(new Point(entry.Window.ActualWidth, entry.Window.ActualHeight));
+            if (screenPos.X >= topLeft.X && screenPos.X <= bottomRight.X && screenPos.Y >= topLeft.Y && screenPos.Y <= bottomRight.Y)
+                return id;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Trouve la colonne (0..MaxColumns-1) dont le CENTRE horizontal a été
+    /// dépassé par <paramref name="x"/> (position dans <paramref name="columnsPanel"/>)
+    /// — la dernière colonne active dont le centre est franchi l'emporte,
+    /// sans "zone morte" entre deux colonnes ni retour à la colonne 0 une
+    /// fois la première dépassée. N'examine que les colonnes actuellement
+    /// visibles (largeur non nulle) : une colonne encore masquée (hors
+    /// édition ou déjà vide sans bande de dépôt) ne peut pas être une cible.
+    /// Statique et paramétrée par <paramref name="columns"/>/<paramref name="columnsPanel"/>
+    /// (pas seulement celles de cette fenêtre) pour s'appliquer identiquement
+    /// à n'importe quel satellite.
+    /// </summary>
+    private static int ColumnIndexAtX(Panel columnsPanel, Panel[] columns, double x)
     {
         var best = 0;
-        for (var c = 0; c < ColumnPanels.Length; c++)
+        for (var c = 0; c < columns.Length; c++)
         {
-            var column = ColumnPanels[c];
+            var column = columns[c];
             if (column.ActualWidth <= 0) continue;
-            var left = column.TranslatePoint(new Point(0, 0), ColumnsPanel).X;
+            var left = column.TranslatePoint(new Point(0, 0), columnsPanel).X;
             if (x >= left + column.ActualWidth / 2) best = c;
         }
         return best;
@@ -555,17 +717,19 @@ public partial class OverlayWindow : Window
 
     /// <summary>
     /// Déplace la ligne <paramref name="key"/> dans <paramref name="targetColumn"/>
-    /// pour qu'elle se retrouve juste avant l'index <paramref name="targetIndex"/>
-    /// (voir RowIndexAtY) DANS L'ORDRE ACTUEL de cette colonne (avant
-    /// retrait) — au sein d'UNE MÊME colonne, un retrait à un index
-    /// inférieur à targetIndex décale tout ce qui suit d'un cran, d'où la
-    /// compensation (targetIndex--) uniquement dans ce cas (déplacement vers
-    /// le bas dans la même colonne), sinon l'élément atterrit
-    /// systématiquement une case trop loin. Un changement DE colonne n'a pas
-    /// besoin de cette compensation (le retrait a lieu dans un autre panneau
-    /// que celui où l'insertion se produit).
+    /// (de la fenêtre <paramref name="targetWindowId"/>) pour qu'elle se
+    /// retrouve juste avant l'index <paramref name="targetIndex"/> (voir
+    /// RowIndexAtY) DANS L'ORDRE ACTUEL de cette colonne (avant retrait) —
+    /// au sein d'UNE MÊME colonne, un retrait à un index inférieur à
+    /// targetIndex décale tout ce qui suit d'un cran, d'où la compensation
+    /// (targetIndex--) uniquement dans ce cas (déplacement vers le bas dans
+    /// la même colonne), sinon l'élément atterrit systématiquement une case
+    /// trop loin. Un changement DE colonne (ou de fenêtre) n'a pas besoin de
+    /// cette compensation (le retrait a lieu dans un autre panneau que celui
+    /// où l'insertion se produit). Ferme le satellite QUITTÉ s'il en résulte
+    /// vide (voir CloseSatelliteIfEmpty) — jamais la fenêtre principale.
     /// </summary>
-    private void MoveRowToColumnIndex(string key, Panel targetColumn, int targetIndex)
+    private void MoveRowToColumnIndex(string key, int targetWindowId, Panel targetColumn, int targetIndex)
     {
         var element = _rowGridByKey[key];
         if (element.Parent is not Panel currentColumn) return;
@@ -577,13 +741,12 @@ public partial class OverlayWindow : Window
         if (sameColumn && currentIndex < targetIndex) targetIndex--;
         if (sameColumn && targetIndex == currentIndex) return;
 
+        var previousWindowId = _rowWindow.TryGetValue(key, out var previous) ? previous : 0;
+
         currentColumn.Children.Remove(element);
         targetColumn.Children.Insert(Math.Clamp(targetIndex, 0, targetColumn.Children.Count), element);
 
-        _rowOrder = ColumnPanels.SelectMany(c => c.Children.OfType<Grid>()).Select(g => _rowKeyByGrid[g]).ToList();
-        _rowColumn = ColumnPanels
-            .SelectMany((c, index) => c.Children.OfType<Grid>().Select(g => (Key: _rowKeyByGrid[g], Index: index)))
-            .ToDictionary(t => t.Key, t => t.Index);
+        RecomputeLayoutState();
 
         // Bascule les bandes de dépôt en direct pendant le glisser, pas
         // seulement au relâchement : sinon une colonne qui vient de se vider
@@ -591,6 +754,130 @@ public partial class OverlayWindow : Window
         // une toute nouvelle colonne rejointe ne montrerait sa bande qu'une
         // fois le glisser terminé — moins clair pour viser une 5e position.
         RefreshColumnEditingStrips();
+
+        if (previousWindowId != 0 && previousWindowId != targetWindowId)
+            CloseSatelliteIfEmpty(previousWindowId);
+    }
+
+    /// <summary>
+    /// Reconstruit _rowOrder/_rowColumn/_rowWindow à partir de la position
+    /// RÉELLE de chaque Grid dans toutes les fenêtres connues (_windows) —
+    /// plus simple et moins sujet aux erreurs qu'un ajustement incrémental
+    /// après chaque déplacement, puisque le nombre de fenêtres/colonnes à
+    /// considérer change dynamiquement (contrairement à l'ancienne version
+    /// mono-fenêtre qui ne parcourait que ColumnPanels).
+    /// </summary>
+    private void RecomputeLayoutState()
+    {
+        var order = new List<string>();
+        var columnOf = new Dictionary<string, int>();
+        var windowOf = new Dictionary<string, int>();
+        foreach (var (id, entry) in _windows)
+        {
+            for (var c = 0; c < entry.Columns.Length; c++)
+            {
+                foreach (var grid in entry.Columns[c].Children.OfType<Grid>())
+                {
+                    var key = _rowKeyByGrid[grid];
+                    order.Add(key);
+                    columnOf[key] = c;
+                    windowOf[key] = id;
+                }
+            }
+        }
+        _rowOrder = order;
+        _rowColumn = columnOf;
+        _rowWindow = windowOf;
+    }
+
+    /// <summary>
+    /// Relâchée hors des limites de toute fenêtre connue : retire la ligne
+    /// de sa colonne actuelle et crée une toute nouvelle fenêtre satellite,
+    /// juste sous le curseur, ne contenant que cette ligne — exactement le
+    /// comportement demandé ("si je déplace une ligne hors de l'overlay,
+    /// cela crée un nouvel overlay supplémentaire"). Le nouvel identifiant
+    /// est max(id existants)+1 : jamais borné, et réutilise un identifiant
+    /// libéré par un satellite refermé entre-temps (CloseSatelliteIfEmpty).
+    /// </summary>
+    private void DetachRowToNewWindow(string key, Point screenPos)
+    {
+        var element = _rowGridByKey[key];
+        if (element.Parent is not Panel currentColumn) return;
+        var previousWindowId = _rowWindow.TryGetValue(key, out var previous) ? previous : 0;
+        currentColumn.Children.Remove(element);
+
+        // Simplification assumée : convertit le point ÉCRAN (pixels
+        // physiques, comme screenPos) en unités indépendantes de la
+        // résolution (Window.Left/Top) via le DPI de LA FENÊTRE PRINCIPALE
+        // (this), pas celui du moniteur exact sous le curseur — correct sur
+        // un poste à un seul moniteur ou où tous les moniteurs partagent la
+        // même mise à l'échelle (le cas courant), légèrement décalé sinon
+        // (plusieurs moniteurs à DPI différents) : la nouvelle fenêtre
+        // resterait alors proche du point de dépose sans y être exactement,
+        // rattrapable en la faisant simplement glisser à nouveau.
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var newId = _windows.Keys.DefaultIfEmpty(0).Max() + 1;
+        CreateSatelliteWindow(newId, screenPos.X / dpi.DpiScaleX, screenPos.Y / dpi.DpiScaleY);
+        _windows[newId].Columns[0].Children.Add(element);
+
+        RecomputeLayoutState();
+        RefreshColumnEditingStrips();
+
+        if (previousWindowId != 0)
+            CloseSatelliteIfEmpty(previousWindowId);
+    }
+
+    /// <summary>
+    /// Crée et enregistre (_windows/_satellites) une nouvelle fenêtre
+    /// détachée à la position donnée (unités indépendantes de la
+    /// résolution) — reprend immédiatement l'apparence/échelle/mode édition
+    /// COURANTS (voir _lastBgColorHex/_lastBgOpacity/_lastScale/_editMode),
+    /// pour qu'elle soit visuellement cohérente avec la fenêtre principale
+    /// dès sa création, que ce soit au chargement de la config (plusieurs
+    /// satellites à recréer d'un coup) ou en cours de session (un seul
+    /// glisser). N'affiche (Show) la nouvelle fenêtre que si l'overlay
+    /// principal l'est déjà lui-même (IsVisible) : sinon elle resterait
+    /// visible alors que la case "Activer l'overlay" est décochée, jusqu'au
+    /// prochain OverlayWindow.Show() qui la reprendra alors normalement (voir
+    /// le `new void Show()` ci-dessus).
+    /// </summary>
+    private OverlaySatelliteWindow CreateSatelliteWindow(int id, double left, double top)
+    {
+        var satellite = new OverlaySatelliteWindow
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = left,
+            Top = top,
+        };
+        satellite.MouseLeftButtonDown += OnMouseLeftButtonDown;
+        satellite.ApplyBackground(_lastBgColorHex, _lastBgOpacity);
+        satellite.ApplyScale(_lastScale);
+        satellite.SetEditModeBorder(_editMode);
+        satellite.SetClickThrough(!_editMode);
+
+        _windows[id] = new OverlayWindowEntry(satellite, satellite.ColumnsPanel, satellite.ColumnPanels);
+        _satellites[id] = satellite;
+
+        if (IsVisible) satellite.Show();
+        return satellite;
+    }
+
+    /// <summary>Ferme le satellite <paramref name="windowId"/> s'il ne contient plus aucune ligne — jamais la fenêtre principale (id 0, toujours conservée même vide).</summary>
+    private void CloseSatelliteIfEmpty(int windowId)
+    {
+        if (windowId == 0) return;
+        if (!_windows.TryGetValue(windowId, out var entry)) return;
+        if (entry.Columns.Any(c => c.Children.Count > 0)) return;
+        CloseSatellite(windowId);
+    }
+
+    private void CloseSatellite(int windowId)
+    {
+        if (!_satellites.TryGetValue(windowId, out var satellite)) return;
+        satellite.MouseLeftButtonDown -= OnMouseLeftButtonDown;
+        satellite.Close();
+        _satellites.Remove(windowId);
+        _windows.Remove(windowId);
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
@@ -598,14 +885,24 @@ public partial class OverlayWindow : Window
         _clockTimer.Stop();
         try
         {
+            var satelliteWindows = _satellites
+                .Where(kv => IsValidScreenPosition(kv.Value.Left, kv.Value.Top))
+                .ToDictionary(kv => kv.Key, kv => ((int)kv.Value.Left, (int)kv.Value.Top));
             if (IsValidScreenPosition(Left, Top))
-                _store.Save(enabled: true, x: (int)Left, y: (int)Top);
+                _store.Save(enabled: true, x: (int)Left, y: (int)Top, rowWindow: _rowWindow, satelliteWindows: satelliteWindows);
             else
-                _store.Save(enabled: true); // position aberrante : ne pas la persister, la fenêtre se replacera par défaut au prochain lancement
+                _store.Save(enabled: true, rowWindow: _rowWindow, satelliteWindows: satelliteWindows); // position aberrante : ne pas la persister, la fenêtre se replacera par défaut au prochain lancement
         }
         catch (Exception ex)
         {
             AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde de la position/apparence à la fermeture échouée ({ex.Message}).", "diagnostic");
         }
+
+        // Une fenêtre satellite ne doit jamais rester ouverte après la
+        // fermeture de la fenêtre principale (sinon l'application ne
+        // pourrait plus s'arrêter proprement : ShowInTaskbar="False" les
+        // rendrait invisibles mais toujours "ouvertes" pour WPF).
+        foreach (var satellite in _satellites.Values.ToList())
+            satellite.Close();
     }
 }

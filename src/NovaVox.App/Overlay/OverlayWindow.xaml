@@ -88,18 +88,22 @@
             <!-- Colonnes de l'overlay (glisser une ligne horizontalement en
                  mode édition pour la faire passer d'une colonne à l'autre,
                  verticalement pour la réordonner dedans — voir
-                 OverlayWindow.ApplyLayout/RowDragHandle_MouseMove). 4
-                 colonnes déclarées à l'avance (OverlayConfig.MaxColumns) :
-                 une colonne sans ligne assignée est invisible hors mode
-                 édition (StackPanel vide = largeur nulle) et n'apparaît en
-                 mode édition que comme une fine bande cliquable (voir
-                 RefreshColumnEditingStrips) servant de zone de dépôt pour y
-                 glisser une première ligne. Toutes les lignes restent
-                 déclarées ici dans Column0 (comportement par défaut à une
-                 seule colonne) ; le code les redistribue selon la config
-                 enregistrée. -->
+                 OverlayWindow.ApplyLayout/RowDragHandle_MouseMove). 9
+                 colonnes déclarées à l'avance (OverlayConfig.MaxColumns =
+                 RowKeys.Length, une par ligne existante — permet de toutes
+                 les mettre côte à côte si voulu) : AUCUNE largeur fixe, une
+                 colonne se dimensionne à son propre contenu (largeur nulle
+                 si vide) — l'overlay rétrécit donc réellement quand une
+                 colonne se vide, et ne s'élargit que si une ligne y est
+                 réellement glissée. Une colonne vide n'apparaît en mode
+                 édition que comme une fine bande cliquable (largeur/marge
+                 gérées en code, voir RefreshColumnEditingStrips) servant de
+                 zone de dépôt pour y glisser une première ligne. Toutes les
+                 lignes restent déclarées ici dans Column0 (comportement par
+                 défaut à une seule colonne) ; le code les redistribue selon
+                 la config enregistrée. -->
             <StackPanel x:Name="ColumnsPanel" Orientation="Horizontal">
-                <StackPanel x:Name="Column0" Width="230">
+                <StackPanel x:Name="Column0">
                 <Grid x:Name="RowTime" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -280,9 +284,14 @@
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 </StackPanel>
-                <StackPanel x:Name="Column1" Width="230" Margin="10,0,0,0" />
-                <StackPanel x:Name="Column2" Width="230" Margin="10,0,0,0" />
-                <StackPanel x:Name="Column3" Width="230" Margin="10,0,0,0" />
+                <StackPanel x:Name="Column1" />
+                <StackPanel x:Name="Column2" />
+                <StackPanel x:Name="Column3" />
+                <StackPanel x:Name="Column4" />
+                <StackPanel x:Name="Column5" />
+                <StackPanel x:Name="Column6" />
+                <StackPanel x:Name="Column7" />
+                <StackPanel x:Name="Column8" />
             </StackPanel>
         </Border>
 

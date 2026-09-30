@@ -3,6 +3,8 @@ NOVAVOX — Notes de mise à jour
 v0.1.0
 ------
 - Overlay déverrouillé : en plus de choisir l'ordre de haut en bas, une ligne peut désormais être glissée horizontalement vers la droite pour créer une colonne séparée (jusqu'à 4 côte à côte) — permet par exemple de mettre deux lignes à gauche et deux à droite plutôt que toutes empilées dans une seule colonne. Disposition (colonnes + ordre dans chaque colonne) mémorisée d'une session à l'autre comme l'ordre seul auparavant.
+- Correctif : chaque colonne de l'overlay occupait toujours la même largeur fixe, même vide — l'overlay ne rétrécissait donc jamais vraiment et ne pouvait pas dépasser 4 colonnes. Chaque colonne s'ajuste maintenant à son propre contenu (aucune largeur imposée) et jusqu'à 9 colonnes sont désormais possibles (une par ligne existante) : possibilité de toutes les mettre côte à côte si voulu.
+- Overlay déverrouillé : glisser une ligne complètement hors de l'overlay (ou d'une autre fenêtre détachée) crée désormais une toute nouvelle fenêtre séparée pour cette ligne, aussi malléable que l'overlay principal (glisser d'autres lignes dedans, la séparer en colonnes, ou en faire glisser une ligne vers une autre fenêtre) — une fenêtre détachée qui perd sa dernière ligne se referme automatiquement. Position de chaque fenêtre détachée mémorisée d'une session à l'autre.
 v0.0.9
 ------
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.

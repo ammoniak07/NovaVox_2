@@ -47,14 +47,33 @@ public sealed class OverlayConfig
     public Dictionary<string, int> RowColumns { get; set; } = RowKeys.ToDictionary(k => k, _ => 0);
 
     /// <summary>
-    /// Nombre maximum de colonnes affichables côte à côte — au-delà, une
-    /// fenêtre de 230px de large par colonne deviendrait vite plus large que
-    /// l'écran pour peu d'utilité (l'overlay reste un aide-mémoire compact,
-    /// pas un tableau de bord). Purement une borne technique : rien
-    /// n'empêche d'en utiliser moins (colonnes vides = invisibles hors mode
-    /// édition, voir OverlayWindow.RefreshColumnEditingStrips).
+    /// Fenêtre hébergeant chaque ligne : 0 = la fenêtre principale, tout
+    /// autre entier = une fenêtre détachée ("satellite") créée en glissant
+    /// une ligne hors des limites de sa fenêtre actuelle — voir
+    /// OverlayWindow.DetachRowToNewWindow/ApplyLayout. Ces identifiants ne
+    /// sont pas bornés (contrairement à RowColumns) : une nouvelle fenêtre
+    /// prend toujours max(id existants)+1, sans limite de nombre.
     /// </summary>
-    public const int MaxColumns = 4;
+    public Dictionary<string, int> RowWindow { get; set; } = RowKeys.ToDictionary(k => k, _ => 0);
+
+    /// <summary>
+    /// Position écran (X, Y) de chaque fenêtre détachée, indexée par son
+    /// identifiant (jamais 0 : la position de la fenêtre principale reste
+    /// dans X/Y ci-dessus). Uniquement mémorisée à la fermeture de l'overlay
+    /// (OverlayWindow.OnClosing), comme X/Y — une fenêtre détachée qui perd
+    /// sa dernière ligne se ferme automatiquement et disparaît d'ici.
+    /// </summary>
+    public Dictionary<int, (int X, int Y)> SatelliteWindows { get; set; } = new();
+
+    /// <summary>
+    /// Nombre maximum de colonnes affichables côte à côte — une par ligne
+    /// existante (RowKeys.Length), pour permettre de toutes les mettre côte
+    /// à côte si l'utilisateur le souhaite. Chaque colonne se dimensionne à
+    /// son propre contenu (voir OverlayWindow.RefreshColumnEditingStrips) :
+    /// une colonne vide n'occupe aucune place hors mode édition, donc ce
+    /// nombre n'impose aucune largeur inutile même au maximum.
+    /// </summary>
+    public static readonly int MaxColumns = RowKeys.Length;
 
     /// <summary>
     /// Filtre <paramref name="candidate"/> aux seules clés connues (une clé
@@ -100,6 +119,35 @@ public sealed class OverlayConfig
             {
                 if (Array.IndexOf(RowKeys, key) >= 0)
                     result[key] = Math.Clamp(column, 0, MaxColumns - 1);
+            }
+        }
+        foreach (var key in RowKeys)
+        {
+            if (!result.ContainsKey(key))
+                result[key] = 0;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Filtre <paramref name="candidate"/> aux seules clés connues ; un
+    /// identifiant de fenêtre négatif (jamais valide, corruption probable)
+    /// retombe silencieusement en 0 (fenêtre principale) plutôt que de faire
+    /// disparaître la ligne — AUCUNE borne supérieure ici (contrairement à
+    /// NormalizeRowColumns), le nombre de fenêtres détachées n'étant pas
+    /// limité. Ne vérifie PAS qu'une fenêtre détachée référencée existe
+    /// réellement : c'est à OverlayWindow.ApplyLayout d'en (re)créer une au
+    /// besoin pour chaque identifiant >0 rencontré ici.
+    /// </summary>
+    public static Dictionary<string, int> NormalizeRowWindow(IEnumerable<KeyValuePair<string, int>>? candidate)
+    {
+        var result = new Dictionary<string, int>();
+        if (candidate is not null)
+        {
+            foreach (var (key, windowId) in candidate)
+            {
+                if (Array.IndexOf(RowKeys, key) >= 0)
+                    result[key] = windowId >= 0 ? windowId : 0;
             }
         }
         foreach (var key in RowKeys)
@@ -176,12 +224,44 @@ public sealed partial class OverlayConfigStore
                         .Where(k => savedColumns[k] is not null)
                         .Select(k => new KeyValuePair<string, int>(k, GetInt(savedColumns[k]) ?? 0))
                     : null);
+
+            config.RowWindow = OverlayConfig.NormalizeRowWindow(
+                data?["row_window"] is JsonObject savedWindow
+                    ? OverlayConfig.RowKeys
+                        .Where(k => savedWindow[k] is not null)
+                        .Select(k => new KeyValuePair<string, int>(k, GetInt(savedWindow[k]) ?? 0))
+                    : null);
+
+            config.SatelliteWindows = ParseSatelliteWindows(data?["satellite_windows"] as JsonObject);
         }
         catch
         {
             return new OverlayConfig();
         }
         return config;
+    }
+
+    /// <summary>
+    /// Les clés JSON sont toujours des chaînes (jamais des entiers), d'où
+    /// l'analyse manuelle ici (contrairement à RowColumns/RowWindow, dont
+    /// les clés sont les noms de ligne, déjà des chaînes) — une entrée dont
+    /// la clé n'est pas un entier positif, ou dont x/y est absent/invalide,
+    /// est ignorée plutôt que de faire planter le chargement.
+    /// </summary>
+    private static Dictionary<int, (int X, int Y)> ParseSatelliteWindows(JsonObject? saved)
+    {
+        var result = new Dictionary<int, (int X, int Y)>();
+        if (saved is null) return result;
+        foreach (var (idText, node) in saved)
+        {
+            if (node is not JsonObject posObject) continue;
+            if (!int.TryParse(idText, out var id) || id <= 0) continue;
+            var x = GetInt(posObject["x"]);
+            var y = GetInt(posObject["y"]);
+            if (x is not null && y is not null)
+                result[id] = (x.Value, y.Value);
+        }
+        return result;
     }
 
     /// <summary>
@@ -196,7 +276,8 @@ public sealed partial class OverlayConfigStore
     public void Save(
         bool enabled, int? x = null, int? y = null, Dictionary<string, bool>? visibleRows = null,
         string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null,
-        double? scale = null, List<string>? rowOrder = null, Dictionary<string, int>? rowColumns = null)
+        double? scale = null, List<string>? rowOrder = null, Dictionary<string, int>? rowColumns = null,
+        Dictionary<string, int>? rowWindow = null, Dictionary<int, (int X, int Y)>? satelliteWindows = null)
     {
         var existing = File.Exists(_path) ? TryParseFile(_path) : null;
 
@@ -252,6 +333,27 @@ public sealed partial class OverlayConfigStore
         var columnsObject = new JsonObject();
         foreach (var (key, column) in normalizedColumns) columnsObject[key] = JsonValue.Create(column);
         data["row_columns"] = columnsObject;
+
+        var normalizedWindow = rowWindow is not null
+            ? OverlayConfig.NormalizeRowWindow(rowWindow)
+            : OverlayConfig.NormalizeRowWindow(
+                existing?["row_window"] is JsonObject existingWindow
+                    ? OverlayConfig.RowKeys
+                        .Where(k => existingWindow[k] is not null)
+                        .Select(k => new KeyValuePair<string, int>(k, GetInt(existingWindow[k]) ?? 0))
+                    : null);
+        var windowObject = new JsonObject();
+        foreach (var (key, windowId) in normalizedWindow) windowObject[key] = JsonValue.Create(windowId);
+        data["row_window"] = windowObject;
+
+        var normalizedSatellites = satelliteWindows ?? ParseSatelliteWindows(existing?["satellite_windows"] as JsonObject);
+        var satellitesObject = new JsonObject();
+        foreach (var (id, pos) in normalizedSatellites)
+        {
+            if (id <= 0) continue;
+            satellitesObject[id.ToString()] = new JsonObject { ["x"] = JsonValue.Create(pos.X), ["y"] = JsonValue.Create(pos.Y) };
+        }
+        data["satellite_windows"] = satellitesObject;
 
         try
         {
