@@ -363,11 +363,6 @@ public partial class OverlayWindow : Window
     // une ligne, jamais bg/shiprow), donc juste une clé de ligne suffit.
     private string? _rowColorPickerTargetKey;
 
-    // Coupe la boucle de rétroaction slider -> hex -> slider quand on pousse
-    // une couleur dans les sliders par programme (reset, hex saisi) — même
-    // principe que MainWindow._updatingColorPicker.
-    private bool _updatingRowColorPicker;
-
     private void RowColorSwatch_Click(object sender, RoutedEventArgs e)
     {
         if (!_editMode) return;
@@ -382,22 +377,16 @@ public partial class OverlayWindow : Window
     private void SetRowColorPickerSliders(string hex)
     {
         var color = (Color)ColorConverter.ConvertFromString(hex)!;
-        _updatingRowColorPicker = true;
-        RowColorPickerRSlider.Value = color.R;
-        RowColorPickerGSlider.Value = color.G;
-        RowColorPickerBSlider.Value = color.B;
-        _updatingRowColorPicker = false;
+        RowColorPicker.SetColorFromHex(hex);
         RowColorPickerHexBox.Text = hex;
         RowColorPickerPreview.Background = new SolidColorBrush(color);
     }
 
-    private void RowColorPickerSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    /// <summary>Glisser dans le nuancier (carré saturation/luminosité ou bande de teinte, voir Controls.HsvColorPicker) — même rôle que l'ancien RowColorPickerSlider_Changed.</summary>
+    private void RowColorPicker_ColorChanged(object sender, string hex)
     {
-        if (_updatingRowColorPicker || _rowColorPickerTargetKey is null) return;
-        var r = (byte)RowColorPickerRSlider.Value;
-        var g = (byte)RowColorPickerGSlider.Value;
-        var b = (byte)RowColorPickerBSlider.Value;
-        ApplyRowColorPickerHex($"#{r:X2}{g:X2}{b:X2}", updateSliders: false);
+        if (_rowColorPickerTargetKey is null) return;
+        ApplyRowColorPickerHex(hex, updatePicker: false);
     }
 
     private void RowColorPickerHexBox_LostFocus(object sender, RoutedEventArgs e)
@@ -405,25 +394,17 @@ public partial class OverlayWindow : Window
         if (_rowColorPickerTargetKey is null) return;
         var fallback = _rowTextColors.TryGetValue(_rowColorPickerTargetKey, out var custom) ? custom : _lastTextColorHex;
         var hex = OverlayConfigStore.ValidateHexColor(RowColorPickerHexBox.Text.Trim(), fallback);
-        ApplyRowColorPickerHex(hex, updateSliders: true);
+        ApplyRowColorPickerHex(hex, updatePicker: true);
     }
 
-    /// <summary>Pousse une couleur choisie (slider ou hex saisi) vers l'aperçu du picker puis SetRowTextColor — même principe que MainWindow.ApplyColorPickerHex.</summary>
-    private void ApplyRowColorPickerHex(string hex, bool updateSliders)
+    /// <summary>Pousse une couleur choisie (nuancier ou hex saisi) vers l'aperçu du picker puis SetRowTextColor — même principe que MainWindow.ApplyColorPickerHex. <paramref name="updatePicker"/> à false quand l'appel vient du nuancier lui-même (RowColorPicker_ColorChanged), pour ne pas créer de boucle de rétroaction.</summary>
+    private void ApplyRowColorPickerHex(string hex, bool updatePicker)
     {
         if (_rowColorPickerTargetKey is null) return;
         var color = (Color)ColorConverter.ConvertFromString(hex)!;
         RowColorPickerPreview.Background = new SolidColorBrush(color);
         if (RowColorPickerHexBox.Text != hex) RowColorPickerHexBox.Text = hex;
-
-        if (updateSliders)
-        {
-            _updatingRowColorPicker = true;
-            RowColorPickerRSlider.Value = color.R;
-            RowColorPickerGSlider.Value = color.G;
-            RowColorPickerBSlider.Value = color.B;
-            _updatingRowColorPicker = false;
-        }
+        if (updatePicker) RowColorPicker.SetColorFromHex(hex);
 
         SetRowTextColor(_rowColorPickerTargetKey, hex);
     }

@@ -1,0 +1,88 @@
+<UserControl x:Class="NovaVox.App.Controls.HsvColorPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Nuancier de couleur (carré saturation/luminosité + bande de teinte),
+        réutilisé PARTOUT où l'appli choisit une couleur (MainWindow.xaml
+        ColorPickerPopup — fond/texte de l'overlay, couleur d'un repère
+        vaisseau — et OverlayWindow.xaml RowColorPickerPopup — couleur de
+        texte par ligne) : un seul contrôle, indépendant de Theme.xaml
+        (couleurs de gabarit codées en dur, comme le reste d'OverlayWindow),
+        pour fonctionner à l'identique dans les deux contextes. Remplace les
+        anciens sliders R/V/B — SetColorFromHex/évènement ColorChanged
+        (HsvColorPicker.xaml.cs) couvrent exactement le même rôle.
+    -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="8" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Carré saturation (horizontal, blanc -> transparent) / luminosité
+             (vertical, transparent -> noir) sur un fond de teinte pure
+             (SvSquareBorder.Background, posé par code selon la teinte
+             courante) — le classique "nuancier" de sélecteur de couleur. -->
+        <Border x:Name="SvSquareBorder" Grid.Column="0" Width="150" Height="110" CornerRadius="4"
+                ClipToBounds="True" Cursor="Cross"
+                MouseLeftButtonDown="SvSquare_MouseLeftButtonDown"
+                MouseMove="SvSquare_MouseMove"
+                MouseLeftButtonUp="SvSquare_MouseLeftButtonUp">
+            <Grid>
+                <Rectangle IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#FFFFFFFF" Offset="0" />
+                            <GradientStop Color="#00FFFFFF" Offset="1" />
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <Rectangle IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00000000" Offset="0" />
+                            <GradientStop Color="#FF000000" Offset="1" />
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <!-- Positionné par code (PositionIndicators, Margin =
+                     point - moitié de la taille, pour centrer sur le point
+                     choisi) plutôt que par Canvas.Left/Top : évite un Canvas
+                     supplémentaire juste pour ce seul indicateur. -->
+                <Ellipse x:Name="SvIndicator" Width="12" Height="12" Stroke="White" StrokeThickness="2"
+                         IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Ellipse.Effect>
+                        <DropShadowEffect Color="Black" Opacity="0.6" BlurRadius="3" ShadowDepth="0" />
+                    </Ellipse.Effect>
+                </Ellipse>
+            </Grid>
+        </Border>
+
+        <!-- Bande de teinte (arc-en-ciel complet, 0 à 360°) — un dégradé à 7
+             arrêts (rouge -> jaune -> vert -> cyan -> bleu -> magenta ->
+             rouge) couvre tout le cercle chromatique en une seule fois. -->
+        <Border x:Name="HueStripBorder" Grid.Column="2" Width="16" Height="110" CornerRadius="3"
+                ClipToBounds="True" Cursor="Hand"
+                MouseLeftButtonDown="HueStrip_MouseLeftButtonDown"
+                MouseMove="HueStrip_MouseMove"
+                MouseLeftButtonUp="HueStrip_MouseLeftButtonUp">
+            <Grid>
+                <Rectangle IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#FF0000" Offset="0" />
+                            <GradientStop Color="#FFFF00" Offset="0.16667" />
+                            <GradientStop Color="#00FF00" Offset="0.33333" />
+                            <GradientStop Color="#00FFFF" Offset="0.5" />
+                            <GradientStop Color="#0000FF" Offset="0.66667" />
+                            <GradientStop Color="#FF00FF" Offset="0.83333" />
+                            <GradientStop Color="#FF0000" Offset="1" />
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <Rectangle x:Name="HueIndicator" Height="3" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                           Fill="White" Stroke="Black" StrokeThickness="0.6" IsHitTestVisible="False" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

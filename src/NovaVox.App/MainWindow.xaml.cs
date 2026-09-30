@@ -2867,10 +2867,6 @@ public partial class MainWindow : Window
     // il faut retenir PRÉCISÉMENT lequel a ouvert le picker.
     private ShipCheatSheetPointRowVm? _colorPickerTargetRow;
 
-    // Coupe la boucle de rétroaction slider -> hex -> slider quand on pousse
-    // une couleur dans les sliders par programme (preset cliqué, hex saisi).
-    private bool _updatingColorPicker;
-
     private void OverlayBgColorSwatch_Click(object sender, RoutedEventArgs e) =>
         OpenColorPicker("bg", OverlayBgColorSwatch, _state.Overlay.BgColor);
 
@@ -2895,22 +2891,16 @@ public partial class MainWindow : Window
     private void SetColorPickerSliders(string hex)
     {
         var color = (Color)ColorConverter.ConvertFromString(hex)!;
-        _updatingColorPicker = true;
-        ColorPickerRSlider.Value = color.R;
-        ColorPickerGSlider.Value = color.G;
-        ColorPickerBSlider.Value = color.B;
-        _updatingColorPicker = false;
+        ColorPicker.SetColorFromHex(hex);
         ColorPickerHexBox.Text = hex;
         ColorPickerPreview.Background = new SolidColorBrush(color);
     }
 
-    private void ColorPickerSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    /// <summary>Glisser dans le nuancier (carré saturation/luminosité ou bande de teinte, voir Controls.HsvColorPicker) — même rôle que l'ancien ColorPickerSlider_Changed.</summary>
+    private void ColorPicker_ColorChanged(object sender, string hex)
     {
-        if (_updatingColorPicker || _colorPickerTarget is null) return;
-        var r = (byte)ColorPickerRSlider.Value;
-        var g = (byte)ColorPickerGSlider.Value;
-        var b = (byte)ColorPickerBSlider.Value;
-        ApplyColorPickerHex($"#{r:X2}{g:X2}{b:X2}", updateSliders: false);
+        if (_colorPickerTarget is null) return;
+        ApplyColorPickerHex(hex, updatePicker: false);
     }
 
     private void ColorPickerHexBox_LostFocus(object sender, RoutedEventArgs e)
@@ -2924,40 +2914,35 @@ public partial class MainWindow : Window
             _ => ShipCheatSheetPointRowVm.DefaultColor,
         };
         var hex = OverlayConfigStore.ValidateHexColor(ColorPickerHexBox.Text.Trim(), fallback);
-        ApplyColorPickerHex(hex, updateSliders: true);
+        ApplyColorPickerHex(hex, updatePicker: true);
     }
 
     private void ColorPickerPreset_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string hex } || _colorPickerTarget is null) return;
-        ApplyColorPickerHex(hex, updateSliders: true);
+        ApplyColorPickerHex(hex, updatePicker: true);
     }
 
     /// <summary>
-    /// Pousse une couleur choisie dans le picker (slider, preset ou hex
+    /// Pousse une couleur choisie dans le picker (nuancier, preset ou hex
     /// saisi) vers la pastille/case texte/état de la cible en cours (Fond
     /// de l'overlay, Texte de l'overlay, ou UN repère précis de l'aide-
     /// mémoire vaisseaux), puis persiste/applique en direct — via
     /// OverlayAppearance_Changed pour "bg"/"text" (comme avant), via
     /// CommitShipCheatSheetPoints pour "shiprow" (sauvegarde
     /// AiConfig.ShipCheatSheetColors + rafraîchit l'overlay immédiatement,
-    /// sans attendre un LostFocus sur un autre champ).
+    /// sans attendre un LostFocus sur un autre champ). <paramref name="updatePicker"/>
+    /// à false quand l'appel VIENT du nuancier lui-même (ColorPicker_ColorChanged) —
+    /// le repousser dedans recréerait une boucle de rétroaction inutile,
+    /// HsvColorPicker gère déjà en interne le cas "mise à jour programmatique".
     /// </summary>
-    private void ApplyColorPickerHex(string hex, bool updateSliders)
+    private void ApplyColorPickerHex(string hex, bool updatePicker)
     {
         if (_colorPickerTarget is null) return;
         var color = (Color)ColorConverter.ConvertFromString(hex)!;
         ColorPickerPreview.Background = new SolidColorBrush(color);
         if (ColorPickerHexBox.Text != hex) ColorPickerHexBox.Text = hex;
-
-        if (updateSliders)
-        {
-            _updatingColorPicker = true;
-            ColorPickerRSlider.Value = color.R;
-            ColorPickerGSlider.Value = color.G;
-            ColorPickerBSlider.Value = color.B;
-            _updatingColorPicker = false;
-        }
+        if (updatePicker) ColorPicker.SetColorFromHex(hex);
 
         switch (_colorPickerTarget)
         {

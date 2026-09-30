@@ -1,6 +1,7 @@
 <Window x:Class="NovaVox.App.Overlay.OverlayWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:NovaVox.App.Controls"
         Title="NovaVox Overlay"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -359,19 +360,14 @@
         <Popup x:Name="RowColorPickerPopup" StaysOpen="False" AllowsTransparency="True"
                Placement="Bottom" PopupAnimation="Fade">
             <Border Background="#0a0e14" BorderBrush="#2DD4FF" BorderThickness="1" CornerRadius="6" Padding="12">
-                <StackPanel Width="180">
+                <StackPanel Width="190">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="RowColorPickerPreview" Width="30" Height="30" CornerRadius="4"
                                 BorderBrush="#592DD4FF" BorderThickness="1" />
                         <TextBox x:Name="RowColorPickerHexBox" Width="90" Margin="8,0,0,0" VerticalAlignment="Center"
                                  LostFocus="RowColorPickerHexBox_LostFocus" />
                     </StackPanel>
-                    <TextBlock Text="Rouge" Foreground="#802DD4FF" FontSize="11" Margin="0,8,0,2" />
-                    <Slider x:Name="RowColorPickerRSlider" Minimum="0" Maximum="255" ValueChanged="RowColorPickerSlider_Changed" />
-                    <TextBlock Text="Vert" Foreground="#802DD4FF" FontSize="11" Margin="0,4,0,2" />
-                    <Slider x:Name="RowColorPickerGSlider" Minimum="0" Maximum="255" ValueChanged="RowColorPickerSlider_Changed" />
-                    <TextBlock Text="Bleu" Foreground="#802DD4FF" FontSize="11" Margin="0,4,0,2" />
-                    <Slider x:Name="RowColorPickerBSlider" Minimum="0" Maximum="255" ValueChanged="RowColorPickerSlider_Changed" />
+                    <controls:HsvColorPicker x:Name="RowColorPicker" Margin="0,10,0,0" ColorChanged="RowColorPicker_ColorChanged" />
                     <Button Content="Rétablir la couleur par défaut" Margin="0,10,0,0" Click="RowColorPickerReset_Click" />
                 </StackPanel>
             </Border>

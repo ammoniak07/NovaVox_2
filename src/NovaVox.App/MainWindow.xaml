@@ -1,6 +1,7 @@
 <Window x:Class="NovaVox.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:NovaVox.App.Controls"
         Style="{StaticResource BaseWindowStyle}"
         Title="NovaVox"
         Width="1000" Height="930"
@@ -795,12 +796,7 @@
                                              LostFocus="ColorPickerHexBox_LostFocus" />
                                 </StackPanel>
 
-                                <TextBlock Text="Rouge" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,10,0,2" />
-                                <Slider x:Name="ColorPickerRSlider" Minimum="0" Maximum="255" ValueChanged="ColorPickerSlider_Changed" />
-                                <TextBlock Text="Vert" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,6,0,2" />
-                                <Slider x:Name="ColorPickerGSlider" Minimum="0" Maximum="255" ValueChanged="ColorPickerSlider_Changed" />
-                                <TextBlock Text="Bleu" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,6,0,2" />
-                                <Slider x:Name="ColorPickerBSlider" Minimum="0" Maximum="255" ValueChanged="ColorPickerSlider_Changed" />
+                                <controls:HsvColorPicker x:Name="ColorPicker" Margin="0,12,0,0" ColorChanged="ColorPicker_ColorChanged" />
 
                                 <TextBlock Text="Couleurs prédéfinies" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,12,0,4" />
                                 <UniformGrid Rows="1" Columns="8">
