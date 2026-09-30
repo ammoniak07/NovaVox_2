@@ -660,12 +660,22 @@ public partial class MainWindow : Window
     /// </summary>
     private void ShowCommandDragGhost(ListBoxItem? item, Point initialScreenPos)
     {
-        if (item is null) return;
+        if (item is null)
+        {
+            // Diagnostic TEMPORAIRE, volontairement visible dans le journal
+            // (pas "diagnostic", qui n'écrirait que dans le fichier) — souci
+            // de fantôme vide signalé pour les lignes de commande (pas pour
+            // les titres), non résolu par le passage à 96 DPI fixe : à
+            // retirer une fois la cause confirmée.
+            AppendLog("[Diagnostic fantôme] Conteneur introuvable pour la ligne glissée (pas de fantôme créé).", "warning");
+            return;
+        }
         var width = Math.Max(1.0, item.ActualWidth);
         var height = Math.Max(1.0, item.ActualHeight);
         var bitmap = new RenderTargetBitmap(
             (int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(item);
+        AppendLog($"[Diagnostic fantôme] item={item.GetType().Name}, ActualWidth={item.ActualWidth:F1}, ActualHeight={item.ActualHeight:F1}, bitmap={bitmap.PixelWidth}x{bitmap.PixelHeight}.", "warning");
 
         _commandDragGhost = new OverlayDragGhostWindow();
         _commandDragGhost.SetImage(bitmap);
