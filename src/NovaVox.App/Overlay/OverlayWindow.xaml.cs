@@ -39,12 +39,16 @@ public partial class OverlayWindow : Window
     private bool _suppressCheckboxEvents;
 
     // Glisser-déposer des lignes en mode édition (RowDragHandle_*) : ordre
-    // courant + élément en cours de déplacement (null hors glisser-déposer).
+    // GLOBAL courant (toutes colonnes confondues, sert à retrouver l'ordre
+    // relatif DANS une colonne — voir OverlayConfig.RowOrder), colonne de
+    // chaque ligne, + élément en cours de déplacement (null hors glisser).
     private List<string> _rowOrder = OverlayConfig.RowKeys.ToList();
+    private Dictionary<string, int> _rowColumn = OverlayConfig.RowKeys.ToDictionary(k => k, _ => 0);
     private string? _draggingKey;
     private FrameworkElement? _draggingHandle;
     private readonly Dictionary<string, Grid> _rowGridByKey;
     private readonly Dictionary<Grid, string> _rowKeyByGrid;
+    private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3 };
 
     public OverlayWindow(OverlayConfigStore store)
     {
@@ -84,29 +88,54 @@ public partial class OverlayWindow : Window
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
         ApplyScale(config.Scale);
-        ApplyRowOrder(config.RowOrder);
+        ApplyLayout(config.RowOrder, config.RowColumns);
         _visibleRows = new Dictionary<string, bool>(config.VisibleRows);
         ApplyRowVisibility(_visibleRows);
         RefreshRowVisualsForEditMode();
     }
 
     /// <summary>
-    /// Réordonne les lignes de haut en bas selon <paramref name="order"/> en
-    /// déplaçant les Grid déjà existants dans RowsPanel (StackPanel) — pas
-    /// de gabarit de données à reconstruire, juste l'ordre des enfants du
-    /// panneau qui change, donc tout le reste (bindings, visibilité,
-    /// couleurs) reste intact. Toute clé manquante/inconnue est corrigée
-    /// silencieusement par OverlayConfig.NormalizeRowOrder plutôt que de
+    /// Répartit les lignes dans leurs colonnes (<paramref name="columns"/>,
+    /// clé -> index 0..MaxColumns-1) en respectant leur ordre relatif au
+    /// sein de chaque colonne (<paramref name="order"/>, GLOBAL toutes
+    /// colonnes confondues — l'ordre RELATIF des lignes d'une même colonne
+    /// entre elles donne leur ordre d'affichage de haut en bas) en déplaçant
+    /// les Grid déjà existants — pas de gabarit de données à reconstruire,
+    /// juste l'ordre/le parent des enfants qui changent, donc tout le reste
+    /// (bindings, visibilité, couleurs) reste intact. Toute clé/colonne
+    /// manquante ou invalide est corrigée silencieusement par
+    /// OverlayConfig.NormalizeRowOrder/NormalizeRowColumns plutôt que de
     /// faire disparaître une ligne.
     /// </summary>
-    public void ApplyRowOrder(IReadOnlyList<string> order)
+    public void ApplyLayout(IReadOnlyList<string> order, IReadOnlyDictionary<string, int> columns)
     {
         _rowOrder = OverlayConfig.NormalizeRowOrder(order);
+        _rowColumn = OverlayConfig.NormalizeRowColumns(columns);
         foreach (var key in _rowOrder)
         {
             var element = _rowGridByKey[key];
-            RowsPanel.Children.Remove(element);
-            RowsPanel.Children.Add(element);
+            (element.Parent as Panel)?.Children.Remove(element);
+            ColumnPanels[_rowColumn[key]].Children.Add(element);
+        }
+        RefreshColumnEditingStrips();
+    }
+
+    /// <summary>
+    /// Donne à toute colonne VIDE une largeur minimale + un léger lavis cyan
+    /// tant que l'overlay est en mode édition, pour qu'elle reste une cible
+    /// de dépôt cliquable (glisser une ligne tout à droite pour créer une
+    /// nouvelle colonne) — sinon un StackPanel sans enfant occupe une
+    /// largeur nulle et ne peut jamais recevoir de première ligne. Hors
+    /// édition (ou dès qu'une ligne y est déposée), la colonne retrouve sa
+    /// largeur naturelle (0 si toujours vide, invisible).
+    /// </summary>
+    private void RefreshColumnEditingStrips()
+    {
+        foreach (var column in ColumnPanels)
+        {
+            var empty = column.Children.Count == 0;
+            column.MinWidth = _editMode && empty ? 28 : 0;
+            column.Background = _editMode && empty ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
         }
     }
 
@@ -266,6 +295,7 @@ public partial class OverlayWindow : Window
         {
             _suppressCheckboxEvents = false;
         }
+        RefreshColumnEditingStrips();
     }
 
     private void RowVisibilityCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -452,8 +482,10 @@ public partial class OverlayWindow : Window
     private void RowDragHandle_MouseMove(object sender, MouseEventArgs e)
     {
         if (_draggingKey is null || e.LeftButton != MouseButtonState.Pressed) return;
-        var position = e.GetPosition(RowsPanel);
-        MoveRowToIndex(_draggingKey, RowIndexAtY(position.Y));
+        var positionInColumns = e.GetPosition(ColumnsPanel);
+        var targetColumn = ColumnPanels[ColumnIndexAtX(positionInColumns.X)];
+        var targetIndex = RowIndexAtY(targetColumn, e.GetPosition(targetColumn).Y);
+        MoveRowToColumnIndex(_draggingKey, targetColumn, targetIndex);
     }
 
     private void RowDragHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -463,60 +495,102 @@ public partial class OverlayWindow : Window
         _draggingHandle = null;
         _draggingKey = null;
         e.Handled = true;
+        RefreshColumnEditingStrips(); // la colonne quittée peut être redevenue vide, celle rejointe ne l'est plus
 
         try
         {
-            _store.Save(enabled: true, rowOrder: _rowOrder);
+            _store.Save(enabled: true, rowOrder: _rowOrder, rowColumns: _rowColumn);
         }
         catch (Exception ex)
         {
-            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde de l'ordre des lignes échouée ({ex.Message}).", "diagnostic");
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde de la disposition des lignes échouée ({ex.Message}).", "diagnostic");
         }
     }
 
     /// <summary>
-    /// Trouve la position "insérer avant la ligne i" (dans RowsPanel.Children,
-    /// ordre actuel) sous la position verticale <paramref name="y"/> —
-    /// bascule au MILIEU de chaque ligne survolée plutôt qu'à son bord, plus
-    /// naturel au glisser. Retourne RowsPanel.Children.Count (au-delà de la
-    /// dernière ligne) si y dépasse tout le contenu, pour permettre de
-    /// déposer une ligne tout en bas — jamais coincée à l'avant-dernière
-    /// position (voir MoveRowToIndex pour la compensation de décalage).
+    /// Trouve la colonne (0..MaxColumns-1) dont le CENTRE horizontal a été
+    /// dépassé par <paramref name="x"/> (position dans ColumnsPanel) — la
+    /// dernière colonne active dont le centre est franchi l'emporte, sans
+    /// "zone morte" entre deux colonnes ni retour à la colonne 0 une fois la
+    /// première dépassée. N'examine que les colonnes actuellement visibles
+    /// (largeur non nulle) : une colonne encore masquée (hors édition ou
+    /// déjà vide sans bande de dépôt) ne peut pas être une cible.
     /// </summary>
-    private int RowIndexAtY(double y)
+    private int ColumnIndexAtX(double x)
     {
-        double cursor = 0;
-        for (var i = 0; i < RowsPanel.Children.Count; i++)
+        var best = 0;
+        for (var c = 0; c < ColumnPanels.Length; c++)
         {
-            if (RowsPanel.Children[i] is not FrameworkElement fe) continue;
-            var height = fe.ActualHeight + fe.Margin.Top + fe.Margin.Bottom;
-            if (y < cursor + height / 2) return i;
-            cursor += height;
+            var column = ColumnPanels[c];
+            if (column.ActualWidth <= 0) continue;
+            var left = column.TranslatePoint(new Point(0, 0), ColumnsPanel).X;
+            if (x >= left + column.ActualWidth / 2) best = c;
         }
-        return RowsPanel.Children.Count;
+        return best;
     }
 
     /// <summary>
-    /// Déplace la ligne <paramref name="key"/> pour qu'elle se retrouve juste
-    /// avant l'index <paramref name="targetIndex"/> (voir RowIndexAtY) DANS
-    /// L'ORDRE ACTUEL (avant retrait) — un retrait à un index inférieur à
-    /// targetIndex décale tout ce qui suit d'un cran, d'où la compensation
-    /// (targetIndex--) uniquement quand on déplace vers le bas, sinon
-    /// l'élément atterrit systématiquement une case trop loin.
+    /// Trouve la position "insérer avant la ligne i" DANS <paramref name="column"/>
+    /// sous la position verticale <paramref name="y"/> (repère de
+    /// <paramref name="column"/> lui-même) — bascule au MILIEU de chaque
+    /// ligne survolée plutôt qu'à son bord, plus naturel au glisser.
+    /// TranslatePoint (position RÉELLEMENT rendue) plutôt qu'une somme
+    /// manuelle de ActualHeight/Margin : robuste même pour une ligne à
+    /// hauteur variable (ex. RowShipSheet, dont le contenu change de
+    /// taille). Retourne column.Children.Count (au-delà de la dernière
+    /// ligne) si y dépasse tout le contenu, pour permettre de déposer une
+    /// ligne tout en bas — jamais coincée à l'avant-dernière position (voir
+    /// MoveRowToColumnIndex pour la compensation de décalage).
     /// </summary>
-    private void MoveRowToIndex(string key, int targetIndex)
+    private static int RowIndexAtY(Panel column, double y)
+    {
+        for (var i = 0; i < column.Children.Count; i++)
+        {
+            if (column.Children[i] is not FrameworkElement fe) continue;
+            var top = fe.TranslatePoint(new Point(0, 0), column).Y;
+            if (y < top + fe.ActualHeight / 2) return i;
+        }
+        return column.Children.Count;
+    }
+
+    /// <summary>
+    /// Déplace la ligne <paramref name="key"/> dans <paramref name="targetColumn"/>
+    /// pour qu'elle se retrouve juste avant l'index <paramref name="targetIndex"/>
+    /// (voir RowIndexAtY) DANS L'ORDRE ACTUEL de cette colonne (avant
+    /// retrait) — au sein d'UNE MÊME colonne, un retrait à un index
+    /// inférieur à targetIndex décale tout ce qui suit d'un cran, d'où la
+    /// compensation (targetIndex--) uniquement dans ce cas (déplacement vers
+    /// le bas dans la même colonne), sinon l'élément atterrit
+    /// systématiquement une case trop loin. Un changement DE colonne n'a pas
+    /// besoin de cette compensation (le retrait a lieu dans un autre panneau
+    /// que celui où l'insertion se produit).
+    /// </summary>
+    private void MoveRowToColumnIndex(string key, Panel targetColumn, int targetIndex)
     {
         var element = _rowGridByKey[key];
-        var currentIndex = RowsPanel.Children.IndexOf(element);
+        if (element.Parent is not Panel currentColumn) return;
+        var currentIndex = currentColumn.Children.IndexOf(element);
         if (currentIndex < 0) return;
 
-        targetIndex = Math.Clamp(targetIndex, 0, RowsPanel.Children.Count);
-        if (currentIndex < targetIndex) targetIndex--;
-        if (targetIndex == currentIndex) return;
+        var sameColumn = ReferenceEquals(currentColumn, targetColumn);
+        targetIndex = Math.Clamp(targetIndex, 0, targetColumn.Children.Count);
+        if (sameColumn && currentIndex < targetIndex) targetIndex--;
+        if (sameColumn && targetIndex == currentIndex) return;
 
-        RowsPanel.Children.RemoveAt(currentIndex);
-        RowsPanel.Children.Insert(Math.Clamp(targetIndex, 0, RowsPanel.Children.Count), element);
-        _rowOrder = RowsPanel.Children.OfType<Grid>().Select(g => _rowKeyByGrid[g]).ToList();
+        currentColumn.Children.Remove(element);
+        targetColumn.Children.Insert(Math.Clamp(targetIndex, 0, targetColumn.Children.Count), element);
+
+        _rowOrder = ColumnPanels.SelectMany(c => c.Children.OfType<Grid>()).Select(g => _rowKeyByGrid[g]).ToList();
+        _rowColumn = ColumnPanels
+            .SelectMany((c, index) => c.Children.OfType<Grid>().Select(g => (Key: _rowKeyByGrid[g], Index: index)))
+            .ToDictionary(t => t.Key, t => t.Index);
+
+        // Bascule les bandes de dépôt en direct pendant le glisser, pas
+        // seulement au relâchement : sinon une colonne qui vient de se vider
+        // (dernière ligne déplacée ailleurs) resterait visible à tort, et
+        // une toute nouvelle colonne rejointe ne montrerait sa bande qu'une
+        // fois le glisser terminé — moins clair pour viser une 5e position.
+        RefreshColumnEditingStrips();
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)

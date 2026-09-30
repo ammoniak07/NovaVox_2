@@ -78,7 +78,6 @@
             <ScaleTransform x:Name="OverlayScaleTransform" ScaleX="1" ScaleY="1" />
         </Grid.LayoutTransform>
         <Border x:Name="PanelBorder"
-                Width="230"
                 CornerRadius="10"
                 BorderThickness="1"
                 BorderBrush="#592DD4FF"
@@ -86,7 +85,21 @@
             <Border.Effect>
                 <DropShadowEffect Color="Black" Opacity="0.45" BlurRadius="18" ShadowDepth="4" Direction="270" />
             </Border.Effect>
-            <StackPanel x:Name="RowsPanel">
+            <!-- Colonnes de l'overlay (glisser une ligne horizontalement en
+                 mode édition pour la faire passer d'une colonne à l'autre,
+                 verticalement pour la réordonner dedans — voir
+                 OverlayWindow.ApplyLayout/RowDragHandle_MouseMove). 4
+                 colonnes déclarées à l'avance (OverlayConfig.MaxColumns) :
+                 une colonne sans ligne assignée est invisible hors mode
+                 édition (StackPanel vide = largeur nulle) et n'apparaît en
+                 mode édition que comme une fine bande cliquable (voir
+                 RefreshColumnEditingStrips) servant de zone de dépôt pour y
+                 glisser une première ligne. Toutes les lignes restent
+                 déclarées ici dans Column0 (comportement par défaut à une
+                 seule colonne) ; le code les redistribue selon la config
+                 enregistrée. -->
+            <StackPanel x:Name="ColumnsPanel" Orientation="Horizontal">
+                <StackPanel x:Name="Column0" Width="230">
                 <Grid x:Name="RowTime" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -266,6 +279,10 @@
                               VerticalAlignment="Top" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
+                </StackPanel>
+                <StackPanel x:Name="Column1" Width="230" Margin="10,0,0,0" />
+                <StackPanel x:Name="Column2" Width="230" Margin="10,0,0,0" />
+                <StackPanel x:Name="Column3" Width="230" Margin="10,0,0,0" />
             </StackPanel>
         </Border>
 

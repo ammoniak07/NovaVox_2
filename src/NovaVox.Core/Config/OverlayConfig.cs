@@ -35,8 +35,26 @@ public sealed class OverlayConfig
     public int TextOpacity { get; set; } = DefaultTextOpacity;
     /// <summary>Facteur d'échelle de l'overlay entier (texte, icônes, espacements) — voir OverlayWindow.ApplyScale (ScaleTransform sur le Grid racine). 1.0 = taille d'origine.</summary>
     public double Scale { get; set; } = DefaultScale;
-    /// <summary>Ordre d'affichage des lignes de haut en bas — voir OverlayWindow.ApplyRowOrder (glisser-déposer en mode édition).</summary>
+    /// <summary>
+    /// Ordre GLOBAL des lignes (toutes colonnes confondues) — l'ordre
+    /// RELATIF des lignes d'une même colonne (voir RowColumns) entre elles
+    /// donne leur ordre d'affichage de haut en bas dans cette colonne. Voir
+    /// OverlayWindow.ApplyLayout (glisser-déposer en mode édition).
+    /// </summary>
     public List<string> RowOrder { get; set; } = RowKeys.ToList();
+
+    /// <summary>Colonne (0 à MaxColumns-1, 0 = la plus à gauche) de chaque ligne — voir OverlayWindow.ApplyLayout.</summary>
+    public Dictionary<string, int> RowColumns { get; set; } = RowKeys.ToDictionary(k => k, _ => 0);
+
+    /// <summary>
+    /// Nombre maximum de colonnes affichables côte à côte — au-delà, une
+    /// fenêtre de 230px de large par colonne deviendrait vite plus large que
+    /// l'écran pour peu d'utilité (l'overlay reste un aide-mémoire compact,
+    /// pas un tableau de bord). Purement une borne technique : rien
+    /// n'empêche d'en utiliser moins (colonnes vides = invisibles hors mode
+    /// édition, voir OverlayWindow.RefreshColumnEditingStrips).
+    /// </summary>
+    public const int MaxColumns = 4;
 
     /// <summary>
     /// Filtre <paramref name="candidate"/> aux seules clés connues (une clé
@@ -61,6 +79,33 @@ public sealed class OverlayConfig
         {
             if (!result.Contains(key))
                 result.Add(key);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Filtre <paramref name="candidate"/> aux seules clés connues et borne
+    /// chaque valeur à [0, MaxColumns-1] (une colonne hors bornes — ex.
+    /// fichier corrompu ou MaxColumns réduit dans une future version —
+    /// retombe silencieusement en colonne 0 plutôt que de faire planter ou
+    /// disparaître la ligne) ; toute clé connue absente est ajoutée en
+    /// colonne 0 par défaut.
+    /// </summary>
+    public static Dictionary<string, int> NormalizeRowColumns(IEnumerable<KeyValuePair<string, int>>? candidate)
+    {
+        var result = new Dictionary<string, int>();
+        if (candidate is not null)
+        {
+            foreach (var (key, column) in candidate)
+            {
+                if (Array.IndexOf(RowKeys, key) >= 0)
+                    result[key] = Math.Clamp(column, 0, MaxColumns - 1);
+            }
+        }
+        foreach (var key in RowKeys)
+        {
+            if (!result.ContainsKey(key))
+                result[key] = 0;
         }
         return result;
     }
@@ -124,6 +169,13 @@ public sealed partial class OverlayConfigStore
                 data?["row_order"] is JsonArray savedOrder
                     ? savedOrder.Select(GetStringOrNull).Where(k => k is not null).Select(k => k!)
                     : null);
+
+            config.RowColumns = OverlayConfig.NormalizeRowColumns(
+                data?["row_columns"] is JsonObject savedColumns
+                    ? OverlayConfig.RowKeys
+                        .Where(k => savedColumns[k] is not null)
+                        .Select(k => new KeyValuePair<string, int>(k, GetInt(savedColumns[k]) ?? 0))
+                    : null);
         }
         catch
         {
@@ -144,7 +196,7 @@ public sealed partial class OverlayConfigStore
     public void Save(
         bool enabled, int? x = null, int? y = null, Dictionary<string, bool>? visibleRows = null,
         string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null,
-        double? scale = null, List<string>? rowOrder = null)
+        double? scale = null, List<string>? rowOrder = null, Dictionary<string, int>? rowColumns = null)
     {
         var existing = File.Exists(_path) ? TryParseFile(_path) : null;
 
@@ -188,6 +240,18 @@ public sealed partial class OverlayConfigStore
         var orderArray = new JsonArray();
         foreach (var key in normalizedOrder) orderArray.Add(JsonValue.Create(key));
         data["row_order"] = orderArray;
+
+        var normalizedColumns = rowColumns is not null
+            ? OverlayConfig.NormalizeRowColumns(rowColumns)
+            : OverlayConfig.NormalizeRowColumns(
+                existing?["row_columns"] is JsonObject existingColumns
+                    ? OverlayConfig.RowKeys
+                        .Where(k => existingColumns[k] is not null)
+                        .Select(k => new KeyValuePair<string, int>(k, GetInt(existingColumns[k]) ?? 0))
+                    : null);
+        var columnsObject = new JsonObject();
+        foreach (var (key, column) in normalizedColumns) columnsObject[key] = JsonValue.Create(column);
+        data["row_columns"] = columnsObject;
 
         try
         {

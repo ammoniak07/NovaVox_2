@@ -164,6 +164,50 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(new[] { "shipSheet", "time" }, loaded.RowOrder.Take(2));
     }
 
+    // Colonnes de l'overlay (glisser-déposer horizontal en mode édition,
+    // OverlayWindow.ApplyLayout) : chaque ligne peut être assignée à une
+    // colonne, persistée séparément de RowOrder (l'ordre reste global,
+    // toutes colonnes confondues — voir OverlayConfig.RowColumns).
+    [Fact]
+    public void OverlayConfig_RoundTripsRowColumns()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowColumns: new Dictionary<string, int> { ["mic"] = 1, ["zone"] = 2 });
+
+        var loaded = store.Load().RowColumns;
+
+        Assert.Equal(1, loaded["mic"]);
+        Assert.Equal(2, loaded["zone"]);
+        Assert.Equal(0, loaded["time"]); // absente de l'appel : colonne 0 par défaut
+        Assert.Equal(OverlayConfig.RowKeys.Length, loaded.Count);
+    }
+
+    [Fact]
+    public void OverlayConfig_RowColumns_ClampsOutOfRangeAndIgnoresUnknownKeys()
+    {
+        File.WriteAllText(Path.Combine(_dir, "overlay_config.json"),
+            """{"row_columns": {"mic": 99, "zone": -1, "some_removed_row": 2}}""");
+        var loaded = new OverlayConfigStore(_dir).Load().RowColumns;
+
+        Assert.Equal(OverlayConfig.MaxColumns - 1, loaded["mic"]);
+        Assert.Equal(0, loaded["zone"]);
+        Assert.False(loaded.ContainsKey("some_removed_row"));
+        Assert.Equal(OverlayConfig.RowKeys.Length, loaded.Count);
+    }
+
+    [Fact]
+    public void OverlayConfig_SaveWithoutRowColumns_PreservesPreviouslySavedColumns()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowColumns: new Dictionary<string, int> { ["mic"] = 2 });
+
+        store.Save(enabled: true, scale: 1.1); // ne touche pas rowColumns
+
+        var loaded = store.Load();
+        Assert.Equal(1.1, loaded.Scale);
+        Assert.Equal(2, loaded.RowColumns["mic"]);
+    }
+
     /// <summary>
     /// Régression : OverlayWindow.OnClosing ne sauvegarde que la position
     /// (enabled + x/y), sans repasser bgColor/bgOpacity/textColor/
