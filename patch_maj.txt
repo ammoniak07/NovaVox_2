@@ -9,6 +9,8 @@ v0.1.0
 - Overlay déverrouillé : un aperçu semi-transparent de la ligne suit maintenant le curseur pendant tout le glisser (avant : seule la ligne réelle changeait de place d'un coup, sans indice visuel entre-temps) — plus clair pour suivre le déplacement, en particulier vers une nouvelle fenêtre détachée.
 - Overlay par défaut (disposition à une seule colonne, avant tout glisser) 100px plus large qu'avant, pour laisser plus de place au texte.
 - Correctif : l'aperçu de glisser (ci-dessus) rendait la ligne SANS tenir compte du curseur "Taille de l'overlay" — tronqué/vide dès que l'échelle n'était pas à 100 %. Montre maintenant fidèlement la ligne complète (icône, texte, case à cocher), quelle que soit l'échelle choisie.
+- Correctif : la bande de colonne vide (glisser-déposer) s'affichait dès le déverrouillage de l'overlay, pas seulement pendant un glisser réel — elle n'apparaît désormais que pendant qu'une ligne est activement en train d'être déplacée.
+- Nouveau curseur "Largeur" (Réglages > 🖥 Overlay > Apparence) : règle toi-même la largeur minimale de la colonne principale par défaut (150 à 600px, 330px par défaut) — une ligne au texte plus long continue bien sûr de faire grandir la colonne au-delà.
 v0.0.9
 ------
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.

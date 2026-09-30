@@ -111,6 +111,41 @@ public class ConfigStoreTests : IDisposable
         Assert.Equal(OverlayConfig.MinScale, store.Load().Scale);
     }
 
+    // Largeur de base de la colonne principale (Réglages > 🖥 Overlay,
+    // curseur "Largeur" -> OverlayWindow.ApplyBaseWidth) — une largeur
+    // MINIMALE (voir OverlayConfig.BaseWidth), pas fixe.
+    [Fact]
+    public void OverlayConfig_RoundTripsBaseWidth()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, baseWidth: 420);
+        Assert.Equal(420, store.Load().BaseWidth);
+    }
+
+    [Fact]
+    public void OverlayConfig_ClampsBaseWidthToValidRange()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, baseWidth: 9999);
+        Assert.Equal(OverlayConfig.MaxBaseWidth, store.Load().BaseWidth);
+
+        store.Save(enabled: true, baseWidth: 1);
+        Assert.Equal(OverlayConfig.MinBaseWidth, store.Load().BaseWidth);
+    }
+
+    [Fact]
+    public void OverlayConfig_SaveWithoutBaseWidth_PreservesPreviouslySavedWidth()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, baseWidth: 400);
+
+        store.Save(enabled: true, scale: 1.1); // ne touche pas baseWidth
+
+        var loaded = store.Load();
+        Assert.Equal(1.1, loaded.Scale);
+        Assert.Equal(400, loaded.BaseWidth);
+    }
+
     [Fact]
     public void OverlayConfig_PreservesUnknownRowsDefaultVisible()
     {

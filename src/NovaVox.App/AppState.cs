@@ -86,7 +86,7 @@ public sealed class AppState
         OverlayConfigStore.Save(
             Overlay.Enabled, Overlay.X, Overlay.Y, Overlay.VisibleRows,
             Overlay.BgColor, Overlay.BgOpacity, Overlay.TextColor, Overlay.TextOpacity,
-            Overlay.Scale);
+            Overlay.Scale, baseWidth: Overlay.BaseWidth);
     }
 
     /// <summary>Bascule vers un autre profil (commandes) : sauvegarde le profil courant, charge le nouveau.</summary>

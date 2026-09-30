@@ -72,6 +72,8 @@ public partial class OverlayWindow : Window
     private string _lastBgColorHex = OverlayConfig.DefaultBgColor;
     private int _lastBgOpacity = OverlayConfig.DefaultBgOpacity;
     private double _lastScale = OverlayConfig.DefaultScale;
+    /// <summary>Largeur minimale de la colonne principale par défaut — voir RefreshColumnEditingStrips/ApplyBaseWidth (Réglages > 🖥 Overlay, curseur "Largeur").</summary>
+    private double _baseWidth = OverlayConfig.DefaultBaseWidth;
 
     public OverlayWindow(OverlayConfigStore store)
     {
@@ -133,6 +135,7 @@ public partial class OverlayWindow : Window
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
         ApplyScale(config.Scale);
+        ApplyBaseWidth(config.BaseWidth);
         ApplyLayout(config.RowOrder, config.RowColumns, config.RowWindow, config.SatelliteWindows);
         _visibleRows = new Dictionary<string, bool>(config.VisibleRows);
         ApplyRowVisibility(_visibleRows);
@@ -194,40 +197,43 @@ public partial class OverlayWindow : Window
 
     /// <summary>
     /// Donne à toute colonne VIDE une largeur minimale + un léger lavis cyan
-    /// tant que l'overlay est en mode édition, pour qu'elle reste une cible
-    /// de dépôt cliquable (glisser une ligne tout à droite pour créer une
-    /// nouvelle colonne) — sinon un StackPanel sans enfant occupe une
-    /// largeur nulle et ne peut jamais recevoir de première ligne. Hors
-    /// édition (ou dès qu'une ligne y est déposée), la colonne retrouve sa
-    /// largeur naturelle (0 si toujours vide, invisible) : AUCUNE colonne
-    /// n'a de largeur fixe (voir OverlayWindow.xaml), donc l'overlay
-    /// rétrécit réellement quand une colonne se vide, et ne s'élargit que
-    /// si une ligne y est glissée.
+    /// PENDANT un glisser de ligne activement en cours (_draggingKey non
+    /// null), pour qu'elle reste une cible de dépôt cliquable (glisser une
+    /// ligne tout à droite pour créer une nouvelle colonne) — sinon un
+    /// StackPanel sans enfant occupe une largeur nulle et ne peut jamais
+    /// recevoir de première ligne. Volontairement PAS "tant que l'overlay
+    /// est en mode édition" (comme avant) : la bande ne doit apparaître
+    /// QUE pendant qu'on glisse réellement une ligne, pas dès le
+    /// déverrouillage — sinon les 8 colonnes vides restantes s'affichaient
+    /// toutes en même temps sans qu'on ait touché à quoi que ce soit.
+    /// Hors glisser (ou dès qu'une ligne y est déposée), la colonne
+    /// retrouve sa largeur naturelle (0 si toujours vide, invisible) :
+    /// AUCUNE colonne n'a de largeur fixe (voir OverlayWindow.xaml), donc
+    /// l'overlay rétrécit réellement quand une colonne se vide, et ne
+    /// s'élargit que si une ligne y est glissée.
     /// La marge gauche (espacement entre colonnes) est gérée ici plutôt
-    /// qu'en XAML pour la même raison : une colonne vide hors édition ne
+    /// qu'en XAML pour la même raison : une colonne vide hors glisser ne
     /// doit laisser filtrer AUCUN espace, sinon l'overlay ne rétrécirait
     /// que partiellement (une bande vide resterait visible entre les
     /// colonnes restantes). S'applique à TOUTES les fenêtres connues (voir
     /// _windows), pas seulement celle-ci : chaque satellite rétrécit/
     /// s'agrandit exactement de la même façon.
     /// UNE SEULE colonne vide affiche sa bande à la fois (la première
-    /// rencontrée de gauche à droite) — sinon les 8 colonnes vides
-    /// restantes s'affichaient TOUTES en même temps dès le déverrouillage,
-    /// bien plus large que nécessaire. Glisser une ligne dedans la remplit,
-    /// ce qui fait apparaître la colonne vide SUIVANTE au prochain appel :
-    /// la largeur ne grandit donc qu'une colonne à la fois, jamais toutes
-    /// d'un coup (ColumnIndexAtX ignore de toute façon les colonnes à
-    /// largeur nulle, donc ce choix ne bloque aucune cible atteignable).
+    /// rencontrée de gauche à droite), jamais toutes en même temps —
+    /// glisser une ligne dedans la remplit, ce qui fait apparaître la
+    /// colonne vide SUIVANTE au prochain appel : la largeur ne grandit
+    /// donc qu'une colonne à la fois (ColumnIndexAtX ignore de toute façon
+    /// les colonnes à largeur nulle, donc ce choix ne bloque aucune cible
+    /// atteignable).
     /// La toute première colonne de la fenêtre PRINCIPALE (id 0, colonne 0)
-    /// reçoit en plus une largeur minimale de DefaultMainColumnMinWidth
-    /// TANT QU'ELLE N'EST PAS VIDE — l'overlay par défaut (disposition à une
-    /// seule colonne, avant tout glisser) démarre ainsi 100px plus large
-    /// qu'avant (l'ancienne largeur fixe était 230px) ; une fois vidée
-    /// (toutes ses lignes glissées ailleurs), elle redevient une colonne
-    /// comme les autres (largeur nulle hors édition).
+    /// reçoit en plus une largeur minimale de _baseWidth (Réglages > 🖥
+    /// Overlay, curseur "Largeur" -> ApplyBaseWidth) TANT QU'ELLE N'EST PAS
+    /// VIDE — une largeur MINIMALE, pas fixe : une ligne au texte plus long
+    /// continue de faire grandir la colonne au-delà (MinWidth, jamais un
+    /// MaxWidth qui tronquerait le contenu). Une fois vidée (toutes ses
+    /// lignes glissées ailleurs), elle redevient une colonne comme les
+    /// autres (largeur nulle hors glisser).
     /// </summary>
-    private const double DefaultMainColumnMinWidth = 330; // ancienne largeur fixe (230) + 100px demandés
-
     private void RefreshColumnEditingStrips()
     {
         foreach (var (id, entry) in _windows)
@@ -238,9 +244,9 @@ public partial class OverlayWindow : Window
             {
                 var column = columns[i];
                 var empty = column.Children.Count == 0;
-                var showsDropStrip = _editMode && empty && i == firstEmptyIndex;
+                var showsDropStrip = _draggingKey is not null && empty && i == firstEmptyIndex;
                 var isDefaultMainColumn = id == 0 && i == 0 && !empty;
-                column.MinWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? DefaultMainColumnMinWidth : 0);
+                column.MinWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? _baseWidth : 0);
                 column.Background = showsDropStrip ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
                 column.Margin = i == 0 || (empty && !showsDropStrip) ? new Thickness(0) : new Thickness(10, 0, 0, 0);
             }
@@ -307,6 +313,24 @@ public partial class OverlayWindow : Window
         OverlayScaleTransform.ScaleY = scale;
         foreach (var satellite in _satellites.Values)
             satellite.ApplyScale(scale);
+    }
+
+    /// <summary>
+    /// Largeur MINIMALE (voir RefreshColumnEditingStrips) de la colonne
+    /// principale par défaut — Réglages > 🖥 Overlay, curseur "Largeur".
+    /// Valeur hors de [OverlayConfig.MinBaseWidth, MaxBaseWidth] rejetée en
+    /// silence (repli sur la largeur déjà appliquée), comme ApplyScale.
+    /// Une ligne au texte plus long que cette largeur continue de faire
+    /// grandir la colonne au-delà (c'est une largeur MINIMALE, jamais une
+    /// largeur fixe qui tronquerait le contenu) — voir la validation faite
+    /// côté Réglages (OverlayBaseWidth_Changed) qui ne laisse de toute façon
+    /// jamais passer une valeur hors bornes jusqu'ici.
+    /// </summary>
+    public void ApplyBaseWidth(double baseWidth)
+    {
+        if (baseWidth < OverlayConfig.MinBaseWidth || baseWidth > OverlayConfig.MaxBaseWidth) return;
+        _baseWidth = baseWidth;
+        RefreshColumnEditingStrips();
     }
 
     private IEnumerable<TextBlock> RowTextBlocks()
@@ -613,6 +637,11 @@ public partial class OverlayWindow : Window
         handle.CaptureMouse();
         e.Handled = true;
         ShowDragGhost(key, handle.PointToScreen(e.GetPosition(handle)));
+        // La bande de dépôt (colonne vide) ne s'affiche QUE pendant un
+        // glisser actif (_draggingKey non null, voir RefreshColumnEditingStrips)
+        // — sans cet appel ici, elle n'apparaîtrait qu'au premier MouseMove
+        // qui atteint une fenêtre connue, pas dès la prise en main.
+        RefreshColumnEditingStrips();
     }
 
     /// <summary>

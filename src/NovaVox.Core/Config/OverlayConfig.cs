@@ -24,6 +24,10 @@ public sealed class OverlayConfig
     public const double DefaultScale = 1.0;
     public const double MinScale = 0.7;
     public const double MaxScale = 1.6;
+    /// <summary>330 = ancienne largeur fixe de la colonne principale (230) + 100px — voir OverlayWindow.RefreshColumnEditingStrips.</summary>
+    public const double DefaultBaseWidth = 330;
+    public const double MinBaseWidth = 150;
+    public const double MaxBaseWidth = 600;
 
     public bool Enabled { get; set; }
     public int? X { get; set; }
@@ -35,6 +39,15 @@ public sealed class OverlayConfig
     public int TextOpacity { get; set; } = DefaultTextOpacity;
     /// <summary>Facteur d'échelle de l'overlay entier (texte, icônes, espacements) — voir OverlayWindow.ApplyScale (ScaleTransform sur le Grid racine). 1.0 = taille d'origine.</summary>
     public double Scale { get; set; } = DefaultScale;
+    /// <summary>
+    /// Largeur MINIMALE (en pixels, à l'échelle 1.0) de la colonne
+    /// principale (Column0 de la fenêtre principale) tant qu'elle contient
+    /// au moins une ligne — voir OverlayWindow.RefreshColumnEditingStrips.
+    /// Une valeur MINIMALE, pas fixe : une ligne au texte plus long que
+    /// cette largeur continue de faire grandir la colonne au-delà (MinWidth
+    /// en WPF, jamais un MaxWidth), réglable dans Réglages > 🖥 Overlay.
+    /// </summary>
+    public double BaseWidth { get; set; } = DefaultBaseWidth;
     /// <summary>
     /// Ordre GLOBAL des lignes (toutes colonnes confondues) — l'ordre
     /// RELATIF des lignes d'une même colonne (voir RowColumns) entre elles
@@ -187,6 +200,12 @@ public sealed partial class OverlayConfigStore
         return d is null ? fallback : Math.Clamp(d.Value, OverlayConfig.MinScale, OverlayConfig.MaxScale);
     }
 
+    public static double ValidateBaseWidth(JsonNode? value, double fallback)
+    {
+        var d = GetDouble(value);
+        return d is null ? fallback : Math.Clamp(d.Value, OverlayConfig.MinBaseWidth, OverlayConfig.MaxBaseWidth);
+    }
+
     public OverlayConfig Load()
     {
         var config = new OverlayConfig();
@@ -212,6 +231,7 @@ public sealed partial class OverlayConfigStore
             config.TextColor = ValidateHexColor(GetStringOrNull(data?["text_color"]), OverlayConfig.DefaultTextColor);
             config.TextOpacity = ValidateOpacityPercent(data?["text_opacity"], OverlayConfig.DefaultTextOpacity);
             config.Scale = ValidateScale(data?["scale"], OverlayConfig.DefaultScale);
+            config.BaseWidth = ValidateBaseWidth(data?["base_width"], OverlayConfig.DefaultBaseWidth);
 
             config.RowOrder = OverlayConfig.NormalizeRowOrder(
                 data?["row_order"] is JsonArray savedOrder
@@ -277,7 +297,8 @@ public sealed partial class OverlayConfigStore
         bool enabled, int? x = null, int? y = null, Dictionary<string, bool>? visibleRows = null,
         string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null,
         double? scale = null, List<string>? rowOrder = null, Dictionary<string, int>? rowColumns = null,
-        Dictionary<string, int>? rowWindow = null, Dictionary<int, (int X, int Y)>? satelliteWindows = null)
+        Dictionary<string, int>? rowWindow = null, Dictionary<int, (int X, int Y)>? satelliteWindows = null,
+        double? baseWidth = null)
     {
         var existing = File.Exists(_path) ? TryParseFile(_path) : null;
 
@@ -311,6 +332,9 @@ public sealed partial class OverlayConfigStore
         data["scale"] = scale is not null
             ? Math.Clamp(scale.Value, OverlayConfig.MinScale, OverlayConfig.MaxScale)
             : ValidateScale(existing?["scale"], OverlayConfig.DefaultScale);
+        data["base_width"] = baseWidth is not null
+            ? Math.Clamp(baseWidth.Value, OverlayConfig.MinBaseWidth, OverlayConfig.MaxBaseWidth)
+            : ValidateBaseWidth(existing?["base_width"], OverlayConfig.DefaultBaseWidth);
 
         var normalizedOrder = rowOrder is not null
             ? OverlayConfig.NormalizeRowOrder(rowOrder)

@@ -695,6 +695,17 @@
                                             Width="140" Margin="6,0" ValueChanged="OverlayScale_Changed" />
                                     <TextBlock x:Name="OverlayScaleValueText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                 </StackPanel>
+                                <!-- Largeur MINIMALE (pas fixe) de la colonne principale par défaut —
+                                     voir OverlayConfig.BaseWidth/OverlayWindow.ApplyBaseWidth : un texte
+                                     plus long que cette largeur continue de faire grandir la colonne
+                                     au-delà, cette valeur ne fait qu'éviter un overlay trop étroit par
+                                     défaut. -->
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Largeur :" VerticalAlignment="Center" />
+                                    <Slider x:Name="OverlayBaseWidthSlider" Minimum="150" Maximum="600" SmallChange="10" LargeChange="30"
+                                            Width="140" Margin="6,0" ValueChanged="OverlayBaseWidth_Changed" />
+                                    <TextBlock x:Name="OverlayBaseWidthValueText" Text="330px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
                             </StackPanel>
                         </TabItem>
 

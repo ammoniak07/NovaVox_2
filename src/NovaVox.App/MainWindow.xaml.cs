@@ -1337,6 +1337,7 @@ public partial class MainWindow : Window
             OverlayTextColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(overlay.TextColor)!);
             OverlayTextOpacitySlider.Value = overlay.TextOpacity;
             OverlayScaleSlider.Value = overlay.Scale;
+            OverlayBaseWidthSlider.Value = overlay.BaseWidth;
             ShipSheetOverlayVisibleCheckbox.IsChecked = overlay.VisibleRows.GetValueOrDefault("shipSheet", true);
             SelectComboItemByTag(UiLanguageCombo, ai.UiLanguage);
             ShowSystemLogCheckbox.IsChecked = ai.ShowSystemLog;
@@ -2839,6 +2840,17 @@ public partial class MainWindow : Window
         _state.Overlay.Scale = OverlayScaleSlider.Value;
         SaveOverlayAndLog();
         _overlayWindow.ApplyScale(_state.Overlay.Scale);
+    }
+
+    /// <summary>Largeur MINIMALE (pas fixe) de la colonne principale par défaut — voir OverlayConfig.BaseWidth/OverlayWindow.ApplyBaseWidth. Même garde-fou que OverlayScale_Changed (Minimum/Maximum coercés dans InitializeComponent, avant que OverlayBaseWidthValueText n'existe encore).</summary>
+    private void OverlayBaseWidth_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OverlayBaseWidthValueText is null) return;
+        OverlayBaseWidthValueText.Text = $"{(int)Math.Round(OverlayBaseWidthSlider.Value)}px";
+        if (_loadingSettings || _overlayWindow is null) return;
+        _state.Overlay.BaseWidth = OverlayBaseWidthSlider.Value;
+        SaveOverlayAndLog();
+        _overlayWindow.ApplyBaseWidth(_state.Overlay.BaseWidth);
     }
 
     // --------------------------------------------- Sélecteur de couleur (overlay)
