@@ -123,6 +123,8 @@ public static partial class GameLogDestinations
         ["lorville city"] = "Lorville City",
         ["area18 city"] = "Area18 City",
         ["orison loc"] = "Orison City",
+        ["stanton4 newbabbage"] = "NewBabbage",
+        ["newbabbage loc"] = "NewBabbage",
         ["ooc stanton1 commarray"] = "Réseau de communications Hurston",
         ["ooc stanton2 commarray"] = "Antenne de communication Crusader",
         ["ooc stanton3 commarray"] = "Réseau de communications ArcCorp",
