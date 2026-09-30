@@ -21,6 +21,14 @@ public class GameLogDestinationsTests
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
     }
 
+    [Theory]
+    [InlineData("RR_JP_StantonPyro", "Pyro Gateway")]
+    [InlineData("Stanton2_Orison", "Orison")]
+    public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
+    {
+        Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
+    }
+
     // "RR_P6_L5" (vu dans RequestLocationInventory, vrai Game.log 30/09/2026)
     // désigne le même lieu que "rs_ext_pyro6_l5" (Megumi Ravitaillement) déjà
     // au catalogue, mais sous l'abréviation utilisée par le sous-système

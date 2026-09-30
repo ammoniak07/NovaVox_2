@@ -93,6 +93,7 @@ public static partial class GameLogDestinations
         ["loc rs ext stan terra jp1"] = "Terra Gateway",
         ["loc rs ext stan magnus jp1"] = "Nyx Gateway",
         ["loc rs ext stan pyro jp1"] = "Pyro Gateway",
+        ["rr jp stantonpyro"] = "Pyro Gateway",
 
         ["ooc stanton"] = "l'étoile Stanton",
         ["ooc stanton2 l2"] = "CRU L 2",
@@ -123,6 +124,7 @@ public static partial class GameLogDestinations
         ["lorville city"] = "Lorville City",
         ["area18 city"] = "Area18 City",
         ["orison loc"] = "Orison City",
+        ["stanton2 orison"] = "Orison",
         ["stanton4 newbabbage"] = "NewBabbage",
         ["newbabbage loc"] = "NewBabbage",
         ["ooc stanton1 commarray"] = "Réseau de communications Hurston",
