@@ -434,6 +434,47 @@ public class GameLogAnnouncerTests
         Assert.Null(result.ResolvedZone);
     }
 
+    // Ligne réelle vérifiée dans un vrai Game.log (30/09/2026) — la
+    // juridiction change indépendamment du nom de la zone/station elle-même
+    // (ex. Megumi Ravitaillement peut se trouver sous juridiction "Rough &
+    // Ready"), d'où une ligne dédiée dans l'overlay plutôt qu'une fusion
+    // avec Zone.
+    [Fact]
+    public void Build_HudNotification_JuridictionExtractsResolvedJurisdiction()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "JURIDICTION : Rough & Ready: " };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Equal("Rough & Ready", result!.ResolvedJurisdiction);
+    }
+
+    [Fact]
+    public void Build_HudNotification_NoJurisdiction_ExtractsVerbatim()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "JURIDICTION : Aucune juridiction: " };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Equal("Aucune juridiction", result!.ResolvedJurisdiction);
+    }
+
+    [Fact]
+    public void Build_HudNotification_UnrelatedText_ResolvedJurisdictionIsNull()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Nouvel objectif : Livrer le colis" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Null(result!.ResolvedJurisdiction);
+    }
+
     [Fact]
     public void Build_NicknameDetected_ReturnsNull()
     {

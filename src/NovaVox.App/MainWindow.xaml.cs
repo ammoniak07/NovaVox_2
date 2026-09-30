@@ -2597,6 +2597,7 @@ public partial class MainWindow : Window
         // résolue (jamais écrasée par "zone inconnue"), comme
         // _overlay_set_zone côté Python.
         if (result.ResolvedZone is not null) _overlayWindow?.SetZone(result.ResolvedZone);
+        if (result.ResolvedJurisdiction is not null) _overlayWindow?.SetJuridiction(result.ResolvedJurisdiction);
 
         AppendLog($"{result.Emoji} {result.Text}".Trim(), "info");
         if (result.RawHudText is not null)

@@ -141,6 +141,21 @@
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
+                <Grid x:Name="RowJuridiction" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock Text="⚖" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="JuridictionLabel" Text="Juridiction :" Margin="6,0,4,0" Foreground="#DBE4EE" />
+                        <TextBlock x:Name="JuridictionValue" Text="—" Foreground="#DBE4EE"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="120" />
+                    </StackPanel>
+                    <CheckBox x:Name="JuridictionRowCheckbox" Grid.Column="1" Tag="juridiction" Style="{StaticResource OverlayRowCheckboxStyle}"
+                              VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
+                              Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
+                </Grid>
                 <Grid x:Name="RowLastCmd" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

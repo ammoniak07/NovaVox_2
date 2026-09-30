@@ -24,7 +24,9 @@ public sealed record GameLogAnnouncement(
     bool UnresolvedDestinationWarning,
     string? UnresolvedDestinationRawId,
     /// <summary>Nom de zone résolu (alias/HUD), uniquement pour un ZoneChange dont la zone a pu être identifiée — à afficher dans l'overlay (voir _overlay_set_zone côté Python : jamais écrasé par une zone inconnue).</summary>
-    string? ResolvedZone = null);
+    string? ResolvedZone = null,
+    /// <summary>Juridiction extraite d'une notification HUD "JURIDICTION : {nom}" (ex. "Rough & Ready", "Aucune juridiction") — à afficher dans l'overlay, comme ResolvedZone.</summary>
+    string? ResolvedJurisdiction = null);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -43,6 +45,18 @@ public static partial class GameLogAnnouncer
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultiSpaceRegex();
+
+    /// <summary>
+    /// Notification HUD "JURIDICTION : {nom}" (ex. "Rough & Ready", "Aucune
+    /// juridiction") — vue dans un vrai Game.log (30/09/2026) à chaque
+    /// changement de zone d'autorité légale, indépendamment du nom de la
+    /// station/zone elle-même (ex. Megumi Ravitaillement peut se trouver
+    /// sous juridiction "Rough & Ready"). Toujours annoncée comme les
+    /// autres notifications HUD ; en plus, sa valeur est extraite ici pour
+    /// alimenter la ligne dédiée de l'overlay (voir ResolvedJurisdiction).
+    /// </summary>
+    [GeneratedRegex(@"^JURIDICTION\s*:\s*(?<name>.+)$")]
+    private static partial Regex JurisdictionRegex();
 
     /// <summary>
     /// Marqueurs de mise en emphase du HUD ("&lt;EM4&gt;[SP]&lt;/EM4&gt;",
@@ -184,6 +198,7 @@ public static partial class GameLogAnnouncer
         (FriendAddedRegex(), _ => "AMI AJOUTÉ ! {name}"),
         (QuantumCalibrationStartedRegex(), _ => "Calibration du voyage quantique démarrée par {name}."),
         (QuantumCalibrationFinishedRegex(), _ => "Calibration du voyage quantique terminée par {name}."),
+        (JurisdictionRegex(), _ => "JURIDICTION : {name}"),
         (NewObjectiveRegex(), _ => "Nouvel objectif : {name}"),
         (ObjectiveCompletedRegex(), _ => "Objectif terminé : {name}"),
         (ObjectiveRemovedRegex(), _ => "Objectif retiré : {name}"),
@@ -306,11 +321,15 @@ public static partial class GameLogAnnouncer
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
         var rawHudTextForLog = spokenText != rawText ? rawText : null;
 
+        var jurisdictionMatch = JurisdictionRegex().Match(rawText);
+        var resolvedJurisdiction = jurisdictionMatch.Success ? jurisdictionMatch.Groups["name"].Value.Trim() : null;
+
         return new GameLogAnnouncement(
             key, text, GameLogPhraseCatalog.Emoji.GetValueOrDefault(key, ""), RawHudText: rawHudTextForLog,
             IsNewDestinationAlias: false, DestinationAliasKey: null,
             IsNewHudOverride: isNew, HudOverrideKey: isNew ? templateKey : null,
-            UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null);
+            UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null,
+            ResolvedJurisdiction: resolvedJurisdiction);
     }
 
     /// <summary>
