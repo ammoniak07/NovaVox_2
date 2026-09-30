@@ -789,25 +789,31 @@ public partial class OverlayWindow : Window
     /// "Taille" de l'overlay), ce qui aurait produit un fantôme tronqué/vide
     /// dès que l'échelle n'est pas 100 % — recadrer le rendu de la fenêtre
     /// entière est fidèle pixel pour pixel, quelle que soit l'échelle.
+    /// Capturé à 96 DPI FIXE (jamais le DPI du moniteur courant) : WPF
+    /// rend un Visual de façon indépendante de la résolution, donc rester à
+    /// 96 partout laisse WPF ré-adapter tout seul l'affichage final au
+    /// moniteur qui héberge RÉELLEMENT le fantôme — appliquer le DPI du
+    /// moniteur ICI (comme avant) pouvait produire des dimensions non
+    /// entières (mise à l'échelle à 125 %, ex. 150×110 -> 187,5×137,5,
+    /// arrondies différemment en largeur/hauteur) qui rendaient parfois le
+    /// fantôme complètement vide en conditions réelles.
     /// </summary>
     private void ShowDragGhost(string key, Point screenPos)
     {
         var element = _rowGridByKey[key];
         if (Window.GetWindow(element) is not { } window) return;
 
-        var dpi = VisualTreeHelper.GetDpi(element);
         var windowWidth = Math.Max(1.0, window.ActualWidth);
         var windowHeight = Math.Max(1.0, window.ActualHeight);
         var fullBitmap = new RenderTargetBitmap(
-            (int)Math.Ceiling(windowWidth * dpi.DpiScaleX), (int)Math.Ceiling(windowHeight * dpi.DpiScaleY),
-            dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+            (int)Math.Ceiling(windowWidth), (int)Math.Ceiling(windowHeight), 96, 96, PixelFormats.Pbgra32);
         fullBitmap.Render(window);
 
         var topLeft = element.TransformToAncestor(window).Transform(new Point(0, 0));
-        var x = Math.Clamp((int)Math.Round(topLeft.X * dpi.DpiScaleX), 0, fullBitmap.PixelWidth - 1);
-        var y = Math.Clamp((int)Math.Round(topLeft.Y * dpi.DpiScaleY), 0, fullBitmap.PixelHeight - 1);
-        var w = Math.Clamp((int)Math.Ceiling(element.ActualWidth * dpi.DpiScaleX), 1, fullBitmap.PixelWidth - x);
-        var h = Math.Clamp((int)Math.Ceiling(element.ActualHeight * dpi.DpiScaleY), 1, fullBitmap.PixelHeight - y);
+        var x = Math.Clamp((int)Math.Round(topLeft.X), 0, fullBitmap.PixelWidth - 1);
+        var y = Math.Clamp((int)Math.Round(topLeft.Y), 0, fullBitmap.PixelHeight - 1);
+        var w = Math.Clamp((int)Math.Ceiling(element.ActualWidth), 1, fullBitmap.PixelWidth - x);
+        var h = Math.Clamp((int)Math.Ceiling(element.ActualHeight), 1, fullBitmap.PixelHeight - y);
         var cropped = new CroppedBitmap(fullBitmap, new Int32Rect(x, y, w, h));
 
         _dragGhost = new OverlayDragGhostWindow();
@@ -816,12 +822,18 @@ public partial class OverlayWindow : Window
         _dragGhost.Show();
     }
 
-    /// <summary>Décalé de (14, 14) DIP par rapport au curseur pour ne pas le recouvrir — convention habituelle d'un aperçu de glisser.</summary>
+    /// <summary>
+    /// Décalé de 18 pixels physiques par rapport au curseur pour ne pas le
+    /// recouvrir (convention habituelle d'un aperçu de glisser) — en
+    /// pixels PHYSIQUES (screenPos, comme PointToScreen le fournit déjà),
+    /// PAS convertis en DIP : voir OverlayDragGhostWindow.MoveToPhysical
+    /// pour la raison (une conversion via le DPI d'une fenêtre de référence
+    /// arbitraire décale le fantôme dès que le glisser se déroule sur un
+    /// AUTRE moniteur à mise à l'échelle différente).
+    /// </summary>
     private void MoveDragGhostTo(Point screenPos)
     {
-        if (_dragGhost is null) return;
-        var dpi = VisualTreeHelper.GetDpi(this);
-        _dragGhost.MoveTo(screenPos.X / dpi.DpiScaleX + 14, screenPos.Y / dpi.DpiScaleY + 14);
+        _dragGhost?.MoveToPhysical((int)screenPos.X + 18, (int)screenPos.Y + 18);
     }
 
     private void CloseDragGhost()
@@ -1065,18 +1077,13 @@ public partial class OverlayWindow : Window
         var previousWindowId = _rowWindow.TryGetValue(key, out var previous) ? previous : 0;
         currentColumn.Children.Remove(element);
 
-        // Simplification assumée : convertit le point ÉCRAN (pixels
-        // physiques, comme screenPos) en unités indépendantes de la
-        // résolution (Window.Left/Top) via le DPI de LA FENÊTRE PRINCIPALE
-        // (this), pas celui du moniteur exact sous le curseur — correct sur
-        // un poste à un seul moniteur ou où tous les moniteurs partagent la
-        // même mise à l'échelle (le cas courant), légèrement décalé sinon
-        // (plusieurs moniteurs à DPI différents) : la nouvelle fenêtre
-        // resterait alors proche du point de dépose sans y être exactement,
-        // rattrapable en la faisant simplement glisser à nouveau.
-        var dpi = VisualTreeHelper.GetDpi(this);
         var newId = _windows.Keys.DefaultIfEmpty(0).Max() + 1;
-        CreateSatelliteWindow(newId, screenPos.X / dpi.DpiScaleX, screenPos.Y / dpi.DpiScaleY);
+        // Position DIP de départ (Left/Top de CETTE fenêtre) purement
+        // temporaire, aussitôt corrigée ci-dessous par MoveToPhysical (voir
+        // son commentaire : Left/Top exigerait de deviner le DPI du
+        // moniteur sous le curseur, MoveToPhysical n'en a pas besoin).
+        var satellite = CreateSatelliteWindow(newId, Left, Top);
+        satellite.MoveToPhysical((int)screenPos.X, (int)screenPos.Y);
         _windows[newId].Columns[0].Children.Add(element);
 
         RecomputeLayoutState();

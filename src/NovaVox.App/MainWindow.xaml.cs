@@ -647,16 +647,24 @@ public partial class MainWindow : Window
     /// que DoDragDrop ne coupe ces évènements) avant Show() : sans ça, la
     /// fenêtre apparaîtrait un instant à sa position par défaut (0,0) avant
     /// le premier rapport de position du crochet bas niveau.
+    /// Capturé à 96 DPI FIXE (jamais le DPI du moniteur courant) : WPF rend
+    /// un Visual de façon indépendante de la résolution, donc rester à 96
+    /// partout laisse WPF ré-adapter tout seul l'affichage final au
+    /// moniteur qui héberge RÉELLEMENT le fantôme — appliquer le DPI du
+    /// moniteur ICI (comme avant) pouvait produire des dimensions non
+    /// entières (mise à l'échelle à 125 %) qui rendaient parfois le fantôme
+    /// complètement vide en conditions réelles, en particulier pour les
+    /// lignes de commande (plus larges que les lignes de titre — signalé
+    /// en conditions réelles : fantôme vide pour les commandes, correct
+    /// pour les titres).
     /// </summary>
     private void ShowCommandDragGhost(ListBoxItem? item, Point initialScreenPos)
     {
         if (item is null) return;
         var width = Math.Max(1.0, item.ActualWidth);
         var height = Math.Max(1.0, item.ActualHeight);
-        var dpi = VisualTreeHelper.GetDpi(item);
         var bitmap = new RenderTargetBitmap(
-            (int)Math.Ceiling(width * dpi.DpiScaleX), (int)Math.Ceiling(height * dpi.DpiScaleY),
-            dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+            (int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(item);
 
         _commandDragGhost = new OverlayDragGhostWindow();
@@ -665,12 +673,20 @@ public partial class MainWindow : Window
         _commandDragGhost.Show();
     }
 
-    /// <summary><paramref name="screenX"/>/<paramref name="screenY"/> en pixels physiques (comme DragWheelScrollHook.onMouseMove les fournit) — même décalage (14,14) DIP que le fantôme de l'overlay pour ne pas recouvrir le curseur.</summary>
+    /// <summary>
+    /// <paramref name="screenX"/>/<paramref name="screenY"/> en pixels
+    /// physiques (comme DragWheelScrollHook.onMouseMove/PointToScreen les
+    /// fournissent déjà) — repositionne en pixels physiques D'ÉCRAN
+    /// (SetWindowPos, voir OverlayDragGhostWindow.MoveToPhysical), PAS via
+    /// Window.Left/Top (qui exigerait de deviner le DPI du moniteur sous le
+    /// curseur) : décalait le fantôme dès que le glisser se déroulait sur
+    /// un AUTRE moniteur que celui de MainWindow, à mise à l'échelle
+    /// différente (signalé en conditions réelles : 125 % sur l'écran
+    /// principal, 100 % sur le second).
+    /// </summary>
     private void MoveCommandDragGhostTo(int screenX, int screenY)
     {
-        if (_commandDragGhost is null) return;
-        var dpi = VisualTreeHelper.GetDpi(this);
-        _commandDragGhost.MoveTo(screenX / dpi.DpiScaleX + 14, screenY / dpi.DpiScaleY + 14);
+        _commandDragGhost?.MoveToPhysical(screenX + 18, screenY + 18);
     }
 
     private void CloseCommandDragGhost()
