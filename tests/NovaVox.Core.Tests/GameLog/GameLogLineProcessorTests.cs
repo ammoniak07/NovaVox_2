@@ -145,19 +145,23 @@ public class GameLogLineProcessorTests
         Assert.Null(processor.ProcessLine("<2026-08-15T16:10:00.000Z> [Notice] <Actor Init> nothing interesting here"));
     }
 
+    // Ligne réelle vérifiée dans un vrai Game.log (30/09/2026) : émise une
+    // fois, automatiquement, peu après le spawn — voir le commentaire sur
+    // RequestLocationInventoryRegex pour le contexte (remplace une première
+    // tentative basée sur "Legacy login response", qui ne porte en réalité
+    // aucun champ Location[...] dans cette version du jeu).
     [Fact]
-    public void SpawnLoginLocation_EmitsZoneChangeWithoutWaitingForQuantumJump()
+    public void RequestLocationInventory_EmitsZoneChangeWithoutWaitingForQuantumJump()
     {
         var processor = new GameLogLineProcessor();
         var evt = processor.ProcessLine(
-            "<2026-09-23T16:31:34.000Z> [Notice] <Legacy login response> [CIG-net] User Login Success - " +
-            "Handle[Ammoniak] Location[OOC_Stanton_2_Crusader] Base[] Character[Ammoniak] ChannelID[123] " +
-            "MinValidHandle[0] MaxValidHandle[0] [Team_GameServices][Login]");
+            "<2026-09-30T06:38:32.439Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested " +
+            "inventory for Location[RR_P6_L5] [Team_CoreGameplayFeatures][Inventory]");
 
         Assert.NotNull(evt);
         Assert.Equal(GameLogEventTypes.ZoneChange, evt!.Type);
-        Assert.Equal("OOC_Stanton_2_Crusader", evt.Zone);
+        Assert.Equal("RR_P6_L5", evt.Zone);
         Assert.True(processor.State.Connected);
-        Assert.Equal("OOC_Stanton_2_Crusader", processor.State.CurrentZone);
+        Assert.Equal("RR_P6_L5", processor.State.CurrentZone);
     }
 }

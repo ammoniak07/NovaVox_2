@@ -70,16 +70,22 @@ public sealed partial class GameLogLineProcessor
     private static partial Regex PlayerNicknameRegex();
 
     /// <summary>
-    /// Ligne de connexion au serveur ("Legacy login response") émise une
-    /// fois par session, dès l'apparition du personnage — contient le lieu
-    /// de spawn au format "OOC_Système_Corps..." déjà géré par
-    /// GameLogDestinations (OocLocationRegex). Permet à l'overlay d'afficher
-    /// la bonne zone dès la connexion, sans attendre un premier saut
-    /// quantique (jusque-là, ZoneChange n'était émis qu'à l'arrivée d'un
-    /// saut — la zone restait donc vide/périmée tant qu'on ne voyageait pas).
+    /// CORRECTIF (vrai Game.log fourni par l'utilisateur, 30/09/2026) :
+    /// "Legacy login response" ne contient PAS de champ Location[...] dans
+    /// cette version du jeu ("User Login Success - Handle[...] - Time[...]"
+    /// seulement) — la première tentative de détecter la zone de spawn via
+    /// cette ligne ne matchait donc jamais, et l'overlay restait affiché sur
+    /// la dernière zone connue d'une session précédente (ex. un point de
+    /// saut "Pyro Gateway"), plutôt que le vrai lieu de spawn ("Megumi
+    /// Ravitaillement"). La ligne réellement fiable et automatique à la
+    /// connexion (vérifiée dans le vrai log) est <RequestLocationInventory>,
+    /// émise une fois dès que le jeu récupère l'inventaire du lieu où le
+    /// personnage apparaît — son identifiant brut (ex. "RR_P6_L5") passe par
+    /// le même mécanisme de résolution que les destinations de saut
+    /// quantique (voir GameLogDestinations.NormalizeKnownIdSynonyms).
     /// </summary>
-    [GeneratedRegex(@"<Legacy login response>.*?Location\[(?<location>[^\]]+)\]")]
-    private static partial Regex SpawnLoginLocationRegex();
+    [GeneratedRegex(@"<RequestLocationInventory> Player\[[^\]]+\] requested inventory for Location\[(?<location>[A-Za-z0-9_]+)\]")]
+    private static partial Regex RequestLocationInventoryRegex();
 
     [GeneratedRegex("<SHUDEvent_OnNotification> Added notification \"(?<text>.*)$")]
     private static partial Regex HudNotificationStartRegex();
@@ -171,10 +177,10 @@ public sealed partial class GameLogLineProcessor
             };
         }
 
-        var spawnLogin = SpawnLoginLocationRegex().Match(line);
-        if (spawnLogin.Success)
+        var locationInventory = RequestLocationInventoryRegex().Match(line);
+        if (locationInventory.Success)
         {
-            var spawnLocation = spawnLogin.Groups["location"].Value;
+            var spawnLocation = locationInventory.Groups["location"].Value;
             State.CurrentZone = spawnLocation;
             State.Connected = true;
             return new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = spawnLocation };

@@ -30,6 +30,27 @@ public static partial class GameLogDestinations
     [GeneratedRegex("^MISSION_QT_")]
     private static partial Regex MissionQtPrefixRegex();
 
+    /// <summary>
+    /// Format d'identifiant "RR_P{système}_L{point}" (ex. "RR_P6_L5") vu dans
+    /// la ligne RequestLocationInventory (vrai Game.log, 30/09/2026) —
+    /// désigne le même lieu que "rs ext pyro{système} l{point}" déjà connu
+    /// (ex. Megumi Ravitaillement = pyro6 l5), mais avec une abréviation
+    /// différente selon le sous-système du jeu qui l'émet. Sans cette
+    /// équivalence, ces identifiants ne correspondaient à aucune entrée du
+    /// catalogue et retombaient sur un repli générique.
+    /// </summary>
+    [GeneratedRegex(@"^rr p(?<system>\d+) l(?<point>\d+)$")]
+    private static partial Regex RrPyroStationIdRegex();
+
+    /// <summary>Réécrit un identifiant déjà normalisé (espaces) vers la forme canonique attendue par le reste de la résolution, si un format alternatif connu le désigne.</summary>
+    private static string NormalizeKnownIdSynonyms(string normalized)
+    {
+        var rrMatch = RrPyroStationIdRegex().Match(normalized);
+        return rrMatch.Success
+            ? $"rs ext pyro{rrMatch.Groups["system"].Value} l{rrMatch.Groups["point"].Value}"
+            : normalized;
+    }
+
     /// <summary>Alias connus pour des identifiants internes qui ne ressemblent à rien une fois "underscore -> espace".</summary>
     public static readonly IReadOnlyDictionary<string, string> KnownLocationAliases = new Dictionary<string, string>
     {
@@ -248,7 +269,7 @@ public static partial class GameLogDestinations
         if (string.IsNullOrEmpty(rawId)) return rawId;
 
         var withoutOc = StripObjectContainerPrefix(rawId);
-        var normalized = NormalizeForAliasLookup(withoutOc);
+        var normalized = NormalizeKnownIdSynonyms(NormalizeForAliasLookup(withoutOc));
 
         if (userAliases is not null && userAliases.TryGetValue(normalized, out var custom) && !string.IsNullOrEmpty(custom))
             return custom;
@@ -283,7 +304,7 @@ public static partial class GameLogDestinations
         if (string.IsNullOrEmpty(rawId)) return null;
         var withoutOc = StripObjectContainerPrefix(rawId);
         if (withoutOc.Length == 0) return null;
-        var normalized = NormalizeForAliasLookup(withoutOc);
+        var normalized = NormalizeKnownIdSynonyms(NormalizeForAliasLookup(withoutOc));
         if (AmbiguousSharedDestinationIds.Contains(normalized)) return null;
         if (userAliases is not null && userAliases.TryGetValue(normalized, out var existing) && !string.IsNullOrEmpty(existing))
             return null;
@@ -296,7 +317,7 @@ public static partial class GameLogDestinations
         if (string.IsNullOrEmpty(rawId)) return false;
         var withoutOc = StripObjectContainerPrefix(rawId);
         if (withoutOc.Length == 0) return false;
-        var normalized = NormalizeForAliasLookup(withoutOc);
+        var normalized = NormalizeKnownIdSynonyms(NormalizeForAliasLookup(withoutOc));
         if (AmbiguousSharedDestinationIds.Contains(normalized)) return false;
         if (userAliases is not null && userAliases.TryGetValue(normalized, out var existing) && !string.IsNullOrEmpty(existing))
             return false;
@@ -334,7 +355,7 @@ public static partial class GameLogDestinations
         IReadOnlyDictionary<string, string>? userAliases = null, string? startLocation = null)
     {
         var withoutOc = StripObjectContainerPrefix(rawDestination ?? "");
-        var normalized = withoutOc.Length > 0 ? NormalizeForAliasLookup(withoutOc) : "";
+        var normalized = withoutOc.Length > 0 ? NormalizeKnownIdSynonyms(NormalizeForAliasLookup(withoutOc)) : "";
 
         if (AmbiguousSharedDestinationIds.Contains(normalized))
         {
