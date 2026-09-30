@@ -94,6 +94,7 @@ public static partial class GameLogDestinations
         ["loc rs ext stan magnus jp1"] = "Nyx Gateway",
         ["loc rs ext stan pyro jp1"] = "Pyro Gateway",
         ["rr jp stantonpyro"] = "Pyro Gateway",
+        ["rr jp pyrostanton"] = "Stanton Gateway",
 
         ["ooc stanton"] = "l'étoile Stanton",
         ["ooc stanton2 l2"] = "CRU L 2",
