@@ -120,6 +120,50 @@ public class ConfigStoreTests : IDisposable
         Assert.True(config.VisibleRows["zone"]);
     }
 
+    // Glisser-déposer en mode édition (OverlayWindow.ApplyRowOrder) : l'ordre
+    // choisi par l'utilisateur doit survivre à un redémarrage.
+    [Fact]
+    public void OverlayConfig_RoundTripsRowOrder()
+    {
+        var store = new OverlayConfigStore(_dir);
+        var customOrder = new List<string> { "mic", "zone", "time" };
+        store.Save(enabled: true, rowOrder: customOrder);
+
+        var loaded = store.Load().RowOrder;
+
+        // Les 3 clés choisies arrivent en premier, dans l'ordre demandé ;
+        // toutes les autres clés connues suivent (jamais perdues) pour que
+        // rien ne disparaisse de l'overlay si RowOrder ne les mentionne pas.
+        Assert.Equal(new[] { "mic", "zone", "time" }, loaded.Take(3));
+        Assert.Equal(OverlayConfig.RowKeys.Length, loaded.Count);
+        Assert.Equal(OverlayConfig.RowKeys.OrderBy(k => k), loaded.OrderBy(k => k));
+    }
+
+    [Fact]
+    public void OverlayConfig_RowOrder_IgnoresUnknownKeysAndDuplicates()
+    {
+        File.WriteAllText(Path.Combine(_dir, "overlay_config.json"),
+            """{"row_order": ["mic", "mic", "some_removed_row", "zone"]}""");
+        var loaded = new OverlayConfigStore(_dir).Load().RowOrder;
+
+        Assert.Equal(new[] { "mic", "zone" }, loaded.Take(2));
+        Assert.Equal(OverlayConfig.RowKeys.Length, loaded.Count);
+        Assert.Equal(loaded.Count, loaded.Distinct().Count());
+    }
+
+    [Fact]
+    public void OverlayConfig_SaveWithoutRowOrder_PreservesPreviouslySavedOrder()
+    {
+        var store = new OverlayConfigStore(_dir);
+        store.Save(enabled: true, rowOrder: new List<string> { "shipSheet", "time" });
+
+        store.Save(enabled: true, scale: 1.2); // ne touche pas rowOrder
+
+        var loaded = store.Load();
+        Assert.Equal(1.2, loaded.Scale);
+        Assert.Equal(new[] { "shipSheet", "time" }, loaded.RowOrder.Take(2));
+    }
+
     /// <summary>
     /// Régression : OverlayWindow.OnClosing ne sauvegarde que la position
     /// (enabled + x/y), sans repasser bgColor/bgOpacity/textColor/

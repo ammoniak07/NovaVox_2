@@ -6,7 +6,16 @@ namespace NovaVox.Core.Config;
 
 public sealed class OverlayConfig
 {
-    public static readonly string[] RowKeys = { "time", "listening", "mic", "phrase", "zone", "lastCmd", "shipSheet" };
+    /// <summary>
+    /// Toutes les clés de ligne connues, dans l'ordre par défaut (celui du
+    /// XAML). "armistice"/"juridiction" manquaient ici depuis leur ajout à
+    /// l'overlay (OverlayWindow.xaml) — corrigé en même temps que RowOrder,
+    /// car sans ça leur case "Afficher"/masquer ne se serait jamais
+    /// persistée d'une session à l'autre (Load/Save n'itèrent que sur
+    /// RowKeys pour "visible_rows").
+    /// </summary>
+    public static readonly string[] RowKeys =
+        { "time", "listening", "mic", "phrase", "zone", "armistice", "juridiction", "lastCmd", "shipSheet" };
 
     public const string DefaultBgColor = "#0a0e14";
     public const int DefaultBgOpacity = 72;
@@ -26,6 +35,35 @@ public sealed class OverlayConfig
     public int TextOpacity { get; set; } = DefaultTextOpacity;
     /// <summary>Facteur d'échelle de l'overlay entier (texte, icônes, espacements) — voir OverlayWindow.ApplyScale (ScaleTransform sur le Grid racine). 1.0 = taille d'origine.</summary>
     public double Scale { get; set; } = DefaultScale;
+    /// <summary>Ordre d'affichage des lignes de haut en bas — voir OverlayWindow.ApplyRowOrder (glisser-déposer en mode édition).</summary>
+    public List<string> RowOrder { get; set; } = RowKeys.ToList();
+
+    /// <summary>
+    /// Filtre <paramref name="candidate"/> aux seules clés connues (une clé
+    /// obsolète/inconnue dans un fichier de config ne doit jamais faire
+    /// planter ou disparaître une ligne), retire les doublons en gardant la
+    /// première occurrence, puis ajoute à la fin toute clé connue manquante
+    /// (ex. une ligne ajoutée par une mise à jour après l'enregistrement du
+    /// fichier) — jamais moins de RowKeys.Length éléments en sortie.
+    /// </summary>
+    public static List<string> NormalizeRowOrder(IEnumerable<string>? candidate)
+    {
+        var result = new List<string>();
+        if (candidate is not null)
+        {
+            foreach (var key in candidate)
+            {
+                if (Array.IndexOf(RowKeys, key) >= 0 && !result.Contains(key))
+                    result.Add(key);
+            }
+        }
+        foreach (var key in RowKeys)
+        {
+            if (!result.Contains(key))
+                result.Add(key);
+        }
+        return result;
+    }
 }
 
 /// <summary>Port de load_overlay_config/save_overlay_config (app.py).</summary>
@@ -81,6 +119,11 @@ public sealed partial class OverlayConfigStore
             config.TextColor = ValidateHexColor(GetStringOrNull(data?["text_color"]), OverlayConfig.DefaultTextColor);
             config.TextOpacity = ValidateOpacityPercent(data?["text_opacity"], OverlayConfig.DefaultTextOpacity);
             config.Scale = ValidateScale(data?["scale"], OverlayConfig.DefaultScale);
+
+            config.RowOrder = OverlayConfig.NormalizeRowOrder(
+                data?["row_order"] is JsonArray savedOrder
+                    ? savedOrder.Select(GetStringOrNull).Where(k => k is not null).Select(k => k!)
+                    : null);
         }
         catch
         {
@@ -101,7 +144,7 @@ public sealed partial class OverlayConfigStore
     public void Save(
         bool enabled, int? x = null, int? y = null, Dictionary<string, bool>? visibleRows = null,
         string? bgColor = null, int? bgOpacity = null, string? textColor = null, int? textOpacity = null,
-        double? scale = null)
+        double? scale = null, List<string>? rowOrder = null)
     {
         var existing = File.Exists(_path) ? TryParseFile(_path) : null;
 
@@ -135,6 +178,16 @@ public sealed partial class OverlayConfigStore
         data["scale"] = scale is not null
             ? Math.Clamp(scale.Value, OverlayConfig.MinScale, OverlayConfig.MaxScale)
             : ValidateScale(existing?["scale"], OverlayConfig.DefaultScale);
+
+        var normalizedOrder = rowOrder is not null
+            ? OverlayConfig.NormalizeRowOrder(rowOrder)
+            : OverlayConfig.NormalizeRowOrder(
+                existing?["row_order"] is JsonArray existingOrder
+                    ? existingOrder.Select(GetStringOrNull).Where(k => k is not null).Select(k => k!)
+                    : null);
+        var orderArray = new JsonArray();
+        foreach (var key in normalizedOrder) orderArray.Add(JsonValue.Create(key));
+        data["row_order"] = orderArray;
 
         try
         {

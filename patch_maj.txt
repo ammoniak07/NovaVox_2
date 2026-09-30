@@ -8,6 +8,8 @@ v0.0.9
 - Correctif : la zone affichait "RR CRU LEO" (identifiant brut) au lieu de "Seraphim Station" — même souci que pour Megumi Ravitaillement (RR_P6_L5), mais sur les stations "Leo" identifiées par système plutôt que par numéro.
 - Ajout de "NewBabbage" (Stanton4_NewBabbage, NewBabbage_Loc) au catalogue intégré de destinations.
 - Nouvelle ligne "Armistice" dans l'overlay en jeu : icône (🚫/⚔) et texte (Oui/Non) indiquant si tu es actuellement en zone d'armistice (combat interdit), détecté depuis le Game.log.
+- Overlay déverrouillé (mode édition) : les lignes peuvent désormais être glissées-déposées (poignée ⠿ à gauche de chaque ligne) pour choisir leur ordre d'affichage de haut en bas — ordre mémorisé d'une session à l'autre.
+- Correctif : les cases "Afficher dans l'overlay" des nouvelles lignes Armistice et Juridiction ne se sauvegardaient en réalité jamais d'une session à l'autre (oubliées de la liste interne des lignes connues) — corrigé en même temps que le glisser-déposer ci-dessus.
 
 v0.0.8
 ------

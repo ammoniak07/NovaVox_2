@@ -47,6 +47,22 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Poignée de glisser-déposer pour réordonner les lignes, visible
+             uniquement en mode "déplacer" (déverrouillé) — voir
+             RowDragHandle_PreviewMouseLeftButtonDown/RowDragHandle_MouseMove/
+             RowDragHandle_MouseLeftButtonUp (OverlayWindow.xaml.cs), câblés
+             au constructeur pour MouseMove/MouseLeftButtonUp (identiques sur
+             les 9 poignées) et ici en XAML pour l'évènement de démarrage. -->
+        <Style x:Key="OverlayRowDragHandleStyle" TargetType="TextBlock">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#802DD4FF" />
+            <Setter Property="Cursor" Value="SizeNS" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
     </Window.Resources>
     <Grid>
         <!-- Échelle de l'overlay (Réglages > ⬡ NovaVox > Apparence, curseur
@@ -70,83 +86,101 @@
             <Border.Effect>
                 <DropShadowEffect Color="Black" Opacity="0.45" BlurRadius="18" ShadowDepth="4" Direction="270" />
             </Border.Effect>
-            <StackPanel>
+            <StackPanel x:Name="RowsPanel">
                 <Grid x:Name="RowTime" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="TimeDragHandle" Grid.Column="0" Text="⠿" Tag="time" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="🕐" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="TimeValue" Text="--:--:--" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="TimeRowCheckbox" Grid.Column="1" Tag="time" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="TimeRowCheckbox" Grid.Column="2" Tag="time" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowListening" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="ListeningDragHandle" Grid.Column="0" Text="⠿" Tag="listening" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="🎧" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="ListeningLabel" Text="Écoute :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="ListeningValue" Text="Arrêtée" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="ListeningRowCheckbox" Grid.Column="1" Tag="listening" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="ListeningRowCheckbox" Grid.Column="2" Tag="listening" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowMic" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="MicDragHandle" Grid.Column="0" Text="⠿" Tag="mic" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="🎙" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="MicLabel" Text="Micro :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="MicValue" Text="—" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="MicRowCheckbox" Grid.Column="1" Tag="mic" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="MicRowCheckbox" Grid.Column="2" Tag="mic" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowPhrase" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="PhraseDragHandle" Grid.Column="0" Text="⠿" Tag="phrase" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="💬" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="PhraseValue" Text="…" Margin="6,0,0,0" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="150" />
                     </StackPanel>
-                    <CheckBox x:Name="PhraseRowCheckbox" Grid.Column="1" Tag="phrase" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="PhraseRowCheckbox" Grid.Column="2" Tag="phrase" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowZone" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="ZoneDragHandle" Grid.Column="0" Text="⠿" Tag="zone" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="🧭" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="ZoneLabel" Text="Zone :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="ZoneValue" Text="—" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="120" />
                     </StackPanel>
-                    <CheckBox x:Name="ZoneRowCheckbox" Grid.Column="1" Tag="zone" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="ZoneRowCheckbox" Grid.Column="2" Tag="zone" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowArmistice" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="ArmisticeDragHandle" Grid.Column="0" Text="⠿" Tag="armistice" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <!-- Icône basculée par code (SetArmistice) : 🚫 en zone
                              d'armistice (combat interdit), ⚔ sinon — voir le
                              commentaire sur ArmisticeEnteredRegex/ArmisticeLeftRegex
@@ -157,45 +191,55 @@
                         <TextBlock x:Name="ArmisticeLabel" Text="Armistice :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="ArmisticeValue" Text="—" Foreground="#DBE4EE" />
                     </StackPanel>
-                    <CheckBox x:Name="ArmisticeRowCheckbox" Grid.Column="1" Tag="armistice" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="ArmisticeRowCheckbox" Grid.Column="2" Tag="armistice" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowJuridiction" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="JuridictionDragHandle" Grid.Column="0" Text="⠿" Tag="juridiction" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="⚖" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="JuridictionLabel" Text="Juridiction :" Margin="6,0,4,0" Foreground="#DBE4EE" />
                         <TextBlock x:Name="JuridictionValue" Text="—" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="120" />
                     </StackPanel>
-                    <CheckBox x:Name="JuridictionRowCheckbox" Grid.Column="1" Tag="juridiction" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="JuridictionRowCheckbox" Grid.Column="2" Tag="juridiction" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowLastCmd" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock x:Name="LastCmdDragHandle" Grid.Column="0" Text="⠿" Tag="lastCmd" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <TextBlock Text="🎮" Width="16" TextAlignment="Center" />
                         <TextBlock x:Name="LastCmdValue" Text="—" Margin="6,0,0,0" Foreground="#DBE4EE"
                                    TextTrimming="CharacterEllipsis" MaxWidth="150" />
                     </StackPanel>
-                    <CheckBox x:Name="LastCmdRowCheckbox" Grid.Column="1" Tag="lastCmd" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="LastCmdRowCheckbox" Grid.Column="2" Tag="lastCmd" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
                 <Grid x:Name="RowShipSheet">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="ShipSheetDragHandle" Grid.Column="0" Text="⠿" Tag="shipSheet" VerticalAlignment="Top"
+                               Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="🚀" Width="16" TextAlignment="Center" />
                             <TextBlock x:Name="ShipSheetTitle" Text="Aucun vaisseau sélectionné" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="#DBE4EE" />
@@ -218,7 +262,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                    <CheckBox x:Name="ShipSheetRowCheckbox" Grid.Column="1" Tag="shipSheet" Style="{StaticResource OverlayRowCheckboxStyle}"
+                    <CheckBox x:Name="ShipSheetRowCheckbox" Grid.Column="2" Tag="shipSheet" Style="{StaticResource OverlayRowCheckboxStyle}"
                               VerticalAlignment="Top" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>

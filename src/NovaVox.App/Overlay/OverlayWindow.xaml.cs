@@ -38,10 +38,26 @@ public partial class OverlayWindow : Window
     // fichier de config avec les mêmes valeurs à chaque bascule de mode.
     private bool _suppressCheckboxEvents;
 
+    // Glisser-déposer des lignes en mode édition (RowDragHandle_*) : ordre
+    // courant + élément en cours de déplacement (null hors glisser-déposer).
+    private List<string> _rowOrder = OverlayConfig.RowKeys.ToList();
+    private string? _draggingKey;
+    private FrameworkElement? _draggingHandle;
+    private readonly Dictionary<string, Grid> _rowGridByKey;
+    private readonly Dictionary<Grid, string> _rowKeyByGrid;
+
     public OverlayWindow(OverlayConfigStore store)
     {
         InitializeComponent();
         _store = store;
+
+        _rowGridByKey = RowEntries().ToDictionary(r => r.Key, r => r.Row);
+        _rowKeyByGrid = _rowGridByKey.ToDictionary(kv => kv.Value, kv => kv.Key);
+        foreach (var (_, _, handle, _) in RowEntries())
+        {
+            handle.MouseMove += RowDragHandle_MouseMove;
+            handle.MouseLeftButtonUp += RowDragHandle_MouseLeftButtonUp;
+        }
 
         SourceInitialized += (_, _) =>
         {
@@ -68,9 +84,30 @@ public partial class OverlayWindow : Window
         }
         ApplyAppearance(config.BgColor, config.BgOpacity, config.TextColor, config.TextOpacity);
         ApplyScale(config.Scale);
+        ApplyRowOrder(config.RowOrder);
         _visibleRows = new Dictionary<string, bool>(config.VisibleRows);
         ApplyRowVisibility(_visibleRows);
         RefreshRowVisualsForEditMode();
+    }
+
+    /// <summary>
+    /// Réordonne les lignes de haut en bas selon <paramref name="order"/> en
+    /// déplaçant les Grid déjà existants dans RowsPanel (StackPanel) — pas
+    /// de gabarit de données à reconstruire, juste l'ordre des enfants du
+    /// panneau qui change, donc tout le reste (bindings, visibilité,
+    /// couleurs) reste intact. Toute clé manquante/inconnue est corrigée
+    /// silencieusement par OverlayConfig.NormalizeRowOrder plutôt que de
+    /// faire disparaître une ligne.
+    /// </summary>
+    public void ApplyRowOrder(IReadOnlyList<string> order)
+    {
+        _rowOrder = OverlayConfig.NormalizeRowOrder(order);
+        foreach (var key in _rowOrder)
+        {
+            var element = _rowGridByKey[key];
+            RowsPanel.Children.Remove(element);
+            RowsPanel.Children.Add(element);
+        }
     }
 
     /// <summary>
@@ -179,17 +216,17 @@ public partial class OverlayWindow : Window
     /// <summary>État actuel (en mémoire) d'une ligne — pour initialiser la case à cocher dédiée de Réglages > 🚀 Vaisseaux à l'ouverture.</summary>
     public bool IsRowVisible(string key) => !_visibleRows.TryGetValue(key, out var visible) || visible;
 
-    private IEnumerable<(Grid Row, CheckBox Checkbox, string Key)> RowEntries()
+    private IEnumerable<(Grid Row, CheckBox Checkbox, FrameworkElement DragHandle, string Key)> RowEntries()
     {
-        yield return (RowTime, TimeRowCheckbox, "time");
-        yield return (RowListening, ListeningRowCheckbox, "listening");
-        yield return (RowMic, MicRowCheckbox, "mic");
-        yield return (RowPhrase, PhraseRowCheckbox, "phrase");
-        yield return (RowZone, ZoneRowCheckbox, "zone");
-        yield return (RowArmistice, ArmisticeRowCheckbox, "armistice");
-        yield return (RowJuridiction, JuridictionRowCheckbox, "juridiction");
-        yield return (RowLastCmd, LastCmdRowCheckbox, "lastCmd");
-        yield return (RowShipSheet, ShipSheetRowCheckbox, "shipSheet");
+        yield return (RowTime, TimeRowCheckbox, TimeDragHandle, "time");
+        yield return (RowListening, ListeningRowCheckbox, ListeningDragHandle, "listening");
+        yield return (RowMic, MicRowCheckbox, MicDragHandle, "mic");
+        yield return (RowPhrase, PhraseRowCheckbox, PhraseDragHandle, "phrase");
+        yield return (RowZone, ZoneRowCheckbox, ZoneDragHandle, "zone");
+        yield return (RowArmistice, ArmisticeRowCheckbox, ArmisticeDragHandle, "armistice");
+        yield return (RowJuridiction, JuridictionRowCheckbox, JuridictionDragHandle, "juridiction");
+        yield return (RowLastCmd, LastCmdRowCheckbox, LastCmdDragHandle, "lastCmd");
+        yield return (RowShipSheet, ShipSheetRowCheckbox, ShipSheetDragHandle, "shipSheet");
     }
 
     /// <summary>
@@ -205,7 +242,7 @@ public partial class OverlayWindow : Window
         _suppressCheckboxEvents = true;
         try
         {
-            foreach (var (row, checkbox, key) in RowEntries())
+            foreach (var (row, checkbox, dragHandle, key) in RowEntries())
             {
                 var visible = !_visibleRows.TryGetValue(key, out var v) || v;
                 if (_editMode)
@@ -214,12 +251,14 @@ public partial class OverlayWindow : Window
                     row.Opacity = visible ? 1.0 : 0.35;
                     checkbox.Visibility = Visibility.Visible;
                     checkbox.IsChecked = visible;
+                    dragHandle.Visibility = Visibility.Visible;
                 }
                 else
                 {
                     row.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
                     row.Opacity = 1.0;
                     checkbox.Visibility = Visibility.Collapsed;
+                    dragHandle.Visibility = Visibility.Collapsed;
                 }
             }
         }
@@ -236,7 +275,7 @@ public partial class OverlayWindow : Window
 
         var visible = checkbox.IsChecked == true;
         _visibleRows[key] = visible;
-        foreach (var (row, _, rowKey) in RowEntries())
+        foreach (var (row, _, _, rowKey) in RowEntries())
         {
             if (rowKey == key)
             {
@@ -388,6 +427,96 @@ public partial class OverlayWindow : Window
             source = source is Visual ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
         }
         return false;
+    }
+
+    /// <summary>
+    /// Démarre le glisser d'une ligne — capture la souris sur LA POIGNÉE
+    /// (pas la fenêtre), et marque l'évènement traité pour empêcher
+    /// OnMouseLeftButtonDown de démarrer un DragMove() de toute la fenêtre
+    /// à la place (le traitement en phase Preview, avant que l'évènement ne
+    /// remonte jusqu'à la fenêtre, suffit — pas besoin d'un filtrage par
+    /// contenu comme IsWithinCheckbox ci-dessus). La capture garantit que
+    /// MouseMove/MouseLeftButtonUp continuent d'arriver à cette poignée même
+    /// une fois le curseur sorti de ses 16px de large.
+    /// </summary>
+    private void RowDragHandle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_editMode) return;
+        if (sender is not FrameworkElement { Tag: string key } handle) return;
+        _draggingKey = key;
+        _draggingHandle = handle;
+        handle.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void RowDragHandle_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_draggingKey is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var position = e.GetPosition(RowsPanel);
+        MoveRowToIndex(_draggingKey, RowIndexAtY(position.Y));
+    }
+
+    private void RowDragHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_draggingKey is null) return;
+        _draggingHandle?.ReleaseMouseCapture();
+        _draggingHandle = null;
+        _draggingKey = null;
+        e.Handled = true;
+
+        try
+        {
+            _store.Save(enabled: true, rowOrder: _rowOrder);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[Overlay] Sauvegarde de l'ordre des lignes échouée ({ex.Message}).", "diagnostic");
+        }
+    }
+
+    /// <summary>
+    /// Trouve la position "insérer avant la ligne i" (dans RowsPanel.Children,
+    /// ordre actuel) sous la position verticale <paramref name="y"/> —
+    /// bascule au MILIEU de chaque ligne survolée plutôt qu'à son bord, plus
+    /// naturel au glisser. Retourne RowsPanel.Children.Count (au-delà de la
+    /// dernière ligne) si y dépasse tout le contenu, pour permettre de
+    /// déposer une ligne tout en bas — jamais coincée à l'avant-dernière
+    /// position (voir MoveRowToIndex pour la compensation de décalage).
+    /// </summary>
+    private int RowIndexAtY(double y)
+    {
+        double cursor = 0;
+        for (var i = 0; i < RowsPanel.Children.Count; i++)
+        {
+            if (RowsPanel.Children[i] is not FrameworkElement fe) continue;
+            var height = fe.ActualHeight + fe.Margin.Top + fe.Margin.Bottom;
+            if (y < cursor + height / 2) return i;
+            cursor += height;
+        }
+        return RowsPanel.Children.Count;
+    }
+
+    /// <summary>
+    /// Déplace la ligne <paramref name="key"/> pour qu'elle se retrouve juste
+    /// avant l'index <paramref name="targetIndex"/> (voir RowIndexAtY) DANS
+    /// L'ORDRE ACTUEL (avant retrait) — un retrait à un index inférieur à
+    /// targetIndex décale tout ce qui suit d'un cran, d'où la compensation
+    /// (targetIndex--) uniquement quand on déplace vers le bas, sinon
+    /// l'élément atterrit systématiquement une case trop loin.
+    /// </summary>
+    private void MoveRowToIndex(string key, int targetIndex)
+    {
+        var element = _rowGridByKey[key];
+        var currentIndex = RowsPanel.Children.IndexOf(element);
+        if (currentIndex < 0) return;
+
+        targetIndex = Math.Clamp(targetIndex, 0, RowsPanel.Children.Count);
+        if (currentIndex < targetIndex) targetIndex--;
+        if (targetIndex == currentIndex) return;
+
+        RowsPanel.Children.RemoveAt(currentIndex);
+        RowsPanel.Children.Insert(Math.Clamp(targetIndex, 0, RowsPanel.Children.Count), element);
+        _rowOrder = RowsPanel.Children.OfType<Grid>().Select(g => _rowKeyByGrid[g]).ToList();
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
