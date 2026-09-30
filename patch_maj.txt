@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.1.0
+------
+- Overlay déverrouillé : en plus de choisir l'ordre de haut en bas, une ligne peut désormais être glissée horizontalement vers la droite pour créer une colonne séparée (jusqu'à 4 côte à côte) — permet par exemple de mettre deux lignes à gauche et deux à droite plutôt que toutes empilées dans une seule colonne. Disposition (colonnes + ordre dans chaque colonne) mémorisée d'une session à l'autre comme l'ordre seul auparavant.
 v0.0.9
 ------
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.
@@ -10,8 +13,6 @@ v0.0.9
 - Nouvelle ligne "Armistice" dans l'overlay en jeu : icône (🚫/⚔) et texte (Oui/Non) indiquant si tu es actuellement en zone d'armistice (combat interdit), détecté depuis le Game.log.
 - Overlay déverrouillé (mode édition) : les lignes peuvent désormais être glissées-déposées (poignée ⠿ à gauche de chaque ligne) pour choisir leur ordre d'affichage de haut en bas — ordre mémorisé d'une session à l'autre.
 - Correctif : les cases "Afficher dans l'overlay" des nouvelles lignes Armistice et Juridiction ne se sauvegardaient en réalité jamais d'une session à l'autre (oubliées de la liste interne des lignes connues) — corrigé en même temps que le glisser-déposer ci-dessus.
-- Overlay déverrouillé : en plus de choisir l'ordre de haut en bas, une ligne peut désormais être glissée horizontalement vers la droite pour créer une colonne séparée (jusqu'à 4 côte à côte) — permet par exemple de mettre deux lignes à gauche et deux à droite plutôt que toutes empilées dans une seule colonne. Disposition (colonnes + ordre dans chaque colonne) mémorisée d'une session à l'autre comme l'ordre seul auparavant.
-
 v0.0.8
 ------
 - Nouveau curseur "Taille" (Réglages > 🖥 Overlay > Apparence) : ajuste la taille de l'overlay entier — texte, icônes et espacements s'agrandissent ou rétrécissent ensemble, proportionnellement.
