@@ -26,7 +26,9 @@ public sealed record GameLogAnnouncement(
     /// <summary>Nom de zone résolu (alias/HUD), uniquement pour un ZoneChange dont la zone a pu être identifiée — à afficher dans l'overlay (voir _overlay_set_zone côté Python : jamais écrasé par une zone inconnue).</summary>
     string? ResolvedZone = null,
     /// <summary>Juridiction extraite d'une notification HUD "JURIDICTION : {nom}" (ex. "Rough & Ready", "Aucune juridiction") — à afficher dans l'overlay, comme ResolvedZone.</summary>
-    string? ResolvedJurisdiction = null);
+    string? ResolvedJurisdiction = null,
+    /// <summary>true si la notification HUD signale l'entrée en zone d'armistice, false si elle signale la sortie, null si la notification n'a rien à voir — à afficher dans l'overlay (jamais écrasé par un texte HUD sans rapport, comme ResolvedZone/ResolvedJurisdiction).</summary>
+    bool? ResolvedArmistice = null);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -57,6 +59,20 @@ public static partial class GameLogAnnouncer
     /// </summary>
     [GeneratedRegex(@"^JURIDICTION\s*:\s*(?<name>.+)$")]
     private static partial Regex JurisdictionRegex();
+
+    /// <summary>
+    /// Notifications HUD d'entrée/sortie de zone d'armistice (combat
+    /// interdit) — vues dans un vrai Game.log (30/09/2026) : "VOUS ENTREZ
+    /// EN ZONE D'ARMISTICE - COMBAT INTERDIT" / "VOUS QUITTEZ LA ZONE
+    /// D'ARMISTICE - PRUDENCE EST MÈRE DE SÛRETÉ". Alimente une ligne
+    /// dédiée de l'overlay (voir ResolvedArmistice), en plus de l'annonce
+    /// HUD normale.
+    /// </summary>
+    [GeneratedRegex(@"^VOUS ENTREZ EN ZONE D'ARMISTICE")]
+    private static partial Regex ArmisticeEnteredRegex();
+
+    [GeneratedRegex(@"^VOUS QUITTEZ LA ZONE D'ARMISTICE")]
+    private static partial Regex ArmisticeLeftRegex();
 
     /// <summary>
     /// Marqueurs de mise en emphase du HUD ("&lt;EM4&gt;[SP]&lt;/EM4&gt;",
@@ -324,12 +340,17 @@ public static partial class GameLogAnnouncer
         var jurisdictionMatch = JurisdictionRegex().Match(rawText);
         var resolvedJurisdiction = jurisdictionMatch.Success ? jurisdictionMatch.Groups["name"].Value.Trim() : null;
 
+        bool? resolvedArmistice = ArmisticeEnteredRegex().IsMatch(rawText) ? true
+            : ArmisticeLeftRegex().IsMatch(rawText) ? false
+            : null;
+
         return new GameLogAnnouncement(
             key, text, GameLogPhraseCatalog.Emoji.GetValueOrDefault(key, ""), RawHudText: rawHudTextForLog,
             IsNewDestinationAlias: false, DestinationAliasKey: null,
             IsNewHudOverride: isNew, HudOverrideKey: isNew ? templateKey : null,
             UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null,
-            ResolvedJurisdiction: resolvedJurisdiction);
+            ResolvedJurisdiction: resolvedJurisdiction,
+            ResolvedArmistice: resolvedArmistice);
     }
 
     /// <summary>

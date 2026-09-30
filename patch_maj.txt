@@ -7,6 +7,7 @@ v0.0.9
 - Nouvelle ligne "Juridiction" dans l'overlay en jeu : affiche la juridiction locale (ex. "Rough & Ready", "Aucune juridiction") détectée dans le Game.log, indépendamment du nom de la zone/station elle-même.
 - Correctif : la zone affichait "RR CRU LEO" (identifiant brut) au lieu de "Seraphim Station" — même souci que pour Megumi Ravitaillement (RR_P6_L5), mais sur les stations "Leo" identifiées par système plutôt que par numéro.
 - Ajout de "NewBabbage" (Stanton4_NewBabbage, NewBabbage_Loc) au catalogue intégré de destinations.
+- Nouvelle ligne "Armistice" dans l'overlay en jeu : icône (🚫/⚔) et texte (Oui/Non) indiquant si tu es actuellement en zone d'armistice (combat interdit), détecté depuis le Game.log.
 
 v0.0.8
 ------

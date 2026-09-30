@@ -475,6 +475,43 @@ public class GameLogAnnouncerTests
         Assert.Null(result!.ResolvedJurisdiction);
     }
 
+    // Lignes réelles vérifiées dans un vrai Game.log (30/09/2026).
+    [Fact]
+    public void Build_HudNotification_ArmisticeEntered_ResolvedArmisticeIsTrue()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT: " };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.True(result!.ResolvedArmistice);
+    }
+
+    [Fact]
+    public void Build_HudNotification_ArmisticeLeft_ResolvedArmisticeIsFalse()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "VOUS QUITTEZ LA ZONE D'ARMISTICE - PRUDENCE EST MÈRE DE SÛRETÉ: " };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.False(result!.ResolvedArmistice);
+    }
+
+    [Fact]
+    public void Build_HudNotification_UnrelatedText_ResolvedArmisticeIsNull()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Nouvel objectif : Livrer le colis" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Null(result!.ResolvedArmistice);
+    }
+
     [Fact]
     public void Build_NicknameDetected_ReturnsNull()
     {

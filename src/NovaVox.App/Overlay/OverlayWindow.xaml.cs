@@ -127,6 +127,7 @@ public partial class OverlayWindow : Window
         yield return MicLabel; yield return MicValue;
         yield return PhraseValue;
         yield return ZoneLabel; yield return ZoneValue;
+        yield return ArmisticeLabel; yield return ArmisticeValue;
         yield return JuridictionLabel; yield return JuridictionValue;
         yield return LastCmdValue;
         yield return ShipSheetTitle;
@@ -147,6 +148,7 @@ public partial class OverlayWindow : Window
         RowMic.Visibility = RowVisibility(visibleRows, "mic");
         RowPhrase.Visibility = RowVisibility(visibleRows, "phrase");
         RowZone.Visibility = RowVisibility(visibleRows, "zone");
+        RowArmistice.Visibility = RowVisibility(visibleRows, "armistice");
         RowJuridiction.Visibility = RowVisibility(visibleRows, "juridiction");
         RowLastCmd.Visibility = RowVisibility(visibleRows, "lastCmd");
         RowShipSheet.Visibility = RowVisibility(visibleRows, "shipSheet");
@@ -184,6 +186,7 @@ public partial class OverlayWindow : Window
         yield return (RowMic, MicRowCheckbox, "mic");
         yield return (RowPhrase, PhraseRowCheckbox, "phrase");
         yield return (RowZone, ZoneRowCheckbox, "zone");
+        yield return (RowArmistice, ArmisticeRowCheckbox, "armistice");
         yield return (RowJuridiction, JuridictionRowCheckbox, "juridiction");
         yield return (RowLastCmd, LastCmdRowCheckbox, "lastCmd");
         yield return (RowShipSheet, ShipSheetRowCheckbox, "shipSheet");
@@ -279,6 +282,19 @@ public partial class OverlayWindow : Window
     public void SetPhrase(string? text) => PhraseValue.Text = string.IsNullOrEmpty(text) ? "…" : text;
     public void SetZone(string? text) => ZoneValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
     public void SetJuridiction(string? text) => JuridictionValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
+
+    /// <summary>
+    /// Zone d'armistice (combat interdit) — voir ArmisticeEnteredRegex/
+    /// ArmisticeLeftRegex (GameLogAnnouncer.cs). L'icône bascule en plus du
+    /// texte, pour rester repérable d'un coup d'œil comme le symbole du HUD
+    /// natif du jeu (voir la réponse donnée sur l'origine de ce symbole :
+    /// Unicode générique, pas une icône extraite du jeu).
+    /// </summary>
+    public void SetArmistice(bool active)
+    {
+        ArmisticeIcon.Text = active ? "🚫" : "⚔";
+        ArmisticeValue.Text = active ? "Oui" : "Non";
+    }
     public void SetLastCommand(string? text) => LastCmdValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
 
     /// <summary>

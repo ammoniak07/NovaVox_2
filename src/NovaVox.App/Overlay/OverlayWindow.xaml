@@ -141,6 +141,26 @@
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
+                <Grid x:Name="RowArmistice" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <!-- Icône basculée par code (SetArmistice) : 🚫 en zone
+                             d'armistice (combat interdit), ⚔ sinon — voir le
+                             commentaire sur ArmisticeEnteredRegex/ArmisticeLeftRegex
+                             (GameLogAnnouncer.cs) pour la détection. Symbole
+                             Unicode générique, pas une icône extraite du jeu
+                             (voir la réponse donnée à l'utilisateur sur ce point). -->
+                        <TextBlock x:Name="ArmisticeIcon" Text="⚔" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="ArmisticeLabel" Text="Armistice :" Margin="6,0,4,0" Foreground="#DBE4EE" />
+                        <TextBlock x:Name="ArmisticeValue" Text="—" Foreground="#DBE4EE" />
+                    </StackPanel>
+                    <CheckBox x:Name="ArmisticeRowCheckbox" Grid.Column="1" Tag="armistice" Style="{StaticResource OverlayRowCheckboxStyle}"
+                              VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
+                              Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
+                </Grid>
                 <Grid x:Name="RowJuridiction" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
