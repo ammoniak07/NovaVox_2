@@ -792,16 +792,26 @@ public partial class OverlayWindow : Window
     /// Capturé à 96 DPI FIXE (jamais le DPI du moniteur courant) : WPF
     /// rend un Visual de façon indépendante de la résolution, donc rester à
     /// 96 partout laisse WPF ré-adapter tout seul l'affichage final au
-    /// moniteur qui héberge RÉELLEMENT le fantôme — appliquer le DPI du
-    /// moniteur ICI (comme avant) pouvait produire des dimensions non
-    /// entières (mise à l'échelle à 125 %, ex. 150×110 -> 187,5×137,5,
-    /// arrondies différemment en largeur/hauteur) qui rendaient parfois le
-    /// fantôme complètement vide en conditions réelles.
+    /// moniteur qui héberge RÉELLEMENT le fantôme, sans dimensions non
+    /// entières à gérer (mise à l'échelle à 125 %, ex. 150×110 ->
+    /// 187,5×137,5, arrondies différemment en largeur/hauteur).
+    /// Dispatcher.Invoke à DispatcherPriority.Render (sans rien faire
+    /// d'autre) juste avant de capturer : force l'achèvement d'un passage
+    /// de COMPOSITION en attente (pas juste la mise en page, déjà à jour) —
+    /// cause RÉELLE, confirmée en conditions réelles côté MainWindow.
+    /// ShowCommandDragGhost (même principe), d'un fantôme vide malgré une
+    /// taille correcte, pour un visuel dont le rendu vient tout juste de
+    /// changer. Moins probable ici (les 9 lignes de l'overlay sont
+    /// statiques, jamais régénérées comme les conteneurs virtualisés d'une
+    /// ListBox), mais gratuit et sans risque à garder par cohérence/
+    /// robustesse.
     /// </summary>
     private void ShowDragGhost(string key, Point screenPos)
     {
         var element = _rowGridByKey[key];
         if (Window.GetWindow(element) is not { } window) return;
+
+        element.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
 
         var windowWidth = Math.Max(1.0, window.ActualWidth);
         var windowHeight = Math.Max(1.0, window.ActualHeight);

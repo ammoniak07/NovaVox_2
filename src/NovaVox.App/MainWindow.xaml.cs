@@ -650,57 +650,35 @@ public partial class MainWindow : Window
     /// Capturé à 96 DPI FIXE (jamais le DPI du moniteur courant) : WPF rend
     /// un Visual de façon indépendante de la résolution, donc rester à 96
     /// partout laisse WPF ré-adapter tout seul l'affichage final au
-    /// moniteur qui héberge RÉELLEMENT le fantôme — appliquer le DPI du
-    /// moniteur ICI (comme avant) pouvait produire des dimensions non
-    /// entières (mise à l'échelle à 125 %) qui rendaient parfois le fantôme
-    /// complètement vide en conditions réelles, en particulier pour les
-    /// lignes de commande (plus larges que les lignes de titre — signalé
-    /// en conditions réelles : fantôme vide pour les commandes, correct
-    /// pour les titres).
+    /// moniteur qui héberge RÉELLEMENT le fantôme, sans dimensions non
+    /// entières à gérer (mise à l'échelle à 125 %).
+    /// Dispatcher.Invoke à DispatcherPriority.Render (sans rien faire
+    /// d'autre) juste avant de capturer : FORCE l'achèvement d'un passage
+    /// de rendu en attente — un conteneur tout juste (re)généré par la
+    /// virtualisation de la ListBox peut avoir une mise en page déjà à jour
+    /// (ActualWidth/Height corrects — confirmé par diagnostic) mais un
+    /// passage de COMPOSITION (le thread de rendu séparé qui produit les
+    /// pixels réellement affichés) encore en attente au moment précis où
+    /// RenderTargetBitmap.Render() est appelé de façon synchrone — capturer
+    /// AVANT que ce passage ne soit terminé donne un instantané vide malgré
+    /// une taille correcte. Confirmé en conditions réelles : SEUL le tout
+    /// premier élément de la liste (jamais régénéré depuis le démarrage)
+    /// capturait correctement, tout le reste (titres ET commandes,
+    /// fraîchement (re)généré au fil du défilement/de l'affichage) restait
+    /// vide — pas une histoire de titre contre commande comme supposé au
+    /// départ.
     /// </summary>
     private void ShowCommandDragGhost(ListBoxItem? item, Point initialScreenPos)
     {
-        if (item is null)
-        {
-            // Diagnostic TEMPORAIRE, volontairement visible dans le journal
-            // (pas "diagnostic", qui n'écrirait que dans le fichier) — souci
-            // de fantôme vide signalé pour les lignes de commande (pas pour
-            // les titres), non résolu par le passage à 96 DPI fixe : à
-            // retirer une fois la cause confirmée.
-            AppendLog("[Diagnostic fantôme] Conteneur introuvable pour la ligne glissée (pas de fantôme créé).", "warning");
-            return;
-        }
+        if (item is null) return;
+
+        item.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+
         var width = Math.Max(1.0, item.ActualWidth);
         var height = Math.Max(1.0, item.ActualHeight);
         var bitmap = new RenderTargetBitmap(
             (int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(item);
-        AppendLog($"[Diagnostic fantôme] item={item.GetType().Name}, ActualWidth={item.ActualWidth:F1}, ActualHeight={item.ActualHeight:F1}, bitmap={bitmap.PixelWidth}x{bitmap.PixelHeight}.", "warning");
-        // Diagnostic TEMPORAIRE (suite) : la taille captée est correcte
-        // (confirmé au tour précédent) — échantillonne quelques pixels pour
-        // savoir si le RENDU lui-même est vide (Render produit des pixels
-        // transparents malgré la bonne taille) ou si le bitmap est bon mais
-        // mal AFFICHÉ ensuite (fenêtre fantôme, Image). BGRA32 : B,G,R,A.
-        try
-        {
-            var samplePoints = new (string Label, int X, int Y)[]
-            {
-                ("centre", bitmap.PixelWidth / 2, bitmap.PixelHeight / 2),
-                ("haut-gauche 10,10", 10, 10),
-                ("texte ~ x=120", Math.Min(120, bitmap.PixelWidth - 1), bitmap.PixelHeight / 2),
-            };
-            var pixel = new byte[4];
-            var samples = samplePoints.Select(p =>
-            {
-                bitmap.CopyPixels(new Int32Rect(p.X, p.Y, 1, 1), pixel, 4, 0);
-                return $"{p.Label}=(B{pixel[0]},G{pixel[1]},R{pixel[2]},A{pixel[3]})";
-            });
-            AppendLog($"[Diagnostic fantôme] Pixels échantillonnés : {string.Join(" ", samples)}.", "warning");
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"[Diagnostic fantôme] Échantillonnage échoué : {ex.Message}", "warning");
-        }
 
         _commandDragGhost = new OverlayDragGhostWindow();
         _commandDragGhost.SetImage(bitmap);
