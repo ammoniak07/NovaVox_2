@@ -10,7 +10,7 @@ public sealed class WindowConfigStore
 {
     public const int DefaultWidth = 1000;
     public const int DefaultHeight = 930;
-    public static readonly (int W, int H) MinSize = (860, 640);
+    public static readonly (int W, int H) MinSize = (512, 640);
     public static readonly (int W, int H) MaxSize = (6000, 6000);
 
     private readonly string _path;

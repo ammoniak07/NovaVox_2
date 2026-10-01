@@ -2003,15 +2003,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log de la barre
-    /// du haut à leur seule icône quand la fenêtre est trop étroite pour
-    /// tout afficher — sinon ces boutons (largeur "Auto" dans leur Grid,
-    /// donc jamais compressés) recouvraient le logo/titre (colonne "*",
-    /// elle compressible en premier) au lieu de leur laisser de la place
-    /// (retour utilisateur, capture d'écran à l'appui). Deux seuils
-    /// différents pour compacter/étendre (hystérésis) : sans ça, un
-    /// redimensionnement qui s'arrête pile sur la limite ferait osciller
-    /// les boutons en boucle entre les deux états.
+    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log/Schémas de la
+    /// barre du haut à leur seule icône quand la fenêtre est trop étroite
+    /// pour tout afficher confortablement — au-delà, la rangée de boutons
+    /// défile horizontalement (ScrollViewer, voir MainWindow.xaml) plutôt
+    /// que de forcer la fenêtre à s'agrandir ou de recouvrir le logo/titre.
+    /// Deux seuils différents pour compacter/étendre (hystérésis) : sans
+    /// ça, un redimensionnement qui s'arrête pile sur la limite ferait
+    /// osciller les boutons en boucle entre les deux états.
     /// </summary>
     private void UpdateHeaderButtonsCompactMode(double windowWidth)
     {
@@ -2024,6 +2023,7 @@ public partial class MainWindow : Window
         RefreshGeminiAssistantLabel();
         SetHeaderButtonLabel(GameLogHeaderButton, UiLocalization.T(_state.Ai.UiLanguage, "topbar.gamelog"));
         SetHeaderButtonLabel(ShipCheatSheetHeaderButton, "🚀 Vaisseaux");
+        SetHeaderButtonLabel(SchemasHeaderButton, "📐 Schémas");
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeaderButtonsCompactMode(e.NewSize.Width);
