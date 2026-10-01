@@ -1935,6 +1935,8 @@ public partial class MainWindow : Window
         UiLanguageLabelText.Text = T("settings.language.label");
         VoskModelLabelText.Text = T("settings.model.label");
         ShowSystemLogCheckbox.Content = T("settings.showlog");
+        GameModeLabelText.Text = T("settings.gameMode.label");
+        ThemeLabelText.Text = T("topbar.theme");
         KbCancelButton.Content = T("kb.cancel");
         KbConfirmButton.Content = T("kb.confirm");
 

@@ -105,26 +105,11 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Mode de jeu : bascule d'un coup Game.log/wiki Gemini/
-                             ligne Zone de l'overlay/image de fond — indépendant des
-                             profils de commandes (menu déroulant plus bas), voir
-                             GameModeCombo_SelectionChanged (MainWindow.xaml.cs). -->
-                        <ComboBox x:Name="GameModeCombo" Width="150" SelectionChanged="GameModeCombo_SelectionChanged">
-                            <ComboBoxItem Content="🚀 Star Citizen" Tag="sc" />
-                            <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
-                        </ComboBox>
-                        <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Margin="8,0,0,0" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
+                        <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
                         <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
                         <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />
-                        <!-- Thème de couleurs de l'interface : liste construite dynamiquement à partir de
-                             ThemeManager.AvailableThemes (MainWindow.xaml.cs, InitializeThemeCombo) plutôt
-                             que codée en dur ici, pour ne garder qu'un seul endroit à mettre à jour en
-                             ajoutant une palette. Propre au mode de jeu actif (GameModeConfig.UiTheme, voir
-                             AppState.SwitchGameMode) : "Autre jeu" démarre sur "Militaire" par défaut. -->
-                        <ComboBox x:Name="ThemeCombo" Width="130" Margin="8,0,0,0" ToolTip="Thème de couleurs"
-                                  SelectionChanged="ThemeCombo_SelectionChanged" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -723,6 +708,24 @@
                                 <TextBlock Text="Interface" FontWeight="Bold" Margin="0,16,0,6" />
                                 <CheckBox x:Name="ShowSystemLogCheckbox" Content="Afficher le journal système"
                                           Checked="ShowSystemLogCheckbox_Changed" Unchecked="ShowSystemLogCheckbox_Changed" />
+
+                                <!-- Mode de jeu : bascule d'un coup Game.log/wiki Gemini/
+                                     ligne Zone de l'overlay/image de fond — indépendant des
+                                     profils de commandes (menu déroulant plus bas), voir
+                                     GameModeCombo_SelectionChanged (MainWindow.xaml.cs). -->
+                                <TextBlock x:Name="GameModeLabelText" Text="Mode de jeu" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="GameModeCombo" SelectionChanged="GameModeCombo_SelectionChanged">
+                                    <ComboBoxItem Content="🚀 Star Citizen" Tag="sc" />
+                                    <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
+                                </ComboBox>
+
+                                <!-- Thème de couleurs de l'interface : liste construite dynamiquement à partir de
+                                     ThemeManager.AvailableThemes (MainWindow.xaml.cs, InitializeThemeCombo) plutôt
+                                     que codée en dur ici, pour ne garder qu'un seul endroit à mettre à jour en
+                                     ajoutant une palette. Propre au mode de jeu actif (GameModeConfig.UiTheme, voir
+                                     AppState.SwitchGameMode) : "Autre jeu" démarre sur "Militaire" par défaut. -->
+                                <TextBlock x:Name="ThemeLabelText" Text="Thème de couleurs" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="ThemeCombo" SelectionChanged="ThemeCombo_SelectionChanged" />
 
                                 <TextBlock x:Name="UiLanguageLabelText" Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">
