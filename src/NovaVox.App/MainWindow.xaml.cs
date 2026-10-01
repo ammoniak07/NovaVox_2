@@ -1393,6 +1393,7 @@ public partial class MainWindow : Window
             GeminiContextBox.Text = ai.GeminiCustomContext;
             ConfirmCommandsCheckbox.IsChecked = ai.ConfirmCommands;
             RadioEffectCheckbox.IsChecked = ai.RadioEffect;
+            SelectComboItemByTag(FrenchNumberStyleCombo, ai.FrenchNumberStyle);
             PiperLengthScaleSlider.Value = ai.PiperLengthScale;
             PiperNoiseScaleSlider.Value = ai.PiperNoiseScale;
 
@@ -1748,6 +1749,17 @@ public partial class MainWindow : Window
         ApplyLiveVoiceSettings();
     }
 
+    private void FrenchNumberStyleCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (FrenchNumberStyleCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+        {
+            _state.Ai.FrenchNumberStyle = tag;
+            SaveAiAndLog();
+            ApplyLiveVoiceSettings();
+        }
+    }
+
     private void PiperLengthScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_loadingSettings) return;
@@ -1952,6 +1964,7 @@ public partial class MainWindow : Window
         VoiceOutputSectionLabelText.Text = T("settings.sons.voice.label");
         OutputDeviceLabelText.Text = T("settings.sons.voice.outputDevice");
         TtsVolumeLabelText.Text = T("settings.sons.voice.volume");
+        NumberStyleLabelText.Text = T("settings.sons.voice.numberStyle");
         AecEnabledCheckbox.Content = T("settings.sons.voice.aec");
     }
 
@@ -2824,6 +2837,7 @@ public partial class MainWindow : Window
         _testTts.LengthScale = _state.Ai.PiperLengthScale;
         _testTts.NoiseScale = _state.Ai.PiperNoiseScale;
         _testTts.RadioEffectEnabled = _state.Ai.RadioEffect;
+        _testTts.NumberStyle = FrenchNumberExpander.ParseStyle(_state.Ai.FrenchNumberStyle);
         _testTts.Volume = _state.Audio.TtsVolume;
         _testTts.OutputDeviceName = _state.Audio.OutputDevice;
     }
@@ -3350,6 +3364,8 @@ public partial class MainWindow : Window
         _testTts!.LengthScale = PiperLengthScaleSlider.Value;
         _testTts.NoiseScale = PiperNoiseScaleSlider.Value;
         _testTts.RadioEffectEnabled = RadioEffectCheckbox.IsChecked ?? false;
+        if (FrenchNumberStyleCombo.SelectedItem is ComboBoxItem { Tag: string numberStyleTag })
+            _testTts.NumberStyle = FrenchNumberExpander.ParseStyle(numberStyleTag);
         _testTts.Volume = _state.Audio.TtsVolume;
         _testTts.OutputDeviceName = _state.Audio.OutputDevice;
         _testTts.Speak("Ceci est un test de la voix sélectionnée.", row.Id);

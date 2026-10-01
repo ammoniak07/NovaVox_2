@@ -34,6 +34,7 @@ public sealed class PiperTtsEngine : IDisposable
     public double LengthScale { get; set; } = 1.0;
     public double NoiseScale { get; set; } = 0.667;
     public bool RadioEffectEnabled { get; set; }
+    public FrenchNumberStyle NumberStyle { get; set; } = FrenchNumberStyle.France;
 
     /// <summary>Volume appliqué au signal avant lecture (0.1-1.5) — indépendant du volume système, voir tts_volume côté Python.</summary>
     public double Volume { get; set; } = 1.0;
@@ -63,6 +64,7 @@ public sealed class PiperTtsEngine : IDisposable
     public void Speak(string? text, string? piperVoice = null)
     {
         var cleaned = TtsTextSanitizer.StripMarkdownForSpeech((text ?? "").Trim());
+        cleaned = FrenchNumberExpander.Expand(cleaned, NumberStyle);
         if (cleaned.Length == 0) return;
         _queue.Add(new TtsRequest(cleaned, piperVoice ?? DefaultPiperVoice));
     }

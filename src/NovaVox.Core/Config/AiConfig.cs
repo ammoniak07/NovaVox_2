@@ -12,6 +12,7 @@ public sealed class AiConfig
     public const double DefaultPiperLengthScale = 1.0;
     public const double DefaultPiperNoiseScale = 0.667;
     public const bool DefaultRadioEffect = false;
+    public const string DefaultFrenchNumberStyle = "france";
     public const string DefaultGeminiModel = "gemini-3.6-flash";
     public const string DefaultGeminiName = "Gemini";
     public const string DefaultResponseLength = "normal";
@@ -32,6 +33,8 @@ public sealed class AiConfig
     public double PiperLengthScale { get; set; } = DefaultPiperLengthScale;
     public double PiperNoiseScale { get; set; } = DefaultPiperNoiseScale;
     public bool RadioEffect { get; set; } = DefaultRadioEffect;
+    /// <summary>"france" (soixante-dix/quatre-vingt-dix) ou "belgique" (septante/nonante) — voir FrenchNumberExpander.</summary>
+    public string FrenchNumberStyle { get; set; } = DefaultFrenchNumberStyle;
     public bool GameLogEnabled { get; set; }
     public bool GameLogAnnounceEvents { get; set; } = true;
     public string GameLogPlayerHandle { get; set; } = "";
@@ -107,6 +110,7 @@ public sealed class AiConfigStore
             config.PiperNoiseScale = Math.Clamp(
                 GetDouble(data["piper_noise_scale"]) ?? AiConfig.DefaultPiperNoiseScale, 0.0, 1.5);
             config.RadioEffect = GetBool(data["radio_effect"], AiConfig.DefaultRadioEffect);
+            config.FrenchNumberStyle = GetStringOrNull(data["french_number_style"]) == "belgique" ? "belgique" : AiConfig.DefaultFrenchNumberStyle;
             config.GeminiEnabled = GetBool(data["gemini_enabled"], true);
             config.GeminiWikiEnabled = GetBool(data["gemini_wiki_enabled"], true);
             config.GameLogEnabled = GetBool(data["game_log_enabled"]);
@@ -182,6 +186,7 @@ public sealed class AiConfigStore
             ["piper_length_scale"] = config.PiperLengthScale,
             ["piper_noise_scale"] = config.PiperNoiseScale,
             ["radio_effect"] = config.RadioEffect,
+            ["french_number_style"] = config.FrenchNumberStyle,
             ["game_log_enabled"] = config.GameLogEnabled,
             ["game_log_announce_events"] = config.GameLogAnnounceEvents,
             ["game_log_player_handle"] = config.GameLogPlayerHandle,

@@ -135,6 +135,12 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^ENTRÉE DU JOURNAL AJOUTÉE\s*:\s*(?<name>.+)$")]
     private static partial Regex JournalEntryAddedRegex();
 
+    // Schéma de fabrication reçu (ex. "Schémas reçu : Ezra") : même principe
+    // que les préfixes d'objectif/contrat ci-dessus — seul le nom du schéma
+    // change d'une rencontre à l'autre, jamais le préfixe.
+    [GeneratedRegex(@"^Schémas reçu\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex SchemaReceivedRegex();
+
     // Canal de discussion d'un vaisseau ("CANAL 'Drake Cutter : Ammoniak'
     // rejoint.") : seul le nom du vaisseau change d'un vaisseau à l'autre —
     // le nom du pilote qui suit (généralement le joueur lui-même) n'a pas
@@ -223,6 +229,7 @@ public static partial class GameLogAnnouncer
         (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}"),
         (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}"),
         (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
+        (SchemaReceivedRegex(), _ => "Schémas reçu : {name}"),
         (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint."),
         (ShipChannelLeftRegex(), _ => "Vous avez quitté le CANAL '{name}'."),
         (NewGroupLeaderRegex(), _ => "Nouveau chef de groupe : {name}"),

@@ -158,6 +158,7 @@ public class GameLogAnnouncerTests
     [InlineData("CONTRAT TERMINÉ", "CONTRAT TERMINÉ : {name}")]
     [InlineData("CONTRAT ÉCHOUÉ", "CONTRAT ÉCHOUÉ : {name}")]
     [InlineData("ENTRÉE DU JOURNAL AJOUTÉE", "ENTRÉE DU JOURNAL AJOUTÉE : {name}")]
+    [InlineData("Schémas reçu", "Schémas reçu : {name}")]
     public void Build_HudNotification_ObjectiveOrContractPrefix_CollapsesAcrossDifferentMissions(string prefix, string expectedTemplateKey)
     {
         var config = NewConfig();

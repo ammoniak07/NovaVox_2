@@ -565,6 +565,11 @@
                                 <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
                                 <TextBlock x:Name="TtsVolumeLabelText" Text="Volume de la voix" />
                                 <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
+                                <TextBlock x:Name="NumberStyleLabelText" Text="Prononciation des nombres (français)" Margin="0,12,0,4" />
+                                <ComboBox x:Name="FrenchNumberStyleCombo" SelectionChanged="FrenchNumberStyleCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Français (France) — soixante-dix, quatre-vingt-dix" Tag="france" />
+                                    <ComboBoxItem Content="Français (Belgique) — septante, nonante" Tag="belgique" />
+                                </ComboBox>
                                 <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
                             </StackPanel>
                             </ScrollViewer>

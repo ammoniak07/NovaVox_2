@@ -68,6 +68,7 @@ public static class UiLocalization
                 ["settings.sons.voice.label"] = "Voix (sortie)",
                 ["settings.sons.voice.outputDevice"] = "Périphérique de sortie",
                 ["settings.sons.voice.volume"] = "Volume de la voix",
+                ["settings.sons.voice.numberStyle"] = "Prononciation des nombres (français)",
                 ["settings.sons.voice.aec"] = "Annulation d'écho (expérimentale)",
             },
             ["en"] = new Dictionary<string, string>
@@ -116,6 +117,7 @@ public static class UiLocalization
                 ["settings.sons.voice.label"] = "Voice (output)",
                 ["settings.sons.voice.outputDevice"] = "Output device",
                 ["settings.sons.voice.volume"] = "Voice volume",
+                ["settings.sons.voice.numberStyle"] = "Number pronunciation (French)",
                 ["settings.sons.voice.aec"] = "Echo cancellation (experimental)",
             },
             ["nl"] = new Dictionary<string, string>
@@ -164,6 +166,7 @@ public static class UiLocalization
                 ["settings.sons.voice.label"] = "Stem (uitvoer)",
                 ["settings.sons.voice.outputDevice"] = "Uitvoerapparaat",
                 ["settings.sons.voice.volume"] = "Stemvolume",
+                ["settings.sons.voice.numberStyle"] = "Uitspraak van getallen (Frans)",
                 ["settings.sons.voice.aec"] = "Echo-onderdrukking (experimenteel)",
             },
             ["es"] = new Dictionary<string, string>
@@ -212,6 +215,7 @@ public static class UiLocalization
                 ["settings.sons.voice.label"] = "Voz (salida)",
                 ["settings.sons.voice.outputDevice"] = "Dispositivo de salida",
                 ["settings.sons.voice.volume"] = "Volumen de la voz",
+                ["settings.sons.voice.numberStyle"] = "Pronunciación de los números (francés)",
                 ["settings.sons.voice.aec"] = "Cancelación de eco (experimental)",
             },
             ["it"] = new Dictionary<string, string>
@@ -260,6 +264,7 @@ public static class UiLocalization
                 ["settings.sons.voice.label"] = "Voce (uscita)",
                 ["settings.sons.voice.outputDevice"] = "Dispositivo di uscita",
                 ["settings.sons.voice.volume"] = "Volume della voce",
+                ["settings.sons.voice.numberStyle"] = "Pronuncia dei numeri (francese)",
                 ["settings.sons.voice.aec"] = "Cancellazione dell'eco (sperimentale)",
             },
             ["de"] = new Dictionary<string, string>
@@ -308,6 +313,7 @@ public static class UiLocalization
                 ["settings.sons.voice.label"] = "Stimme (Ausgabe)",
                 ["settings.sons.voice.outputDevice"] = "Ausgabegerät",
                 ["settings.sons.voice.volume"] = "Stimmlautstärke",
+                ["settings.sons.voice.numberStyle"] = "Zahlenaussprache (Französisch)",
                 ["settings.sons.voice.aec"] = "Echounterdrückung (experimentell)",
             },
         };
