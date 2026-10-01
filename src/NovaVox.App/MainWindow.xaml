@@ -83,8 +83,8 @@
             <Border Grid.Row="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                 <Grid Margin="16,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="0" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <!-- Logo : badge vectoriel par défaut, remplacé par une
@@ -105,14 +105,25 @@
                             <TextBlock x:Name="TopbarSubtitleText" Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
                         </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
-                        <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
-                        <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
-                        <Button x:Name="SchemasHeaderButton" Content="📐 Schémas" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenSchemas_Click" />
-                        <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
-                                ToolTip="Réglages" />
-                    </StackPanel>
+                    <!-- ScrollViewer plutôt qu'un simple StackPanel : dans la colonne "*" ci-dessus
+                         (plus "Auto" comme avant), cette rangée de boutons doit pouvoir être
+                         compressée en dessous de sa largeur naturelle sans forcer la fenêtre à
+                         s'agrandir — sans ça, Window.MinWidth (ci-dessus) resterait sans effet
+                         dès que les boutons d'en-tête (Gemini/Vaisseaux/Game.log/Schémas/Réglages)
+                         ne tiennent plus tous côte à côte. Défile horizontalement au lieu de
+                         bloquer le redimensionnement si la fenêtre devient trop étroite pour les
+                         afficher tous. -->
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
+                            <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
+                            <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
+                            <Button x:Name="SchemasHeaderButton" Content="📐 Schémas" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenSchemas_Click" />
+                            <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
+                                    ToolTip="Réglages" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
             </Border>
 
@@ -168,13 +179,19 @@
                      même hauteur (sinon la colonne Commandes avait un en-tête
                      de plus que Journal système, et sa carte démarrait plus
                      bas). -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
-                    <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
-                    <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
-                    <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
-                </StackPanel>
+                <!-- ScrollViewer plutôt qu'un simple StackPanel : évite que cette rangée
+                     (label + combo 180px + 3 boutons, largeur naturelle ~500px) ne bloque
+                     à elle seule le redimensionnement de la fenêtre en dessous de ça —
+                     voir la même technique sur la rangée de boutons d'en-tête ci-dessus. -->
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
+                        <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
+                        <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
+                        <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
+                    </StackPanel>
+                </ScrollViewer>
 
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
@@ -204,27 +221,32 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
-                                <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
-                            </Border>
-                            <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
-                            <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
-                            <!-- Filtre texte (phrase / touche / synonyme) : ne touche jamais
-                                 à _state.Commands lui-même (glisser-déposer et ordre intacts),
-                                 seulement à VoiceCommandRow.RowVisible — voir
-                                 RefreshCommandsVisibility (MainWindow.xaml.cs). Placeholder
-                                 manuel (TextBlock superposé) : TextBox n'en a pas nativement. -->
-                            <Grid Width="120" Margin="10,0,0,0">
-                                <TextBox x:Name="CommandsSearchBox" Padding="8,4" Background="{DynamicResource PanelBrush}"
-                                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                         TextChanged="CommandsSearchBox_TextChanged"
-                                         ToolTip="Filtrer les commandes par phrase, touche ou synonyme" />
-                                <TextBlock x:Name="CommandsSearchPlaceholder" Text="🔎 Rechercher..." Margin="10,0,0,0" IsHitTestVisible="False"
-                                           VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
-                            </Grid>
-                        </StackPanel>
+                        <!-- ScrollViewer : même raison que la rangée Profil/boutons d'en-tête
+                             ci-dessus — cette rangée (titre + badge + 2 boutons + recherche
+                             120px) ne doit pas bloquer le redimensionnement de la fenêtre. -->
+                        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
+                                    <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
+                                </Border>
+                                <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
+                                <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
+                                <!-- Filtre texte (phrase / touche / synonyme) : ne touche jamais
+                                     à _state.Commands lui-même (glisser-déposer et ordre intacts),
+                                     seulement à VoiceCommandRow.RowVisible — voir
+                                     RefreshCommandsVisibility (MainWindow.xaml.cs). Placeholder
+                                     manuel (TextBlock superposé) : TextBox n'en a pas nativement. -->
+                                <Grid Width="120" Margin="10,0,0,0">
+                                    <TextBox x:Name="CommandsSearchBox" Padding="8,4" Background="{DynamicResource PanelBrush}"
+                                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                             TextChanged="CommandsSearchBox_TextChanged"
+                                             ToolTip="Filtrer les commandes par phrase, touche ou synonyme" />
+                                    <TextBlock x:Name="CommandsSearchPlaceholder" Text="🔎 Rechercher..." Margin="10,0,0,0" IsHitTestVisible="False"
+                                               VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
 
                         <Border x:Name="CommandsCard" Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource PanelBrush50}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -388,10 +410,13 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="JOURNAL SYSTÈME" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
-                    </StackPanel>
+                    <!-- ScrollViewer : même raison que les autres rangées de boutons ci-dessus. -->
+                    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="JOURNAL SYSTÈME" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <!-- VerticalAlignment="Top" + Height liée à la hauteur
                          RÉELLE de la carte Commandes (CommandsCard) : les
