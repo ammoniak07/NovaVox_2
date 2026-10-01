@@ -119,7 +119,22 @@ for ($i = 0; $i -lt $total; $i++) {
         Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json; charset=utf-8" -Body $bytes | Out-Null
         Write-Host "  -> Notification Discord envoyee ($($i + 1)/$total)."
     } catch {
-        Write-Host "  -> ERREUR envoi notification Discord (partie $($i + 1)/$total) : $_"
+        # Le message d'exception .NET seul ("(400) Demande incorrecte") ne dit
+        # jamais CE QUI est refuse -- Discord renvoie le detail exact (quel
+        # champ, pourquoi) dans le CORPS de sa reponse d'erreur, qu'il faut
+        # lire explicitement (Invoke-RestMethod ne l'expose pas tout seul).
+        $errorDetail = $_.Exception.Message
+        if ($_.Exception.Response) {
+            try {
+                $stream = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($stream)
+                $body = $reader.ReadToEnd()
+                if ($body) { $errorDetail = "$errorDetail`r`nDetail Discord : $body" }
+            } catch {
+                # Corps de la reponse illisible : on garde juste le message generique ci-dessus.
+            }
+        }
+        Write-Host "  -> ERREUR envoi notification Discord (partie $($i + 1)/$total) : $errorDetail"
     }
 
     # Evite de se heurter a la limite de frequence des webhooks Discord
