@@ -125,6 +125,10 @@ public class SchemaDatabaseTests
     [InlineData("Mil/2/A QuadraCell MT", "QuadraCell MT")]
     [InlineData("Monde Arms Purgeatory Camo", "Monde Arms Purgatory Camo")] // coquille du jeu ("Purgeatory")
     [InlineData("Jambes Antium Maroon", "Antium Legs Maroon")]
+    // "Clearcut" (coupe à blanc, terme minier/forestier) traduit en "à Blanc"
+    // côté client français — absent de la base car c'était jugé, à tort,
+    // une vraie lacune de données plutôt qu'un problème de correspondance.
+    [InlineData("Module d'Extraction à Blanc", "Clearcut Module")]
     public void Find_FrenchClientName_ResolvesToCanonicalEnglishEntry(string frenchName, string expectedCanonicalName)
     {
         var info = SchemaDatabase.Find(frenchName);
