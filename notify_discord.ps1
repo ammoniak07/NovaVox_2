@@ -94,50 +94,55 @@ if ($FirstPostFile -and (Test-Path $FirstPostFile)) {
 $chunks = Split-IntoChunks -Text $notes -MaxSize 3500
 $total = $chunks.Count
 
-for ($i = 0; $i -lt $total; $i++) {
-    $title = if ($total -gt 1) { "$baseTitle ($($i + 1)/$total)" } else { $baseTitle }
+# HttpClient plutot qu'Invoke-RestMethod : ce dernier s'appuie, sous Windows
+# PowerShell 5.1 (.NET Framework), sur l'ancien System.Net.HttpWebRequest, qui
+# a un defaut connu -- si le serveur repond par une redirection, le POST est
+# rejoue en GET en recollant tout le corps JSON dans l'URL, ce qui a produit
+# exactement l'erreur constatee ("Request Line is too large (8192 > 4094)",
+# cote Cloudflare, identique sur les 3 morceaux quelle que soit leur taille,
+# donc rien a voir avec la longueur du changelog). HttpClient n'a pas ce
+# comportement historique.
+Add-Type -AssemblyName System.Net.Http
+$client = New-Object System.Net.Http.HttpClient
 
-    $embed = @{
-        title       = $title
-        description = $chunks[$i]
-        url         = $ChannelLink
-        color       = 1752262
-    }
-    # Le champ "Salon" n'a besoin d'apparaitre qu'une fois, pas repete dans
-    # chaque morceau d'un changelog decoupe en plusieurs messages.
-    if ($i -eq 0) {
-        $embed.fields = @(@{ name = "Salon"; value = $ChannelLink })
-    }
+try {
+    for ($i = 0; $i -lt $total; $i++) {
+        $title = if ($total -gt 1) { "$baseTitle ($($i + 1)/$total)" } else { $baseTitle }
 
-    $payload = @{
-        username = "NovaVox"
-        embeds   = @($embed)
-    } | ConvertTo-Json -Depth 6
-
-    try {
-        $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
-        Invoke-RestMethod -Uri $webhookUrl -Method Post -ContentType "application/json; charset=utf-8" -Body $bytes | Out-Null
-        Write-Host "  -> Notification Discord envoyee ($($i + 1)/$total)."
-    } catch {
-        # Le message d'exception .NET seul ("(400) Demande incorrecte") ne dit
-        # jamais CE QUI est refuse -- Discord renvoie le detail exact (quel
-        # champ, pourquoi) dans le CORPS de sa reponse d'erreur, qu'il faut
-        # lire explicitement (Invoke-RestMethod ne l'expose pas tout seul).
-        $errorDetail = $_.Exception.Message
-        if ($_.Exception.Response) {
-            try {
-                $stream = $_.Exception.Response.GetResponseStream()
-                $reader = New-Object System.IO.StreamReader($stream)
-                $body = $reader.ReadToEnd()
-                if ($body) { $errorDetail = "$errorDetail`r`nDetail Discord : $body" }
-            } catch {
-                # Corps de la reponse illisible : on garde juste le message generique ci-dessus.
-            }
+        $embed = @{
+            title       = $title
+            description = $chunks[$i]
+            url         = $ChannelLink
+            color       = 1752262
         }
-        Write-Host "  -> ERREUR envoi notification Discord (partie $($i + 1)/$total) : $errorDetail"
-    }
+        # Le champ "Salon" n'a besoin d'apparaitre qu'une fois, pas repete dans
+        # chaque morceau d'un changelog decoupe en plusieurs messages.
+        if ($i -eq 0) {
+            $embed.fields = @(@{ name = "Salon"; value = $ChannelLink })
+        }
 
-    # Evite de se heurter a la limite de frequence des webhooks Discord
-    # (5 requetes / 2 secondes) quand le changelog tient en plusieurs morceaux.
-    if ($i -lt $total - 1) { Start-Sleep -Seconds 1 }
+        $payload = @{
+            username = "NovaVox"
+            embeds   = @($embed)
+        } | ConvertTo-Json -Depth 6
+
+        try {
+            $content = New-Object System.Net.Http.StringContent($payload, [System.Text.Encoding]::UTF8, "application/json")
+            $response = $client.PostAsync($webhookUrl, $content).GetAwaiter().GetResult()
+            if ($response.IsSuccessStatusCode) {
+                Write-Host "  -> Notification Discord envoyee ($($i + 1)/$total)."
+            } else {
+                $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                Write-Host "  -> ERREUR envoi notification Discord (partie $($i + 1)/$total) : HTTP $([int]$response.StatusCode) $($response.ReasonPhrase)`r`nDetail Discord : $body"
+            }
+        } catch {
+            Write-Host "  -> ERREUR envoi notification Discord (partie $($i + 1)/$total) : $_"
+        }
+
+        # Evite de se heurter a la limite de frequence des webhooks Discord
+        # (5 requetes / 2 secondes) quand le changelog tient en plusieurs morceaux.
+        if ($i -lt $total - 1) { Start-Sleep -Seconds 1 }
+    }
+} finally {
+    $client.Dispose()
 }
