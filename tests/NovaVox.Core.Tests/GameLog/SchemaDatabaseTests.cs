@@ -227,4 +227,57 @@ public class SchemaDatabaseTests
         Assert.NotNull(info);
         Assert.Equal("NewDawn", info!.Name);
     }
+
+    // SearchNames : autocomplétion de l'ajout manuel (Réglages > 📐 Schémas).
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SearchNames_EmptyOrNullQuery_ReturnsEmpty(string? query)
+    {
+        Assert.Empty(SchemaDatabase.SearchNames(query));
+    }
+
+    [Fact]
+    public void SearchNames_IsCaseInsensitive()
+    {
+        Assert.Contains("Ezra", SchemaDatabase.SearchNames("ezr"));
+        Assert.Contains("Ezra", SchemaDatabase.SearchNames("EZR"));
+    }
+
+    [Fact]
+    public void SearchNames_MatchesSubstringNotJustPrefix()
+    {
+        // "ntium" ne préfixe aucun nom, mais doit quand même trouver "Antium Arms" etc.
+        Assert.Contains("Antium Arms", SchemaDatabase.SearchNames("ntium"));
+    }
+
+    [Fact]
+    public void SearchNames_PrefixMatchesSortedBeforeSubstringMatches()
+    {
+        // "Anti" préfixe "Antium Arms" mais n'apparaît qu'au milieu de
+        // "Manticore Helmet" (M-anti-core) — le premier doit toujours
+        // passer avant le second.
+        var results = SchemaDatabase.SearchNames("Anti", maxResults: 50);
+        var prefixIndex = results.ToList().IndexOf("Antium Arms");
+        var substringOnlyIndex = results.ToList().IndexOf("Manticore Helmet");
+
+        Assert.True(prefixIndex >= 0, "Antium Arms devrait être dans les résultats");
+        Assert.True(substringOnlyIndex >= 0, "Manticore Helmet devrait être dans les résultats");
+        Assert.True(prefixIndex < substringOnlyIndex, "le préfixe doit passer avant le simple 'contient'");
+    }
+
+    [Fact]
+    public void SearchNames_RespectsMaxResults()
+    {
+        var results = SchemaDatabase.SearchNames("a", maxResults: 3);
+        Assert.True(results.Count <= 3);
+    }
+
+    [Fact]
+    public void SearchNames_UnknownQuery_ReturnsEmpty()
+    {
+        Assert.Empty(SchemaDatabase.SearchNames("zzzzznevermatchesanything"));
+    }
 }

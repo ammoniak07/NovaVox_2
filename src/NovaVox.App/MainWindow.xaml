@@ -1276,7 +1276,23 @@
                                Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBox x:Name="NewSchemaNameBox" Width="240" ToolTip="Nom du schéma (ex. Ezra)" KeyDown="NewSchemaNameBox_KeyDown" />
+                        <Grid>
+                            <TextBox x:Name="NewSchemaNameBox" Width="240" ToolTip="Nom du schéma (ex. Ezra)"
+                                     TextChanged="NewSchemaNameBox_TextChanged" PreviewKeyDown="NewSchemaNameBox_PreviewKeyDown"
+                                     KeyDown="NewSchemaNameBox_KeyDown" />
+                            <!-- Autocomplétion : suggestions de la base locale au fil de la frappe (voir
+                                 SchemaDatabase.SearchNames) — Entrée/clic sur une suggestion l'ajoute directement,
+                                 Entrée sans suggestion sélectionnée ajoute le texte tel quel (nom hors base locale). -->
+                            <Popup x:Name="SchemaSuggestionsPopup" PlacementTarget="{Binding ElementName=NewSchemaNameBox}"
+                                   Placement="Bottom" StaysOpen="False" Width="240">
+                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="4">
+                                    <ListBox x:Name="SchemaSuggestionsList" BorderThickness="0" Background="Transparent"
+                                             MaxHeight="220" SelectionMode="Single"
+                                             PreviewMouseLeftButtonUp="SchemaSuggestionsList_PreviewMouseLeftButtonUp" />
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <Button Content="+ Ajouter" Margin="6,0,0,0" Click="AddSchema_Click" />
                         <Button Content="🔍 Scanner les archives" Margin="12,0,0,0"
                                 ToolTip="Relit tous les anciens Game.log (logbackups) pour retrouver les schémas reçus lors de sessions passées"

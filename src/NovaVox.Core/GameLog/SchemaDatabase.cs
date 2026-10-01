@@ -151,6 +151,29 @@ public static class SchemaDatabase
         return info;
     }
 
+    private static readonly Lazy<IReadOnlyList<string>> AllNames =
+        new(() => ByName.Value.Values.Select(i => i.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList());
+
+    /// <summary>
+    /// Noms de la base locale contenant <paramref name="query"/> (insensible
+    /// à la casse), pour l'autocomplétion de l'ajout manuel (Réglages >
+    /// 📐 Schémas) — ceux qui COMMENCENT par <paramref name="query"/>
+    /// d'abord, puis les autres, alphabétique dans chaque groupe, au plus
+    /// <paramref name="maxResults"/>. Vide/null -> liste vide : pas
+    /// question de proposer les ~1600 noms d'un coup sans rien taper.
+    /// </summary>
+    public static IReadOnlyList<string> SearchNames(string? query, int maxResults = 15)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<string>();
+        var q = query.Trim();
+        return AllNames.Value
+            .Where(n => n.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(n => n.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .Take(maxResults)
+            .ToList();
+    }
+
     private static SchemaInfo? LookupEntry(string trimmedName)
     {
         if (ByName.Value.TryGetValue(trimmedName, out var exact)) return exact;

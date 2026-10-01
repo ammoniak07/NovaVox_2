@@ -2498,6 +2498,76 @@ public partial class MainWindow : Window
         if (e.Key == System.Windows.Input.Key.Enter) AddSchema(NewSchemaNameBox.Text);
     }
 
+    /// <summary>
+    /// Autocomplétion de l'ajout manuel (voir SchemaDatabase.SearchNames) :
+    /// rafraîchit les suggestions à chaque frappe, ouvre le popup s'il y en
+    /// a, le referme sinon (texte vide ou aucune correspondance).
+    /// </summary>
+    private void NewSchemaNameBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        var suggestions = SchemaDatabase.SearchNames(NewSchemaNameBox.Text);
+        if (suggestions.Count == 0)
+        {
+            SchemaSuggestionsPopup.IsOpen = false;
+            return;
+        }
+        SchemaSuggestionsList.ItemsSource = suggestions;
+        SchemaSuggestionsList.SelectedIndex = 0;
+        SchemaSuggestionsPopup.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Navigation clavier dans les suggestions (avant NewSchemaNameBox_KeyDown,
+    /// qui ajoute le texte tel quel sur Entrée quand le popup est fermé) :
+    /// Haut/Bas change la sélection, Échap referme le popup sans rien
+    /// ajouter, Entrée ajoute directement la suggestion sélectionnée — pas
+    /// besoin d'une deuxième Entrée pour confirmer.
+    /// </summary>
+    private void NewSchemaNameBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (!SchemaSuggestionsPopup.IsOpen) return;
+
+        switch (e.Key)
+        {
+            case System.Windows.Input.Key.Down:
+                SchemaSuggestionsList.SelectedIndex = Math.Min(SchemaSuggestionsList.SelectedIndex + 1, SchemaSuggestionsList.Items.Count - 1);
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Up:
+                SchemaSuggestionsList.SelectedIndex = Math.Max(SchemaSuggestionsList.SelectedIndex - 1, 0);
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Escape:
+                SchemaSuggestionsPopup.IsOpen = false;
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Enter:
+                if (SchemaSuggestionsList.SelectedItem is string selected)
+                {
+                    SchemaSuggestionsPopup.IsOpen = false;
+                    AddSchema(selected);
+                    e.Handled = true; // empêche NewSchemaNameBox_KeyDown de traiter la même touche
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Clic sur une suggestion — PreviewMouseLeftButtonUp plutôt que Click/MouseUp
+    /// simple : avec StaysOpen="False", le Popup peut se refermer sur le
+    /// mouse-down avant que l'évènement de clic n'ait fini de remonter,
+    /// d'où la version "preview" (tunneling, déclenchée plus tôt) pour ne
+    /// jamais rater le clic.
+    /// </summary>
+    private void SchemaSuggestionsList_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        if (ItemsControl.ContainerFromElement(SchemaSuggestionsList, source) is not ListBoxItem { Content: string selected }) return;
+
+        SchemaSuggestionsPopup.IsOpen = false;
+        AddSchema(selected);
+    }
+
     private void AddSchema(string rawName)
     {
         var name = rawName.Trim();
