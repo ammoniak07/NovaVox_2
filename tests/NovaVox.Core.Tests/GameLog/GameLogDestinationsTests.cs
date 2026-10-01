@@ -49,6 +49,14 @@ public class GameLogDestinationsTests
         Assert.Equal("Seraphim Station", GameLogDestinations.HumanizeDestination("RR_CRU_LEO"));
     }
 
+    // "RR_HUR_LEO" (vu en vrai, capture d'écran de l'overlay avec le joueur
+    // à Everus Harbor) : même format que RR_CRU_LEO ci-dessus, pour Hurston.
+    [Fact]
+    public void HumanizeDestination_ResolvesHurstonLeoStationIdFormat()
+    {
+        Assert.Equal("Everus Harbor", GameLogDestinations.HumanizeDestination("RR_HUR_LEO"));
+    }
+
     [Fact]
     public void DestinationAliasKey_ReturnsNullForAmbiguousId()
     {

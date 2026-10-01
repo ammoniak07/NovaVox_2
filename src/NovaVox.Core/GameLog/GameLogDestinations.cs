@@ -74,6 +74,7 @@ public static partial class GameLogDestinations
     public static readonly IReadOnlyDictionary<string, string> KnownLocationAliases = new Dictionary<string, string>
     {
         ["rs ext cru leo1"] = "Seraphim Station",
+        ["rs ext hur leo1"] = "Everus Harbor",
 
         ["loc rr s1 l1"] = "Green Glade Station",
         ["loc rr s1 l2"] = "Faithful Dream Station",
