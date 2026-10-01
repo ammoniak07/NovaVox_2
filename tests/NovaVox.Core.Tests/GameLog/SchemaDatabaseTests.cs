@@ -41,6 +41,25 @@ public class SchemaDatabaseTests
         Assert.Null(SchemaDatabase.Find(query));
     }
 
+    [Theory]
+    [InlineData("fr")]
+    [InlineData("nl")]
+    [InlineData("es")]
+    [InlineData("it")]
+    [InlineData("de")]
+    [InlineData("en")]
+    [InlineData(null)]
+    [InlineData("xx")] // code inconnu : ne doit jamais faire planter la recherche
+    public void Find_AnyLanguageCode_NeverLosesNameOrManufacturer(string? language)
+    {
+        var info = SchemaDatabase.Find("Ezra", language);
+
+        Assert.NotNull(info);
+        Assert.Equal("Ezra", info!.Name);
+        Assert.Equal("Shubin Interstellar", info.Manufacturer);
+        Assert.False(string.IsNullOrWhiteSpace(info.Description)); // traduit si dispo, sinon repli anglais — jamais vide
+    }
+
     [Fact]
     public void Database_HasASubstantialNumberOfEntries()
     {

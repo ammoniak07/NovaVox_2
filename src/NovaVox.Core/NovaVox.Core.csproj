@@ -10,9 +10,12 @@
        ingrédients...) — voir SchemaDatabase.cs. Embarquée dans l'assembly (pas un
        Content copié à côté de l'exe comme patch_maj.txt) : ce fichier n'est jamais
        modifié par l'utilisateur, un seul endroit à garder cohérent avec le code qui
-       le lit. -->
+       le lit. SchemaDatabase.<lang>.json (fr/nl/es/it/de) : traductions de la
+       description, une par langue de l'interface — l'anglais (fichier principal)
+       sert de repli quand une langue n'a pas (encore) de traduction pour un nom. -->
   <ItemGroup>
     <EmbeddedResource Include="GameLog\SchemaDatabase.json" />
+    <EmbeddedResource Include="GameLog\SchemaDatabase.*.json" />
   </ItemGroup>
 
 </Project>

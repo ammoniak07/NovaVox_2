@@ -18,9 +18,10 @@ public sealed class SchemaRowVm
     public bool HasSubtitle => !string.IsNullOrEmpty(Subtitle);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
 
-    public static SchemaRowVm Create(string name)
+    /// <param name="language">Code langue de l'interface (ex. "fr") pour traduire la description — voir SchemaDatabase.Find. Null/anglais = description source.</param>
+    public static SchemaRowVm Create(string name, string? language = null)
     {
-        var info = SchemaDatabase.Find(name);
+        var info = SchemaDatabase.Find(name, language);
         return new SchemaRowVm
         {
             Name = name,
