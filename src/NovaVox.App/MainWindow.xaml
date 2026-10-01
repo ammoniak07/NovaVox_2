@@ -809,6 +809,10 @@
                                 <TextBlock><Hyperlink NavigateUri="https://github.com/hardcodet/wpf-notifyicon" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/hardcodet/wpf-notifyicon</Hyperlink></TextBlock>
                                 <TextBlock Text="System.Drawing.Common" Margin="0,10,0,0" />
                                 <TextBlock><Hyperlink NavigateUri="https://www.nuget.org/packages/System.Drawing.Common" RequestNavigate="Hyperlink_RequestNavigate">https://www.nuget.org/packages/System.Drawing.Common</Hyperlink></TextBlock>
+
+                                <TextBlock Text="Données" FontWeight="Bold" Margin="0,24,0,6" />
+                                <TextBlock Text="StarCitizenWiki/scunpacked-data — base communautaire des schémas de fabrication (noms, fabricants, descriptions)" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/StarCitizenWiki/scunpacked-data" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/StarCitizenWiki/scunpacked-data</Hyperlink></TextBlock>
                             </StackPanel>
                             </ScrollViewer>
                         </TabItem>

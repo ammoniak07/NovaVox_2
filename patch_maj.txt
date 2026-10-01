@@ -3,6 +3,7 @@ NOVAVOX — Notes de mise à jour
 v0.1.1
 ------
 - Panneau "📐 Schémas" : la reconnaissance des schémas (fabricant/description) fonctionne désormais avec N'IMPORTE QUELLE traduction communautaire française installée (SCEFRA via Multitool, ou une autre), pas seulement celle déjà constatée précédemment. NovaVox lit ton propre fichier de traduction local (jamais redistribué) et le compare à la base anglaise pour reconnaître tes schémas automatiquement, quelle que soit la formulation exacte choisie par ta traduction.
+- Ajout du crédit manquant pour StarCitizenWiki/scunpacked-data (Réglages > à propos) : la base communautaire dont est tirée la base de données des schémas (noms, fabricants, descriptions).
 
 v0.1.0
 ------
