@@ -165,4 +165,66 @@ public class SchemaDatabaseTests
         Assert.NotNull(SchemaDatabase.Find("casque antium"));
         Assert.NotNull(SchemaDatabase.Find("BRAS ANTIUM"));
     }
+
+    // RegisterLiveNameAliases : reconnaissance via le global.ini LOCAL du
+    // joueur (n'importe quelle traduction installée), voir GameLogLocalization
+    // et le résumé de SchemaDatabase — complète les alias figés ci-dessus,
+    // qui ne couvrent qu'UNE traduction précise.
+
+    [Fact]
+    public void LocalizationKeysOfInterest_ContainsOneKeyPerDatabaseEntry()
+    {
+        var keys = SchemaDatabase.LocalizationKeysOfInterest;
+        Assert.True(keys.Count > 1000); // ~1589 dans la base actuelle, marge pour une régénération future
+        Assert.Contains("Nozzle_FuelGiver_SHIN_NozzleMostExpensive_Name", keys); // clé réelle de "Ezra"
+    }
+
+    [Fact]
+    public void RegisterLiveNameAliases_UnknownKey_IsIgnoredWithoutThrowing()
+    {
+        // Ne doit jamais planter même avec des clés qui ne correspondent à
+        // aucun nom de la base (reste du global.ini, hors de propos ici).
+        var before = SchemaDatabase.Find("Ezra");
+        SchemaDatabase.RegisterLiveNameAliases(new Dictionary<string, string>
+        {
+            ["une_clé_qui_n_existe_pas_dans_la_base"] = "Peu importe",
+        });
+        Assert.Equal(before?.Name, SchemaDatabase.Find("Ezra")?.Name);
+    }
+
+    [Fact]
+    public void RegisterLiveNameAliases_RealKey_MakesTranslatedNameResolvable()
+    {
+        // Simule un global.ini traduit (n'importe quelle langue, pas
+        // seulement le français — le mécanisme ne connaît pas la notion de
+        // langue, juste clé -> texte local) contenant la vraie clé de
+        // "Ezra" avec un texte totalement inventé.
+        const string translated = "NomInventéPourLeTest_Ezra_Novavox";
+        Assert.Null(SchemaDatabase.Find(translated));
+
+        SchemaDatabase.RegisterLiveNameAliases(new Dictionary<string, string>
+        {
+            ["Nozzle_FuelGiver_SHIN_NozzleMostExpensive_Name"] = translated,
+        });
+
+        var info = SchemaDatabase.Find(translated);
+        Assert.NotNull(info);
+        Assert.Equal("Ezra", info!.Name);
+        Assert.Equal("Shubin Interstellar", info.Manufacturer);
+    }
+
+    [Fact]
+    public void RegisterLiveNameAliases_EnglishValueFromUntranslatedGlobalIni_StillResolvesNormally()
+    {
+        // Un joueur SANS traduction installée a un global.ini déjà en
+        // anglais : l'alias enregistré (nom -> lui-même) ne doit rien casser.
+        SchemaDatabase.RegisterLiveNameAliases(new Dictionary<string, string>
+        {
+            ["item_Name_POWR_SASU_S03_NewDawn"] = "NewDawn",
+        });
+
+        var info = SchemaDatabase.Find("NewDawn");
+        Assert.NotNull(info);
+        Assert.Equal("NewDawn", info!.Name);
+    }
 }

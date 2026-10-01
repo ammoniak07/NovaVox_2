@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -49,7 +50,18 @@ public sealed record SchemaInfo(
 /// source communautaire), <see cref="Find"/> consulte TOUS les fichiers
 /// d'alias disponibles (quel que soit le paramètre <c>language</c>, qui
 /// ne concerne que la traduction de la description) pour retrouver le
-/// nom canonique anglais correspondant.
+/// nom canonique anglais correspondant. Liste figée construite/complétée
+/// à la main au fil des remontées utilisateur — ne couvre donc qu'UNE
+/// traduction communautaire précise (celle déjà constatée), jamais toutes.
+///
+/// RegisterLiveNameAliases comble cette limite autrement : au lieu d'une
+/// liste figée, elle lit le global.ini LOCAL du joueur (voir
+/// GameLogLocalization, appelé par l'App au démarrage) et le croise, clé
+/// par clé (SchemaNameLocalizationKeys.json, nom canonique -> clé
+/// global.ini, construit une fois depuis scunpacked-data), avec SA
+/// traduction installée — quelle qu'elle soit, SCEFRA ou une autre,
+/// jamais redistribuée par NovaVox lui-même (juste lue localement, comme
+/// le Game.log).
 /// </summary>
 public static class SchemaDatabase
 {
@@ -58,9 +70,44 @@ public static class SchemaDatabase
         new(() => BuildNormalizedIndex(ByName.Value));
     private static readonly Lazy<IReadOnlyDictionary<string, string>> NameAliases = new(LoadNameAliases);
 
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> NameToLocalizationKey = new(LoadNameLocalizationKeys);
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> LocalizationKeyToName =
+        new(() => NameToLocalizationKey.Value
+            .GroupBy(kv => kv.Value, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal));
+    private static readonly Lazy<HashSet<string>> LocalizationKeySet =
+        new(() => new HashSet<string>(NameToLocalizationKey.Value.Values, StringComparer.Ordinal));
+
+    /// <summary>Noms traduits trouvés dans le global.ini du joueur pour la session en cours — voir RegisterLiveNameAliases.</summary>
+    private static readonly ConcurrentDictionary<string, string> LiveNameAliases = new(StringComparer.OrdinalIgnoreCase);
+
     private static readonly string[] TranslatedLanguages = { "fr", "nl", "es", "it", "de" };
     private static readonly Dictionary<string, Lazy<IReadOnlyDictionary<string, string>>> TranslationsByLanguage =
         TranslatedLanguages.ToDictionary(lang => lang, lang => new Lazy<IReadOnlyDictionary<string, string>>(() => LoadTranslations(lang)), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Clés global.ini à demander à GameLogLocalization.ReadKeyedValues
+    /// (une par nom canonique de la base) — voir RegisterLiveNameAliases.
+    /// </summary>
+    public static IReadOnlySet<string> LocalizationKeysOfInterest => LocalizationKeySet.Value;
+
+    /// <summary>
+    /// Enregistre, pour la session en cours, les correspondances texte
+    /// localisé -> nom canonique lues dans le global.ini LOCAL du joueur
+    /// (voir le résumé de la classe) — à appeler une fois au démarrage de
+    /// l'appli avec le résultat de GameLogLocalization.ReadKeyedValues(path,
+    /// LocalizationKeysOfInterest). Idempotent et sans risque si le joueur
+    /// n'a pas de traduction installée (les valeurs lues sont alors déjà en
+    /// anglais, donc identiques au nom canonique — l'alias ne change rien).
+    /// </summary>
+    public static void RegisterLiveNameAliases(IReadOnlyDictionary<string, string> keyedValues)
+    {
+        foreach (var (key, value) in keyedValues)
+        {
+            if (!LocalizationKeyToName.Value.TryGetValue(key, out var canonicalName)) continue;
+            LiveNameAliases[NormalizeForMatch(value.Trim())] = canonicalName;
+        }
+    }
 
     /// <summary>
     /// Recherche insensible à la casse/aux espaces/au style de guillemets
@@ -83,9 +130,15 @@ public static class SchemaDatabase
             // Pas trouvé tel quel (même après normalisation des guillemets) :
             // peut-être un nom traduit par le client du jeu — voir le
             // résumé de la classe. L'alias résout vers le nom canonique
-            // anglais, qu'on relance alors dans la même recherche.
-            if (NameAliases.Value.TryGetValue(NormalizeForMatch(trimmed), out var canonicalName))
+            // anglais, qu'on relance alors dans la même recherche — d'abord
+            // la liste figée (toujours disponible), puis celle déduite du
+            // global.ini local du joueur le cas échéant (plus complète,
+            // couvre n'importe quelle traduction installée).
+            var normalized = NormalizeForMatch(trimmed);
+            if (NameAliases.Value.TryGetValue(normalized, out var canonicalName))
                 info = LookupEntry(canonicalName);
+            if (info is null && LiveNameAliases.TryGetValue(normalized, out var liveCanonicalName))
+                info = LookupEntry(liveCanonicalName);
             if (info is null) return null;
         }
 
@@ -188,6 +241,34 @@ public static class SchemaDatabase
         {
             // Fichier de traduction corrompu/absent pour cette langue : repli
             // silencieux sur l'anglais (voir Find), jamais bloquant.
+            return new Dictionary<string, string>();
+        }
+    }
+
+    /// <summary>
+    /// Charge SchemaNameLocalizationKeys.json (nom canonique -> clé
+    /// global.ini, ex. "Antium Arms" -> "item_Name_qrt_specialist_heavy_
+    /// arms_01_01_01") — construit une fois depuis scunpacked-data
+    /// (labels.json, même source que SchemaDatabase.json), jamais modifié
+    /// par l'utilisateur. Voir RegisterLiveNameAliases pour son usage.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> LoadNameLocalizationKeys()
+    {
+        try
+        {
+            var assembly = typeof(SchemaDatabase).Assembly;
+            var resourceName = assembly.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("SchemaNameLocalizationKeys.json", StringComparison.Ordinal));
+            if (resourceName is null) return new Dictionary<string, string>();
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream is null) return new Dictionary<string, string>();
+
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(stream) ?? new Dictionary<string, string>();
+        }
+        catch
+        {
+            // Fichier corrompu/absent : RegisterLiveNameAliases n'aura
+            // simplement aucun effet, repli sur SchemaNameAliases.<locale>.json.
             return new Dictionary<string, string>();
         }
     }

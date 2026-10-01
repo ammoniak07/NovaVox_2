@@ -30,6 +30,9 @@
     <EmbeddedResource Include="GameLog\SchemaDatabase.json" />
     <EmbeddedResource Include="GameLog\SchemaDatabase.*.json" WithCulture="false" />
     <EmbeddedResource Include="GameLog\SchemaNameAliases.*.json" WithCulture="false" />
+    <!-- Nom canonique -> clé global.ini (voir GameLogLocalization/SchemaDatabase.RegisterLiveNameAliases) —
+         construit une fois depuis scunpacked-data (labels.json), jamais modifié par l'utilisateur. -->
+    <EmbeddedResource Include="GameLog\SchemaNameLocalizationKeys.json" />
   </ItemGroup>
 
 </Project>

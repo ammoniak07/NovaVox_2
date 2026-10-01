@@ -188,6 +188,7 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
         InitializeGeminiChat();
         InitializeGameLog();
+        RegisterLiveSchemaNameAliases();
         InitializeSchemas();
         InitializeShipCheatSheets();
         LoadAppLogoImage();
@@ -1865,6 +1866,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GameLogCustomPath = GameLogPathBox.Text.Trim();
         SaveAiAndLog();
+        RegisterLiveSchemaNameAliases(); // nouvelle installation -> peut-être un global.ini différent
         // La surveillance déjà démarrée ne reprend pas le nouveau chemin
         // toute seule (elle tourne dans son propre fil) : on la relance si
         // elle était active, comme un changement de pseudo RSI le ferait
@@ -1888,6 +1890,7 @@ public partial class MainWindow : Window
         GameLogPathBox.Text = dialog.FileName;
         _state.Ai.GameLogCustomPath = dialog.FileName;
         SaveAiAndLog();
+        RegisterLiveSchemaNameAliases(); // nouvelle installation -> peut-être un global.ini différent
         if (_state.Ai.GameLogEnabled)
         {
             StopGameLogWatcher();
@@ -2450,6 +2453,28 @@ public partial class MainWindow : Window
         row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(DestinationAliasRowVm.CustomName)) row.IsDirty = true; };
 
     // ------------------------------------------------------------------ Schémas
+
+    /// <summary>
+    /// Lit le global.ini LOCAL du joueur (voir GameLogLocalization) pour
+    /// reconnaître les schémas quelle que soit la traduction communautaire
+    /// installée (SCEFRA via Multitool, ou une autre) — complète les alias
+    /// figés de SchemaNameAliases.fr.json, qui ne couvrent qu'une
+    /// traduction précise déjà constatée. Appelée au démarrage, AVANT
+    /// InitializeSchemas, pour que les fiches affichent fabricant/
+    /// description dès le premier affichage. Sans effet si le joueur n'a
+    /// pas de global.ini personnalisé (jeu non trouvé, ou traduction
+    /// jamais installée — fichier alors absent à cet emplacement).
+    /// </summary>
+    private void RegisterLiveSchemaNameAliases()
+    {
+        var customPath = _state.Ai.GameLogCustomPath;
+        var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+        var globalIniPath = GameLogLocalization.FindGlobalIniPath(liveLogPath);
+        if (globalIniPath is null) return;
+
+        var values = GameLogLocalization.ReadKeyedValues(globalIniPath, SchemaDatabase.LocalizationKeysOfInterest);
+        SchemaDatabase.RegisterLiveNameAliases(values);
+    }
 
     private void InitializeSchemas()
     {
