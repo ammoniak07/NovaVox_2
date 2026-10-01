@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.1.1
+------
+
 v0.1.0
 ------
 - Nouveau réglage "Prononciation des nombres" (Réglages > 🔊 Sons) : choisis entre Français (France, soixante-dix/quatre-vingt-dix) et Français (Belgique, septante/nonante) pour la lecture à voix haute des nombres.
