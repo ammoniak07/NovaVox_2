@@ -1741,7 +1741,7 @@ public partial class MainWindow : Window
         JournalColumnPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         JournalGapColumn.Width = show ? new GridLength(16) : new GridLength(0);
         JournalColumn.Width = show ? new GridLength(2, GridUnitType.Star) : new GridLength(0);
-        JournalColumn.MinWidth = show ? 280 : 0;
+        JournalColumn.MinWidth = show ? 190 : 0;
     }
 
     private void RadioEffectCheckbox_Changed(object sender, RoutedEventArgs e)
