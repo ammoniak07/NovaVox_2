@@ -17,6 +17,18 @@ public class SchemaDatabaseTests
         Assert.NotEmpty(info.Ingredients);
     }
 
+    [Fact]
+    public void Find_French_ReturnsActualTranslatedDescriptionNotEnglishFallback()
+    {
+        var english = SchemaDatabase.Find("Ezra");
+        var french = SchemaDatabase.Find("Ezra", "fr");
+
+        Assert.NotNull(english);
+        Assert.NotNull(french);
+        Assert.NotEqual(english!.Description, french!.Description);
+        Assert.Contains("Shubin", french.Description); // la traduction reste cohérente, même manufacturier mentionné
+    }
+
     [Theory]
     [InlineData("ezra")]
     [InlineData("EZRA")]
@@ -70,5 +82,53 @@ public class SchemaDatabaseTests
         Assert.NotNull(SchemaDatabase.Find("Ezra"));
         Assert.NotNull(SchemaDatabase.Find("Deadbolt IV Cannon"));
         Assert.NotNull(SchemaDatabase.Find("NewDawn"));
+    }
+
+    // Deux entrées de la base elle-même utilisent des styles de guillemets
+    // différents (apostrophe droite vs double guillemet) — sans ce
+    // nivellement, un nom reçu du jeu avec l'autre style (ou des chevrons «
+    // » côté client français) ne correspondrait jamais, alors que c'est le
+    // même schéma. Voir SchemaDatabase.NormalizeForMatch.
+    [Theory]
+    [InlineData("7CA \"Nargun\"")] // base : 7CA 'Nargun' (apostrophes)
+    [InlineData("7CA «Nargun»")]
+    [InlineData("Demeco «Purgatory Camo» LMG")] // base : guillemets droits
+    public void Find_QuoteStyleVariant_StillMatchesDespiteDifferentQuoteCharacters(string query)
+    {
+        Assert.NotNull(SchemaDatabase.Find(query));
+    }
+
+    // Remontée utilisateur directe : liste de noms extraits du Game.log
+    // d'un client Star Citizen en français par le scan d'archives — chacun
+    // doit retrouver son fabricant/description via SchemaNameAliases.fr.json,
+    // alors qu'aucun ne correspond tel quel à une clé de SchemaDatabase.json
+    // (toujours en anglais, langue de la base communautaire).
+    [Theory]
+    [InlineData("Bras Antium", "Antium Arms")]
+    [InlineData("Bras Antium Storm", "Antium Arms Storm")]
+    [InlineData("Torse Antium Maroon", "Antium Core Maroon")]
+    [InlineData("Casque Antium Jet", "Antium Helmet Jet")]
+    [InlineData("Jambes Antium Désert", "Antium Legs Sand")]
+    [InlineData("Fusil Parallax \"Shock Trooper\"", "Parallax \"Shock Trooper\" Energy Assault Rifle")]
+    [InlineData("Fusil à Énergie Parallax", "Parallax Energy Assault Rifle")]
+    [InlineData("Tête de recyclage Cinch", "Cinch Scraper Module")]
+    [InlineData("Laser de minage Lawson", "Lawson Mining Laser")]
+    [InlineData("H4-PBF Chargeur de munitions", "H4-PBF Ammo Carrier")]
+    [InlineData("Mil/2/A QuadraCell MT", "QuadraCell MT")]
+    [InlineData("Monde Arms Purgeatory Camo", "Monde Arms Purgatory Camo")] // coquille du jeu ("Purgeatory")
+    public void Find_FrenchClientName_ResolvesToCanonicalEnglishEntry(string frenchName, string expectedCanonicalName)
+    {
+        var info = SchemaDatabase.Find(frenchName);
+
+        Assert.NotNull(info);
+        Assert.Equal(expectedCanonicalName, info!.Name);
+        Assert.False(string.IsNullOrWhiteSpace(info.Description));
+    }
+
+    [Fact]
+    public void Find_FrenchAlias_IsCaseInsensitive()
+    {
+        Assert.NotNull(SchemaDatabase.Find("casque antium"));
+        Assert.NotNull(SchemaDatabase.Find("BRAS ANTIUM"));
     }
 }
