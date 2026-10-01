@@ -71,7 +71,14 @@ public static class GameLogBackups
                 var evt = processor.ProcessLine(line);
                 if (evt is null || evt.Type != GameLogEventTypes.HudNotification || evt.Text is null) continue;
 
-                var name = GameLogAnnouncer.TryExtractReceivedSchemaName(evt.Text);
+                // Même nettoyage que la détection en direct (BuildHudAnnouncement) :
+                // sans lui, les balises d'emphase accolées au nom par le jeu (ex.
+                // "Ezra <EM4>[SP]</EM4>") restaient dans le nom extrait, qui ne
+                // correspondait alors plus jamais à la clé propre de SchemaDatabase
+                // — le schéma était bien ajouté à la liste, mais sans fabricant ni
+                // description (SchemaDatabase.Find ne le reconnaissait pas).
+                var cleanText = GameLogAnnouncer.CleanHudNotificationText(evt.Text);
+                var name = GameLogAnnouncer.TryExtractReceivedSchemaName(cleanText);
                 if (name is not null) result.Add(name);
             }
         }

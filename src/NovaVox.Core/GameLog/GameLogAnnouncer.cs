@@ -509,4 +509,40 @@ public static partial class GameLogAnnouncer
         var placeholders = PlaceholderRegex().Matches(templateKey).Select(m => m.Value).Distinct().ToList();
         return placeholders.Count > 0 && placeholders.All(value.Contains) ? 2 : 0;
     }
+
+    /// <summary>
+    /// Nettoie en place (comparaison insensible à la casse pour la
+    /// déduplication) les noms de AiConfig.SchemasReceived enregistrés
+    /// AVANT que GameLogBackups.ScanForReceivedSchemas n'applique
+    /// CleanHudNotificationText comme la détection en direct : un nom
+    /// comme "Ezra &lt;EM3&gt;[1000 xp]&lt;/EM3&gt;" (balise d'emphase du
+    /// HUD jamais retirée) restait affiché tel quel dans le panneau
+    /// Réglages > 📐 Schémas, et surtout ne correspondait plus jamais à la
+    /// clé propre de SchemaDatabase — le schéma apparaissait donc dans la
+    /// liste mais sans fabricant ni description. Appelée au chargement de
+    /// la config (AiConfigStore.Load), comme MergeLegacyNameTemplateOverrides
+    /// ci-dessus ; retourne true si quelque chose a changé, pour que
+    /// l'appelant persiste tout de suite.
+    /// </summary>
+    public static bool MigrateLegacySchemaNames(List<string> schemas)
+    {
+        var changed = false;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = schemas.Count - 1; i >= 0; i--)
+        {
+            var clean = CleanHudNotificationText(schemas[i]);
+            if (clean.Length == 0 || !seen.Add(clean))
+            {
+                schemas.RemoveAt(i);
+                changed = true;
+                continue;
+            }
+            if (clean != schemas[i])
+            {
+                schemas[i] = clean;
+                changed = true;
+            }
+        }
+        return changed;
+    }
 }

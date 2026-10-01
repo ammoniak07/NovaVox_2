@@ -88,6 +88,7 @@ public sealed class AiConfigStore
         if (!File.Exists(_path)) return config;
         var hudOverridesMigrated = false;
         var destinationAliasesMigrated = false;
+        var schemasMigrated = false;
         try
         {
             var data = ParseFile(_path) as JsonObject;
@@ -166,12 +167,21 @@ public sealed class AiConfigStore
             config.ActiveShipCheatSheet = GetString(data["active_ship_cheat_sheet"]).Trim();
 
             config.SchemasReceived = ToStringList(data["schemas_received"] as JsonArray);
+            // Nettoie les noms enregistrés avant que le scan rétroactif des
+            // archives Game.log (GameLogBackups) n'applique le même
+            // nettoyage que la détection en direct — voir
+            // MigrateLegacySchemaNames pour le symptôme (balises d'emphase
+            // ou ":" final jamais retirés, donc plus aucune correspondance
+            // avec la base locale de schémas : nom affiché brut, sans
+            // fabricant ni description). Persisté tout de suite, comme les
+            // deux migrations ci-dessus.
+            schemasMigrated = GameLogAnnouncer.MigrateLegacySchemaNames(config.SchemasReceived);
         }
         catch
         {
             return new AiConfig();
         }
-        if (hudOverridesMigrated || destinationAliasesMigrated) Save(config);
+        if (hudOverridesMigrated || destinationAliasesMigrated || schemasMigrated) Save(config);
         return config;
     }
 

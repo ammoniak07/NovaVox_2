@@ -18,6 +18,46 @@ public class GameLogAnnouncerTests
     }
 
     [Fact]
+    public void MigrateLegacySchemaNames_StripsLeftoverEmphasisTag()
+    {
+        var schemas = new List<string> { "Ezra <EM3>[1000 xp]</EM3>" };
+
+        Assert.True(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Equal(new[] { "Ezra" }, schemas);
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_StripsTrailingColon()
+    {
+        var schemas = new List<string> { "Ezra :" };
+
+        Assert.True(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Equal(new[] { "Ezra" }, schemas);
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_MergesDuplicatesCreatedByCleaning()
+    {
+        var schemas = new List<string> { "Ezra <EM3>[1000 xp]</EM3>", "Ezra", "EZRA :" };
+
+        Assert.True(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Single(schemas, name => string.Equals(name, "Ezra", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_AlreadyCleanNames_ReturnsFalseAndLeavesListUntouched()
+    {
+        var schemas = new List<string> { "Ezra", "Deadbolt IV Cannon" };
+
+        Assert.False(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Equal(new[] { "Ezra", "Deadbolt IV Cannon" }, schemas);
+    }
+
+    [Fact]
     public void CleanHudNotificationText_StripsTrailingColonAndCollapsesNewlines()
     {
         var result = GameLogAnnouncer.CleanHudNotificationText("VOUS QUITTEZ LA ZONE\n D'ARMISTICE :  ");
