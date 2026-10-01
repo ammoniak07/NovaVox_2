@@ -97,4 +97,44 @@ public class GameLogBackupsTests : IDisposable
     {
         Assert.Empty(GameLogBackups.ScanForReceivedSchemas(Path.Combine(_dir, "does-not-exist")));
     }
+
+    [Fact]
+    public void ResolveBackupsFolder_CustomPathExists_TakesPriorityOverAutoDetection()
+    {
+        var custom = Directory.CreateDirectory(Path.Combine(_dir, "mes-archives")).FullName;
+        var gameLogPath = Path.Combine(_dir, "Game.log");
+        File.WriteAllText(gameLogPath, "");
+        Directory.CreateDirectory(Path.Combine(_dir, "logbackups")); // existe aussi, mais ne doit pas gagner
+
+        var resolved = GameLogBackups.ResolveBackupsFolder(custom, gameLogPath);
+
+        Assert.Equal(custom, resolved);
+    }
+
+    [Fact]
+    public void ResolveBackupsFolder_CustomPathMissing_ReturnsNullRatherThanFallingBack()
+    {
+        var gameLogPath = Path.Combine(_dir, "Game.log");
+        File.WriteAllText(gameLogPath, "");
+        Directory.CreateDirectory(Path.Combine(_dir, "logbackups")); // existe, mais le chemin manuel explicite est prioritaire
+
+        var resolved = GameLogBackups.ResolveBackupsFolder(Path.Combine(_dir, "does-not-exist"), gameLogPath);
+
+        Assert.Null(resolved);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ResolveBackupsFolder_NoCustomPath_FallsBackToAutoDetection(string? customPath)
+    {
+        var gameLogPath = Path.Combine(_dir, "Game.log");
+        File.WriteAllText(gameLogPath, "");
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+
+        var resolved = GameLogBackups.ResolveBackupsFolder(customPath, gameLogPath);
+
+        Assert.Equal(backups, resolved);
+    }
 }

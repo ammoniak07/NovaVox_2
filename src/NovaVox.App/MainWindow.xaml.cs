@@ -1404,6 +1404,7 @@ public partial class MainWindow : Window
             GameLogAnnounceCheckbox.IsChecked = ai.GameLogAnnounceEvents;
             PlayerHandleBox.Text = ai.GameLogPlayerHandle;
             GameLogPathBox.Text = ai.GameLogCustomPath;
+            GameLogBackupsPathBox.Text = ai.GameLogBackupsCustomPath;
 
             var overlay = _state.Overlay;
             OverlayEnabledCheckbox.IsChecked = overlay.Enabled;
@@ -1892,6 +1893,35 @@ public partial class MainWindow : Window
             StopGameLogWatcher();
             StartGameLogWatcher();
         }
+    }
+
+    /// <summary>
+    /// Dossier logbackups manuel (Réglages > 🛰 Game.log) :
+    /// GameLogBackups.FindBackupsFolder ne cherche qu'un dossier
+    /// "logbackups" voisin du Game.log — insuffisant si les archives ont
+    /// été déplacées/copiées ailleurs (ex. autre disque). Prioritaire sur
+    /// la détection automatique dès que renseigné (voir
+    /// ScanSchemaBackups_Click/GameLogBackups.ResolveBackupsFolder), vide =
+    /// comportement inchangé.
+    /// </summary>
+    private void GameLogBackupsPathBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Ai.GameLogBackupsCustomPath = GameLogBackupsPathBox.Text.Trim();
+        SaveAiAndLog();
+    }
+
+    private void GameLogBackupsPathBrowseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Sélectionne le dossier logbackups",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        GameLogBackupsPathBox.Text = dialog.FolderName;
+        _state.Ai.GameLogBackupsCustomPath = dialog.FolderName;
+        SaveAiAndLog();
     }
 
     private void UiLanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -2505,19 +2535,25 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Relit tous les Game.log archivés (dossier "logbackups", voisin du
-    /// Game.log en cours — voir GameLogBackups) pour retrouver des
-    /// schémas reçus lors de sessions passées, jamais vus par la
-    /// surveillance en direct (NovaVox pas encore lancé à l'époque, ou
-    /// lancé après coup). N'ajoute que les noms pas déjà dans la liste.
+    /// Game.log en cours — ou l'emplacement manuel de Réglages > 🛰
+    /// Game.log s'il est renseigné, voir GameLogBackups.ResolveBackupsFolder)
+    /// pour retrouver des schémas reçus lors de sessions passées, jamais
+    /// vus par la surveillance en direct (NovaVox pas encore lancé à
+    /// l'époque, ou lancé après coup). N'ajoute que les noms pas déjà dans
+    /// la liste.
     /// </summary>
     private void ScanSchemaBackups_Click(object sender, RoutedEventArgs e)
     {
+        var customBackupsPath = _state.Ai.GameLogBackupsCustomPath;
         var customPath = _state.Ai.GameLogCustomPath;
         var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
-        var backupsFolder = GameLogBackups.FindBackupsFolder(liveLogPath);
+        var backupsFolder = GameLogBackups.ResolveBackupsFolder(customBackupsPath, liveLogPath);
         if (backupsFolder is null)
         {
-            MessageBox.Show(this, "Aucune archive Game.log trouvée (dossier « logbackups » introuvable).", "NovaVox");
+            var message = string.IsNullOrWhiteSpace(customBackupsPath)
+                ? "Aucune archive Game.log trouvée (dossier « logbackups » introuvable)."
+                : $"Le dossier logbackups renseigné dans Réglages > 🛰 Game.log est introuvable :\n{customBackupsPath}";
+            MessageBox.Show(this, message, "NovaVox");
             return;
         }
 

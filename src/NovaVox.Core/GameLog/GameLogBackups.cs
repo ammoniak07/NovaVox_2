@@ -30,6 +30,26 @@ public static class GameLogBackups
     }
 
     /// <summary>
+    /// Dossier "logbackups" à utiliser pour le scan (Réglages > 🛰 Game.log
+    /// > "Emplacement du dossier logbackups") : priorité à
+    /// <paramref name="customBackupsPath"/> s'il est renseigné (archives
+    /// copiées ailleurs, ex. sur un autre disque — n'a alors plus besoin
+    /// d'être voisin du Game.log), sinon dérivé automatiquement via
+    /// <see cref="FindBackupsFolder"/>. Un chemin manuel renseigné mais
+    /// introuvable (dossier déplacé/supprimé depuis) retourne null plutôt
+    /// que de retomber silencieusement sur la détection automatique — le
+    /// réglage explicite de l'utilisateur ne doit jamais être court-circuité
+    /// sans qu'il le sache.
+    /// </summary>
+    public static string? ResolveBackupsFolder(string? customBackupsPath, string? liveGameLogPath = null)
+    {
+        if (!string.IsNullOrWhiteSpace(customBackupsPath))
+            return Directory.Exists(customBackupsPath) ? customBackupsPath : null;
+
+        return FindBackupsFolder(liveGameLogPath);
+    }
+
+    /// <summary>
     /// Parcourt tous les .log de <paramref name="backupsFolder"/> et
     /// retourne, dans l'ordre de première rencontre, les noms de schémas
     /// détectés — SANS dédoublonnage contre AiConfig.SchemasReceived (à la

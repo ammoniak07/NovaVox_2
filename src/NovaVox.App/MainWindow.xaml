@@ -668,6 +668,15 @@
                                              ToolTip="Chemin complet vers Game.log (ex. D:\StarCitizen\LIVE\Game.log)" />
                                     <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogPathBrowseButton_Click" />
                                 </StackPanel>
+
+                                <TextBlock Text="Emplacement du dossier logbackups" Margin="0,16,0,4" />
+                                <TextBlock Text="Laisse vide pour utiliser le dossier « logbackups » juste à côté du Game.log ci-dessus. À renseigner seulement si tes archives sont ailleurs (ex. copiées sur un autre disque) — utilisé par « 🔍 Scanner les archives » dans Réglages > 📐 Schémas."
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="GameLogBackupsPathBox" Width="280" LostFocus="GameLogBackupsPathBox_LostFocus"
+                                             ToolTip="Chemin complet vers le dossier logbackups (ex. D:\StarCitizen\LIVE\logbackups)" />
+                                    <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogBackupsPathBrowseButton_Click" />
+                                </StackPanel>
                             </StackPanel>
                         </TabItem>
 
