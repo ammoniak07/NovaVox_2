@@ -1245,6 +1245,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -1267,17 +1268,32 @@
                         <Button Content="🔍 Scanner les archives" Margin="12,0,0,0"
                                 ToolTip="Relit tous les anciens Game.log (logbackups) pour retrouver les schémas reçus lors de sessions passées"
                                 Click="ScanSchemaBackups_Click" />
+                        <Button Content="🗑 Tout supprimer" Margin="12,0,0,0"
+                                ToolTip="Supprime tous les schémas reçus de la liste"
+                                Click="DeleteAllSchemas_Click" />
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                    <!-- Même mécanique que RefreshGameLogSearchVisibility : filtre RowVisible par
+                         ligne (voir SchemaRowVm), jamais _schemaRows lui-même. -->
+                    <Grid Grid.Row="3" Margin="0,0,0,10">
+                        <TextBox x:Name="SchemasSearchBox" Padding="8,6" TextChanged="SchemasSearchBox_TextChanged" />
+                        <TextBlock x:Name="SchemasSearchPlaceholder" Text="🔍 Rechercher un schéma..."
+                                   Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock x:Name="SchemasEmptyText" Text="Aucun schéma reçu pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <TextBlock x:Name="SchemasNoSearchResultText" Text="Aucun schéma ne correspond à la recherche." Foreground="{DynamicResource MutedBrush}"
                                        FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
                             <ItemsControl x:Name="SchemasList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
-                                                Background="{DynamicResource PanelAltBrush}">
+                                                Background="{DynamicResource PanelAltBrush}"
+                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />

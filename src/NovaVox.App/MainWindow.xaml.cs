@@ -1915,6 +1915,10 @@ public partial class MainWindow : Window
             // refléter tout de suite la nouvelle langue.
             for (var i = 0; i < _schemaRows.Count; i++)
                 _schemaRows[i] = SchemaRowVm.Create(_schemaRows[i].Name, _state.Ai.UiLanguage);
+            // Chaque ligne remplacée ci-dessus repart de RowVisible=true (nouvelle
+            // instance) : réapplique le filtre de recherche actif pour ne pas
+            // réafficher des schémas qu'une recherche en cours masquait.
+            RefreshSchemasSearchVisibility();
         }
     }
 
@@ -2448,6 +2452,7 @@ public partial class MainWindow : Window
         _state.Ai.SchemasReceived.Add(name);
         _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
         RefreshSchemasEmptyState();
+        RefreshSchemasSearchVisibility();
         SaveAiAndLog();
         NewSchemaNameBox.Text = "";
     }
@@ -2459,6 +2464,43 @@ public partial class MainWindow : Window
         _schemaRows.Remove(row);
         RefreshSchemasEmptyState();
         SaveAiAndLog();
+    }
+
+    /// <summary>Vide toute la liste d'un coup, après confirmation — pas de retour en arrière possible une fois enregistré.</summary>
+    private void DeleteAllSchemas_Click(object sender, RoutedEventArgs e)
+    {
+        if (_schemaRows.Count == 0) return;
+        if (MessageBox.Show(this, $"Supprimer les {_schemaRows.Count} schéma(s) reçu(s) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+
+        _state.Ai.SchemasReceived.Clear();
+        _schemaRows.Clear();
+        RefreshSchemasEmptyState();
+        RefreshSchemasSearchVisibility();
+        SaveAiAndLog();
+    }
+
+    private void SchemasSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SchemasSearchPlaceholder.Visibility = SchemasSearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RefreshSchemasSearchVisibility();
+    }
+
+    /// <summary>
+    /// Filtre la liste des schémas sur une recherche (nom/fabricant-type/
+    /// description) — même mécanique que RefreshGameLogSearchVisibility
+    /// (RowVisible par ligne, jamais _schemaRows lui-même).
+    /// </summary>
+    private void RefreshSchemasSearchVisibility()
+    {
+        var query = NormalizeForSearch(SchemasSearchBox.Text.Trim());
+        foreach (var row in _schemaRows)
+            row.RowVisible = query.Length == 0
+                || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
+                || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
+                || NormalizeForSearch(row.Description).Contains(query, StringComparison.Ordinal);
+
+        SchemasNoSearchResultText.Visibility = _schemaRows.Count > 0 && query.Length > 0 && _schemaRows.All(r => !r.RowVisible)
+            ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -2497,6 +2539,7 @@ public partial class MainWindow : Window
         foreach (var name in added)
             _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
         RefreshSchemasEmptyState();
+        RefreshSchemasSearchVisibility();
         SaveAiAndLog();
         MessageBox.Show(this, $"{added.Count} nouveau(x) schéma(s) trouvé(s) dans les archives.", "NovaVox");
     }
@@ -2806,6 +2849,7 @@ public partial class MainWindow : Window
         {
             _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName, _state.Ai.UiLanguage));
             RefreshSchemasEmptyState();
+            RefreshSchemasSearchVisibility();
         }
 
         if (result.IsNewHudOverride || result.IsNewDestinationAlias || result.ReceivedSchemaName is not null)

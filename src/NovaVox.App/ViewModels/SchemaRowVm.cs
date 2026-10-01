@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using NovaVox.Core.GameLog;
 
 namespace NovaVox.App.ViewModels;
@@ -9,14 +11,21 @@ namespace NovaVox.App.ViewModels;
 /// null pour un nom inconnu de la base locale : la fiche n'affiche alors
 /// que son nom, comme avant.
 /// </summary>
-public sealed class SchemaRowVm
+public sealed class SchemaRowVm : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void Raise([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
     public required string Name { get; init; }
     public string? Subtitle { get; init; }
     public string? Description { get; init; }
 
     public bool HasSubtitle => !string.IsNullOrEmpty(Subtitle);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
+
+    /// <summary>Correspond à la recherche du panneau Schémas — voir RefreshSchemasSearchVisibility, MainWindow.xaml.cs.</summary>
+    private bool _rowVisible = true;
+    public bool RowVisible { get => _rowVisible; set { _rowVisible = value; Raise(); } }
 
     /// <param name="language">Code langue de l'interface (ex. "fr") pour traduire la description — voir SchemaDatabase.Find. Null/anglais = description source.</param>
     public static SchemaRowVm Create(string name, string? language = null)
