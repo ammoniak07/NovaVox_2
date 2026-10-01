@@ -514,6 +514,56 @@ public class GameLogAnnouncerTests
     }
 
     [Fact]
+    public void Build_HudNotification_SchemaReceived_RegistersNameOnFirstSighting()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Ezra" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Equal("Ezra", result!.ReceivedSchemaName);
+        Assert.Contains("Ezra", config.SchemasReceived);
+        Assert.Equal("Schémas reçu : Ezra", result.Text); // toujours annoncé normalement, via le gabarit générique
+    }
+
+    [Fact]
+    public void Build_HudNotification_SchemaReceived_SameNameAgain_DoesNotDuplicateOrReportAsNew()
+    {
+        var config = NewConfig();
+        GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Ezra" }, config);
+
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : ezra" }, config); // casse différente
+
+        Assert.NotNull(result);
+        Assert.Null(result!.ReceivedSchemaName);
+        Assert.Single(config.SchemasReceived);
+    }
+
+    [Fact]
+    public void Build_HudNotification_SchemaReceived_DifferentNames_BothRegistered()
+    {
+        var config = NewConfig();
+        GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Ezra" }, config);
+        GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Mantis" }, config);
+
+        Assert.Equal(new[] { "Ezra", "Mantis" }, config.SchemasReceived);
+    }
+
+    [Fact]
+    public void Build_HudNotification_UnrelatedText_ReceivedSchemaNameIsNull()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Nouvel objectif : Livrer le colis" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Null(result!.ReceivedSchemaName);
+        Assert.Empty(config.SchemasReceived);
+    }
+
+    [Fact]
     public void Build_NicknameDetected_ReturnsNull()
     {
         var config = NewConfig();

@@ -28,7 +28,9 @@ public sealed record GameLogAnnouncement(
     /// <summary>Juridiction extraite d'une notification HUD "JURIDICTION : {nom}" (ex. "Rough & Ready", "Aucune juridiction") — à afficher dans l'overlay, comme ResolvedZone.</summary>
     string? ResolvedJurisdiction = null,
     /// <summary>true si la notification HUD signale l'entrée en zone d'armistice, false si elle signale la sortie, null si la notification n'a rien à voir — à afficher dans l'overlay (jamais écrasé par un texte HUD sans rapport, comme ResolvedZone/ResolvedJurisdiction).</summary>
-    bool? ResolvedArmistice = null);
+    bool? ResolvedArmistice = null,
+    /// <summary>Nom du schéma extrait d'une notification HUD "Schémas reçu : {nom}", uniquement si cette notification vient d'être ajoutée à AiConfig.SchemasReceived (pas déjà présent) — à ajouter à la liste affichée (Réglages > 📐 Schémas).</summary>
+    string? ReceivedSchemaName = null);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -351,13 +353,36 @@ public static partial class GameLogAnnouncer
             : ArmisticeLeftRegex().IsMatch(rawText) ? false
             : null;
 
+        var newSchemaName = MaybeRegisterReceivedSchema(rawText, config);
+
         return new GameLogAnnouncement(
             key, text, GameLogPhraseCatalog.Emoji.GetValueOrDefault(key, ""), RawHudText: rawHudTextForLog,
             IsNewDestinationAlias: false, DestinationAliasKey: null,
             IsNewHudOverride: isNew, HudOverrideKey: isNew ? templateKey : null,
             UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null,
             ResolvedJurisdiction: resolvedJurisdiction,
-            ResolvedArmistice: resolvedArmistice);
+            ResolvedArmistice: resolvedArmistice,
+            ReceivedSchemaName: newSchemaName);
+    }
+
+    /// <summary>
+    /// Port de la détection "Schémas reçu : {nom}" (voir SchemaReceivedRegex) :
+    /// ajoute le nom à AiConfig.SchemasReceived s'il n'y figure pas déjà
+    /// (comparaison insensible à la casse), et ne renvoie ce nom que dans
+    /// ce cas — l'appelant (MainWindow) l'ajoute alors à la liste affichée
+    /// dans Réglages > 📐 Schémas sans attendre une réouverture du panneau.
+    /// </summary>
+    private static string? MaybeRegisterReceivedSchema(string rawText, AiConfig config)
+    {
+        var match = SchemaReceivedRegex().Match(rawText);
+        if (!match.Success) return null;
+
+        var name = match.Groups["name"].Value.Trim();
+        if (name.Length == 0) return null;
+        if (config.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return null;
+
+        config.SchemasReceived.Add(name);
+        return name;
     }
 
     /// <summary>

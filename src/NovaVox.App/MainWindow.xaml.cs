@@ -95,6 +95,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<HudOverrideRowVm> _hudOverrideRows = new();
     private readonly ObservableCollection<DestinationAliasRowVm> _destinationAliasRows = new();
 
+    private readonly ObservableCollection<SchemaRowVm> _schemaRows = new();
+
     private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
     /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
     private string? _selectedShipCheatSheetName;
@@ -186,6 +188,7 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
         InitializeGeminiChat();
         InitializeGameLog();
+        InitializeSchemas();
         InitializeShipCheatSheets();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
@@ -2406,6 +2409,52 @@ public partial class MainWindow : Window
     private void HookDestinationAliasRow(DestinationAliasRowVm row) =>
         row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(DestinationAliasRowVm.CustomName)) row.IsDirty = true; };
 
+    // ------------------------------------------------------------------ Schémas
+
+    private void InitializeSchemas()
+    {
+        foreach (var name in _state.Ai.SchemasReceived)
+            _schemaRows.Add(new SchemaRowVm { Name = name });
+        SchemasList.ItemsSource = _schemaRows;
+        RefreshSchemasEmptyState();
+    }
+
+    private void RefreshSchemasEmptyState() =>
+        SchemasEmptyText.Visibility = _schemaRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    private void OpenSchemas_Click(object sender, RoutedEventArgs e) => SchemasOverlay.Visibility = Visibility.Visible;
+
+    private void CloseSchemas_Click(object sender, RoutedEventArgs e) => SchemasOverlay.Visibility = Visibility.Collapsed;
+
+    private void AddSchema_Click(object sender, RoutedEventArgs e) => AddSchema(NewSchemaNameBox.Text);
+
+    private void NewSchemaNameBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) AddSchema(NewSchemaNameBox.Text);
+    }
+
+    private void AddSchema(string rawName)
+    {
+        var name = rawName.Trim();
+        if (name.Length == 0) return;
+        if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return;
+
+        _state.Ai.SchemasReceived.Add(name);
+        _schemaRows.Insert(0, new SchemaRowVm { Name = name });
+        RefreshSchemasEmptyState();
+        SaveAiAndLog();
+        NewSchemaNameBox.Text = "";
+    }
+
+    private void DeleteSchema_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not SchemaRowVm row) return;
+        _state.Ai.SchemasReceived.RemoveAll(s => string.Equals(s, row.Name, StringComparison.OrdinalIgnoreCase));
+        _schemaRows.Remove(row);
+        RefreshSchemasEmptyState();
+        SaveAiAndLog();
+    }
+
     // ------------------------------------------------------- Aide-mémoire vaisseaux
 
     private void InitializeShipCheatSheets()
@@ -2707,7 +2756,13 @@ public partial class MainWindow : Window
             HookDestinationAliasRow(row);
             _destinationAliasRows.Insert(0, row);
         }
-        if (result.IsNewHudOverride || result.IsNewDestinationAlias)
+        if (result.ReceivedSchemaName is not null)
+        {
+            _schemaRows.Insert(0, new SchemaRowVm { Name = result.ReceivedSchemaName });
+            RefreshSchemasEmptyState();
+        }
+
+        if (result.IsNewHudOverride || result.IsNewDestinationAlias || result.ReceivedSchemaName is not null)
         {
             SaveAiAndLog();
             // Une recherche active dans le panneau Game.log doit continuer à

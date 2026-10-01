@@ -59,6 +59,8 @@ public sealed class AiConfig
     public Dictionary<string, Dictionary<string, string>> ShipCheatSheetColors { get; set; } = new();
     /// <summary>Nom du vaisseau (clé de ShipCheatSheets) actuellement affiché dans l'overlay — vide ou absent de ShipCheatSheets = rien affiché.</summary>
     public string ActiveShipCheatSheet { get; set; } = "";
+    /// <summary>Schémas de fabrication reçus (Réglages > 📐 Schémas) — ajoutés automatiquement à la détection d'une notification HUD "Schémas reçu : {nom}" dans le Game.log (voir GameLogAnnouncer), ou manuellement depuis le panneau.</summary>
+    public List<string> SchemasReceived { get; set; } = new();
 }
 
 /// <summary>
@@ -162,6 +164,8 @@ public sealed class AiConfigStore
             config.ShipCheatSheets = ToNestedStringDict(data["ship_cheat_sheets"] as JsonObject);
             config.ShipCheatSheetColors = ToNestedStringDict(data["ship_cheat_sheet_colors"] as JsonObject);
             config.ActiveShipCheatSheet = GetString(data["active_ship_cheat_sheet"]).Trim();
+
+            config.SchemasReceived = ToStringList(data["schemas_received"] as JsonArray);
         }
         catch
         {
@@ -206,6 +210,7 @@ public sealed class AiConfigStore
             ["ship_cheat_sheets"] = FromNestedStringDict(config.ShipCheatSheets),
             ["ship_cheat_sheet_colors"] = FromNestedStringDict(config.ShipCheatSheetColors),
             ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
+            ["schemas_received"] = FromStringList(config.SchemasReceived),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }
@@ -242,5 +247,25 @@ public sealed class AiConfigStore
         foreach (var (key, value) in dict)
             obj[key] = FromStringDict(value);
         return obj;
+    }
+
+    private static List<string> ToStringList(JsonArray? array)
+    {
+        var result = new List<string>();
+        if (array is null) return result;
+        foreach (var item in array)
+        {
+            var value = GetStringOrNull(item);
+            if (!string.IsNullOrEmpty(value)) result.Add(value);
+        }
+        return result;
+    }
+
+    private static JsonArray FromStringList(List<string> list)
+    {
+        var array = new JsonArray();
+        foreach (var value in list)
+            array.Add(value);
+        return array;
     }
 }

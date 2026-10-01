@@ -108,6 +108,7 @@
                         <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
                         <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
                         <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
+                        <Button x:Name="SchemasHeaderButton" Content="📐 Schémas" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenSchemas_Click" />
                         <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                 ToolTip="Réglages" />
                     </StackPanel>
@@ -1200,6 +1201,66 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <Button Content="+ Ajouter un repère" HorizontalAlignment="Left" Click="AddShipCheatSheetPoint_Click" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Schémas de fabrication reçus en jeu — ajoutés automatiquement à la
+             détection d'une notification HUD "Schémas reçu : {nom}" dans le
+             Game.log (voir GameLogAnnouncer.ReceivedSchemaName, OnGameLogEvent
+             dans MainWindow.xaml.cs), ou manuellement ci-dessous. -->
+        <Border x:Name="SchemasOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="420" MaxHeight="700" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="16,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="📐 SCHÉMAS REÇUS" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSchemas_Click" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="Schémas de fabrication (blueprints) reçus en jeu. Ajoutés automatiquement à la détection d'une notification « Schémas reçu : ... » dans le Game.log, ou manuellement ci-dessous."
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBox x:Name="NewSchemaNameBox" Width="240" ToolTip="Nom du schéma (ex. Ezra)" KeyDown="NewSchemaNameBox_KeyDown" />
+                        <Button Content="+ Ajouter" Margin="6,0,0,0" Click="AddSchema_Click" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock x:Name="SchemasEmptyText" Text="Aucun schéma reçu pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <ItemsControl x:Name="SchemasList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Background="{DynamicResource PanelAltBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                                <Button Grid.Column="1" Content="Supprimer" Click="DeleteSchema_Click" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
