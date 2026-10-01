@@ -93,9 +93,17 @@ public class SchemaDatabaseTests
     [InlineData("7CA \"Nargun\"")] // base : 7CA 'Nargun' (apostrophes)
     [InlineData("7CA «Nargun»")]
     [InlineData("Demeco «Purgatory Camo» LMG")] // base : guillemets droits
+    // Convention typographique française : espace À L'INTÉRIEUR des chevrons
+    // (« Mot » et non «Mot») — remontée utilisateur directe, ce seul espace
+    // en trop empêchait encore la correspondance malgré le nivellement des
+    // caractères de guillemet lui-même.
+    [InlineData("Demeco « Purgatory Camo » LMG")]
+    [InlineData("Demeco « Purgatory Camo » LMG")] // espace insécable, comme le fait vraiment le jeu
     public void Find_QuoteStyleVariant_StillMatchesDespiteDifferentQuoteCharacters(string query)
     {
-        Assert.NotNull(SchemaDatabase.Find(query));
+        var info = SchemaDatabase.Find(query);
+        Assert.NotNull(info);
+        Assert.False(string.IsNullOrWhiteSpace(info!.Description));
     }
 
     // Remontée utilisateur directe : liste de noms extraits du Game.log
@@ -116,6 +124,7 @@ public class SchemaDatabaseTests
     [InlineData("H4-PBF Chargeur de munitions", "H4-PBF Ammo Carrier")]
     [InlineData("Mil/2/A QuadraCell MT", "QuadraCell MT")]
     [InlineData("Monde Arms Purgeatory Camo", "Monde Arms Purgatory Camo")] // coquille du jeu ("Purgeatory")
+    [InlineData("Jambes Antium Maroon", "Antium Legs Maroon")]
     public void Find_FrenchClientName_ResolvesToCanonicalEnglishEntry(string frenchName, string expectedCanonicalName)
     {
         var info = SchemaDatabase.Find(frenchName);
@@ -123,6 +132,27 @@ public class SchemaDatabaseTests
         Assert.NotNull(info);
         Assert.Equal(expectedCanonicalName, info!.Name);
         Assert.False(string.IsNullOrWhiteSpace(info.Description));
+    }
+
+    // La matrice complète pièce × variante de chaque set d'armure "Piece
+    // Brand Variant" (Antium, Chiron, Testudo, Monde, Strata, Morozov-SH,
+    // TrueDef-Pro, Aril, CBH-3, BUL-H4) est générée mécaniquement dans
+    // SchemaNameAliases.fr.json plutôt que couverte au cas par cas — un
+    // échantillon suffit ici pour vérifier que la génération a bien
+    // couvert chaque pièce et chaque marque, pas seulement Antium.
+    [Theory]
+    [InlineData("Casque Morozov-SH Thule", "Morozov-SH Helmet Thule")]
+    [InlineData("Torse Testudo Clanguard", "Testudo Core Clanguard")]
+    [InlineData("Bras Monde Daimyo", "Monde Arms Daimyo")]
+    [InlineData("Jambes Strata Amber", "Strata Legs Amber")]
+    [InlineData("Casque Chiron Purgatory Camo", "Chiron Helmet Purgatory Camo")]
+    [InlineData("Torse TrueDef-Pro Black/Grey", "TrueDef-Pro Core Black/Grey")]
+    public void Find_FrenchClientName_CoversFullArmorPieceByBrandMatrix(string frenchName, string expectedCanonicalName)
+    {
+        var info = SchemaDatabase.Find(frenchName);
+
+        Assert.NotNull(info);
+        Assert.Equal(expectedCanonicalName, info!.Name);
     }
 
     [Fact]

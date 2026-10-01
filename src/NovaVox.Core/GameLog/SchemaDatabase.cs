@@ -107,27 +107,34 @@ public static class SchemaDatabase
     /// <summary>
     /// Nivelle les variantes purement typographiques d'un même nom avant
     /// comparaison : toute forme de guillemet (apostrophes/guillemets
-    /// courbes ’‘, chevrons français « », avec ou sans espace insécable à
-    /// l'intérieur, ou simple vs double ' / ") ramenée à UN SEUL caractère
-    /// canonique ("), espaces multiples réduits à un seul. Simple/double
-    /// confondus à dessein : un guillemet dans un nom de schéma ne marque
-    /// jamais une vraie apostrophe (pas de contraction anglaise dans ces
-    /// noms), seulement un surnom entre guillemets — et le jeu lui-même
-    /// n'est pas cohérent d'une entrée à l'autre (7CA 'Nargun' en simples
-    /// vs Demeco "Purgatory Camo" LMG en doubles dans la base communautaire
-    /// elle-même), tandis qu'un client en français écrit « Nom » avec des
-    /// chevrons — sans ce nivellement, ces variantes ne se retrouveraient
-    /// jamais, alors que c'est littéralement le même schéma.
+    /// courbes ’‘, chevrons français « », ou simple vs double ' / ") ramenée
+    /// à UN SEUL caractère canonique ("), puis tout espace directement
+    /// collé à un guillemet retiré (le français écrit « Mot » avec un
+    /// espace insécable À L'INTÉRIEUR des chevrons, contrairement à
+    /// l'anglais "Mot" qui colle le mot au guillemet — sans ce retrait,
+    /// "Demeco « Purgatory Camo » LMG" ne retrouvait jamais 'Demeco
+    /// "Purgatory Camo" LMG' dans la base, à cause de ce seul espace en
+    /// trop de part et d'autre du texte entre guillemets), enfin espaces
+    /// multiples restants réduits à un seul. Simple/double confondus à
+    /// dessein : un guillemet dans un nom de schéma ne marque jamais une
+    /// vraie apostrophe (pas de contraction anglaise dans ces noms),
+    /// seulement un surnom entre guillemets — et le jeu lui-même n'est pas
+    /// cohérent d'une entrée à l'autre (7CA 'Nargun' en simples vs Demeco
+    /// "Purgatory Camo" LMG en doubles dans la base communautaire
+    /// elle-même).
     /// </summary>
     private static string NormalizeForMatch(string s)
     {
-        var chars = s
+        var unifiedQuotes = s
             .Replace('’', '"').Replace('‘', '"')
             .Replace('“', '"').Replace('”', '"')
             .Replace('«', '"').Replace('»', '"')
             .Replace('\'', '"');
-        return string.Join(' ', chars.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var noQuotePadding = QuotePaddingRegex.Replace(unifiedQuotes, "\"");
+        return string.Join(' ', noQuotePadding.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
+
+    private static readonly System.Text.RegularExpressions.Regex QuotePaddingRegex = new(@"\s*""\s*");
 
     private static IReadOnlyDictionary<string, SchemaInfo> BuildNormalizedIndex(IReadOnlyDictionary<string, SchemaInfo> byName)
     {
