@@ -145,8 +145,8 @@ public class GameLogLineProcessorTests
         Assert.Null(processor.ProcessLine("<2026-08-15T16:10:00.000Z> [Notice] <Actor Init> nothing interesting here"));
     }
 
-    // Ligne réelle vérifiée dans un vrai Game.log (30/09/2026) : émise une
-    // fois, automatiquement, peu après le spawn — voir le commentaire sur
+    // Ligne réelle vérifiée dans un vrai Game.log (30/09/2026) : émise
+    // automatiquement, peu après le spawn — voir le commentaire sur
     // RequestLocationInventoryRegex pour le contexte (remplace une première
     // tentative basée sur "Legacy login response", qui ne porte en réalité
     // aucun champ Location[...] dans cette version du jeu).
@@ -162,6 +162,28 @@ public class GameLogLineProcessorTests
         Assert.Equal(GameLogEventTypes.ZoneChange, evt!.Type);
         Assert.Equal("RR_P6_L5", evt.Zone);
         Assert.True(processor.State.Connected);
+        Assert.Equal("RR_P6_L5", processor.State.CurrentZone);
+    }
+
+    // CORRECTIF (vrai Game.log fourni par l'utilisateur, 01/10/2026) :
+    // <RequestLocationInventory> n'est pas émise qu'une seule fois au spawn
+    // comme le laissait penser le constat initial ci-dessus — ouvrir un
+    // inventaire de station (ATM, terminal...) sans avoir bougé entre-temps
+    // la réémet aussi pour le MÊME lieu, et spammait une nouvelle annonce
+    // "Arrivée à" à chaque ouverture.
+    [Fact]
+    public void RequestLocationInventory_RepeatedForSameLocation_DoesNotReannounce()
+    {
+        var processor = new GameLogLineProcessor();
+        var line =
+            "<2026-09-30T06:38:32.439Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested " +
+            "inventory for Location[RR_P6_L5] [Team_CoreGameplayFeatures][Inventory]";
+
+        var first = processor.ProcessLine(line);
+        var second = processor.ProcessLine(line);
+
+        Assert.NotNull(first);
+        Assert.Null(second);
         Assert.Equal("RR_P6_L5", processor.State.CurrentZone);
     }
 }

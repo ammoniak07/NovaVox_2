@@ -79,10 +79,15 @@ public sealed partial class GameLogLineProcessor
     /// saut "Pyro Gateway"), plutôt que le vrai lieu de spawn ("Megumi
     /// Ravitaillement"). La ligne réellement fiable et automatique à la
     /// connexion (vérifiée dans le vrai log) est <RequestLocationInventory>,
-    /// émise une fois dès que le jeu récupère l'inventaire du lieu où le
-    /// personnage apparaît — son identifiant brut (ex. "RR_P6_L5") passe par
-    /// le même mécanisme de résolution que les destinations de saut
-    /// quantique (voir GameLogDestinations.NormalizeKnownIdSynonyms).
+    /// émise dès que le jeu récupère l'inventaire du lieu où le personnage
+    /// apparaît — son identifiant brut (ex. "RR_P6_L5") passe par le même
+    /// mécanisme de résolution que les destinations de saut quantique (voir
+    /// GameLogDestinations.NormalizeKnownIdSynonyms). Elle n'est PAS limitée
+    /// au spawn : rouvrir l'inventaire d'une station déjà visitée (ATM,
+    /// terminal...) la réémet aussi pour le même lieu (constaté en vrai
+    /// Game.log, 01/10/2026) — voir le garde sur spawnLocation ==
+    /// State.CurrentZone plus bas, qui évite de réannoncer "Arrivée à" à
+    /// chaque réémission.
     /// </summary>
     [GeneratedRegex(@"<RequestLocationInventory> Player\[[^\]]+\] requested inventory for Location\[(?<location>[A-Za-z0-9_]+)\]")]
     private static partial Regex RequestLocationInventoryRegex();
@@ -181,8 +186,17 @@ public sealed partial class GameLogLineProcessor
         if (locationInventory.Success)
         {
             var spawnLocation = locationInventory.Groups["location"].Value;
-            State.CurrentZone = spawnLocation;
             State.Connected = true;
+            // <RequestLocationInventory> n'est pas émise qu'une fois au spawn
+            // comme le laissait penser le constat initial (voir le commentaire
+            // sur RequestLocationInventoryRegex) : ouvrir un inventaire de
+            // station (ATM, terminal...) la réémet aussi, pour le MÊME lieu,
+            // confirmé en vrai Game.log (répétitions à quelques secondes
+            // d'intervalle, le joueur n'ayant pas bougé entre-temps) — sans ce
+            // garde, chaque ouverture spammait une nouvelle annonce "Arrivée
+            // à" déjà faite pour ce lieu.
+            if (spawnLocation == State.CurrentZone) return null;
+            State.CurrentZone = spawnLocation;
             return new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = spawnLocation };
         }
 

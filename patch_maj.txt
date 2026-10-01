@@ -11,6 +11,7 @@ v0.1.0
 - Liste des commandes : un aperçu semi-transparent de la ligne (même fantôme que dans l'overlay) suit désormais le curseur pendant qu'on la glisse pour la réordonner, fiable pour n'importe quelle ligne de la liste (pas seulement la première) et correctement positionné même sur un poste à plusieurs écrans utilisant des mises à l'échelle différentes (ex. 125 % sur l'écran principal, 100 % sur le second) — un souci qui touchait aussi le fantôme de l'overlay, également corrigé ; avant, aucun indice visuel ne suivait le curseur pendant le glisser, seule la ligne d'accent en haut/bas de la ligne survolée indiquait où elle allait atterrir.
 - Ajout de "Pyro Gateway" (RR_JP_StantonPyro), "Stanton Gateway" (RR_JP_PyroStanton) et "Orison" (Stanton2_Orison) au catalogue intégré de destinations.
 - Correctif : au spawn à Everus Harbor, la zone affichait "RR HUR LEO" (identifiant brut) au lieu du nom de la station — même souci déjà corrigé pour Seraphim Station (RR_CRU_LEO), mais jamais ajouté pour Hurston.
+- Correctif : ouvrir l'inventaire d'une station (ATM, terminal...) sans avoir bougé entre-temps annonçait "Arrivée à : <lieu>" à chaque ouverture, parfois plusieurs fois d'affilée en quelques secondes — l'annonce ne se déclenche désormais que lors d'un vrai changement de lieu.
 v0.0.9
 ------
 - La zone affichée dans l'overlay est désormais mise à jour dès la connexion au serveur (spawn au lancement du jeu), sans attendre un premier saut quantique — jusque-là, elle restait vide/périmée tant qu'on n'avait pas encore voyagé.
