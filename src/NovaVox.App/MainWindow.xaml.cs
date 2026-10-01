@@ -2414,7 +2414,7 @@ public partial class MainWindow : Window
     private void InitializeSchemas()
     {
         foreach (var name in _state.Ai.SchemasReceived)
-            _schemaRows.Add(new SchemaRowVm { Name = name });
+            _schemaRows.Add(SchemaRowVm.Create(name));
         SchemasList.ItemsSource = _schemaRows;
         RefreshSchemasEmptyState();
     }
@@ -2440,7 +2440,7 @@ public partial class MainWindow : Window
         if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return;
 
         _state.Ai.SchemasReceived.Add(name);
-        _schemaRows.Insert(0, new SchemaRowVm { Name = name });
+        _schemaRows.Insert(0, SchemaRowVm.Create(name));
         RefreshSchemasEmptyState();
         SaveAiAndLog();
         NewSchemaNameBox.Text = "";
@@ -2758,7 +2758,7 @@ public partial class MainWindow : Window
         }
         if (result.ReceivedSchemaName is not null)
         {
-            _schemaRows.Insert(0, new SchemaRowVm { Name = result.ReceivedSchemaName });
+            _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName));
             RefreshSchemasEmptyState();
         }
 

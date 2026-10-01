@@ -6,4 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Base de données locale des schémas de fabrication (nom, fabricant, description,
+       ingrédients...) — voir SchemaDatabase.cs. Embarquée dans l'assembly (pas un
+       Content copié à côté de l'exe comme patch_maj.txt) : ce fichier n'est jamais
+       modifié par l'utilisateur, un seul endroit à garder cohérent avec le code qui
+       le lit. -->
+  <ItemGroup>
+    <EmbeddedResource Include="GameLog\SchemaDatabase.json" />
+  </ItemGroup>
+
 </Project>
