@@ -374,15 +374,27 @@ public static partial class GameLogAnnouncer
     /// </summary>
     private static string? MaybeRegisterReceivedSchema(string rawText, AiConfig config)
     {
-        var match = SchemaReceivedRegex().Match(rawText);
-        if (!match.Success) return null;
-
-        var name = match.Groups["name"].Value.Trim();
-        if (name.Length == 0) return null;
+        var name = TryExtractReceivedSchemaName(rawText);
+        if (name is null) return null;
         if (config.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return null;
 
         config.SchemasReceived.Add(name);
         return name;
+    }
+
+    /// <summary>
+    /// Extrait le nom d'un texte HUD "Schémas reçu : {nom}", sans effet de
+    /// bord (contrairement à MaybeRegisterReceivedSchema) — utilisé aussi
+    /// par le scan rétroactif des archives Game.log (voir GameLogBackups),
+    /// qui gère lui-même la fusion dans AiConfig.SchemasReceived une fois
+    /// tous les fichiers parcourus.
+    /// </summary>
+    public static string? TryExtractReceivedSchemaName(string hudText)
+    {
+        var match = SchemaReceivedRegex().Match(hudText);
+        if (!match.Success) return null;
+        var name = match.Groups["name"].Value.Trim();
+        return name.Length == 0 ? null : name;
     }
 
     /// <summary>

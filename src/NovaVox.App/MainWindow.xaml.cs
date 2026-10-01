@@ -1909,6 +1909,12 @@ public partial class MainWindow : Window
             // prochain redémarrage de l'appli.
             InitializeVoskCatalog();
             InitializePiperCatalog();
+            // Les descriptions déjà affichées dans 📐 Schémas restent dans
+            // l'ancienne langue sinon (SchemaDatabase.Find ne re-traduit que lors
+            // de la prochaine détection/ajout) — reconstruit chaque ligne pour
+            // refléter tout de suite la nouvelle langue.
+            for (var i = 0; i < _schemaRows.Count; i++)
+                _schemaRows[i] = SchemaRowVm.Create(_schemaRows[i].Name, _state.Ai.UiLanguage);
         }
     }
 
@@ -2414,7 +2420,7 @@ public partial class MainWindow : Window
     private void InitializeSchemas()
     {
         foreach (var name in _state.Ai.SchemasReceived)
-            _schemaRows.Add(SchemaRowVm.Create(name));
+            _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage));
         SchemasList.ItemsSource = _schemaRows;
         RefreshSchemasEmptyState();
     }
@@ -2440,7 +2446,7 @@ public partial class MainWindow : Window
         if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return;
 
         _state.Ai.SchemasReceived.Add(name);
-        _schemaRows.Insert(0, SchemaRowVm.Create(name));
+        _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
         RefreshSchemasEmptyState();
         SaveAiAndLog();
         NewSchemaNameBox.Text = "";
@@ -2453,6 +2459,46 @@ public partial class MainWindow : Window
         _schemaRows.Remove(row);
         RefreshSchemasEmptyState();
         SaveAiAndLog();
+    }
+
+    /// <summary>
+    /// Relit tous les Game.log archivés (dossier "logbackups", voisin du
+    /// Game.log en cours — voir GameLogBackups) pour retrouver des
+    /// schémas reçus lors de sessions passées, jamais vus par la
+    /// surveillance en direct (NovaVox pas encore lancé à l'époque, ou
+    /// lancé après coup). N'ajoute que les noms pas déjà dans la liste.
+    /// </summary>
+    private void ScanSchemaBackups_Click(object sender, RoutedEventArgs e)
+    {
+        var customPath = _state.Ai.GameLogCustomPath;
+        var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+        var backupsFolder = GameLogBackups.FindBackupsFolder(liveLogPath);
+        if (backupsFolder is null)
+        {
+            MessageBox.Show(this, "Aucune archive Game.log trouvée (dossier « logbackups » introuvable).", "NovaVox");
+            return;
+        }
+
+        var found = GameLogBackups.ScanForReceivedSchemas(backupsFolder);
+        var added = new List<string>();
+        foreach (var name in found)
+        {
+            if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) continue;
+            _state.Ai.SchemasReceived.Add(name);
+            added.Add(name);
+        }
+
+        if (added.Count == 0)
+        {
+            MessageBox.Show(this, "Aucun nouveau schéma trouvé dans les archives.", "NovaVox");
+            return;
+        }
+
+        foreach (var name in added)
+            _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+        RefreshSchemasEmptyState();
+        SaveAiAndLog();
+        MessageBox.Show(this, $"{added.Count} nouveau(x) schéma(s) trouvé(s) dans les archives.", "NovaVox");
     }
 
     // ------------------------------------------------------- Aide-mémoire vaisseaux
@@ -2758,7 +2804,7 @@ public partial class MainWindow : Window
         }
         if (result.ReceivedSchemaName is not null)
         {
-            _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName));
+            _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName, _state.Ai.UiLanguage));
             RefreshSchemasEmptyState();
         }
 

@@ -8,6 +8,15 @@ public class GameLogAnnouncerTests
 {
     private static AiConfig NewConfig() => new();
 
+    [Theory]
+    [InlineData("Schémas reçu : Ezra", "Ezra")]
+    [InlineData("SCHÉMAS REÇU : Deadbolt IV Cannon", "Deadbolt IV Cannon")]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null)]
+    public void TryExtractReceivedSchemaName_ReturnsNameOrNullWithoutSideEffects(string hudText, string? expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractReceivedSchemaName(hudText));
+    }
+
     [Fact]
     public void CleanHudNotificationText_StripsTrailingColonAndCollapsesNewlines()
     {

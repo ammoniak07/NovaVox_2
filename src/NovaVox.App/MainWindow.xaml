@@ -1264,6 +1264,9 @@
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBox x:Name="NewSchemaNameBox" Width="240" ToolTip="Nom du schéma (ex. Ezra)" KeyDown="NewSchemaNameBox_KeyDown" />
                         <Button Content="+ Ajouter" Margin="6,0,0,0" Click="AddSchema_Click" />
+                        <Button Content="🔍 Scanner les archives" Margin="12,0,0,0"
+                                ToolTip="Relit tous les anciens Game.log (logbackups) pour retrouver les schémas reçus lors de sessions passées"
+                                Click="ScanSchemaBackups_Click" />
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
