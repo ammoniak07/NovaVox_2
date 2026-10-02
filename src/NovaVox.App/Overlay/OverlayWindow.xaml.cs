@@ -917,6 +917,26 @@ public partial class OverlayWindow : Window
             return;
         _lastPlacementEvalScreenPos = screenPos;
 
+        EvaluateRowPlacement(_draggingKey, screenPos);
+    }
+
+    /// <summary>
+    /// Calcule la colonne/position cible sous <paramref name="screenPos"/> et y
+    /// déplace la ligne <paramref name="key"/> (voir MoveRowToColumnIndex) — ne
+    /// fait rien si le curseur n'est au-dessus d'aucune fenêtre connue (voir
+    /// WindowIdAtScreenPoint). Appelée à la fois par RowDragHandle_MouseMove
+    /// (avec son seuil de nouveau calcul, voir PlacementReevaluateThresholdPx)
+    /// ET, SANS ce seuil, une dernière fois par RowDragHandle_MouseLeftButtonUp
+    /// juste avant de sauvegarder : sinon la toute dernière correction de
+    /// position avant de relâcher le bouton pouvait rester sous le seuil et
+    /// n'être jamais appliquée — la ligne se sauvegardait alors à la position
+    /// du calcul précédent, PAS à celle du relâchement réel (symptôme
+    /// constaté : relâcher sur la moitié gauche d'une colonne annulait/
+    /// ramenait la ligne en arrière, la moitié droite fonctionnait car plus
+    /// souvent atteinte après un calcul déjà à jour).
+    /// </summary>
+    private void EvaluateRowPlacement(string key, Point screenPos)
+    {
         var targetWindowId = WindowIdAtScreenPoint(screenPos);
         if (targetWindowId is null) return;
 
@@ -924,7 +944,7 @@ public partial class OverlayWindow : Window
         var positionInColumns = entry.ColumnsPanel.PointFromScreen(screenPos);
         var targetColumn = entry.Columns[ColumnIndexAtX(entry.ColumnsPanel, entry.Columns, positionInColumns.X)];
         var targetIndex = RowIndexAtY(targetColumn, targetColumn.PointFromScreen(screenPos).Y);
-        MoveRowToColumnIndex(_draggingKey, targetWindowId.Value, targetColumn, targetIndex);
+        MoveRowToColumnIndex(key, targetWindowId.Value, targetColumn, targetIndex);
     }
 
     private void RowDragHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -932,6 +952,7 @@ public partial class OverlayWindow : Window
         if (_draggingKey is null) return;
         var key = _draggingKey!;
         var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
+        EvaluateRowPlacement(key, screenPos);
         _draggingHandle?.ReleaseMouseCapture();
         _draggingHandle = null;
         _draggingKey = null;
