@@ -8,6 +8,96 @@ public class GameLogAnnouncerTests
 {
     private static AiConfig NewConfig() => new();
 
+    [Theory]
+    [InlineData("Schémas reçu : Ezra", "Ezra")]
+    [InlineData("SCHÉMAS REÇU : Deadbolt IV Cannon", "Deadbolt IV Cannon")]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null)]
+    public void TryExtractReceivedSchemaName_ReturnsNameOrNullWithoutSideEffects(string hudText, string? expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractReceivedSchemaName(hudText));
+    }
+
+    [Theory]
+    [InlineData("CANAL 'Drake Cutter : Ammoniak' rejoint.", "Drake Cutter", true)]
+    [InlineData("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", "Drake Cutter", false)]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null, null)]
+    [InlineData("Un joueur a rejoint Bistic a rejoint le CANAL 'RSI Constellation Taurus : Tinou214'.", null, null)]
+    public void TryExtractShipChannelEvent_ReturnsShipAndDirectionOrNullWithoutSideEffects(string hudText, string? expectedShip, bool? expectedEntered)
+    {
+        var result = GameLogAnnouncer.TryExtractShipChannelEvent(hudText);
+
+        if (expectedShip is null)
+        {
+            Assert.Null(result);
+        }
+        else
+        {
+            Assert.NotNull(result);
+            Assert.Equal(expectedShip, result!.Value.ShipName);
+            Assert.Equal(expectedEntered, result!.Value.Entered);
+        }
+    }
+
+    [Theory]
+    [InlineData("Vous avez envoyé Droz64: 2,000,000 aUEC", 2_000_000.0)]
+    [InlineData("Vous avez envoyé Zeilos: 500 aUEC.", 500.0)]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null)]
+    public void TryExtractAuecSent_ReturnsAmountOrNullWithoutSideEffects(string hudText, double? expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractAuecSent(hudText));
+    }
+
+    [Theory]
+    [InlineData("Un joueur a rejoint Bistic a rejoint le Groupe.", "Bistic")]
+    [InlineData("Un joueur a rejoint Tinou214 a rejoint le Groupe.", "Tinou214")]
+    [InlineData("A quitté le groupe : Tork a quitté le Groupe", null)]
+    [InlineData("Groupe : Dionico31 s'est connecté.", null)]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null)]
+    public void TryExtractGroupMemberJoined_ReturnsNameOrNullWithoutSideEffects(string hudText, string? expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractGroupMemberJoined(hudText));
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_StripsLeftoverEmphasisTag()
+    {
+        var schemas = new List<string> { "Ezra <EM3>[1000 xp]</EM3>" };
+
+        Assert.True(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Equal(new[] { "Ezra" }, schemas);
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_StripsTrailingColon()
+    {
+        var schemas = new List<string> { "Ezra :" };
+
+        Assert.True(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Equal(new[] { "Ezra" }, schemas);
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_MergesDuplicatesCreatedByCleaning()
+    {
+        var schemas = new List<string> { "Ezra <EM3>[1000 xp]</EM3>", "Ezra", "EZRA :" };
+
+        Assert.True(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Single(schemas, name => string.Equals(name, "Ezra", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void MigrateLegacySchemaNames_AlreadyCleanNames_ReturnsFalseAndLeavesListUntouched()
+    {
+        var schemas = new List<string> { "Ezra", "Deadbolt IV Cannon" };
+
+        Assert.False(GameLogAnnouncer.MigrateLegacySchemaNames(schemas));
+
+        Assert.Equal(new[] { "Ezra", "Deadbolt IV Cannon" }, schemas);
+    }
+
     [Fact]
     public void CleanHudNotificationText_StripsTrailingColonAndCollapsesNewlines()
     {
@@ -158,6 +248,7 @@ public class GameLogAnnouncerTests
     [InlineData("CONTRAT TERMINÉ", "CONTRAT TERMINÉ : {name}")]
     [InlineData("CONTRAT ÉCHOUÉ", "CONTRAT ÉCHOUÉ : {name}")]
     [InlineData("ENTRÉE DU JOURNAL AJOUTÉE", "ENTRÉE DU JOURNAL AJOUTÉE : {name}")]
+    [InlineData("Schémas reçu", "Schémas reçu : {name}")]
     public void Build_HudNotification_ObjectiveOrContractPrefix_CollapsesAcrossDifferentMissions(string prefix, string expectedTemplateKey)
     {
         var config = NewConfig();
@@ -510,6 +601,56 @@ public class GameLogAnnouncerTests
 
         Assert.NotNull(result);
         Assert.Null(result!.ResolvedArmistice);
+    }
+
+    [Fact]
+    public void Build_HudNotification_SchemaReceived_RegistersNameOnFirstSighting()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Ezra" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Equal("Ezra", result!.ReceivedSchemaName);
+        Assert.Contains("Ezra", config.SchemasReceived);
+        Assert.Equal("Schémas reçu : Ezra", result.Text); // toujours annoncé normalement, via le gabarit générique
+    }
+
+    [Fact]
+    public void Build_HudNotification_SchemaReceived_SameNameAgain_DoesNotDuplicateOrReportAsNew()
+    {
+        var config = NewConfig();
+        GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Ezra" }, config);
+
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : ezra" }, config); // casse différente
+
+        Assert.NotNull(result);
+        Assert.Null(result!.ReceivedSchemaName);
+        Assert.Single(config.SchemasReceived);
+    }
+
+    [Fact]
+    public void Build_HudNotification_SchemaReceived_DifferentNames_BothRegistered()
+    {
+        var config = NewConfig();
+        GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Ezra" }, config);
+        GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Schémas reçu : Mantis" }, config);
+
+        Assert.Equal(new[] { "Ezra", "Mantis" }, config.SchemasReceived);
+    }
+
+    [Fact]
+    public void Build_HudNotification_UnrelatedText_ReceivedSchemaNameIsNull()
+    {
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Nouvel objectif : Livrer le colis" };
+
+        var result = GameLogAnnouncer.Build(evt, config);
+
+        Assert.NotNull(result);
+        Assert.Null(result!.ReceivedSchemaName);
+        Assert.Empty(config.SchemasReceived);
     }
 
     [Fact]

@@ -6,4 +6,33 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Base de données locale des schémas de fabrication (nom, fabricant, description,
+       ingrédients...) — voir SchemaDatabase.cs. Embarquée dans l'assembly (pas un
+       Content copié à côté de l'exe comme patch_maj.txt) : ce fichier n'est jamais
+       modifié par l'utilisateur, un seul endroit à garder cohérent avec le code qui
+       le lit. SchemaDatabase.<lang>.json (fr/nl/es/it/de) : traductions de la
+       description, une par langue de l'interface — l'anglais (fichier principal)
+       sert de repli quand une langue n'a pas (encore) de traduction pour un nom.
+       SchemaNameAliases.<locale>.json : nom tel qu'écrit par le CLIENT DU JEU dans
+       cette locale -> nom canonique anglais — un problème différent (le client du
+       jeu peut tourner dans une langue différente de l'interface NovaVox), voir le
+       résumé de SchemaDatabase.
+
+       WithCulture=false sur les deux motifs *.<xx>.json : sans ça, le SDK
+       reconnaît "xx" (fr/nl/es/it/de...) comme un code de culture .NET et
+       compile le fichier dans un satellite assembly séparé (obj/<config>/
+       <tfm>/xx/NovaVox.Core.resources.dll) au lieu de l'embarquer dans
+       l'assembly principal — GetManifestResourceNames() ne le voit alors
+       jamais, et SchemaDatabase.Find reste silencieusement sans traduction
+       ni alias pour cette langue (aucune erreur, juste un repli permanent
+       sur l'anglais). -->
+  <ItemGroup>
+    <EmbeddedResource Include="GameLog\SchemaDatabase.json" />
+    <EmbeddedResource Include="GameLog\SchemaDatabase.*.json" WithCulture="false" />
+    <EmbeddedResource Include="GameLog\SchemaNameAliases.*.json" WithCulture="false" />
+    <!-- Nom canonique -> clé global.ini (voir GameLogLocalization/SchemaDatabase.RegisterLiveNameAliases) —
+         construit une fois depuis scunpacked-data (labels.json), jamais modifié par l'utilisateur. -->
+    <EmbeddedResource Include="GameLog\SchemaNameLocalizationKeys.json" />
+  </ItemGroup>
+
 </Project>

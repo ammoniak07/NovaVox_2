@@ -5,6 +5,7 @@
         Style="{StaticResource BaseWindowStyle}"
         Title="NovaVox"
         Width="1000" Height="930"
+        MinWidth="512"
         SizeChanged="MainWindow_SizeChanged">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -82,8 +83,8 @@
             <Border Grid.Row="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
                 <Grid Margin="16,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="0" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <!-- Logo : badge vectoriel par défaut, remplacé par une
@@ -104,28 +105,26 @@
                             <TextBlock x:Name="TopbarSubtitleText" Text="Reconnaissance vocale hors-ligne — Star Citizen" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
                         </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Mode de jeu : bascule d'un coup Game.log/wiki Gemini/
-                             ligne Zone de l'overlay/image de fond — indépendant des
-                             profils de commandes (menu déroulant plus bas), voir
-                             GameModeCombo_SelectionChanged (MainWindow.xaml.cs). -->
-                        <ComboBox x:Name="GameModeCombo" Width="150" SelectionChanged="GameModeCombo_SelectionChanged">
-                            <ComboBoxItem Content="🚀 Star Citizen" Tag="sc" />
-                            <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
-                        </ComboBox>
-                        <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Margin="8,0,0,0" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
-                        <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
-                        <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
-                        <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
-                                ToolTip="Réglages" />
-                        <!-- Thème de couleurs de l'interface : liste construite dynamiquement à partir de
-                             ThemeManager.AvailableThemes (MainWindow.xaml.cs, InitializeThemeCombo) plutôt
-                             que codée en dur ici, pour ne garder qu'un seul endroit à mettre à jour en
-                             ajoutant une palette. Propre au mode de jeu actif (GameModeConfig.UiTheme, voir
-                             AppState.SwitchGameMode) : "Autre jeu" démarre sur "Militaire" par défaut. -->
-                        <ComboBox x:Name="ThemeCombo" Width="130" Margin="8,0,0,0" ToolTip="Thème de couleurs"
-                                  SelectionChanged="ThemeCombo_SelectionChanged" />
-                    </StackPanel>
+                    <!-- ScrollViewer plutôt qu'un simple StackPanel : dans la colonne "*" ci-dessus
+                         (plus "Auto" comme avant), cette rangée de boutons doit pouvoir être
+                         compressée en dessous de sa largeur naturelle sans forcer la fenêtre à
+                         s'agrandir — sans ça, Window.MinWidth (ci-dessus) resterait sans effet
+                         dès que les boutons d'en-tête (Gemini/Vaisseaux/Game.log/Schémas/Réglages)
+                         ne tiennent plus tous côte à côte. Défile horizontalement au lieu de
+                         bloquer le redimensionnement si la fenêtre devient trop étroite pour les
+                         afficher tous. -->
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="GeminiHeaderButton" Content="🌟 Assistant Gemini" Style="{StaticResource PillGhostButtonStyle}" Click="OpenGeminiChat_Click" />
+                            <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
+                            <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
+                            <Button x:Name="SchemasHeaderButton" Content="📐 Schémas" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenSchemas_Click" />
+                            <Button x:Name="StatsHeaderButton" Content="📊 Statistiques" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenStats_Click" />
+                            <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
+                                    ToolTip="Réglages" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
             </Border>
 
@@ -181,19 +180,25 @@
                      même hauteur (sinon la colonne Commandes avait un en-tête
                      de plus que Journal système, et sa carte démarrait plus
                      bas). -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
-                    <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
-                    <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
-                    <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
-                </StackPanel>
+                <!-- ScrollViewer plutôt qu'un simple StackPanel : évite que cette rangée
+                     (label + combo 180px + 3 boutons, largeur naturelle ~500px) ne bloque
+                     à elle seule le redimensionnement de la fenêtre en dessous de ça —
+                     voir la même technique sur la rangée de boutons d'en-tête ci-dessus. -->
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Profil :" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox x:Name="ProfileCombo" Width="180" DisplayMemberPath="Name" SelectionChanged="ProfileCombo_SelectionChanged" />
+                        <Button Content="Nouveau" Margin="6,0,0,0" Click="NewProfile_Click" />
+                        <Button Content="Renommer" Margin="6,0,0,0" Click="RenameProfile_Click" />
+                        <Button Content="Supprimer" Margin="6,0,0,0" Click="DeleteProfile_Click" />
+                    </StackPanel>
+                </ScrollViewer>
 
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="3*" MinWidth="360" />
+                        <ColumnDefinition Width="3*" MinWidth="270" />
                         <ColumnDefinition x:Name="JournalGapColumn" Width="16" />
-                        <ColumnDefinition x:Name="JournalColumn" Width="2*" MinWidth="280" />
+                        <ColumnDefinition x:Name="JournalColumn" Width="2*" MinWidth="190" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Image de fond : visible uniquement dans l'espace laissé
@@ -217,27 +222,32 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
-                                <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
-                            </Border>
-                            <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
-                            <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
-                            <!-- Filtre texte (phrase / touche / synonyme) : ne touche jamais
-                                 à _state.Commands lui-même (glisser-déposer et ordre intacts),
-                                 seulement à VoiceCommandRow.RowVisible — voir
-                                 RefreshCommandsVisibility (MainWindow.xaml.cs). Placeholder
-                                 manuel (TextBlock superposé) : TextBox n'en a pas nativement. -->
-                            <Grid Width="120" Margin="10,0,0,0">
-                                <TextBox x:Name="CommandsSearchBox" Padding="8,4" Background="{DynamicResource PanelBrush}"
-                                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                         TextChanged="CommandsSearchBox_TextChanged"
-                                         ToolTip="Filtrer les commandes par phrase, touche ou synonyme" />
-                                <TextBlock x:Name="CommandsSearchPlaceholder" Text="🔎 Rechercher..." Margin="10,0,0,0" IsHitTestVisible="False"
-                                           VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
-                            </Grid>
-                        </StackPanel>
+                        <!-- ScrollViewer : même raison que la rangée Profil/boutons d'en-tête
+                             ci-dessus — cette rangée (titre + badge + 2 boutons + recherche
+                             120px) ne doit pas bloquer le redimensionnement de la fenêtre. -->
+                        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="COMMANDES" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource CountBadgeStyle}" Margin="8,0,0,0">
+                                    <TextBlock x:Name="CommandCountText" Text="0" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="12" />
+                                </Border>
+                                <Button Content="+ Commande" Margin="16,0,0,0" Click="AddCommand_Click" />
+                                <Button Content="+ Titre" Margin="6,0,0,0" Click="AddTitle_Click" />
+                                <!-- Filtre texte (phrase / touche / synonyme) : ne touche jamais
+                                     à _state.Commands lui-même (glisser-déposer et ordre intacts),
+                                     seulement à VoiceCommandRow.RowVisible — voir
+                                     RefreshCommandsVisibility (MainWindow.xaml.cs). Placeholder
+                                     manuel (TextBlock superposé) : TextBox n'en a pas nativement. -->
+                                <Grid Width="120" Margin="10,0,0,0">
+                                    <TextBox x:Name="CommandsSearchBox" Padding="8,4" Background="{DynamicResource PanelBrush}"
+                                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                             TextChanged="CommandsSearchBox_TextChanged"
+                                             ToolTip="Filtrer les commandes par phrase, touche ou synonyme" />
+                                    <TextBlock x:Name="CommandsSearchPlaceholder" Text="🔎 Rechercher..." Margin="10,0,0,0" IsHitTestVisible="False"
+                                               VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
 
                         <Border x:Name="CommandsCard" Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource PanelBrush50}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                         <ListBox x:Name="CommandsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -401,10 +411,13 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="JOURNAL SYSTÈME" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
-                    </StackPanel>
+                    <!-- ScrollViewer : même raison que les autres rangées de boutons ci-dessus. -->
+                    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="JOURNAL SYSTÈME" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Content="Effacer" Margin="16,0,0,0" Click="ClearLog_Click" />
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <!-- VerticalAlignment="Top" + Height liée à la hauteur
                          RÉELLE de la carte Commandes (CommandsCard) : les
@@ -565,6 +578,11 @@
                                 <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
                                 <TextBlock x:Name="TtsVolumeLabelText" Text="Volume de la voix" />
                                 <Slider x:Name="TtsVolumeSlider" Minimum="0.1" Maximum="1.5" ValueChanged="TtsVolumeSlider_ValueChanged" />
+                                <TextBlock x:Name="NumberStyleLabelText" Text="Prononciation des nombres (français)" Margin="0,12,0,4" />
+                                <ComboBox x:Name="FrenchNumberStyleCombo" SelectionChanged="FrenchNumberStyleCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Français (France) — soixante-dix, quatre-vingt-dix" Tag="france" />
+                                    <ComboBoxItem Content="Français (Belgique) — septante, nonante" Tag="belgique" />
+                                </ComboBox>
                                 <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
                             </StackPanel>
                             </ScrollViewer>
@@ -651,6 +669,15 @@
                                              ToolTip="Chemin complet vers Game.log (ex. D:\StarCitizen\LIVE\Game.log)" />
                                     <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogPathBrowseButton_Click" />
                                 </StackPanel>
+
+                                <TextBlock Text="Emplacement du dossier logbackups" Margin="0,16,0,4" />
+                                <TextBlock Text="Laisse vide pour utiliser le dossier « logbackups » juste à côté du Game.log ci-dessus. À renseigner seulement si tes archives sont ailleurs (ex. copiées sur un autre disque) — utilisé par « 🔍 Scanner les archives » dans Réglages > 📐 Schémas."
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="GameLogBackupsPathBox" Width="280" LostFocus="GameLogBackupsPathBox_LostFocus"
+                                             ToolTip="Chemin complet vers le dossier logbackups (ex. D:\StarCitizen\LIVE\logbackups)" />
+                                    <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogBackupsPathBrowseButton_Click" />
+                                </StackPanel>
                             </StackPanel>
                         </TabItem>
 
@@ -719,6 +746,24 @@
                                 <CheckBox x:Name="ShowSystemLogCheckbox" Content="Afficher le journal système"
                                           Checked="ShowSystemLogCheckbox_Changed" Unchecked="ShowSystemLogCheckbox_Changed" />
 
+                                <!-- Mode de jeu : bascule d'un coup Game.log/wiki Gemini/
+                                     ligne Zone de l'overlay/image de fond — indépendant des
+                                     profils de commandes (menu déroulant plus bas), voir
+                                     GameModeCombo_SelectionChanged (MainWindow.xaml.cs). -->
+                                <TextBlock x:Name="GameModeLabelText" Text="Mode de jeu" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="GameModeCombo" SelectionChanged="GameModeCombo_SelectionChanged">
+                                    <ComboBoxItem Content="🚀 Star Citizen" Tag="sc" />
+                                    <ComboBoxItem Content="🎮 Autre jeu" Tag="other" />
+                                </ComboBox>
+
+                                <!-- Thème de couleurs de l'interface : liste construite dynamiquement à partir de
+                                     ThemeManager.AvailableThemes (MainWindow.xaml.cs, InitializeThemeCombo) plutôt
+                                     que codée en dur ici, pour ne garder qu'un seul endroit à mettre à jour en
+                                     ajoutant une palette. Propre au mode de jeu actif (GameModeConfig.UiTheme, voir
+                                     AppState.SwitchGameMode) : "Autre jeu" démarre sur "Militaire" par défaut. -->
+                                <TextBlock x:Name="ThemeLabelText" Text="Thème de couleurs" FontWeight="Bold" Margin="0,16,0,6" />
+                                <ComboBox x:Name="ThemeCombo" SelectionChanged="ThemeCombo_SelectionChanged" />
+
                                 <TextBlock x:Name="UiLanguageLabelText" Text="Langue de l'interface" FontWeight="Bold" Margin="0,16,0,6" />
                                 <ComboBox x:Name="UiLanguageCombo" SelectionChanged="UiLanguageCombo_SelectionChanged">
                                     <ComboBoxItem Content="Français" Tag="fr" />
@@ -765,6 +810,10 @@
                                 <TextBlock><Hyperlink NavigateUri="https://github.com/hardcodet/wpf-notifyicon" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/hardcodet/wpf-notifyicon</Hyperlink></TextBlock>
                                 <TextBlock Text="System.Drawing.Common" Margin="0,10,0,0" />
                                 <TextBlock><Hyperlink NavigateUri="https://www.nuget.org/packages/System.Drawing.Common" RequestNavigate="Hyperlink_RequestNavigate">https://www.nuget.org/packages/System.Drawing.Common</Hyperlink></TextBlock>
+
+                                <TextBlock Text="Données" FontWeight="Bold" Margin="0,24,0,6" />
+                                <TextBlock Text="StarCitizenWiki/scunpacked-data — base communautaire des schémas de fabrication (noms, fabricants, descriptions)" Margin="0,6,0,0" TextWrapping="Wrap" />
+                                <TextBlock><Hyperlink NavigateUri="https://github.com/StarCitizenWiki/scunpacked-data" RequestNavigate="Hyperlink_RequestNavigate">https://github.com/StarCitizenWiki/scunpacked-data</Hyperlink></TextBlock>
                             </StackPanel>
                             </ScrollViewer>
                         </TabItem>
@@ -1194,6 +1243,309 @@
                             <Button Content="+ Ajouter un repère" HorizontalAlignment="Left" Click="AddShipCheatSheetPoint_Click" />
                         </StackPanel>
                     </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Schémas de fabrication reçus en jeu — ajoutés automatiquement à la
+             détection d'une notification HUD "Schémas reçu : {nom}" dans le
+             Game.log (voir GameLogAnnouncer.ReceivedSchemaName, OnGameLogEvent
+             dans MainWindow.xaml.cs), ou manuellement ci-dessous. -->
+        <Border x:Name="SchemasOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="560" MaxHeight="760" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="16,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="📐 SCHÉMAS REÇUS" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSchemas_Click" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="Schémas de fabrication (blueprints) reçus en jeu. Ajoutés automatiquement à la détection d'une notification « Schémas reçu : ... » dans le Game.log, ou manuellement ci-dessous. Fabricant/description (en anglais) complétés automatiquement quand le nom est reconnu dans la base locale."
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
+
+                    <!-- WrapPanel plutôt que StackPanel horizontal : avec 3 boutons + le champ de
+                         saisie, le "Tout supprimer" dépassait la largeur fixe (560) du panneau
+                         au lieu d'être visible — ici il bascule simplement à la ligne suivante. -->
+                    <WrapPanel Grid.Row="2" Margin="0,0,0,10">
+                        <Grid Margin="0,0,0,6">
+                            <TextBox x:Name="NewSchemaNameBox" Width="240" ToolTip="Nom du schéma (ex. Ezra)"
+                                     TextChanged="NewSchemaNameBox_TextChanged" PreviewKeyDown="NewSchemaNameBox_PreviewKeyDown"
+                                     KeyDown="NewSchemaNameBox_KeyDown" />
+                            <!-- Autocomplétion : suggestions de la base locale au fil de la frappe (voir
+                                 SchemaDatabase.SearchNames) — Entrée/clic sur une suggestion l'ajoute directement,
+                                 Entrée sans suggestion sélectionnée ajoute le texte tel quel (nom hors base locale). -->
+                            <Popup x:Name="SchemaSuggestionsPopup" PlacementTarget="{Binding ElementName=NewSchemaNameBox}"
+                                   Placement="Bottom" StaysOpen="False" Width="240">
+                                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="4">
+                                    <ListBox x:Name="SchemaSuggestionsList" BorderThickness="0" Background="Transparent"
+                                             MaxHeight="220" SelectionMode="Single"
+                                             PreviewMouseLeftButtonUp="SchemaSuggestionsList_PreviewMouseLeftButtonUp" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <Button Content="+ Ajouter" Margin="6,0,0,6" Click="AddSchema_Click" />
+                        <Button x:Name="ScanSchemaBackupsButton" Content="🔍 Scanner les archives" Margin="12,0,0,6"
+                                ToolTip="Relit tous les anciens Game.log (logbackups) pour retrouver les schémas reçus lors de sessions passées"
+                                Click="ScanSchemaBackups_Click" />
+                        <Button Content="🗑 Tout supprimer" Margin="12,0,0,6"
+                                ToolTip="Supprime tous les schémas reçus de la liste"
+                                Click="DeleteAllSchemas_Click" />
+                    </WrapPanel>
+
+                    <!-- Date de départ pour "🔍 Scanner les archives" : utile après un wipe des
+                         schémas en jeu, pour ne recharger que ce qui a été obtenu depuis plutôt
+                         que de ressusciter des schémas d'avant le wipe (voir
+                         GameLogBackups.ScanForReceivedSchemas, paramètre minTimestamp). Vide =
+                         aucun filtre (comportement d'avant), comme toujours. -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
+                        <TextBlock Text="Archives à partir du :" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+                        <DatePicker x:Name="SchemaScanStartDatePicker" Width="200"
+                                    ToolTip="Ignore les archives antérieures à cette date lors du scan (ex. après un wipe des schémas en jeu) — laisser vide pour tout scanner comme avant"
+                                    SelectedDateChanged="SchemaScanStartDatePicker_SelectedDateChanged" />
+                        <Button Content="Effacer" Margin="8,0,0,0" Padding="6,2" FontSize="11"
+                                ToolTip="Retire le filtre de date (scanne de nouveau toutes les archives)"
+                                Click="ClearSchemaScanStartDate_Click" />
+                    </StackPanel>
+
+                    <!-- Progression du scan des archives (ScanSchemaBackups_Click) : masquée
+                         en dehors d'un scan, affichée pendant (le scan tourne hors du thread
+                         UI via Task.Run pour ne pas geler l'application). -->
+                    <StackPanel x:Name="SchemaScanProgressPanel" Grid.Row="4" Margin="0,0,0,10" Visibility="Collapsed">
+                        <ProgressBar x:Name="SchemaScanProgressBar" Height="6" Minimum="0" Maximum="100" />
+                        <TextBlock x:Name="SchemaScanProgressText" Text="Scan en cours..."
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <!-- Même mécanique que RefreshGameLogSearchVisibility : filtre RowVisible par
+                         ligne (voir SchemaRowVm), jamais _schemaRows lui-même. -->
+                    <Grid Grid.Row="5" Margin="0,0,0,10">
+                        <TextBox x:Name="SchemasSearchBox" Padding="8,6" TextChanged="SchemasSearchBox_TextChanged" />
+                        <TextBlock x:Name="SchemasSearchPlaceholder" Text="🔍 Rechercher un schéma..."
+                                   Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock x:Name="SchemasEmptyText" Text="Aucun schéma reçu pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <TextBlock x:Name="SchemasNoSearchResultText" Text="Aucun schéma ne correspond à la recherche." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <ItemsControl x:Name="SchemasList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Background="{DynamicResource PanelAltBrush}"
+                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    <!-- Fabricant/type/temps de fabrication, uniquement si ce nom est reconnu dans SchemaDatabase (voir SchemaRowVm.Create). -->
+                                                    <TextBlock Text="{Binding Subtitle}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVis}}"
+                                                               Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Description}" Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}}"
+                                                               Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="Supprimer" VerticalAlignment="Top" Margin="8,0,0,0" Click="DeleteSchema_Click" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Temps de jeu, aUEC envoyés, destinations les plus visitées et temps
+             passé dans chaque vaisseau — tous suivis en direct depuis le
+             Game.log (voir OnGameLogEvent), avec la possibilité de compléter
+             depuis les anciens Game.log archivés (ScanStatsBackups_Click /
+             GameLogBackups.ScanForStats). -->
+        <Border x:Name="StatsOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="560" MaxHeight="760" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="16,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="📊 STATISTIQUES" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseStats_Click" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="Temps de jeu, aUEC envoyés, destinations les plus visitées, joueurs les plus groupés et temps passé dans chaque vaisseau, suivis automatiquement en direct depuis le Game.log. « Charger les archives » relit les anciens Game.log conservés par le jeu pour compléter les statistiques avec des sessions jamais suivies en direct (ex. avant la première utilisation de NovaVox)."
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
+
+                    <!-- Temps de jeu / aUEC : deux chiffres uniques plutôt qu'une liste (voir
+                         RefreshPlayTimeAndAuecDisplay). Le temps de jeu est déduit de l'activité
+                         réelle du Game.log (GameLogState.LastLineTimestamp), pas de l'horloge de
+                         la machine : n'avance que tant que le jeu écrit effectivement dans son
+                         journal. -->
+                    <Grid Grid.Row="2" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,6,0"
+                                Background="{DynamicResource PanelAltBrush}">
+                            <StackPanel>
+                                <TextBlock Text="⏱ Temps de jeu total" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                                <TextBlock x:Name="StatsPlayTimeText" Text="0 s" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="6,0,0,0"
+                                Background="{DynamicResource PanelAltBrush}">
+                            <StackPanel>
+                                <TextBlock Text="💸 aUEC envoyés" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                                <TextBlock x:Name="StatsAuecSentText" Text="0 aUEC" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <WrapPanel Grid.Row="3" Margin="0,0,0,10">
+                        <Button x:Name="ScanStatsBackupsButton" Content="🔍 Charger les archives" Margin="0,0,0,6"
+                                ToolTip="Relit tous les anciens Game.log (logbackups) pour compléter les statistiques avec des sessions passées"
+                                Click="ScanStatsBackups_Click" />
+                        <Button Content="🗑 Tout supprimer" Margin="12,0,0,6"
+                                ToolTip="Supprime toutes les statistiques enregistrées"
+                                Click="DeleteAllStats_Click" />
+                    </WrapPanel>
+
+                    <!-- Progression du scan des archives (ScanStatsBackups_Click) : masquée
+                         en dehors d'un scan, affichée pendant (le scan tourne hors du thread
+                         UI via Task.Run pour ne pas geler l'application) — même mécanique que
+                         SchemaScanProgressPanel. -->
+                    <StackPanel x:Name="StatsScanProgressPanel" Grid.Row="4" Margin="0,0,0,10" Visibility="Collapsed">
+                        <ProgressBar x:Name="StatsScanProgressBar" Height="6" Minimum="0" Maximum="100" />
+                        <TextBlock x:Name="StatsScanProgressText" Text="Scan en cours..."
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <!-- Un onglet par groupe de statistique plutôt qu'une longue liste empilée
+                         (vaisseaux/destinations/joueurs pouvaient chacun devenir longs) — même
+                         TabControl/TabItem nu (pas de style dédié) que Réglages ci-dessus. -->
+                    <TabControl x:Name="StatsTabControl" Grid.Row="5" Background="Transparent">
+                        <TabItem Header="🚀 Vaisseaux">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="0,10,0,0">
+                                    <TextBlock x:Name="StatsEmptyText" Text="Aucune statistique de vaisseau pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                               FontStyle="Italic" Visibility="Collapsed" Margin="0,0,0,10" />
+                                    <ItemsControl x:Name="StatsList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                        Background="{DynamicResource PanelAltBrush}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding ShipName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding FormattedDuration}" Foreground="{DynamicResource AccentBrush}"
+                                                                   FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="🛰 Destinations">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="0,10,0,0">
+                                    <TextBlock x:Name="DestinationsEmptyText" Text="Aucune destination pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                               FontStyle="Italic" Visibility="Collapsed" Margin="0,0,0,10" />
+                                    <ItemsControl x:Name="DestinationsList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                        Background="{DynamicResource PanelAltBrush}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DestinationName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding FormattedCount}" Foreground="{DynamicResource AccentBrush}"
+                                                                   FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <!-- Classement basé sur "Un joueur a rejoint {pseudo} a rejoint le Groupe."
+                             (voir GameLogAnnouncer.TryExtractGroupMemberJoined) : UNIQUEMENT les
+                             arrivées dans un groupe dont le joueur local fait déjà partie, jamais
+                             les connexions/déconnexions réseau (qui gonfleraient le compte de qui
+                             a la connexion la moins stable plutôt que de qui est réellement le
+                             plus souvent groupé). -->
+                        <TabItem Header="👥 Joueurs">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="0,10,0,0">
+                                    <TextBlock x:Name="GroupPlayersEmptyText" Text="Aucun groupement pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                               FontStyle="Italic" Visibility="Collapsed" Margin="0,0,0,10" />
+                                    <ItemsControl x:Name="GroupPlayersList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                        Background="{DynamicResource PanelAltBrush}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding PlayerName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding FormattedCount}" Foreground="{DynamicResource AccentBrush}"
+                                                                   FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </Border>
         </Border>

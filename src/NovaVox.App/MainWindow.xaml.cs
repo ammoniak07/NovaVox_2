@@ -95,6 +95,17 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<HudOverrideRowVm> _hudOverrideRows = new();
     private readonly ObservableCollection<DestinationAliasRowVm> _destinationAliasRows = new();
 
+    private readonly ObservableCollection<SchemaRowVm> _schemaRows = new();
+
+    /// <summary>Suivi en direct du temps passé dans le vaisseau actuellement occupé (panneau "📊 Statistiques") — voir ShipTimeTracker, OnGameLogEvent, _shipTimeFlushTimer.</summary>
+    private readonly ShipTimeTracker _shipTimeTracker = new();
+    private readonly ObservableCollection<ShipTimeRowVm> _shipTimeRows = new();
+    private readonly ObservableCollection<DestinationVisitRowVm> _destinationVisitRows = new();
+    private readonly ObservableCollection<GroupPlayerRowVm> _groupPlayerRows = new();
+    private readonly DispatcherTimer _shipTimeFlushTimer;
+    /// <summary>Dernier GameLogState.LastLineTimestamp connu au dernier flush du temps de jeu (voir FlushPlayTime) — null tant qu'aucune ligne du Game.log n'a encore été lue depuis le dernier démarrage de la surveillance, pour ne jamais créditer l'écart entre deux sessions de surveillance comme du temps de jeu.</summary>
+    private DateTimeOffset? _playTimeAnchor;
+
     private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
     /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
     private string? _selectedShipCheatSheetName;
@@ -149,6 +160,22 @@ public partial class MainWindow : Window
             AppendLog(OverlaySettingsLogSummary(), "diagnostic");
         };
 
+        // Clôt (et recrédite) périodiquement l'intervalle en cours du vaisseau
+        // actuellement suivi et le temps de jeu écoulé, sans attendre une
+        // notification de sortie ni la fermeture de NovaVox — sinon une
+        // session qui reste dans le même vaisseau (ou le jeu resté ouvert
+        // sans interruption) jusqu'à la fermeture de NovaVox (ou un simple
+        // crash du jeu) n'aurait jamais aucun temps crédité du tout. Perte
+        // maximale en cas d'arrêt brutal : l'intervalle entre deux
+        // déclenchements (voir Interval ci-dessous).
+        _shipTimeFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+        _shipTimeFlushTimer.Tick += (_, _) =>
+        {
+            FlushShipTime(DateTimeOffset.UtcNow);
+            FlushPlayTime();
+        };
+        _shipTimeFlushTimer.Start();
+
         Loaded += OnLoaded;
         Closing += OnClosing;
         SizeChanged += (_, _) => SaveWindowConfig();
@@ -186,6 +213,9 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
         InitializeGeminiChat();
         InitializeGameLog();
+        RegisterLiveSchemaNameAliases();
+        InitializeSchemas();
+        InitializeStats();
         InitializeShipCheatSheets();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
@@ -1341,6 +1371,9 @@ public partial class MainWindow : Window
             Hide();
             return;
         }
+        // Crédite le vaisseau en cours et le temps de jeu écoulé jusqu'à la fermeture, sans attendre le prochain tick de _shipTimeFlushTimer.
+        FlushShipTime(DateTimeOffset.UtcNow);
+        FlushPlayTime();
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
         _micLevelMonitor.Dispose();
@@ -1393,6 +1426,7 @@ public partial class MainWindow : Window
             GeminiContextBox.Text = ai.GeminiCustomContext;
             ConfirmCommandsCheckbox.IsChecked = ai.ConfirmCommands;
             RadioEffectCheckbox.IsChecked = ai.RadioEffect;
+            SelectComboItemByTag(FrenchNumberStyleCombo, ai.FrenchNumberStyle);
             PiperLengthScaleSlider.Value = ai.PiperLengthScale;
             PiperNoiseScaleSlider.Value = ai.PiperNoiseScale;
 
@@ -1400,6 +1434,7 @@ public partial class MainWindow : Window
             GameLogAnnounceCheckbox.IsChecked = ai.GameLogAnnounceEvents;
             PlayerHandleBox.Text = ai.GameLogPlayerHandle;
             GameLogPathBox.Text = ai.GameLogCustomPath;
+            GameLogBackupsPathBox.Text = ai.GameLogBackupsCustomPath;
 
             var overlay = _state.Overlay;
             OverlayEnabledCheckbox.IsChecked = overlay.Enabled;
@@ -1737,7 +1772,7 @@ public partial class MainWindow : Window
         JournalColumnPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         JournalGapColumn.Width = show ? new GridLength(16) : new GridLength(0);
         JournalColumn.Width = show ? new GridLength(2, GridUnitType.Star) : new GridLength(0);
-        JournalColumn.MinWidth = show ? 280 : 0;
+        JournalColumn.MinWidth = show ? 190 : 0;
     }
 
     private void RadioEffectCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -1746,6 +1781,17 @@ public partial class MainWindow : Window
         _state.Ai.RadioEffect = RadioEffectCheckbox.IsChecked ?? false;
         SaveAiAndLog();
         ApplyLiveVoiceSettings();
+    }
+
+    private void FrenchNumberStyleCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (FrenchNumberStyleCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+        {
+            _state.Ai.FrenchNumberStyle = tag;
+            SaveAiAndLog();
+            ApplyLiveVoiceSettings();
+        }
     }
 
     private void PiperLengthScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1794,6 +1840,7 @@ public partial class MainWindow : Window
 
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
+        RefreshGameSpecificButtonsVisibility();
         _overlayWindow?.LoadFromConfig();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
         ThemeManager.Apply(_state.Ai.UiTheme);
@@ -1849,6 +1896,7 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Ai.GameLogCustomPath = GameLogPathBox.Text.Trim();
         SaveAiAndLog();
+        RegisterLiveSchemaNameAliases(); // nouvelle installation -> peut-être un global.ini différent
         // La surveillance déjà démarrée ne reprend pas le nouveau chemin
         // toute seule (elle tourne dans son propre fil) : on la relance si
         // elle était active, comme un changement de pseudo RSI le ferait
@@ -1872,11 +1920,41 @@ public partial class MainWindow : Window
         GameLogPathBox.Text = dialog.FileName;
         _state.Ai.GameLogCustomPath = dialog.FileName;
         SaveAiAndLog();
+        RegisterLiveSchemaNameAliases(); // nouvelle installation -> peut-être un global.ini différent
         if (_state.Ai.GameLogEnabled)
         {
             StopGameLogWatcher();
             StartGameLogWatcher();
         }
+    }
+
+    /// <summary>
+    /// Dossier logbackups manuel (Réglages > 🛰 Game.log) :
+    /// GameLogBackups.FindBackupsFolder ne cherche qu'un dossier
+    /// "logbackups" voisin du Game.log — insuffisant si les archives ont
+    /// été déplacées/copiées ailleurs (ex. autre disque). Prioritaire sur
+    /// la détection automatique dès que renseigné (voir
+    /// ScanSchemaBackups_Click/GameLogBackups.ResolveBackupsFolder), vide =
+    /// comportement inchangé.
+    /// </summary>
+    private void GameLogBackupsPathBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Ai.GameLogBackupsCustomPath = GameLogBackupsPathBox.Text.Trim();
+        SaveAiAndLog();
+    }
+
+    private void GameLogBackupsPathBrowseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Sélectionne le dossier logbackups",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        GameLogBackupsPathBox.Text = dialog.FolderName;
+        _state.Ai.GameLogBackupsCustomPath = dialog.FolderName;
+        SaveAiAndLog();
     }
 
     private void UiLanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1894,6 +1972,16 @@ public partial class MainWindow : Window
             // prochain redémarrage de l'appli.
             InitializeVoskCatalog();
             InitializePiperCatalog();
+            // Les descriptions déjà affichées dans 📐 Schémas restent dans
+            // l'ancienne langue sinon (SchemaDatabase.Find ne re-traduit que lors
+            // de la prochaine détection/ajout) — reconstruit chaque ligne pour
+            // refléter tout de suite la nouvelle langue.
+            for (var i = 0; i < _schemaRows.Count; i++)
+                _schemaRows[i] = SchemaRowVm.Create(_schemaRows[i].Name, _state.Ai.UiLanguage);
+            // Chaque ligne remplacée ci-dessus repart de RowVisible=true (nouvelle
+            // instance) : réapplique le filtre de recherche actif pour ne pas
+            // réafficher des schémas qu'une recherche en cours masquait.
+            RefreshSchemasSearchVisibility();
         }
     }
 
@@ -1923,6 +2011,8 @@ public partial class MainWindow : Window
         UiLanguageLabelText.Text = T("settings.language.label");
         VoskModelLabelText.Text = T("settings.model.label");
         ShowSystemLogCheckbox.Content = T("settings.showlog");
+        GameModeLabelText.Text = T("settings.gameMode.label");
+        ThemeLabelText.Text = T("topbar.theme");
         KbCancelButton.Content = T("kb.cancel");
         KbConfirmButton.Content = T("kb.confirm");
 
@@ -1952,6 +2042,7 @@ public partial class MainWindow : Window
         VoiceOutputSectionLabelText.Text = T("settings.sons.voice.label");
         OutputDeviceLabelText.Text = T("settings.sons.voice.outputDevice");
         TtsVolumeLabelText.Text = T("settings.sons.voice.volume");
+        NumberStyleLabelText.Text = T("settings.sons.voice.numberStyle");
         AecEnabledCheckbox.Content = T("settings.sons.voice.aec");
     }
 
@@ -1985,15 +2076,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log de la barre
-    /// du haut à leur seule icône quand la fenêtre est trop étroite pour
-    /// tout afficher — sinon ces boutons (largeur "Auto" dans leur Grid,
-    /// donc jamais compressés) recouvraient le logo/titre (colonne "*",
-    /// elle compressible en premier) au lieu de leur laisser de la place
-    /// (retour utilisateur, capture d'écran à l'appui). Deux seuils
-    /// différents pour compacter/étendre (hystérésis) : sans ça, un
-    /// redimensionnement qui s'arrête pile sur la limite ferait osciller
-    /// les boutons en boucle entre les deux états.
+    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log/Schémas de la
+    /// barre du haut à leur seule icône quand la fenêtre est trop étroite
+    /// pour tout afficher confortablement — au-delà, la rangée de boutons
+    /// défile horizontalement (ScrollViewer, voir MainWindow.xaml) plutôt
+    /// que de forcer la fenêtre à s'agrandir ou de recouvrir le logo/titre.
+    /// Deux seuils différents pour compacter/étendre (hystérésis) : sans
+    /// ça, un redimensionnement qui s'arrête pile sur la limite ferait
+    /// osciller les boutons en boucle entre les deux états.
     /// </summary>
     private void UpdateHeaderButtonsCompactMode(double windowWidth)
     {
@@ -2006,6 +2096,8 @@ public partial class MainWindow : Window
         RefreshGeminiAssistantLabel();
         SetHeaderButtonLabel(GameLogHeaderButton, UiLocalization.T(_state.Ai.UiLanguage, "topbar.gamelog"));
         SetHeaderButtonLabel(ShipCheatSheetHeaderButton, "🚀 Vaisseaux");
+        SetHeaderButtonLabel(SchemasHeaderButton, "📐 Schémas");
+        SetHeaderButtonLabel(StatsHeaderButton, "📊 Statistiques");
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeaderButtonsCompactMode(e.NewSize.Width);
@@ -2374,6 +2466,7 @@ public partial class MainWindow : Window
         GameLogDestinationAliasesList.ItemsSource = _destinationAliasRows;
 
         RefreshGameLogStatus();
+        RefreshGameSpecificButtonsVisibility();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher();
     }
 
@@ -2390,6 +2483,502 @@ public partial class MainWindow : Window
 
     private void HookDestinationAliasRow(DestinationAliasRowVm row) =>
         row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(DestinationAliasRowVm.CustomName)) row.IsDirty = true; };
+
+    // ------------------------------------------------------------------ Schémas
+
+    /// <summary>
+    /// Lit le global.ini LOCAL du joueur (voir GameLogLocalization) pour
+    /// reconnaître les schémas quelle que soit la traduction communautaire
+    /// installée (SCEFRA via Multitool, ou une autre) — complète les alias
+    /// figés de SchemaNameAliases.fr.json, qui ne couvrent qu'une
+    /// traduction précise déjà constatée. Appelée au démarrage, AVANT
+    /// InitializeSchemas, pour que les fiches affichent fabricant/
+    /// description dès le premier affichage. Sans effet si le joueur n'a
+    /// pas de global.ini personnalisé (jeu non trouvé, ou traduction
+    /// jamais installée — fichier alors absent à cet emplacement).
+    /// </summary>
+    private void RegisterLiveSchemaNameAliases()
+    {
+        var customPath = _state.Ai.GameLogCustomPath;
+        var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+        var globalIniPath = GameLogLocalization.FindGlobalIniPath(liveLogPath);
+        if (globalIniPath is null) return;
+
+        var values = GameLogLocalization.ReadKeyedValues(globalIniPath, SchemaDatabase.LocalizationKeysOfInterest);
+        SchemaDatabase.RegisterLiveNameAliases(values);
+    }
+
+    private void InitializeSchemas()
+    {
+        foreach (var name in _state.Ai.SchemasReceived)
+            _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+        SchemasList.ItemsSource = _schemaRows;
+        RefreshSchemasEmptyState();
+
+        if (DateOnly.TryParse(_state.Ai.SchemaScanStartDate, System.Globalization.CultureInfo.InvariantCulture, out var startDate))
+            SchemaScanStartDatePicker.SelectedDate = startDate.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private void RefreshSchemasEmptyState() =>
+        SchemasEmptyText.Visibility = _schemaRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    private void OpenSchemas_Click(object sender, RoutedEventArgs e) => SchemasOverlay.Visibility = Visibility.Visible;
+
+    private void CloseSchemas_Click(object sender, RoutedEventArgs e) => SchemasOverlay.Visibility = Visibility.Collapsed;
+
+    private void AddSchema_Click(object sender, RoutedEventArgs e) => AddSchema(NewSchemaNameBox.Text);
+
+    private void NewSchemaNameBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) AddSchema(NewSchemaNameBox.Text);
+    }
+
+    /// <summary>
+    /// Autocomplétion de l'ajout manuel (voir SchemaDatabase.SearchNames) :
+    /// rafraîchit les suggestions à chaque frappe, ouvre le popup s'il y en
+    /// a, le referme sinon (texte vide ou aucune correspondance).
+    /// </summary>
+    private void NewSchemaNameBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        var suggestions = SchemaDatabase.SearchNames(NewSchemaNameBox.Text);
+        if (suggestions.Count == 0)
+        {
+            SchemaSuggestionsPopup.IsOpen = false;
+            return;
+        }
+        SchemaSuggestionsList.ItemsSource = suggestions;
+        SchemaSuggestionsList.SelectedIndex = 0;
+        SchemaSuggestionsPopup.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Navigation clavier dans les suggestions (avant NewSchemaNameBox_KeyDown,
+    /// qui ajoute le texte tel quel sur Entrée quand le popup est fermé) :
+    /// Haut/Bas change la sélection, Échap referme le popup sans rien
+    /// ajouter, Entrée ajoute directement la suggestion sélectionnée — pas
+    /// besoin d'une deuxième Entrée pour confirmer.
+    /// </summary>
+    private void NewSchemaNameBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (!SchemaSuggestionsPopup.IsOpen) return;
+
+        switch (e.Key)
+        {
+            case System.Windows.Input.Key.Down:
+                SchemaSuggestionsList.SelectedIndex = Math.Min(SchemaSuggestionsList.SelectedIndex + 1, SchemaSuggestionsList.Items.Count - 1);
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Up:
+                SchemaSuggestionsList.SelectedIndex = Math.Max(SchemaSuggestionsList.SelectedIndex - 1, 0);
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Escape:
+                SchemaSuggestionsPopup.IsOpen = false;
+                e.Handled = true;
+                break;
+            case System.Windows.Input.Key.Enter:
+                if (SchemaSuggestionsList.SelectedItem is string selected)
+                {
+                    SchemaSuggestionsPopup.IsOpen = false;
+                    AddSchema(selected);
+                    e.Handled = true; // empêche NewSchemaNameBox_KeyDown de traiter la même touche
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Clic sur une suggestion — PreviewMouseLeftButtonUp plutôt que Click/MouseUp
+    /// simple : avec StaysOpen="False", le Popup peut se refermer sur le
+    /// mouse-down avant que l'évènement de clic n'ait fini de remonter,
+    /// d'où la version "preview" (tunneling, déclenchée plus tôt) pour ne
+    /// jamais rater le clic.
+    /// </summary>
+    private void SchemaSuggestionsList_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        if (ItemsControl.ContainerFromElement(SchemaSuggestionsList, source) is not ListBoxItem { Content: string selected }) return;
+
+        SchemaSuggestionsPopup.IsOpen = false;
+        AddSchema(selected);
+    }
+
+    private void AddSchema(string rawName)
+    {
+        var name = rawName.Trim();
+        if (name.Length == 0) return;
+        if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return;
+
+        _state.Ai.SchemasReceived.Add(name);
+        _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+        RefreshSchemasEmptyState();
+        RefreshSchemasSearchVisibility();
+        SaveAiAndLog();
+        NewSchemaNameBox.Text = "";
+    }
+
+    private void DeleteSchema_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not SchemaRowVm row) return;
+        _state.Ai.SchemasReceived.RemoveAll(s => string.Equals(s, row.Name, StringComparison.OrdinalIgnoreCase));
+        _schemaRows.Remove(row);
+        RefreshSchemasEmptyState();
+        SaveAiAndLog();
+    }
+
+    /// <summary>Vide toute la liste d'un coup, après confirmation — pas de retour en arrière possible une fois enregistré.</summary>
+    private void DeleteAllSchemas_Click(object sender, RoutedEventArgs e)
+    {
+        if (_schemaRows.Count == 0) return;
+        if (MessageBox.Show(this, $"Supprimer les {_schemaRows.Count} schéma(s) reçu(s) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+
+        _state.Ai.SchemasReceived.Clear();
+        _schemaRows.Clear();
+        RefreshSchemasEmptyState();
+        RefreshSchemasSearchVisibility();
+        SaveAiAndLog();
+    }
+
+    /// <summary>Persiste la date de départ du scan d'archives (voir ScanSchemaBackups_Click) dès qu'elle change.</summary>
+    private void SchemaScanStartDatePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _state.Ai.SchemaScanStartDate = SchemaScanStartDatePicker.SelectedDate?.ToString("yyyy-MM-dd") ?? "";
+        SaveAiAndLog();
+    }
+
+    private void ClearSchemaScanStartDate_Click(object sender, RoutedEventArgs e) => SchemaScanStartDatePicker.SelectedDate = null;
+
+    private void SchemasSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SchemasSearchPlaceholder.Visibility = SchemasSearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RefreshSchemasSearchVisibility();
+    }
+
+    /// <summary>
+    /// Filtre la liste des schémas sur une recherche (nom/fabricant-type/
+    /// description) — même mécanique que RefreshGameLogSearchVisibility
+    /// (RowVisible par ligne, jamais _schemaRows lui-même).
+    /// </summary>
+    private void RefreshSchemasSearchVisibility()
+    {
+        var query = NormalizeForSearch(SchemasSearchBox.Text.Trim());
+        foreach (var row in _schemaRows)
+            row.RowVisible = query.Length == 0
+                || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
+                || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
+                || NormalizeForSearch(row.Description).Contains(query, StringComparison.Ordinal);
+
+        SchemasNoSearchResultText.Visibility = _schemaRows.Count > 0 && query.Length > 0 && _schemaRows.All(r => !r.RowVisible)
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Relit tous les Game.log archivés (dossier "logbackups", voisin du
+    /// Game.log en cours — ou l'emplacement manuel de Réglages > 🛰
+    /// Game.log s'il est renseigné, voir GameLogBackups.ResolveBackupsFolder)
+    /// pour retrouver des schémas reçus lors de sessions passées, jamais
+    /// vus par la surveillance en direct (NovaVox pas encore lancé à
+    /// l'époque, ou lancé après coup). N'ajoute que les noms pas déjà dans
+    /// la liste.
+    /// </summary>
+    private async void ScanSchemaBackups_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ScanSchemaBackupsButton.IsEnabled) return; // scan déjà en cours
+
+        var customBackupsPath = _state.Ai.GameLogBackupsCustomPath;
+        var customPath = _state.Ai.GameLogCustomPath;
+        var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+        var backupsFolder = GameLogBackups.ResolveBackupsFolder(customBackupsPath, liveLogPath);
+        if (backupsFolder is null)
+        {
+            var message = string.IsNullOrWhiteSpace(customBackupsPath)
+                ? "Aucune archive Game.log trouvée (dossier « logbackups » introuvable)."
+                : $"Le dossier logbackups renseigné dans Réglages > 🛰 Game.log est introuvable :\n{customBackupsPath}";
+            MessageBox.Show(this, message, "NovaVox");
+            return;
+        }
+
+        ScanSchemaBackupsButton.IsEnabled = false;
+        SchemaScanProgressBar.Value = 0;
+        SchemaScanProgressText.Text = "Scan en cours...";
+        SchemaScanProgressPanel.Visibility = Visibility.Visible;
+
+        // Date de départ optionnelle (voir SchemaScanStartDatePicker) : interprétée comme
+        // minuit UTC de ce jour-là, cohérent avec les horodatages du Game.log (toujours en
+        // UTC, "Z") — simple et suffisant pour un filtre après un wipe, pas besoin de plus
+        // de précision qu'une journée.
+        var minTimestamp = DateOnly.TryParse(_state.Ai.SchemaScanStartDate, System.Globalization.CultureInfo.InvariantCulture, out var startDate)
+            ? new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
+            : (DateTimeOffset?)null;
+
+        // IProgress<T>.Report capture le SynchronizationContext courant (thread UI) à la
+        // création : les mises à jour arrivent donc déjà sur le bon thread, pas besoin de
+        // Dispatcher.Invoke. Le scan lui-même (lecture de potentiellement des centaines
+        // d'archives) tourne sur un thread de pool via Task.Run pour ne jamais geler l'UI.
+        var progress = new Progress<(int Done, int Total)>(p =>
+        {
+            SchemaScanProgressBar.Value = p.Total > 0 ? p.Done * 100.0 / p.Total : 100;
+            SchemaScanProgressText.Text = $"Scan en cours... {p.Done} / {p.Total} archive(s)";
+        });
+
+        try
+        {
+            var found = await Task.Run(() => GameLogBackups.ScanForReceivedSchemas(backupsFolder, minTimestamp, progress));
+            var added = new List<string>();
+            foreach (var name in found)
+            {
+                if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) continue;
+                _state.Ai.SchemasReceived.Add(name);
+                added.Add(name);
+            }
+
+            if (added.Count == 0)
+            {
+                MessageBox.Show(this, "Aucun nouveau schéma trouvé dans les archives.", "NovaVox");
+                return;
+            }
+
+            foreach (var name in added)
+                _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+            RefreshSchemasEmptyState();
+            RefreshSchemasSearchVisibility();
+            SaveAiAndLog();
+            MessageBox.Show(this, $"{added.Count} nouveau(x) schéma(s) trouvé(s) dans les archives.", "NovaVox");
+        }
+        finally
+        {
+            SchemaScanProgressPanel.Visibility = Visibility.Collapsed;
+            ScanSchemaBackupsButton.IsEnabled = true;
+        }
+    }
+
+    // ------------------------------------------------------- Statistiques
+
+    private void InitializeStats()
+    {
+        StatsList.ItemsSource = _shipTimeRows;
+        DestinationsList.ItemsSource = _destinationVisitRows;
+        GroupPlayersList.ItemsSource = _groupPlayerRows;
+        RefreshShipTimeStats();
+        RefreshDestinationStats();
+        RefreshGroupPlayerStats();
+        RefreshPlayTimeAndAuecDisplay();
+    }
+
+    private void RefreshShipTimeStats()
+    {
+        _shipTimeRows.Clear();
+        foreach (var (ship, seconds) in _state.Ai.ShipTimeSeconds.OrderByDescending(kv => kv.Value))
+            _shipTimeRows.Add(new ShipTimeRowVm { ShipName = ship, TotalSeconds = seconds });
+        StatsEmptyText.Visibility = _shipTimeRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshDestinationStats()
+    {
+        _destinationVisitRows.Clear();
+        foreach (var (destination, count) in _state.Ai.DestinationVisitCounts.OrderByDescending(kv => kv.Value))
+            _destinationVisitRows.Add(new DestinationVisitRowVm { DestinationName = destination, VisitCount = count });
+        DestinationsEmptyText.Visibility = _destinationVisitRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshGroupPlayerStats()
+    {
+        _groupPlayerRows.Clear();
+        foreach (var (player, count) in _state.Ai.GroupPlayerCounts.OrderByDescending(kv => kv.Value))
+            _groupPlayerRows.Add(new GroupPlayerRowVm { PlayerName = player, JoinCount = count });
+        GroupPlayersEmptyText.Visibility = _groupPlayerRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshPlayTimeAndAuecDisplay()
+    {
+        StatsPlayTimeText.Text = ShipTimeRowVm.FormatDuration(_state.Ai.PlayTimeSeconds);
+        StatsAuecSentText.Text = $"{_state.Ai.AuecSent.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))} aUEC";
+    }
+
+    private void OpenStats_Click(object sender, RoutedEventArgs e)
+    {
+        // Les statistiques en cours (vaisseau occupé, temps de jeu) doivent
+        // être à jour dès l'ouverture du panneau, sans attendre le prochain
+        // déclenchement de _shipTimeFlushTimer (jusqu'à 60s de retard sinon).
+        FlushShipTime(DateTimeOffset.UtcNow);
+        FlushPlayTime();
+        StatsOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CloseStats_Click(object sender, RoutedEventArgs e) => StatsOverlay.Visibility = Visibility.Collapsed;
+
+    /// <summary>Crédite <paramref name="seconds"/> au total de <paramref name="ship"/>, persiste, et rafraîchit la liste si le panneau est actuellement ouvert.</summary>
+    private void CreditShipTime(string ship, double seconds)
+    {
+        _state.Ai.ShipTimeSeconds[ship] = _state.Ai.ShipTimeSeconds.GetValueOrDefault(ship) + seconds;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshShipTimeStats();
+    }
+
+    /// <summary>Clôt (sans changer de vaisseau) l'intervalle en cours jusqu'à <paramref name="ts"/> — voir _shipTimeFlushTimer (constructeur) et OpenStats_Click.</summary>
+    private void FlushShipTime(DateTimeOffset ts)
+    {
+        if (_shipTimeTracker.Flush(ts) is { } closed)
+            CreditShipTime(closed.Ship, closed.Seconds);
+    }
+
+    /// <summary>
+    /// Crédite le temps de jeu écoulé depuis le dernier flush, à partir de
+    /// GameLogState.LastLineTimestamp (horodatage réel de la dernière ligne
+    /// lue dans le Game.log) plutôt que de l'horloge de la machine — tant
+    /// que le jeu n'écrit plus rien (fermé, ou NovaVox pas en train de
+    /// surveiller), aucun temps n'est crédité. Premier appel après un
+    /// (re)démarrage de la surveillance : établit juste la référence de
+    /// départ, sans rien créditer encore (sinon tout l'écart depuis la
+    /// dernière session de surveillance serait compté comme du temps de jeu).
+    /// </summary>
+    private void FlushPlayTime()
+    {
+        var lastKnown = _gameLogWatcher?.GetState().LastLineTimestamp;
+        if (lastKnown is not { } ts) return;
+
+        if (_playTimeAnchor is not { } anchor)
+        {
+            _playTimeAnchor = ts;
+            return;
+        }
+
+        var elapsed = (ts - anchor).TotalSeconds;
+        _playTimeAnchor = ts;
+        if (elapsed <= 0) return;
+
+        _state.Ai.PlayTimeSeconds += elapsed;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
+    }
+
+    /// <summary>Crédite <paramref name="amount"/> au total aUEC envoyé, persiste, et rafraîchit l'affichage si le panneau est actuellement ouvert.</summary>
+    private void CreditAuecSent(double amount)
+    {
+        _state.Ai.AuecSent += amount;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
+    }
+
+    /// <summary>Incrémente le compteur de groupement de <paramref name="player"/>, persiste, et rafraîchit la liste si le panneau est actuellement ouvert.</summary>
+    private void CreditGroupPlayer(string player)
+    {
+        _state.Ai.GroupPlayerCounts[player] = _state.Ai.GroupPlayerCounts.GetValueOrDefault(player) + 1;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshGroupPlayerStats();
+    }
+
+    /// <summary>
+    /// Vide toute la liste d'un coup, après confirmation — pas de retour en
+    /// arrière possible une fois enregistré. Réinitialise AUSSI
+    /// StatsScannedBackupFiles : après un "Tout supprimer", l'utilisateur
+    /// s'attend à ce que "Charger les archives" puisse tout retrouver,
+    /// pas à ce que chaque archive reste marquée comme déjà vue et ne
+    /// ramène donc plus rien (c'était le bug avant ce correctif).
+    /// </summary>
+    private void DeleteAllStats_Click(object sender, RoutedEventArgs e)
+    {
+        // StatsScannedBackupFiles compte aussi : sans ça, une fois les 4 stats déjà
+        // vidées (ex. un "Tout supprimer" fait avant ce correctif, qui ne vidait pas
+        // encore cette liste), le bouton redevenait inerte (hasAnything = false) et
+        // ne pouvait plus jamais réinitialiser StatsScannedBackupFiles — "Charger les
+        // archives" restait cassé pour de bon, sans aucun moyen de s'en sortir.
+        var hasAnything = _state.Ai.ShipTimeSeconds.Count > 0 || _state.Ai.DestinationVisitCounts.Count > 0
+            || _state.Ai.GroupPlayerCounts.Count > 0 || _state.Ai.PlayTimeSeconds > 0 || _state.Ai.AuecSent > 0
+            || _state.Ai.StatsScannedBackupFiles.Count > 0;
+        if (!hasAnything) return;
+        if (MessageBox.Show(this, "Supprimer toutes les statistiques enregistrées (vaisseaux, destinations, joueurs groupés, temps de jeu, aUEC) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+
+        _state.Ai.ShipTimeSeconds.Clear();
+        _state.Ai.DestinationVisitCounts.Clear();
+        _state.Ai.GroupPlayerCounts.Clear();
+        _state.Ai.PlayTimeSeconds = 0;
+        _state.Ai.AuecSent = 0;
+        _state.Ai.StatsScannedBackupFiles.Clear();
+        RefreshShipTimeStats();
+        RefreshDestinationStats();
+        RefreshGroupPlayerStats();
+        RefreshPlayTimeAndAuecDisplay();
+        SaveAiAndLog();
+    }
+
+    /// <summary>
+    /// Relit les archives Game.log (logbackups) pour compléter les
+    /// statistiques (vaisseaux, temps de jeu, aUEC, destinations) avec des
+    /// sessions jamais suivies en direct par NovaVox (avant sa première
+    /// utilisation, ou simplement fermé à l'époque) — même mécanique que
+    /// ScanSchemaBackups_Click (hors du thread UI, barre de progression).
+    /// AiConfig.StatsScannedBackupFiles évite de recompter une archive déjà
+    /// prise en compte lors d'un scan précédent.
+    /// </summary>
+    private async void ScanStatsBackups_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ScanStatsBackupsButton.IsEnabled) return; // scan déjà en cours
+
+        var customBackupsPath = _state.Ai.GameLogBackupsCustomPath;
+        var customPath = _state.Ai.GameLogCustomPath;
+        var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+        var backupsFolder = GameLogBackups.ResolveBackupsFolder(customBackupsPath, liveLogPath);
+        if (backupsFolder is null)
+        {
+            var message = string.IsNullOrWhiteSpace(customBackupsPath)
+                ? "Aucune archive Game.log trouvée (dossier « logbackups » introuvable)."
+                : $"Le dossier logbackups renseigné dans Réglages > 🛰 Game.log est introuvable :\n{customBackupsPath}";
+            MessageBox.Show(this, message, "NovaVox");
+            return;
+        }
+
+        ScanStatsBackupsButton.IsEnabled = false;
+        StatsScanProgressBar.Value = 0;
+        StatsScanProgressText.Text = "Scan en cours...";
+        StatsScanProgressPanel.Visibility = Visibility.Visible;
+
+        var progress = new Progress<(int Done, int Total)>(p =>
+        {
+            StatsScanProgressBar.Value = p.Total > 0 ? p.Done * 100.0 / p.Total : 100;
+            StatsScanProgressText.Text = $"Scan en cours... {p.Done} / {p.Total} archive(s)";
+        });
+
+        try
+        {
+            var alreadyScanned = _state.Ai.StatsScannedBackupFiles;
+            var destinationAliases = _state.Ai.GameLogDestinationAliases;
+            var scanResult = await Task.Run(() => GameLogBackups.ScanForStats(backupsFolder, destinationAliases, alreadyScanned, progress));
+
+            foreach (var name in scanResult.ScannedFileNames)
+                _state.Ai.StatsScannedBackupFiles.Add(name);
+
+            var foundAnything = scanResult.ShipSecondsByShip.Count > 0 || scanResult.DestinationVisitCounts.Count > 0
+                || scanResult.GroupPlayerCounts.Count > 0 || scanResult.PlayTimeSeconds > 0 || scanResult.AuecSent > 0;
+            if (!foundAnything)
+            {
+                SaveAiAndLog(); // persiste quand même StatsScannedBackupFiles : inutile de rescanner les mêmes archives vides la prochaine fois
+                MessageBox.Show(this, "Aucune nouvelle statistique trouvée dans les archives.", "NovaVox");
+                return;
+            }
+
+            foreach (var (ship, seconds) in scanResult.ShipSecondsByShip)
+                _state.Ai.ShipTimeSeconds[ship] = _state.Ai.ShipTimeSeconds.GetValueOrDefault(ship) + seconds;
+            foreach (var (destination, count) in scanResult.DestinationVisitCounts)
+                _state.Ai.DestinationVisitCounts[destination] = _state.Ai.DestinationVisitCounts.GetValueOrDefault(destination) + count;
+            foreach (var (player, count) in scanResult.GroupPlayerCounts)
+                _state.Ai.GroupPlayerCounts[player] = _state.Ai.GroupPlayerCounts.GetValueOrDefault(player) + count;
+            _state.Ai.PlayTimeSeconds += scanResult.PlayTimeSeconds;
+            _state.Ai.AuecSent += scanResult.AuecSent;
+
+            RefreshShipTimeStats();
+            RefreshDestinationStats();
+            RefreshGroupPlayerStats();
+            RefreshPlayTimeAndAuecDisplay();
+            SaveAiAndLog();
+            MessageBox.Show(this, $"Statistiques complétées depuis {scanResult.ScannedFileNames.Count} archive(s).", "NovaVox");
+        }
+        finally
+        {
+            StatsScanProgressPanel.Visibility = Visibility.Collapsed;
+            ScanStatsBackupsButton.IsEnabled = true;
+        }
+    }
 
     // ------------------------------------------------------- Aide-mémoire vaisseaux
 
@@ -2625,6 +3214,15 @@ public partial class MainWindow : Window
 
     private void StopGameLogWatcher()
     {
+        // Avant de couper : crédite ce qui reste en cours (vaisseau, temps de
+        // jeu) plutôt que de le perdre. _playTimeAnchor est remis à null —
+        // sans ça, une réactivation plus tard après une longue pause
+        // créditerait d'un coup tout l'écart comme s'il s'agissait de temps
+        // de jeu (voir FlushPlayTime).
+        FlushShipTime(DateTimeOffset.UtcNow);
+        FlushPlayTime();
+        _playTimeAnchor = null;
+
         if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = null;
         _gameLogWatcher?.Dispose();
         _gameLogWatcher = null;
@@ -2643,6 +3241,23 @@ public partial class MainWindow : Window
         GameLogHeaderButton.Visibility = visibility;
         GameLogSettingsTab.Visibility = visibility;
         GeminiWikiEnabledCheckbox.Visibility = visibility;
+    }
+
+    /// <summary>
+    /// Les boutons d'en-tête "🚀 Vaisseaux"/"📐 Schémas"/"📊 Statistiques" ne
+    /// concernent que Star Citizen (aide-mémoire vaisseaux, base de schémas
+    /// de fabrication, statistiques dérivées du Game.log) — masqués en mode
+    /// "Autre jeu". Contrairement à RefreshGameLogStatus ci-dessus, dépend
+    /// uniquement du MODE DE JEU, pas de la case "Surveillance du
+    /// Game.log" : l'aide-mémoire vaisseaux et l'ajout manuel de schémas
+    /// restent utiles même surveillance coupée, en mode Star Citizen.
+    /// </summary>
+    private void RefreshGameSpecificButtonsVisibility()
+    {
+        var visibility = _state.GameMode.CurrentMode == GameModeConfig.StarCitizen ? Visibility.Visible : Visibility.Collapsed;
+        ShipCheatSheetHeaderButton.Visibility = visibility;
+        SchemasHeaderButton.Visibility = visibility;
+        StatsHeaderButton.Visibility = visibility;
     }
 
     private void OnGameLogEvent(GameLogEvent evt)
@@ -2664,13 +3279,41 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (evt.Type == GameLogEventTypes.HudNotification && evt.Text is not null)
+        {
+            var cleanText = GameLogAnnouncer.CleanHudNotificationText(evt.Text);
+
+            var shipChange = GameLogAnnouncer.TryExtractShipChannelEvent(cleanText);
+            if (shipChange is not null)
+            {
+                var ts = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
+                if (_shipTimeTracker.Process(ts, shipChange.Value.ShipName, shipChange.Value.Entered) is { } closed)
+                    CreditShipTime(closed.Ship, closed.Seconds);
+            }
+
+            var auecSent = GameLogAnnouncer.TryExtractAuecSent(cleanText);
+            if (auecSent is { } amount) CreditAuecSent(amount);
+
+            var groupMember = GameLogAnnouncer.TryExtractGroupMemberJoined(cleanText);
+            if (groupMember is not null) CreditGroupPlayer(groupMember);
+        }
+
         var result = GameLogAnnouncer.Build(evt, _state.Ai);
         if (result is null) return;
 
         // Overlay "Zone :" — uniquement mise à jour quand la zone a pu être
         // résolue (jamais écrasée par "zone inconnue"), comme
         // _overlay_set_zone côté Python.
-        if (result.ResolvedZone is not null) _overlayWindow?.SetZone(result.ResolvedZone);
+        if (result.ResolvedZone is not null)
+        {
+            _overlayWindow?.SetZone(result.ResolvedZone);
+            // Statistiques "destinations les plus visitées" : réutilise la
+            // résolution déjà calculée par GameLogAnnouncer.Build plutôt que
+            // de la refaire, pour rester identique au nom affiché à l'écran.
+            _state.Ai.DestinationVisitCounts[result.ResolvedZone] = _state.Ai.DestinationVisitCounts.GetValueOrDefault(result.ResolvedZone) + 1;
+            SaveAiAndLog();
+            if (StatsOverlay.Visibility == Visibility.Visible) RefreshDestinationStats();
+        }
         if (result.ResolvedJurisdiction is not null) _overlayWindow?.SetJuridiction(result.ResolvedJurisdiction);
         if (result.ResolvedArmistice is not null) _overlayWindow?.SetArmistice(result.ResolvedArmistice.Value);
 
@@ -2692,7 +3335,14 @@ public partial class MainWindow : Window
             HookDestinationAliasRow(row);
             _destinationAliasRows.Insert(0, row);
         }
-        if (result.IsNewHudOverride || result.IsNewDestinationAlias)
+        if (result.ReceivedSchemaName is not null)
+        {
+            _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName, _state.Ai.UiLanguage));
+            RefreshSchemasEmptyState();
+            RefreshSchemasSearchVisibility();
+        }
+
+        if (result.IsNewHudOverride || result.IsNewDestinationAlias || result.ReceivedSchemaName is not null)
         {
             SaveAiAndLog();
             // Une recherche active dans le panneau Game.log doit continuer à
@@ -2824,6 +3474,7 @@ public partial class MainWindow : Window
         _testTts.LengthScale = _state.Ai.PiperLengthScale;
         _testTts.NoiseScale = _state.Ai.PiperNoiseScale;
         _testTts.RadioEffectEnabled = _state.Ai.RadioEffect;
+        _testTts.NumberStyle = FrenchNumberExpander.ParseStyle(_state.Ai.FrenchNumberStyle);
         _testTts.Volume = _state.Audio.TtsVolume;
         _testTts.OutputDeviceName = _state.Audio.OutputDevice;
     }
@@ -3350,6 +4001,8 @@ public partial class MainWindow : Window
         _testTts!.LengthScale = PiperLengthScaleSlider.Value;
         _testTts.NoiseScale = PiperNoiseScaleSlider.Value;
         _testTts.RadioEffectEnabled = RadioEffectCheckbox.IsChecked ?? false;
+        if (FrenchNumberStyleCombo.SelectedItem is ComboBoxItem { Tag: string numberStyleTag })
+            _testTts.NumberStyle = FrenchNumberExpander.ParseStyle(numberStyleTag);
         _testTts.Volume = _state.Audio.TtsVolume;
         _testTts.OutputDeviceName = _state.Audio.OutputDevice;
         _testTts.Speak("Ceci est un test de la voix sélectionnée.", row.Id);

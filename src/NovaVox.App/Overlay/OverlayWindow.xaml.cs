@@ -51,6 +51,28 @@ public partial class OverlayWindow : Window
     private string? _draggingKey;
     private FrameworkElement? _draggingHandle;
     private OverlayDragGhostWindow? _dragGhost;
+    /// <summary>
+    /// Position écran (voir RowDragHandle_MouseMove) au dernier calcul de
+    /// placement réellement effectué — null tant qu'aucun n'a encore eu
+    /// lieu pour le glisser en cours (voir PlacementReevaluateThresholdPx).
+    /// </summary>
+    private Point? _lastPlacementEvalScreenPos;
+    /// <summary>
+    /// Distance minimale (pixels physiques écran) depuis le dernier calcul
+    /// de placement avant d'en refaire un — un déplacement de colonne
+    /// change la géométrie de TOUTES les colonnes suivantes (largeur,
+    /// position), ce qui peut faire basculer le calcul vers une colonne
+    /// différente sous un curseur resté quasiment immobile (un vrai pouls
+    /// humain n'est jamais parfaitement stable) : la ligne repartait alors
+    /// aussitôt dans l'autre sens, et ainsi de suite — clignotement
+    /// constaté en conditions réelles, surtout en s'approchant d'une
+    /// colonne qui s'agrandit. Un seuil de mouvement RÉEL avant de
+    /// recalculer casse cette boucle sans toucher à la géométrie elle-même
+    /// (contrairement à une tentative précédente qui figeait les largeurs
+    /// de colonne — déplaçait le problème : la zone de dépôt ne
+    /// correspondait alors plus à son centre visuel réel).
+    /// </summary>
+    private const double PlacementReevaluateThresholdPx = 6.0;
     private readonly Dictionary<string, Grid> _rowGridByKey;
     private readonly Dictionary<Grid, string> _rowKeyByGrid;
     private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3, Column4, Column5, Column6, Column7, Column8 };
@@ -764,6 +786,7 @@ public partial class OverlayWindow : Window
         if (sender is not FrameworkElement { Tag: string key } handle) return;
         _draggingKey = key;
         _draggingHandle = handle;
+        _lastPlacementEvalScreenPos = null;
         handle.CaptureMouse();
         e.Handled = true;
         ShowDragGhost(key, handle.PointToScreen(e.GetPosition(handle)));
@@ -885,6 +908,35 @@ public partial class OverlayWindow : Window
         var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
         MoveDragGhostTo(screenPos);
 
+        // Debounce : ne recalcule le placement que si le curseur a RÉELLEMENT
+        // bougé d'au moins PlacementReevaluateThresholdPx depuis le dernier
+        // calcul (voir le commentaire du champ) — casse la boucle de
+        // rétroaction entre le recalcul de géométrie des colonnes et un
+        // curseur resté quasiment immobile, sans figer la géométrie elle-même.
+        if (_lastPlacementEvalScreenPos is { } last && (screenPos - last).Length < PlacementReevaluateThresholdPx)
+            return;
+        _lastPlacementEvalScreenPos = screenPos;
+
+        EvaluateRowPlacement(_draggingKey, screenPos);
+    }
+
+    /// <summary>
+    /// Calcule la colonne/position cible sous <paramref name="screenPos"/> et y
+    /// déplace la ligne <paramref name="key"/> (voir MoveRowToColumnIndex) — ne
+    /// fait rien si le curseur n'est au-dessus d'aucune fenêtre connue (voir
+    /// WindowIdAtScreenPoint). Appelée à la fois par RowDragHandle_MouseMove
+    /// (avec son seuil de nouveau calcul, voir PlacementReevaluateThresholdPx)
+    /// ET, SANS ce seuil, une dernière fois par RowDragHandle_MouseLeftButtonUp
+    /// juste avant de sauvegarder : sinon la toute dernière correction de
+    /// position avant de relâcher le bouton pouvait rester sous le seuil et
+    /// n'être jamais appliquée — la ligne se sauvegardait alors à la position
+    /// du calcul précédent, PAS à celle du relâchement réel (symptôme
+    /// constaté : relâcher sur la moitié gauche d'une colonne annulait/
+    /// ramenait la ligne en arrière, la moitié droite fonctionnait car plus
+    /// souvent atteinte après un calcul déjà à jour).
+    /// </summary>
+    private void EvaluateRowPlacement(string key, Point screenPos)
+    {
         var targetWindowId = WindowIdAtScreenPoint(screenPos);
         if (targetWindowId is null) return;
 
@@ -892,7 +944,7 @@ public partial class OverlayWindow : Window
         var positionInColumns = entry.ColumnsPanel.PointFromScreen(screenPos);
         var targetColumn = entry.Columns[ColumnIndexAtX(entry.ColumnsPanel, entry.Columns, positionInColumns.X)];
         var targetIndex = RowIndexAtY(targetColumn, targetColumn.PointFromScreen(screenPos).Y);
-        MoveRowToColumnIndex(_draggingKey, targetWindowId.Value, targetColumn, targetIndex);
+        MoveRowToColumnIndex(key, targetWindowId.Value, targetColumn, targetIndex);
     }
 
     private void RowDragHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -900,6 +952,7 @@ public partial class OverlayWindow : Window
         if (_draggingKey is null) return;
         var key = _draggingKey!;
         var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
+        EvaluateRowPlacement(key, screenPos);
         _draggingHandle?.ReleaseMouseCapture();
         _draggingHandle = null;
         _draggingKey = null;
@@ -1035,6 +1088,21 @@ public partial class OverlayWindow : Window
         // une toute nouvelle colonne rejointe ne montrerait sa bande qu'une
         // fois le glisser terminé — moins clair pour viser une 5e position.
         RefreshColumnEditingStrips();
+
+        // Force IMMÉDIATEMENT une passe de mise en page (Measure/Arrange) —
+        // sans ça, ColumnIndexAtX/RowIndexAtY (RowDragHandle_MouseMove,
+        // potentiellement redéclenché avant que WPF n'ait eu l'occasion de
+        // recalculer la géométrie après CE déplacement) continuent de lire
+        // ActualWidth/TranslatePoint d'AVANT ce changement de colonnes —
+        // géométrie périmée qui fait osciller la cible calculée d'un
+        // MouseMove à l'autre (clignotement constaté en conditions réelles,
+        // particulièrement net en glissant vers la droite : la colonne
+        // quittée rétrécit pendant que la colonne rejointe grandit, deux
+        // largeurs qui changent en même temps). UpdateLayout() force une
+        // passe SYNCHRONE plutôt que d'attendre le prochain cycle de rendu
+        // WPF (souvent plus lent que la fréquence des évènements souris).
+        Window.GetWindow(targetColumn)?.UpdateLayout();
+        if (!sameColumn) Window.GetWindow(currentColumn)?.UpdateLayout();
 
         if (previousWindowId != 0 && previousWindowId != targetWindowId)
             CloseSatelliteIfEmpty(previousWindowId);

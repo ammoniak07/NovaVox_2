@@ -116,6 +116,7 @@ public sealed class VoiceOrchestrator : IDisposable
         _tts.LengthScale = _state.Ai.PiperLengthScale;
         _tts.NoiseScale = _state.Ai.PiperNoiseScale;
         _tts.RadioEffectEnabled = _state.Ai.RadioEffect;
+        _tts.NumberStyle = FrenchNumberExpander.ParseStyle(_state.Ai.FrenchNumberStyle);
         _tts.Volume = _state.Audio.TtsVolume;
         _tts.OutputDeviceName = _state.Audio.OutputDevice;
     }

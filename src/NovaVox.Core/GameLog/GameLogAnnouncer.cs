@@ -28,7 +28,9 @@ public sealed record GameLogAnnouncement(
     /// <summary>Juridiction extraite d'une notification HUD "JURIDICTION : {nom}" (ex. "Rough & Ready", "Aucune juridiction") — à afficher dans l'overlay, comme ResolvedZone.</summary>
     string? ResolvedJurisdiction = null,
     /// <summary>true si la notification HUD signale l'entrée en zone d'armistice, false si elle signale la sortie, null si la notification n'a rien à voir — à afficher dans l'overlay (jamais écrasé par un texte HUD sans rapport, comme ResolvedZone/ResolvedJurisdiction).</summary>
-    bool? ResolvedArmistice = null);
+    bool? ResolvedArmistice = null,
+    /// <summary>Nom du schéma extrait d'une notification HUD "Schémas reçu : {nom}", uniquement si cette notification vient d'être ajoutée à AiConfig.SchemasReceived (pas déjà présent) — à ajouter à la liste affichée (Réglages > 📐 Schémas).</summary>
+    string? ReceivedSchemaName = null);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -135,6 +137,12 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^ENTRÉE DU JOURNAL AJOUTÉE\s*:\s*(?<name>.+)$")]
     private static partial Regex JournalEntryAddedRegex();
 
+    // Schéma de fabrication reçu (ex. "Schémas reçu : Ezra") : même principe
+    // que les préfixes d'objectif/contrat ci-dessus — seul le nom du schéma
+    // change d'une rencontre à l'autre, jamais le préfixe.
+    [GeneratedRegex(@"^Schémas reçu\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex SchemaReceivedRegex();
+
     // Canal de discussion d'un vaisseau ("CANAL 'Drake Cutter : Ammoniak'
     // rejoint.") : seul le nom du vaisseau change d'un vaisseau à l'autre —
     // le nom du pilote qui suit (généralement le joueur lui-même) n'a pas
@@ -223,6 +231,7 @@ public static partial class GameLogAnnouncer
         (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}"),
         (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}"),
         (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
+        (SchemaReceivedRegex(), _ => "Schémas reçu : {name}"),
         (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint."),
         (ShipChannelLeftRegex(), _ => "Vous avez quitté le CANAL '{name}'."),
         (NewGroupLeaderRegex(), _ => "Nouveau chef de groupe : {name}"),
@@ -344,13 +353,120 @@ public static partial class GameLogAnnouncer
             : ArmisticeLeftRegex().IsMatch(rawText) ? false
             : null;
 
+        var newSchemaName = MaybeRegisterReceivedSchema(rawText, config);
+
         return new GameLogAnnouncement(
             key, text, GameLogPhraseCatalog.Emoji.GetValueOrDefault(key, ""), RawHudText: rawHudTextForLog,
             IsNewDestinationAlias: false, DestinationAliasKey: null,
             IsNewHudOverride: isNew, HudOverrideKey: isNew ? templateKey : null,
             UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null,
             ResolvedJurisdiction: resolvedJurisdiction,
-            ResolvedArmistice: resolvedArmistice);
+            ResolvedArmistice: resolvedArmistice,
+            ReceivedSchemaName: newSchemaName);
+    }
+
+    /// <summary>
+    /// Port de la détection "Schémas reçu : {nom}" (voir SchemaReceivedRegex) :
+    /// ajoute le nom à AiConfig.SchemasReceived s'il n'y figure pas déjà
+    /// (comparaison insensible à la casse), et ne renvoie ce nom que dans
+    /// ce cas — l'appelant (MainWindow) l'ajoute alors à la liste affichée
+    /// dans Réglages > 📐 Schémas sans attendre une réouverture du panneau.
+    /// </summary>
+    private static string? MaybeRegisterReceivedSchema(string rawText, AiConfig config)
+    {
+        var name = TryExtractReceivedSchemaName(rawText);
+        if (name is null) return null;
+        if (config.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return null;
+
+        config.SchemasReceived.Add(name);
+        return name;
+    }
+
+    /// <summary>
+    /// Extrait le nom d'un texte HUD "Schémas reçu : {nom}", sans effet de
+    /// bord (contrairement à MaybeRegisterReceivedSchema) — utilisé aussi
+    /// par le scan rétroactif des archives Game.log (voir GameLogBackups),
+    /// qui gère lui-même la fusion dans AiConfig.SchemasReceived une fois
+    /// tous les fichiers parcourus.
+    /// </summary>
+    public static string? TryExtractReceivedSchemaName(string hudText)
+    {
+        var match = SchemaReceivedRegex().Match(hudText);
+        if (!match.Success) return null;
+        var name = match.Groups["name"].Value.Trim();
+        return name.Length == 0 ? null : name;
+    }
+
+    /// <summary>
+    /// Détecte une notification HUD d'entrée/sortie du canal de bord d'un
+    /// vaisseau ("CANAL '{vaisseau} : {pilote}' rejoint." / "Vous avez
+    /// quitté le CANAL '{vaisseau} : {pilote}'.") — émise quand LE JOUEUR
+    /// LOCAL entre dans un vaisseau (le sien, ou celui d'un équipage en
+    /// tant que passager/tourelleur) ou en sort (voir
+    /// ShipChannelJoinedRegex/ShipChannelLeftRegex, déjà utilisés pour les
+    /// annoncer à voix haute). Utilisé pour le suivi du temps passé par
+    /// vaisseau (voir ShipTimeTracker), sans effet de bord — comme
+    /// TryExtractReceivedSchemaName. La variante "via un mouvement de
+    /// groupe" (PlayerJoinedShipChannelViaGroupRegex/PlayerLeftShipChannelViaGroupRegex)
+    /// concerne un AUTRE membre du groupe qui bouge, pas le joueur local,
+    /// et n'est donc volontairement pas prise en compte ici.
+    /// </summary>
+    public static (string ShipName, bool Entered)? TryExtractShipChannelEvent(string hudText)
+    {
+        var joined = ShipChannelJoinedRegex().Match(hudText);
+        if (joined.Success)
+        {
+            var name = joined.Groups["name"].Value.Trim();
+            return name.Length == 0 ? null : (name, true);
+        }
+
+        var left = ShipChannelLeftRegex().Match(hudText);
+        if (left.Success)
+        {
+            var name = left.Groups["name"].Value.Trim();
+            return name.Length == 0 ? null : (name, false);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Extrait le montant d'un texte HUD "Vous avez envoyé {pseudo} :
+    /// {montant} aUEC" (voir AuecSentRegex), sans effet de bord — utilisé
+    /// pour le total cumulé affiché dans le panneau "📊 Statistiques" (suivi
+    /// en direct et scan rétroactif des archives, voir
+    /// GameLogBackups.ScanForStats). Le montant du jeu utilise des virgules
+    /// comme séparateurs de milliers ("2,000,000"), retirées avant
+    /// conversion.
+    /// </summary>
+    public static double? TryExtractAuecSent(string hudText)
+    {
+        var match = AuecSentRegex().Match(hudText);
+        if (!match.Success) return null;
+        var digitsOnly = match.Groups["montant"].Value.Replace(",", "");
+        return double.TryParse(digitsOnly, System.Globalization.CultureInfo.InvariantCulture, out var amount) ? amount : null;
+    }
+
+    /// <summary>
+    /// Détecte un texte HUD "Un joueur a rejoint {pseudo} a rejoint le
+    /// Groupe." (voir PlayerJoinedGroupRegex, déjà utilisé pour l'annonce
+    /// vocale) — un autre joueur qui rejoint un groupe dont LE JOUEUR LOCAL
+    /// fait déjà partie. Utilisé pour le classement "joueurs les plus
+    /// groupés" (panneau "📊 Statistiques"), sans effet de bord — comme
+    /// TryExtractReceivedSchemaName. Volontairement PAS basé sur "s'est
+    /// connecté"/"a quitté le Groupe" (GroupMemberConnectedRegex/
+    /// PlayerLeftGroupRegex) : ces notifications-là peuvent se répéter
+    /// plusieurs fois pour la même personne au sein d'une même session de
+    /// groupe (reconnexion réseau, crash du jeu...), ce qui fausserait le
+    /// classement en faveur de qui a la connexion la moins stable plutôt
+    /// que de qui est réellement le plus souvent groupé.
+    /// </summary>
+    public static string? TryExtractGroupMemberJoined(string hudText)
+    {
+        var match = PlayerJoinedGroupRegex().Match(hudText);
+        if (!match.Success) return null;
+        var name = match.Groups["name"].Value.Trim();
+        return name.Length == 0 ? null : name;
     }
 
     /// <summary>
@@ -464,5 +580,41 @@ public static partial class GameLogAnnouncer
         if (value == templateKey) return 1;
         var placeholders = PlaceholderRegex().Matches(templateKey).Select(m => m.Value).Distinct().ToList();
         return placeholders.Count > 0 && placeholders.All(value.Contains) ? 2 : 0;
+    }
+
+    /// <summary>
+    /// Nettoie en place (comparaison insensible à la casse pour la
+    /// déduplication) les noms de AiConfig.SchemasReceived enregistrés
+    /// AVANT que GameLogBackups.ScanForReceivedSchemas n'applique
+    /// CleanHudNotificationText comme la détection en direct : un nom
+    /// comme "Ezra &lt;EM3&gt;[1000 xp]&lt;/EM3&gt;" (balise d'emphase du
+    /// HUD jamais retirée) restait affiché tel quel dans le panneau
+    /// Réglages > 📐 Schémas, et surtout ne correspondait plus jamais à la
+    /// clé propre de SchemaDatabase — le schéma apparaissait donc dans la
+    /// liste mais sans fabricant ni description. Appelée au chargement de
+    /// la config (AiConfigStore.Load), comme MergeLegacyNameTemplateOverrides
+    /// ci-dessus ; retourne true si quelque chose a changé, pour que
+    /// l'appelant persiste tout de suite.
+    /// </summary>
+    public static bool MigrateLegacySchemaNames(List<string> schemas)
+    {
+        var changed = false;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = schemas.Count - 1; i >= 0; i--)
+        {
+            var clean = CleanHudNotificationText(schemas[i]);
+            if (clean.Length == 0 || !seen.Add(clean))
+            {
+                schemas.RemoveAt(i);
+                changed = true;
+                continue;
+            }
+            if (clean != schemas[i])
+            {
+                schemas[i] = clean;
+                changed = true;
+            }
+        }
+        return changed;
     }
 }

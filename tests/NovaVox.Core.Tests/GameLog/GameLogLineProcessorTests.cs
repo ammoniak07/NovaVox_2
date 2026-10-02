@@ -5,6 +5,52 @@ namespace NovaVox.Core.Tests.GameLog;
 
 public class GameLogLineProcessorTests
 {
+    [Fact]
+    public void ProcessLine_UpdatesLastLineTimestamp_EvenForAnUnrecognizedLine()
+    {
+        var processor = new GameLogLineProcessor();
+
+        processor.ProcessLine("<2026-09-20T18:00:00.000Z> [Notice] <SomeUnknownTag> rien de reconnu ici");
+
+        Assert.Equal(DateTimeOffset.Parse("2026-09-20T18:00:00.000Z"), processor.State.LastLineTimestamp);
+    }
+
+    [Fact]
+    public void ProcessLine_LastLineTimestamp_AdvancesWithEachNewLine()
+    {
+        var processor = new GameLogLineProcessor();
+
+        processor.ProcessLine("<2026-09-20T18:00:00.000Z> [Notice] <A> première ligne");
+        processor.ProcessLine("<2026-09-20T18:05:00.000Z> [Notice] <B> deuxième ligne");
+
+        Assert.Equal(DateTimeOffset.Parse("2026-09-20T18:05:00.000Z"), processor.State.LastLineTimestamp);
+    }
+
+    [Fact]
+    public void ProcessLine_LineWithoutTimestamp_LeavesLastLineTimestampUnchanged()
+    {
+        var processor = new GameLogLineProcessor();
+        processor.ProcessLine("<2026-09-20T18:00:00.000Z> [Notice] <A> première ligne");
+
+        processor.ProcessLine("ligne sans horodatage du tout");
+
+        Assert.Equal(DateTimeOffset.Parse("2026-09-20T18:00:00.000Z"), processor.State.LastLineTimestamp);
+    }
+
+    [Fact]
+    public void ParseLineTimestamp_ValidLine_ReturnsParsedTimestamp()
+    {
+        Assert.Equal(
+            DateTimeOffset.Parse("2026-09-20T18:00:00.000Z"),
+            GameLogLineProcessor.ParseLineTimestamp("<2026-09-20T18:00:00.000Z> [Notice] <A> peu importe"));
+    }
+
+    [Fact]
+    public void ParseLineTimestamp_LineWithoutTimestamp_ReturnsNull()
+    {
+        Assert.Null(GameLogLineProcessor.ParseLineTimestamp("pas d'horodatage ici"));
+    }
+
     // Séquence de lignes et événements attendus vérifiés directement avec
     // GameLogWatcher._process_line (game_log_watcher.py) — voir historique
     // de session pour la commande utilisée.

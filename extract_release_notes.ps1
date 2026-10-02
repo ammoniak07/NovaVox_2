@@ -45,8 +45,17 @@ foreach ($line in $lines) {
     }
 }
 
-if ($notes.Count -eq 0) {
+# Trim() APRES jointure, pas juste un test sur $notes.Count : la section de
+# la version courante peut exister mais etre encore VIDE (juste "v0.1.1" +
+# la ligne de tirets + une ligne vide, le temps de rediger le changelog --
+# c'est exactement ce qui s'est produit pour 0.1.1, le build/deploiement
+# ayant tourne avant que les notes ne soient ecrites). Dans ce cas $notes
+# contient une seule ligne vide ($notes.Count = 1, pas 0), donc le test
+# precedent ne declenchait jamais ce repli -- l'annonce Discord se
+# retrouvait avec une description quasi vide au lieu du message de repli.
+$joined = ($notes -join "`r`n").Trim()
+if ([string]::IsNullOrWhiteSpace($joined)) {
     "Voir patch_maj.txt pour le detail." | Set-Content -Path $NotesFile -Encoding UTF8
 } else {
-    ($notes -join "`r`n") | Set-Content -Path $NotesFile -Encoding UTF8
+    $joined | Set-Content -Path $NotesFile -Encoding UTF8
 }

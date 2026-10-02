@@ -30,6 +30,10 @@ discord_first_post.txt
 # nom de la clé) -- secret, jamais versionné — voir build.bat
 deploy_config.txt
 
+# Notes personnelles locales, pas une source de vérité ni lue par le code
+docs/
+docs/game_log_destinations_catalogue.txt
+
 # Éditeurs / OS
 .vs/
 .vscode/

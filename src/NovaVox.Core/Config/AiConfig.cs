@@ -12,6 +12,7 @@ public sealed class AiConfig
     public const double DefaultPiperLengthScale = 1.0;
     public const double DefaultPiperNoiseScale = 0.667;
     public const bool DefaultRadioEffect = false;
+    public const string DefaultFrenchNumberStyle = "france";
     public const string DefaultGeminiModel = "gemini-3.6-flash";
     public const string DefaultGeminiName = "Gemini";
     public const string DefaultResponseLength = "normal";
@@ -32,11 +33,15 @@ public sealed class AiConfig
     public double PiperLengthScale { get; set; } = DefaultPiperLengthScale;
     public double PiperNoiseScale { get; set; } = DefaultPiperNoiseScale;
     public bool RadioEffect { get; set; } = DefaultRadioEffect;
+    /// <summary>"france" (soixante-dix/quatre-vingt-dix) ou "belgique" (septante/nonante) — voir FrenchNumberExpander.</summary>
+    public string FrenchNumberStyle { get; set; } = DefaultFrenchNumberStyle;
     public bool GameLogEnabled { get; set; }
     public bool GameLogAnnounceEvents { get; set; } = true;
     public string GameLogPlayerHandle { get; set; } = "";
     /// <summary>Chemin manuel vers Game.log — vide par défaut (détection automatique, voir GameLogPaths.FindGameLogPath), à renseigner quand Star Citizen est installé ailleurs qu'un des emplacements standards.</summary>
     public string GameLogCustomPath { get; set; } = "";
+    /// <summary>Dossier "logbackups" manuel — vide par défaut (dérivé automatiquement du Game.log courant, voir GameLogBackups.FindBackupsFolder), à renseigner si les archives sont ailleurs (ex. copiées sur un autre disque).</summary>
+    public string GameLogBackupsCustomPath { get; set; } = "";
     public Dictionary<string, string> GameLogPhrases { get; set; } = new();
     public Dictionary<string, string> GameLogHudOverrides { get; set; } = new();
     public Dictionary<string, string> GameLogDestinationAliases { get; set; } = new();
@@ -56,6 +61,22 @@ public sealed class AiConfig
     public Dictionary<string, Dictionary<string, string>> ShipCheatSheetColors { get; set; } = new();
     /// <summary>Nom du vaisseau (clé de ShipCheatSheets) actuellement affiché dans l'overlay — vide ou absent de ShipCheatSheets = rien affiché.</summary>
     public string ActiveShipCheatSheet { get; set; } = "";
+    /// <summary>Schémas de fabrication reçus (Réglages > 📐 Schémas) — ajoutés automatiquement à la détection d'une notification HUD "Schémas reçu : {nom}" dans le Game.log (voir GameLogAnnouncer), ou manuellement depuis le panneau.</summary>
+    public List<string> SchemasReceived { get; set; } = new();
+    /// <summary>Date de départ (format "yyyy-MM-dd", vide = aucun filtre) pour "🔍 Scanner les archives" (panneau "📐 Schémas") : ignore toute notification antérieure — utile après un wipe des schémas en jeu, pour ne recharger que ce qui a été obtenu depuis. Voir GameLogBackups.ScanForReceivedSchemas.</summary>
+    public string SchemaScanStartDate { get; set; } = "";
+    /// <summary>Temps total passé (secondes) dans chaque vaisseau, nom de vaisseau -> secondes — voir ShipTimeTracker (suivi en direct, panneau "📊 Statistiques") et GameLogBackups.ScanForStats (complété depuis les archives).</summary>
+    public Dictionary<string, double> ShipTimeSeconds { get; set; } = new();
+    /// <summary>Temps de jeu total (secondes), déduit de la dernière activité connue du Game.log (voir GameLogState.LastLineTimestamp) plutôt que de l'horloge de la machine — n'avance que tant que le jeu écrit réellement dans son journal. Panneau "📊 Statistiques".</summary>
+    public double PlayTimeSeconds { get; set; }
+    /// <summary>Total aUEC envoyés à d'autres joueurs, cumulé depuis les notifications HUD "Vous avez envoyé : ... aUEC" (voir GameLogAnnouncer.TryExtractAuecSent). Panneau "📊 Statistiques".</summary>
+    public double AuecSent { get; set; }
+    /// <summary>Nombre de visites par destination (nom résolu, voir GameLogDestinations.ResolveDestinationLabel), déduit des changements de zone (ZoneChange). Panneau "📊 Statistiques".</summary>
+    public Dictionary<string, int> DestinationVisitCounts { get; set; } = new();
+    /// <summary>Nombre de fois où chaque pseudo a rejoint un groupe dont le joueur local faisait déjà partie (voir GameLogAnnouncer.TryExtractGroupMemberJoined) — classement "joueurs les plus groupés", panneau "📊 Statistiques".</summary>
+    public Dictionary<string, int> GroupPlayerCounts { get; set; } = new();
+    /// <summary>Noms des archives Game.log déjà prises en compte dans les statistiques ci-dessus (voir GameLogBackups.ScanForStats/GameLogBackupStatsResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
+    public HashSet<string> StatsScannedBackupFiles { get; set; } = new();
 }
 
 /// <summary>
@@ -83,6 +104,7 @@ public sealed class AiConfigStore
         if (!File.Exists(_path)) return config;
         var hudOverridesMigrated = false;
         var destinationAliasesMigrated = false;
+        var schemasMigrated = false;
         try
         {
             var data = ParseFile(_path) as JsonObject;
@@ -107,12 +129,14 @@ public sealed class AiConfigStore
             config.PiperNoiseScale = Math.Clamp(
                 GetDouble(data["piper_noise_scale"]) ?? AiConfig.DefaultPiperNoiseScale, 0.0, 1.5);
             config.RadioEffect = GetBool(data["radio_effect"], AiConfig.DefaultRadioEffect);
+            config.FrenchNumberStyle = GetStringOrNull(data["french_number_style"]) == "belgique" ? "belgique" : AiConfig.DefaultFrenchNumberStyle;
             config.GeminiEnabled = GetBool(data["gemini_enabled"], true);
             config.GeminiWikiEnabled = GetBool(data["gemini_wiki_enabled"], true);
             config.GameLogEnabled = GetBool(data["game_log_enabled"]);
             config.GameLogAnnounceEvents = GetBool(data["game_log_announce_events"], true);
             config.GameLogPlayerHandle = GetString(data["game_log_player_handle"]).Trim();
             config.GameLogCustomPath = GetString(data["game_log_custom_path"]).Trim();
+            config.GameLogBackupsCustomPath = GetString(data["game_log_backups_custom_path"]).Trim();
             config.GameLogPhrases = ToStringDict(data["game_log_phrases"] as JsonObject);
             config.GameLogHudOverrides = ToStringDict(data["game_log_hud_overrides"] as JsonObject);
             // Nettoie les corrections HUD enregistrées avant le regroupement par
@@ -158,12 +182,40 @@ public sealed class AiConfigStore
             config.ShipCheatSheets = ToNestedStringDict(data["ship_cheat_sheets"] as JsonObject);
             config.ShipCheatSheetColors = ToNestedStringDict(data["ship_cheat_sheet_colors"] as JsonObject);
             config.ActiveShipCheatSheet = GetString(data["active_ship_cheat_sheet"]).Trim();
+
+            config.SchemasReceived = ToStringList(data["schemas_received"] as JsonArray);
+            // Nettoie les noms enregistrés avant que le scan rétroactif des
+            // archives Game.log (GameLogBackups) n'applique le même
+            // nettoyage que la détection en direct — voir
+            // MigrateLegacySchemaNames pour le symptôme (balises d'emphase
+            // ou ":" final jamais retirés, donc plus aucune correspondance
+            // avec la base locale de schémas : nom affiché brut, sans
+            // fabricant ni description). Persisté tout de suite, comme les
+            // deux migrations ci-dessus.
+            schemasMigrated = GameLogAnnouncer.MigrateLegacySchemaNames(config.SchemasReceived);
+
+            var scanStartDate = GetString(data["schema_scan_start_date"]).Trim();
+            config.SchemaScanStartDate = DateOnly.TryParse(scanStartDate, System.Globalization.CultureInfo.InvariantCulture, out _) ? scanStartDate : "";
+
+            config.ShipTimeSeconds = ToStringDoubleDict(data["ship_time_seconds"] as JsonObject);
+            config.PlayTimeSeconds = Math.Max(0, GetDouble(data["play_time_seconds"]) ?? 0);
+            config.AuecSent = Math.Max(0, GetDouble(data["auec_sent"]) ?? 0);
+            config.DestinationVisitCounts = ToStringIntDict(data["destination_visit_counts"] as JsonObject);
+            config.GroupPlayerCounts = ToStringIntDict(data["group_player_counts"] as JsonObject);
+            // Renommé de "ship_time_scanned_backup_files" : ce même ensemble couvre
+            // désormais toutes les statistiques du scan d'archives (temps par
+            // vaisseau, temps de jeu, aUEC, destinations), pas seulement les
+            // vaisseaux — lu depuis les deux noms pour ne pas perdre une
+            // progression de scan déjà enregistrée sous l'ancien nom.
+            config.StatsScannedBackupFiles = ToStringList(data["stats_scanned_backup_files"] as JsonArray).ToHashSet();
+            if (config.StatsScannedBackupFiles.Count == 0)
+                config.StatsScannedBackupFiles = ToStringList(data["ship_time_scanned_backup_files"] as JsonArray).ToHashSet();
         }
         catch
         {
             return new AiConfig();
         }
-        if (hudOverridesMigrated || destinationAliasesMigrated) Save(config);
+        if (hudOverridesMigrated || destinationAliasesMigrated || schemasMigrated) Save(config);
         return config;
     }
 
@@ -182,10 +234,12 @@ public sealed class AiConfigStore
             ["piper_length_scale"] = config.PiperLengthScale,
             ["piper_noise_scale"] = config.PiperNoiseScale,
             ["radio_effect"] = config.RadioEffect,
+            ["french_number_style"] = config.FrenchNumberStyle,
             ["game_log_enabled"] = config.GameLogEnabled,
             ["game_log_announce_events"] = config.GameLogAnnounceEvents,
             ["game_log_player_handle"] = config.GameLogPlayerHandle,
             ["game_log_custom_path"] = config.GameLogCustomPath,
+            ["game_log_backups_custom_path"] = config.GameLogBackupsCustomPath,
             ["game_log_phrases"] = FromStringDict(config.GameLogPhrases),
             ["game_log_hud_overrides"] = FromStringDict(config.GameLogHudOverrides),
             ["game_log_destination_aliases"] = FromStringDict(config.GameLogDestinationAliases),
@@ -201,6 +255,14 @@ public sealed class AiConfigStore
             ["ship_cheat_sheets"] = FromNestedStringDict(config.ShipCheatSheets),
             ["ship_cheat_sheet_colors"] = FromNestedStringDict(config.ShipCheatSheetColors),
             ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
+            ["schemas_received"] = FromStringList(config.SchemasReceived),
+            ["schema_scan_start_date"] = config.SchemaScanStartDate,
+            ["ship_time_seconds"] = FromStringDoubleDict(config.ShipTimeSeconds),
+            ["play_time_seconds"] = config.PlayTimeSeconds,
+            ["auec_sent"] = config.AuecSent,
+            ["destination_visit_counts"] = FromStringIntDict(config.DestinationVisitCounts),
+            ["group_player_counts"] = FromStringIntDict(config.GroupPlayerCounts),
+            ["stats_scanned_backup_files"] = FromStringList(config.StatsScannedBackupFiles.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }
@@ -215,6 +277,46 @@ public sealed class AiConfigStore
     }
 
     private static JsonObject FromStringDict(Dictionary<string, string> dict)
+    {
+        var obj = new JsonObject();
+        foreach (var (key, value) in dict)
+            obj[key] = value;
+        return obj;
+    }
+
+    private static Dictionary<string, double> ToStringDoubleDict(JsonObject? obj)
+    {
+        var result = new Dictionary<string, double>();
+        if (obj is null) return result;
+        foreach (var (key, value) in obj)
+        {
+            var seconds = GetDouble(value);
+            if (seconds is > 0) result[key] = seconds.Value;
+        }
+        return result;
+    }
+
+    private static JsonObject FromStringDoubleDict(Dictionary<string, double> dict)
+    {
+        var obj = new JsonObject();
+        foreach (var (key, value) in dict)
+            obj[key] = value;
+        return obj;
+    }
+
+    private static Dictionary<string, int> ToStringIntDict(JsonObject? obj)
+    {
+        var result = new Dictionary<string, int>();
+        if (obj is null) return result;
+        foreach (var (key, value) in obj)
+        {
+            var count = GetInt(value);
+            if (count is > 0) result[key] = count.Value;
+        }
+        return result;
+    }
+
+    private static JsonObject FromStringIntDict(Dictionary<string, int> dict)
     {
         var obj = new JsonObject();
         foreach (var (key, value) in dict)
@@ -237,5 +339,25 @@ public sealed class AiConfigStore
         foreach (var (key, value) in dict)
             obj[key] = FromStringDict(value);
         return obj;
+    }
+
+    private static List<string> ToStringList(JsonArray? array)
+    {
+        var result = new List<string>();
+        if (array is null) return result;
+        foreach (var item in array)
+        {
+            var value = GetStringOrNull(item);
+            if (!string.IsNullOrEmpty(value)) result.Add(value);
+        }
+        return result;
+    }
+
+    private static JsonArray FromStringList(List<string> list)
+    {
+        var array = new JsonArray();
+        foreach (var value in list)
+            array.Add(value);
+        return array;
     }
 }
