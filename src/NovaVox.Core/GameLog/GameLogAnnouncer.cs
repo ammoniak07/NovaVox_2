@@ -431,6 +431,23 @@ public static partial class GameLogAnnouncer
     }
 
     /// <summary>
+    /// Extrait le montant d'un texte HUD "Vous avez envoyé {pseudo} :
+    /// {montant} aUEC" (voir AuecSentRegex), sans effet de bord — utilisé
+    /// pour le total cumulé affiché dans le panneau "📊 Statistiques" (suivi
+    /// en direct et scan rétroactif des archives, voir
+    /// GameLogBackups.ScanForStats). Le montant du jeu utilise des virgules
+    /// comme séparateurs de milliers ("2,000,000"), retirées avant
+    /// conversion.
+    /// </summary>
+    public static double? TryExtractAuecSent(string hudText)
+    {
+        var match = AuecSentRegex().Match(hudText);
+        if (!match.Success) return null;
+        var digitsOnly = match.Groups["montant"].Value.Replace(",", "");
+        return double.TryParse(digitsOnly, System.Globalization.CultureInfo.InvariantCulture, out var amount) ? amount : null;
+    }
+
+    /// <summary>
     /// Remplace la ou les parties variables détectées (nom de joueur/pilote/
     /// ami/vaisseau, ou nom de mission/objectif) dans un texte HUD connu
     /// (voir HudTemplates) par leurs réservoirs "{xxx}", pour qu'une seule

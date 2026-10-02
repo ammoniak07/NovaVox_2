@@ -63,10 +63,16 @@ public sealed class AiConfig
     public string ActiveShipCheatSheet { get; set; } = "";
     /// <summary>Schémas de fabrication reçus (Réglages > 📐 Schémas) — ajoutés automatiquement à la détection d'une notification HUD "Schémas reçu : {nom}" dans le Game.log (voir GameLogAnnouncer), ou manuellement depuis le panneau.</summary>
     public List<string> SchemasReceived { get; set; } = new();
-    /// <summary>Temps total passé (secondes) dans chaque vaisseau, nom de vaisseau -> secondes — voir ShipTimeTracker (suivi en direct, panneau "📊 Statistiques") et GameLogBackups.ScanForShipTimes (complété depuis les archives).</summary>
+    /// <summary>Temps total passé (secondes) dans chaque vaisseau, nom de vaisseau -> secondes — voir ShipTimeTracker (suivi en direct, panneau "📊 Statistiques") et GameLogBackups.ScanForStats (complété depuis les archives).</summary>
     public Dictionary<string, double> ShipTimeSeconds { get; set; } = new();
-    /// <summary>Noms des archives Game.log déjà prises en compte dans ShipTimeSeconds (voir GameLogBackups.ScanForShipTimes/ShipTimeScanResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
-    public HashSet<string> ShipTimeScannedBackupFiles { get; set; } = new();
+    /// <summary>Temps de jeu total (secondes), déduit de la dernière activité connue du Game.log (voir GameLogState.LastLineTimestamp) plutôt que de l'horloge de la machine — n'avance que tant que le jeu écrit réellement dans son journal. Panneau "📊 Statistiques".</summary>
+    public double PlayTimeSeconds { get; set; }
+    /// <summary>Total aUEC envoyés à d'autres joueurs, cumulé depuis les notifications HUD "Vous avez envoyé : ... aUEC" (voir GameLogAnnouncer.TryExtractAuecSent). Panneau "📊 Statistiques".</summary>
+    public double AuecSent { get; set; }
+    /// <summary>Nombre de visites par destination (nom résolu, voir GameLogDestinations.ResolveDestinationLabel), déduit des changements de zone (ZoneChange). Panneau "📊 Statistiques".</summary>
+    public Dictionary<string, int> DestinationVisitCounts { get; set; } = new();
+    /// <summary>Noms des archives Game.log déjà prises en compte dans les statistiques ci-dessus (voir GameLogBackups.ScanForStats/GameLogBackupStatsResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
+    public HashSet<string> StatsScannedBackupFiles { get; set; } = new();
 }
 
 /// <summary>
@@ -185,7 +191,17 @@ public sealed class AiConfigStore
             schemasMigrated = GameLogAnnouncer.MigrateLegacySchemaNames(config.SchemasReceived);
 
             config.ShipTimeSeconds = ToStringDoubleDict(data["ship_time_seconds"] as JsonObject);
-            config.ShipTimeScannedBackupFiles = ToStringList(data["ship_time_scanned_backup_files"] as JsonArray).ToHashSet();
+            config.PlayTimeSeconds = Math.Max(0, GetDouble(data["play_time_seconds"]) ?? 0);
+            config.AuecSent = Math.Max(0, GetDouble(data["auec_sent"]) ?? 0);
+            config.DestinationVisitCounts = ToStringIntDict(data["destination_visit_counts"] as JsonObject);
+            // Renommé de "ship_time_scanned_backup_files" : ce même ensemble couvre
+            // désormais toutes les statistiques du scan d'archives (temps par
+            // vaisseau, temps de jeu, aUEC, destinations), pas seulement les
+            // vaisseaux — lu depuis les deux noms pour ne pas perdre une
+            // progression de scan déjà enregistrée sous l'ancien nom.
+            config.StatsScannedBackupFiles = ToStringList(data["stats_scanned_backup_files"] as JsonArray).ToHashSet();
+            if (config.StatsScannedBackupFiles.Count == 0)
+                config.StatsScannedBackupFiles = ToStringList(data["ship_time_scanned_backup_files"] as JsonArray).ToHashSet();
         }
         catch
         {
@@ -233,7 +249,10 @@ public sealed class AiConfigStore
             ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
             ["schemas_received"] = FromStringList(config.SchemasReceived),
             ["ship_time_seconds"] = FromStringDoubleDict(config.ShipTimeSeconds),
-            ["ship_time_scanned_backup_files"] = FromStringList(config.ShipTimeScannedBackupFiles.ToList()),
+            ["play_time_seconds"] = config.PlayTimeSeconds,
+            ["auec_sent"] = config.AuecSent,
+            ["destination_visit_counts"] = FromStringIntDict(config.DestinationVisitCounts),
+            ["stats_scanned_backup_files"] = FromStringList(config.StatsScannedBackupFiles.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }
@@ -268,6 +287,26 @@ public sealed class AiConfigStore
     }
 
     private static JsonObject FromStringDoubleDict(Dictionary<string, double> dict)
+    {
+        var obj = new JsonObject();
+        foreach (var (key, value) in dict)
+            obj[key] = value;
+        return obj;
+    }
+
+    private static Dictionary<string, int> ToStringIntDict(JsonObject? obj)
+    {
+        var result = new Dictionary<string, int>();
+        if (obj is null) return result;
+        foreach (var (key, value) in obj)
+        {
+            var count = GetInt(value);
+            if (count is > 0) result[key] = count.Value;
+        }
+        return result;
+    }
+
+    private static JsonObject FromStringIntDict(Dictionary<string, int> dict)
     {
         var obj = new JsonObject();
         foreach (var (key, value) in dict)

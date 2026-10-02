@@ -1362,16 +1362,17 @@
             </Border>
         </Border>
 
-        <!-- Temps passé dans chaque vaisseau — déduit des notifications HUD
-             d'entrée/sortie du canal de bord (voir GameLogAnnouncer.TryExtractShipChannelEvent,
-             ShipTimeTracker, suivies en direct dans OnGameLogEvent), avec la
-             possibilité de compléter depuis les anciens Game.log archivés
-             (ScanShipTimeBackups_Click). -->
+        <!-- Temps de jeu, aUEC envoyés, destinations les plus visitées et temps
+             passé dans chaque vaisseau — tous suivis en direct depuis le
+             Game.log (voir OnGameLogEvent), avec la possibilité de compléter
+             depuis les anciens Game.log archivés (ScanStatsBackups_Click /
+             GameLogBackups.ScanForStats). -->
         <Border x:Name="StatsOverlay" Background="#B3000000" Visibility="Collapsed">
             <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
                     Width="560" MaxHeight="760" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid Margin="16,14">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -1389,33 +1390,60 @@
                     </Grid>
 
                     <TextBlock Grid.Row="1"
-                               Text="Temps total passé dans chaque vaisseau, suivi automatiquement en direct (entrée/sortie du canal de bord détectée dans le Game.log). « Charger les archives » relit les anciens Game.log conservés par le jeu pour compléter les statistiques avec des sessions jamais suivies en direct (ex. avant la première utilisation de NovaVox)."
+                               Text="Temps de jeu, aUEC envoyés, destinations les plus visitées et temps passé dans chaque vaisseau, suivis automatiquement en direct depuis le Game.log. « Charger les archives » relit les anciens Game.log conservés par le jeu pour compléter les statistiques avec des sessions jamais suivies en direct (ex. avant la première utilisation de NovaVox)."
                                Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
 
-                    <WrapPanel Grid.Row="2" Margin="0,0,0,10">
-                        <Button x:Name="ScanShipTimeBackupsButton" Content="🔍 Charger les archives" Margin="0,0,0,6"
+                    <!-- Temps de jeu / aUEC : deux chiffres uniques plutôt qu'une liste (voir
+                         RefreshPlayTimeAndAuecDisplay). Le temps de jeu est déduit de l'activité
+                         réelle du Game.log (GameLogState.LastLineTimestamp), pas de l'horloge de
+                         la machine : n'avance que tant que le jeu écrit effectivement dans son
+                         journal. -->
+                    <Grid Grid.Row="2" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,6,0"
+                                Background="{DynamicResource PanelAltBrush}">
+                            <StackPanel>
+                                <TextBlock Text="⏱ Temps de jeu total" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                                <TextBlock x:Name="StatsPlayTimeText" Text="0 s" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="6,0,0,0"
+                                Background="{DynamicResource PanelAltBrush}">
+                            <StackPanel>
+                                <TextBlock Text="💸 aUEC envoyés" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+                                <TextBlock x:Name="StatsAuecSentText" Text="0 aUEC" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <WrapPanel Grid.Row="3" Margin="0,0,0,10">
+                        <Button x:Name="ScanStatsBackupsButton" Content="🔍 Charger les archives" Margin="0,0,0,6"
                                 ToolTip="Relit tous les anciens Game.log (logbackups) pour compléter les statistiques avec des sessions passées"
-                                Click="ScanShipTimeBackups_Click" />
+                                Click="ScanStatsBackups_Click" />
                         <Button Content="🗑 Tout supprimer" Margin="12,0,0,6"
                                 ToolTip="Supprime toutes les statistiques enregistrées"
-                                Click="DeleteAllShipTimes_Click" />
+                                Click="DeleteAllStats_Click" />
                     </WrapPanel>
 
-                    <!-- Progression du scan des archives (ScanShipTimeBackups_Click) : masquée
+                    <!-- Progression du scan des archives (ScanStatsBackups_Click) : masquée
                          en dehors d'un scan, affichée pendant (le scan tourne hors du thread
                          UI via Task.Run pour ne pas geler l'application) — même mécanique que
                          SchemaScanProgressPanel. -->
-                    <StackPanel x:Name="StatsScanProgressPanel" Grid.Row="3" Margin="0,0,0,10" Visibility="Collapsed">
+                    <StackPanel x:Name="StatsScanProgressPanel" Grid.Row="4" Margin="0,0,0,10" Visibility="Collapsed">
                         <ProgressBar x:Name="StatsScanProgressBar" Height="6" Minimum="0" Maximum="100" />
                         <TextBlock x:Name="StatsScanProgressText" Text="Scan en cours..."
                                    Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Row="5" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock x:Name="StatsEmptyText" Text="Aucune statistique pour l'instant." Foreground="{DynamicResource MutedBrush}"
-                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
-                            <ItemsControl x:Name="StatsList">
+                            <TextBlock Text="🚀 Temps par vaisseau" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock x:Name="StatsEmptyText" Text="Aucune statistique de vaisseau pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,10" />
+                            <ItemsControl x:Name="StatsList" Margin="0,0,0,10">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
@@ -1427,6 +1455,28 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="{Binding ShipName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
                                                 <TextBlock Grid.Column="1" Text="{Binding FormattedDuration}" Foreground="{DynamicResource AccentBrush}"
+                                                           FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="🛰 Destinations les plus visitées" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock x:Name="DestinationsEmptyText" Text="Aucune destination pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <ItemsControl x:Name="DestinationsList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Background="{DynamicResource PanelAltBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding DestinationName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding FormattedCount}" Foreground="{DynamicResource AccentBrush}"
                                                            FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
                                             </Grid>
                                         </Border>

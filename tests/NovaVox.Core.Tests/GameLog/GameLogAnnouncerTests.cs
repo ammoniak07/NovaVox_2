@@ -38,6 +38,15 @@ public class GameLogAnnouncerTests
         }
     }
 
+    [Theory]
+    [InlineData("Vous avez envoyé Droz64: 2,000,000 aUEC", 2_000_000.0)]
+    [InlineData("Vous avez envoyé Zeilos: 500 aUEC.", 500.0)]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null)]
+    public void TryExtractAuecSent_ReturnsAmountOrNullWithoutSideEffects(string hudText, double? expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractAuecSent(hudText));
+    }
+
     [Fact]
     public void MigrateLegacySchemaNames_StripsLeftoverEmphasisTag()
     {

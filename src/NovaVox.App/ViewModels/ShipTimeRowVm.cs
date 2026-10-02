@@ -11,7 +11,8 @@ public sealed class ShipTimeRowVm
     public required double TotalSeconds { get; init; }
     public string FormattedDuration => FormatDuration(TotalSeconds);
 
-    private static string FormatDuration(double totalSeconds)
+    /// <summary>Partagé avec l'affichage du temps de jeu total (voir MainWindow.RefreshPlayTimeAndAuecDisplay).</summary>
+    public static string FormatDuration(double totalSeconds)
     {
         var span = TimeSpan.FromSeconds(Math.Max(0, totalSeconds));
         if (span.TotalHours >= 1) return $"{(int)span.TotalHours} h {span.Minutes:D2} min";

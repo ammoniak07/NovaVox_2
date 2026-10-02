@@ -168,7 +168,7 @@ public class GameLogBackupsTests : IDisposable
     }
 
     [Fact]
-    public void ScanForShipTimes_EntersAndLeavesSameShip_CreditsElapsedSeconds()
+    public void ScanForStats_EntersAndLeavesSameShip_CreditsElapsedSeconds()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
         File.WriteAllLines(
@@ -179,14 +179,14 @@ public class GameLogBackupsTests : IDisposable
                 Notification("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", ts: "2026-09-20T18:01:30.000Z"),
             });
 
-        var result = GameLogBackups.ScanForShipTimes(backups);
+        var result = GameLogBackups.ScanForStats(backups);
 
-        Assert.Equal(90.0, result.SecondsByShip["Drake Cutter"]);
+        Assert.Equal(90.0, result.ShipSecondsByShip["Drake Cutter"]);
         Assert.Single(result.ScannedFileNames);
     }
 
     [Fact]
-    public void ScanForShipTimes_OpenIntervalAtEndOfFile_CreditsUpToLastKnownTimestamp()
+    public void ScanForStats_OpenShipIntervalAtEndOfFile_CreditsUpToLastKnownTimestamp()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
         File.WriteAllLines(
@@ -197,13 +197,13 @@ public class GameLogBackupsTests : IDisposable
                 "<2026-09-20T18:05:00.000Z> [Notice] <SomeOtherLine> rien à voir, juste pour avancer l'horloge",
             });
 
-        var result = GameLogBackups.ScanForShipTimes(backups);
+        var result = GameLogBackups.ScanForStats(backups);
 
-        Assert.Equal(300.0, result.SecondsByShip["Drake Cutter"]);
+        Assert.Equal(300.0, result.ShipSecondsByShip["Drake Cutter"]);
     }
 
     [Fact]
-    public void ScanForShipTimes_IndependentAcrossFiles_NeverCarriesAnOpenIntervalOver()
+    public void ScanForStats_IndependentAcrossFiles_NeverCarriesAnOpenShipIntervalOver()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
         File.WriteAllLines(
@@ -213,15 +213,15 @@ public class GameLogBackupsTests : IDisposable
             Path.Combine(backups, "Game Build(2) 02 Jun 18 (11 00 00).log"),
             new[] { Notification("CANAL 'Anvil Paladin : Ammoniak' rejoint.", ts: "2026-09-21T09:00:00.000Z") });
 
-        var result = GameLogBackups.ScanForShipTimes(backups);
+        var result = GameLogBackups.ScanForStats(backups);
 
         // Chaque fichier n'a vu qu'une entrée sans sortie ni autre ligne après : rien à créditer (pas de confusion entre les deux vaisseaux de fichiers différents).
-        Assert.Empty(result.SecondsByShip);
+        Assert.Empty(result.ShipSecondsByShip);
         Assert.Equal(2, result.ScannedFileNames.Count);
     }
 
     [Fact]
-    public void ScanForShipTimes_AlreadyScannedFile_IsSkippedAndNotRecounted()
+    public void ScanForStats_AlreadyScannedFile_IsSkippedAndNotRecounted()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
         const string fileName = "Game Build(1) 01 Jun 18 (10 09 04).log";
@@ -233,18 +233,95 @@ public class GameLogBackupsTests : IDisposable
                 Notification("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", ts: "2026-09-20T18:01:30.000Z"),
             });
 
-        var result = GameLogBackups.ScanForShipTimes(backups, alreadyScannedFileNames: new HashSet<string> { fileName });
+        var result = GameLogBackups.ScanForStats(backups, alreadyScannedFileNames: new HashSet<string> { fileName });
 
-        Assert.Empty(result.SecondsByShip);
+        Assert.Empty(result.ShipSecondsByShip);
         Assert.Empty(result.ScannedFileNames);
     }
 
     [Fact]
-    public void ScanForShipTimes_MissingFolder_ReturnsEmptyRatherThanThrowing()
+    public void ScanForStats_MissingFolder_ReturnsEmptyRatherThanThrowing()
     {
-        var result = GameLogBackups.ScanForShipTimes(Path.Combine(_dir, "does-not-exist"));
+        var result = GameLogBackups.ScanForStats(Path.Combine(_dir, "does-not-exist"));
 
-        Assert.Empty(result.SecondsByShip);
+        Assert.Empty(result.ShipSecondsByShip);
+        Assert.Empty(result.DestinationVisitCounts);
+        Assert.Equal(0, result.PlayTimeSeconds);
+        Assert.Equal(0, result.AuecSent);
         Assert.Empty(result.ScannedFileNames);
+    }
+
+    [Fact]
+    public void ScanForStats_PlayTime_IsSpanBetweenFirstAndLastTimestampInFile()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                "<2026-09-20T18:00:00.000Z> [Notice] <Something> première ligne de la session",
+                "<2026-09-20T19:30:00.000Z> [Notice] <Something> dernière ligne de la session",
+            });
+
+        var result = GameLogBackups.ScanForStats(backups);
+
+        Assert.Equal(TimeSpan.FromMinutes(90).TotalSeconds, result.PlayTimeSeconds);
+    }
+
+    [Fact]
+    public void ScanForStats_PlayTime_AccumulatesAcrossMultipleFiles()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                "<2026-09-20T18:00:00.000Z> [Notice] <Something> a",
+                "<2026-09-20T18:30:00.000Z> [Notice] <Something> b",
+            });
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(2) 02 Jun 18 (11 00 00).log"),
+            new[]
+            {
+                "<2026-09-21T09:00:00.000Z> [Notice] <Something> a",
+                "<2026-09-21T10:00:00.000Z> [Notice] <Something> b",
+            });
+
+        var result = GameLogBackups.ScanForStats(backups);
+
+        Assert.Equal(TimeSpan.FromMinutes(90).TotalSeconds, result.PlayTimeSeconds);
+    }
+
+    [Fact]
+    public void ScanForStats_AuecSent_AccumulatesAcrossNotifications()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                Notification("Vous avez envoyé Droz64: 2,000,000 aUEC", ts: "2026-09-20T18:00:00.000Z"),
+                Notification("Vous avez envoyé Zeilos: 500 aUEC", ts: "2026-09-20T18:05:00.000Z"),
+            });
+
+        var result = GameLogBackups.ScanForStats(backups);
+
+        Assert.Equal(2_000_500.0, result.AuecSent);
+    }
+
+    [Fact]
+    public void ScanForStats_DestinationVisitCounts_CountsZoneChangesByResolvedName()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                "<2026-09-30T06:38:32.439Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested inventory for Location[RR_P6_L5] [Team_CoreGameplayFeatures][Inventory]",
+            });
+
+        var result = GameLogBackups.ScanForStats(backups);
+
+        Assert.Equal(1, result.DestinationVisitCounts["Megumi Ravitaillement"]);
     }
 }

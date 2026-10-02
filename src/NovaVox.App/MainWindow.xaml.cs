@@ -100,7 +100,10 @@ public partial class MainWindow : Window
     /// <summary>Suivi en direct du temps passé dans le vaisseau actuellement occupé (panneau "📊 Statistiques") — voir ShipTimeTracker, OnGameLogEvent, _shipTimeFlushTimer.</summary>
     private readonly ShipTimeTracker _shipTimeTracker = new();
     private readonly ObservableCollection<ShipTimeRowVm> _shipTimeRows = new();
+    private readonly ObservableCollection<DestinationVisitRowVm> _destinationVisitRows = new();
     private readonly DispatcherTimer _shipTimeFlushTimer;
+    /// <summary>Dernier GameLogState.LastLineTimestamp connu au dernier flush du temps de jeu (voir FlushPlayTime) — null tant qu'aucune ligne du Game.log n'a encore été lue depuis le dernier démarrage de la surveillance, pour ne jamais créditer l'écart entre deux sessions de surveillance comme du temps de jeu.</summary>
+    private DateTimeOffset? _playTimeAnchor;
 
     private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
     /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
@@ -157,13 +160,19 @@ public partial class MainWindow : Window
         };
 
         // Clôt (et recrédite) périodiquement l'intervalle en cours du vaisseau
-        // actuellement suivi, sans attendre une notification de sortie — sinon
-        // une session qui reste dans le même vaisseau jusqu'à la fermeture de
-        // NovaVox (ou un simple crash du jeu) n'aurait jamais aucun temps
-        // crédité du tout. Perte maximale en cas d'arrêt brutal : l'intervalle
-        // entre deux déclenchements (voir Interval ci-dessous).
+        // actuellement suivi et le temps de jeu écoulé, sans attendre une
+        // notification de sortie ni la fermeture de NovaVox — sinon une
+        // session qui reste dans le même vaisseau (ou le jeu resté ouvert
+        // sans interruption) jusqu'à la fermeture de NovaVox (ou un simple
+        // crash du jeu) n'aurait jamais aucun temps crédité du tout. Perte
+        // maximale en cas d'arrêt brutal : l'intervalle entre deux
+        // déclenchements (voir Interval ci-dessous).
         _shipTimeFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
-        _shipTimeFlushTimer.Tick += (_, _) => FlushShipTime(DateTimeOffset.UtcNow);
+        _shipTimeFlushTimer.Tick += (_, _) =>
+        {
+            FlushShipTime(DateTimeOffset.UtcNow);
+            FlushPlayTime();
+        };
         _shipTimeFlushTimer.Start();
 
         Loaded += OnLoaded;
@@ -205,7 +214,7 @@ public partial class MainWindow : Window
         InitializeGameLog();
         RegisterLiveSchemaNameAliases();
         InitializeSchemas();
-        InitializeShipTimeStats();
+        InitializeStats();
         InitializeShipCheatSheets();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
@@ -1361,7 +1370,9 @@ public partial class MainWindow : Window
             Hide();
             return;
         }
-        FlushShipTime(DateTimeOffset.UtcNow); // crédite le vaisseau en cours jusqu'à la fermeture, sans attendre le prochain tick de _shipTimeFlushTimer
+        // Crédite le vaisseau en cours et le temps de jeu écoulé jusqu'à la fermeture, sans attendre le prochain tick de _shipTimeFlushTimer.
+        FlushShipTime(DateTimeOffset.UtcNow);
+        FlushPlayTime();
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
         _micLevelMonitor.Dispose();
@@ -2718,12 +2729,15 @@ public partial class MainWindow : Window
         }
     }
 
-    // ------------------------------------------------------- Statistiques (temps par vaisseau)
+    // ------------------------------------------------------- Statistiques
 
-    private void InitializeShipTimeStats()
+    private void InitializeStats()
     {
         StatsList.ItemsSource = _shipTimeRows;
+        DestinationsList.ItemsSource = _destinationVisitRows;
         RefreshShipTimeStats();
+        RefreshDestinationStats();
+        RefreshPlayTimeAndAuecDisplay();
     }
 
     private void RefreshShipTimeStats()
@@ -2734,12 +2748,27 @@ public partial class MainWindow : Window
         StatsEmptyText.Visibility = _shipTimeRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private void RefreshDestinationStats()
+    {
+        _destinationVisitRows.Clear();
+        foreach (var (destination, count) in _state.Ai.DestinationVisitCounts.OrderByDescending(kv => kv.Value))
+            _destinationVisitRows.Add(new DestinationVisitRowVm { DestinationName = destination, VisitCount = count });
+        DestinationsEmptyText.Visibility = _destinationVisitRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshPlayTimeAndAuecDisplay()
+    {
+        StatsPlayTimeText.Text = ShipTimeRowVm.FormatDuration(_state.Ai.PlayTimeSeconds);
+        StatsAuecSentText.Text = $"{_state.Ai.AuecSent.ToString("#,##0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))} aUEC";
+    }
+
     private void OpenStats_Click(object sender, RoutedEventArgs e)
     {
-        // Le temps du vaisseau actuellement occupé doit être à jour dès
-        // l'ouverture du panneau, sans attendre le prochain déclenchement
-        // de _shipTimeFlushTimer (jusqu'à 60s de retard sinon).
+        // Les statistiques en cours (vaisseau occupé, temps de jeu) doivent
+        // être à jour dès l'ouverture du panneau, sans attendre le prochain
+        // déclenchement de _shipTimeFlushTimer (jusqu'à 60s de retard sinon).
         FlushShipTime(DateTimeOffset.UtcNow);
+        FlushPlayTime();
         StatsOverlay.Visibility = Visibility.Visible;
     }
 
@@ -2760,28 +2789,74 @@ public partial class MainWindow : Window
             CreditShipTime(closed.Ship, closed.Seconds);
     }
 
-    /// <summary>Vide toute la liste d'un coup, après confirmation — pas de retour en arrière possible une fois enregistré. Ne réinitialise PAS ShipTimeScannedBackupFiles : un "Charger les archives" après coup ne doit pas recompter des archives déjà vues.</summary>
-    private void DeleteAllShipTimes_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Crédite le temps de jeu écoulé depuis le dernier flush, à partir de
+    /// GameLogState.LastLineTimestamp (horodatage réel de la dernière ligne
+    /// lue dans le Game.log) plutôt que de l'horloge de la machine — tant
+    /// que le jeu n'écrit plus rien (fermé, ou NovaVox pas en train de
+    /// surveiller), aucun temps n'est crédité. Premier appel après un
+    /// (re)démarrage de la surveillance : établit juste la référence de
+    /// départ, sans rien créditer encore (sinon tout l'écart depuis la
+    /// dernière session de surveillance serait compté comme du temps de jeu).
+    /// </summary>
+    private void FlushPlayTime()
     {
-        if (_state.Ai.ShipTimeSeconds.Count == 0) return;
-        if (MessageBox.Show(this, $"Supprimer les statistiques de {_state.Ai.ShipTimeSeconds.Count} vaisseau(x) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        var lastKnown = _gameLogWatcher?.GetState().LastLineTimestamp;
+        if (lastKnown is not { } ts) return;
+
+        if (_playTimeAnchor is not { } anchor)
+        {
+            _playTimeAnchor = ts;
+            return;
+        }
+
+        var elapsed = (ts - anchor).TotalSeconds;
+        _playTimeAnchor = ts;
+        if (elapsed <= 0) return;
+
+        _state.Ai.PlayTimeSeconds += elapsed;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
+    }
+
+    /// <summary>Crédite <paramref name="amount"/> au total aUEC envoyé, persiste, et rafraîchit l'affichage si le panneau est actuellement ouvert.</summary>
+    private void CreditAuecSent(double amount)
+    {
+        _state.Ai.AuecSent += amount;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
+    }
+
+    /// <summary>Vide toute la liste d'un coup, après confirmation — pas de retour en arrière possible une fois enregistré. Ne réinitialise PAS StatsScannedBackupFiles : un "Charger les archives" après coup ne doit pas recompter des archives déjà vues.</summary>
+    private void DeleteAllStats_Click(object sender, RoutedEventArgs e)
+    {
+        var hasAnything = _state.Ai.ShipTimeSeconds.Count > 0 || _state.Ai.DestinationVisitCounts.Count > 0
+            || _state.Ai.PlayTimeSeconds > 0 || _state.Ai.AuecSent > 0;
+        if (!hasAnything) return;
+        if (MessageBox.Show(this, "Supprimer toutes les statistiques enregistrées (vaisseaux, destinations, temps de jeu, aUEC) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
         _state.Ai.ShipTimeSeconds.Clear();
+        _state.Ai.DestinationVisitCounts.Clear();
+        _state.Ai.PlayTimeSeconds = 0;
+        _state.Ai.AuecSent = 0;
         RefreshShipTimeStats();
+        RefreshDestinationStats();
+        RefreshPlayTimeAndAuecDisplay();
         SaveAiAndLog();
     }
 
     /// <summary>
     /// Relit les archives Game.log (logbackups) pour compléter les
-    /// statistiques avec des sessions jamais suivies en direct par NovaVox
-    /// (avant sa première utilisation, ou simplement fermé à l'époque) —
-    /// même mécanique que ScanSchemaBackups_Click (hors du thread UI,
-    /// barre de progression). AiConfig.ShipTimeScannedBackupFiles évite de
-    /// recompter une archive déjà prise en compte lors d'un scan précédent.
+    /// statistiques (vaisseaux, temps de jeu, aUEC, destinations) avec des
+    /// sessions jamais suivies en direct par NovaVox (avant sa première
+    /// utilisation, ou simplement fermé à l'époque) — même mécanique que
+    /// ScanSchemaBackups_Click (hors du thread UI, barre de progression).
+    /// AiConfig.StatsScannedBackupFiles évite de recompter une archive déjà
+    /// prise en compte lors d'un scan précédent.
     /// </summary>
-    private async void ScanShipTimeBackups_Click(object sender, RoutedEventArgs e)
+    private async void ScanStatsBackups_Click(object sender, RoutedEventArgs e)
     {
-        if (!ScanShipTimeBackupsButton.IsEnabled) return; // scan déjà en cours
+        if (!ScanStatsBackupsButton.IsEnabled) return; // scan déjà en cours
 
         var customBackupsPath = _state.Ai.GameLogBackupsCustomPath;
         var customPath = _state.Ai.GameLogCustomPath;
@@ -2796,7 +2871,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        ScanShipTimeBackupsButton.IsEnabled = false;
+        ScanStatsBackupsButton.IsEnabled = false;
         StatsScanProgressBar.Value = 0;
         StatsScanProgressText.Text = "Scan en cours...";
         StatsScanProgressPanel.Visibility = Visibility.Visible;
@@ -2809,30 +2884,39 @@ public partial class MainWindow : Window
 
         try
         {
-            var alreadyScanned = _state.Ai.ShipTimeScannedBackupFiles;
-            var scanResult = await Task.Run(() => GameLogBackups.ScanForShipTimes(backupsFolder, alreadyScanned, progress));
+            var alreadyScanned = _state.Ai.StatsScannedBackupFiles;
+            var destinationAliases = _state.Ai.GameLogDestinationAliases;
+            var scanResult = await Task.Run(() => GameLogBackups.ScanForStats(backupsFolder, destinationAliases, alreadyScanned, progress));
 
             foreach (var name in scanResult.ScannedFileNames)
-                _state.Ai.ShipTimeScannedBackupFiles.Add(name);
+                _state.Ai.StatsScannedBackupFiles.Add(name);
 
-            if (scanResult.SecondsByShip.Count == 0)
+            var foundAnything = scanResult.ShipSecondsByShip.Count > 0 || scanResult.DestinationVisitCounts.Count > 0
+                || scanResult.PlayTimeSeconds > 0 || scanResult.AuecSent > 0;
+            if (!foundAnything)
             {
-                SaveAiAndLog(); // persiste quand même ShipTimeScannedBackupFiles : inutile de rescanner les mêmes archives vides la prochaine fois
-                MessageBox.Show(this, "Aucun nouveau temps de vaisseau trouvé dans les archives.", "NovaVox");
+                SaveAiAndLog(); // persiste quand même StatsScannedBackupFiles : inutile de rescanner les mêmes archives vides la prochaine fois
+                MessageBox.Show(this, "Aucune nouvelle statistique trouvée dans les archives.", "NovaVox");
                 return;
             }
 
-            foreach (var (ship, seconds) in scanResult.SecondsByShip)
+            foreach (var (ship, seconds) in scanResult.ShipSecondsByShip)
                 _state.Ai.ShipTimeSeconds[ship] = _state.Ai.ShipTimeSeconds.GetValueOrDefault(ship) + seconds;
+            foreach (var (destination, count) in scanResult.DestinationVisitCounts)
+                _state.Ai.DestinationVisitCounts[destination] = _state.Ai.DestinationVisitCounts.GetValueOrDefault(destination) + count;
+            _state.Ai.PlayTimeSeconds += scanResult.PlayTimeSeconds;
+            _state.Ai.AuecSent += scanResult.AuecSent;
 
             RefreshShipTimeStats();
+            RefreshDestinationStats();
+            RefreshPlayTimeAndAuecDisplay();
             SaveAiAndLog();
-            MessageBox.Show(this, $"Statistiques complétées pour {scanResult.SecondsByShip.Count} vaisseau(x) depuis les archives.", "NovaVox");
+            MessageBox.Show(this, $"Statistiques complétées depuis {scanResult.ScannedFileNames.Count} archive(s).", "NovaVox");
         }
         finally
         {
             StatsScanProgressPanel.Visibility = Visibility.Collapsed;
-            ScanShipTimeBackupsButton.IsEnabled = true;
+            ScanStatsBackupsButton.IsEnabled = true;
         }
     }
 
@@ -3070,6 +3154,15 @@ public partial class MainWindow : Window
 
     private void StopGameLogWatcher()
     {
+        // Avant de couper : crédite ce qui reste en cours (vaisseau, temps de
+        // jeu) plutôt que de le perdre. _playTimeAnchor est remis à null —
+        // sans ça, une réactivation plus tard après une longue pause
+        // créditerait d'un coup tout l'écart comme s'il s'agissait de temps
+        // de jeu (voir FlushPlayTime).
+        FlushShipTime(DateTimeOffset.UtcNow);
+        FlushPlayTime();
+        _playTimeAnchor = null;
+
         if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = null;
         _gameLogWatcher?.Dispose();
         _gameLogWatcher = null;
@@ -3112,6 +3205,7 @@ public partial class MainWindow : Window
         if (evt.Type == GameLogEventTypes.HudNotification && evt.Text is not null)
         {
             var cleanText = GameLogAnnouncer.CleanHudNotificationText(evt.Text);
+
             var shipChange = GameLogAnnouncer.TryExtractShipChannelEvent(cleanText);
             if (shipChange is not null)
             {
@@ -3119,6 +3213,9 @@ public partial class MainWindow : Window
                 if (_shipTimeTracker.Process(ts, shipChange.Value.ShipName, shipChange.Value.Entered) is { } closed)
                     CreditShipTime(closed.Ship, closed.Seconds);
             }
+
+            var auecSent = GameLogAnnouncer.TryExtractAuecSent(cleanText);
+            if (auecSent is { } amount) CreditAuecSent(amount);
         }
 
         var result = GameLogAnnouncer.Build(evt, _state.Ai);
@@ -3127,7 +3224,16 @@ public partial class MainWindow : Window
         // Overlay "Zone :" — uniquement mise à jour quand la zone a pu être
         // résolue (jamais écrasée par "zone inconnue"), comme
         // _overlay_set_zone côté Python.
-        if (result.ResolvedZone is not null) _overlayWindow?.SetZone(result.ResolvedZone);
+        if (result.ResolvedZone is not null)
+        {
+            _overlayWindow?.SetZone(result.ResolvedZone);
+            // Statistiques "destinations les plus visitées" : réutilise la
+            // résolution déjà calculée par GameLogAnnouncer.Build plutôt que
+            // de la refaire, pour rester identique au nom affiché à l'écran.
+            _state.Ai.DestinationVisitCounts[result.ResolvedZone] = _state.Ai.DestinationVisitCounts.GetValueOrDefault(result.ResolvedZone) + 1;
+            SaveAiAndLog();
+            if (StatsOverlay.Visibility == Visibility.Visible) RefreshDestinationStats();
+        }
         if (result.ResolvedJurisdiction is not null) _overlayWindow?.SetJuridiction(result.ResolvedJurisdiction);
         if (result.ResolvedArmistice is not null) _overlayWindow?.SetArmistice(result.ResolvedArmistice.Value);
 

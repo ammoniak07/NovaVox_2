@@ -115,6 +115,12 @@ public sealed partial class GameLogLineProcessor
     /// <summary>Traite une ligne et retourne l'événement détecté, ou null si rien à signaler.</summary>
     public GameLogEvent? ProcessLine(string line)
     {
+        // Sur TOUTE ligne, reconnue ou non — avant même le court-circuit
+        // "continuation de notification" ci-dessous — pour que
+        // State.LastLineTimestamp reflète vraiment la dernière activité du
+        // jeu (temps de jeu, voir GameLogBackups.ScanForStats côté archives).
+        if (ParseLineTimestamp(line) is { } lineTs) State.LastLineTimestamp = lineTs;
+
         if (_pendingNotification is not null)
             return ProcessNotificationContinuation(line);
 
@@ -266,7 +272,7 @@ public sealed partial class GameLogLineProcessor
         };
     }
 
-    /// <summary>Horodatage &lt;...&gt; en tête de ligne (UTC) — public car réutilisé par GameLogBackups pour suivre la dernière activité connue d'une archive (voir ScanForShipTimes).</summary>
+    /// <summary>Horodatage &lt;...&gt; en tête de ligne (UTC) — public car réutilisé par GameLogBackups pour suivre la dernière activité connue d'une archive (voir ScanForStats).</summary>
     public static DateTimeOffset? ParseLineTimestamp(string line)
     {
         var match = TimestampRegex().Match(line);
