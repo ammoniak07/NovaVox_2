@@ -57,18 +57,27 @@ public static class GameLogBackups
     /// fichier illisible (verrouillé par le jeu, corrompu) est simplement
     /// ignoré plutôt que de faire échouer tout le scan.
     /// </summary>
-    public static IReadOnlyList<string> ScanForReceivedSchemas(string backupsFolder)
+    /// <param name="backupsFolder">Dossier "logbackups" à scanner.</param>
+    /// <param name="progress">
+    /// Optionnel : notifié après chaque fichier (fichiers traités, total) —
+    /// permet à l'appelant (UI) d'afficher une progression. Le scan lui-même
+    /// reste synchrone/bloquant : c'est à l'appelant de l'exécuter hors du
+    /// thread UI (ex. Task.Run) pour ne pas geler l'application.
+    /// </param>
+    public static IReadOnlyList<string> ScanForReceivedSchemas(string backupsFolder, IProgress<(int Done, int Total)>? progress = null)
     {
         var found = new List<string>();
         if (!Directory.Exists(backupsFolder)) return found;
 
+        var files = Directory.EnumerateFiles(backupsFolder, "*.log", SearchOption.TopDirectoryOnly).ToList();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in Directory.EnumerateFiles(backupsFolder, "*.log", SearchOption.TopDirectoryOnly))
+        for (var i = 0; i < files.Count; i++)
         {
-            foreach (var name in ScanFile(file))
+            foreach (var name in ScanFile(files[i]))
             {
                 if (seen.Add(name)) found.Add(name);
             }
+            progress?.Report((i + 1, files.Count));
         }
         return found;
     }

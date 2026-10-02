@@ -99,6 +99,35 @@ public class GameLogBackupsTests : IDisposable
     }
 
     [Fact]
+    public void ScanForReceivedSchemas_ReportsProgressAfterEachFile()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllText(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            Notification("Schémas reçu : Ezra") + "\n");
+        File.WriteAllText(
+            Path.Combine(backups, "Game Build(2) 02 Jun 18 (11 00 00).log"),
+            Notification("Schémas reçu : Deadbolt IV Cannon") + "\n");
+
+        var reports = new List<(int Done, int Total)>();
+        var progress = new SynchronousProgress<(int Done, int Total)>(reports.Add);
+
+        GameLogBackups.ScanForReceivedSchemas(backups, progress);
+
+        Assert.Equal(2, reports.Count);
+        Assert.Equal((1, 2), reports[0]);
+        Assert.Equal((2, 2), reports[1]);
+    }
+
+    /// <summary>IProgress&lt;T&gt; invoque normalement via le SynchronizationContext capturé
+    /// à la création (asynchrone sur WPF) — ici on veut une notification synchrone immédiate
+    /// pour pouvoir vérifier l'ordre exact des rapports dans un test xUnit.</summary>
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
+    }
+
+    [Fact]
     public void ResolveBackupsFolder_CustomPathExists_TakesPriorityOverAutoDetection()
     {
         var custom = Directory.CreateDirectory(Path.Combine(_dir, "mes-archives")).FullName;

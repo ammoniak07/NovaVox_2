@@ -5,6 +5,7 @@ v0.1.1
 - Panneau "📐 Schémas" : la reconnaissance des schémas (fabricant/description) fonctionne désormais avec N'IMPORTE QUELLE traduction communautaire française installée (SCEFRA via Multitool, ou une autre), pas seulement celle déjà constatée précédemment. NovaVox lit ton propre fichier de traduction local (jamais redistribué) et le compare à la base anglaise pour reconnaître tes schémas automatiquement, quelle que soit la formulation exacte choisie par ta traduction.
 - Ajout du crédit manquant pour StarCitizenWiki/scunpacked-data (Réglages > à propos) : la base communautaire dont est tirée la base de données des schémas (noms, fabricants, descriptions).
 - Panneau "📐 Schémas" : l'ajout manuel propose désormais une autocomplétion — une liste de suggestions de la base locale s'affiche au fil de la frappe, navigable au clavier (↑/↓) ou à la souris, Entrée/clic sur une suggestion l'ajoute directement.
+- Panneau "📐 Schémas" : le bouton "🔍 Scanner les archives" ne fige plus l'application pendant la lecture des anciens Game.log (surtout sensible avec beaucoup d'archives conservées) et affiche désormais une barre de progression (nombre d'archives déjà relues / total).
 
 v0.1.0
 ------

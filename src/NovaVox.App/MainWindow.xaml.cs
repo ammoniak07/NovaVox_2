@@ -2637,8 +2637,10 @@ public partial class MainWindow : Window
     /// l'époque, ou lancé après coup). N'ajoute que les noms pas déjà dans
     /// la liste.
     /// </summary>
-    private void ScanSchemaBackups_Click(object sender, RoutedEventArgs e)
+    private async void ScanSchemaBackups_Click(object sender, RoutedEventArgs e)
     {
+        if (!ScanSchemaBackupsButton.IsEnabled) return; // scan déjà en cours
+
         var customBackupsPath = _state.Ai.GameLogBackupsCustomPath;
         var customPath = _state.Ai.GameLogCustomPath;
         var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
@@ -2652,27 +2654,50 @@ public partial class MainWindow : Window
             return;
         }
 
-        var found = GameLogBackups.ScanForReceivedSchemas(backupsFolder);
-        var added = new List<string>();
-        foreach (var name in found)
-        {
-            if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) continue;
-            _state.Ai.SchemasReceived.Add(name);
-            added.Add(name);
-        }
+        ScanSchemaBackupsButton.IsEnabled = false;
+        SchemaScanProgressBar.Value = 0;
+        SchemaScanProgressText.Text = "Scan en cours...";
+        SchemaScanProgressPanel.Visibility = Visibility.Visible;
 
-        if (added.Count == 0)
+        // IProgress<T>.Report capture le SynchronizationContext courant (thread UI) à la
+        // création : les mises à jour arrivent donc déjà sur le bon thread, pas besoin de
+        // Dispatcher.Invoke. Le scan lui-même (lecture de potentiellement des centaines
+        // d'archives) tourne sur un thread de pool via Task.Run pour ne jamais geler l'UI.
+        var progress = new Progress<(int Done, int Total)>(p =>
         {
-            MessageBox.Show(this, "Aucun nouveau schéma trouvé dans les archives.", "NovaVox");
-            return;
-        }
+            SchemaScanProgressBar.Value = p.Total > 0 ? p.Done * 100.0 / p.Total : 100;
+            SchemaScanProgressText.Text = $"Scan en cours... {p.Done} / {p.Total} archive(s)";
+        });
 
-        foreach (var name in added)
-            _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
-        RefreshSchemasEmptyState();
-        RefreshSchemasSearchVisibility();
-        SaveAiAndLog();
-        MessageBox.Show(this, $"{added.Count} nouveau(x) schéma(s) trouvé(s) dans les archives.", "NovaVox");
+        try
+        {
+            var found = await Task.Run(() => GameLogBackups.ScanForReceivedSchemas(backupsFolder, progress));
+            var added = new List<string>();
+            foreach (var name in found)
+            {
+                if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) continue;
+                _state.Ai.SchemasReceived.Add(name);
+                added.Add(name);
+            }
+
+            if (added.Count == 0)
+            {
+                MessageBox.Show(this, "Aucun nouveau schéma trouvé dans les archives.", "NovaVox");
+                return;
+            }
+
+            foreach (var name in added)
+                _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+            RefreshSchemasEmptyState();
+            RefreshSchemasSearchVisibility();
+            SaveAiAndLog();
+            MessageBox.Show(this, $"{added.Count} nouveau(x) schéma(s) trouvé(s) dans les archives.", "NovaVox");
+        }
+        finally
+        {
+            SchemaScanProgressPanel.Visibility = Visibility.Collapsed;
+            ScanSchemaBackupsButton.IsEnabled = true;
+        }
     }
 
     // ------------------------------------------------------- Aide-mémoire vaisseaux
