@@ -2827,11 +2827,23 @@ public partial class MainWindow : Window
         if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
     }
 
-    /// <summary>Vide toute la liste d'un coup, après confirmation — pas de retour en arrière possible une fois enregistré. Ne réinitialise PAS StatsScannedBackupFiles : un "Charger les archives" après coup ne doit pas recompter des archives déjà vues.</summary>
+    /// <summary>
+    /// Vide toute la liste d'un coup, après confirmation — pas de retour en
+    /// arrière possible une fois enregistré. Réinitialise AUSSI
+    /// StatsScannedBackupFiles : après un "Tout supprimer", l'utilisateur
+    /// s'attend à ce que "Charger les archives" puisse tout retrouver,
+    /// pas à ce que chaque archive reste marquée comme déjà vue et ne
+    /// ramène donc plus rien (c'était le bug avant ce correctif).
+    /// </summary>
     private void DeleteAllStats_Click(object sender, RoutedEventArgs e)
     {
+        // StatsScannedBackupFiles compte aussi : sans ça, une fois les 4 stats déjà
+        // vidées (ex. un "Tout supprimer" fait avant ce correctif, qui ne vidait pas
+        // encore cette liste), le bouton redevenait inerte (hasAnything = false) et
+        // ne pouvait plus jamais réinitialiser StatsScannedBackupFiles — "Charger les
+        // archives" restait cassé pour de bon, sans aucun moyen de s'en sortir.
         var hasAnything = _state.Ai.ShipTimeSeconds.Count > 0 || _state.Ai.DestinationVisitCounts.Count > 0
-            || _state.Ai.PlayTimeSeconds > 0 || _state.Ai.AuecSent > 0;
+            || _state.Ai.PlayTimeSeconds > 0 || _state.Ai.AuecSent > 0 || _state.Ai.StatsScannedBackupFiles.Count > 0;
         if (!hasAnything) return;
         if (MessageBox.Show(this, "Supprimer toutes les statistiques enregistrées (vaisseaux, destinations, temps de jeu, aUEC) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
@@ -2839,6 +2851,7 @@ public partial class MainWindow : Window
         _state.Ai.DestinationVisitCounts.Clear();
         _state.Ai.PlayTimeSeconds = 0;
         _state.Ai.AuecSent = 0;
+        _state.Ai.StatsScannedBackupFiles.Clear();
         RefreshShipTimeStats();
         RefreshDestinationStats();
         RefreshPlayTimeAndAuecDisplay();
