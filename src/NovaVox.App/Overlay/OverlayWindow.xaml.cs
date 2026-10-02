@@ -51,6 +51,12 @@ public partial class OverlayWindow : Window
     private string? _draggingKey;
     private FrameworkElement? _draggingHandle;
     private OverlayDragGhostWindow? _dragGhost;
+    /// <summary>
+    /// Largeur minimale "cliquet" (ne redescend jamais) par colonne, PENDANT
+    /// un glisser actif seulement — voir RefreshColumnEditingStrips. Vidé au
+    /// début et à la fin de chaque glisser.
+    /// </summary>
+    private readonly Dictionary<Panel, double> _dragColumnWidthFloor = new();
     private readonly Dictionary<string, Grid> _rowGridByKey;
     private readonly Dictionary<Grid, string> _rowKeyByGrid;
     private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3, Column4, Column5, Column6, Column7, Column8 };
@@ -244,6 +250,19 @@ public partial class OverlayWindow : Window
     /// MaxWidth qui tronquerait le contenu). Une fois vidée (toutes ses
     /// lignes glissées ailleurs), elle redevient une colonne comme les
     /// autres (largeur nulle hors glisser).
+    ///
+    /// PENDANT un glisser actif, chaque largeur appliquée ici est en plus un
+    /// CLIQUET (_dragColumnWidthFloor) qui ne redescend jamais tant que le
+    /// glisser continue, même si la colonne redevient vide entre-temps —
+    /// constaté en conditions réelles : sans ce cliquet, quitter une colonne
+    /// pleine (qui rétrécit aussitôt à 28px/0) décale tout ce qui suit vers
+    /// la GAUCHE sous un curseur resté immobile, ce qui change la colonne
+    /// que RowDragHandle_MouseMove calcule juste après — la ligne repart
+    /// aussitôt dans l'autre sens, et ainsi de suite (clignotement observé
+    /// surtout en s'approchant d'une colonne qui s'agrandit vers la droite).
+    /// Remis à zéro au début/à la fin de chaque glisser (RowDragHandle_*),
+    /// donc sans impact hors glisser : la colonne retrouve alors bien sa
+    /// largeur naturelle comme décrit ci-dessus.
     /// </summary>
     private void RefreshColumnEditingStrips()
     {
@@ -257,7 +276,16 @@ public partial class OverlayWindow : Window
                 var empty = column.Children.Count == 0;
                 var showsDropStrip = _draggingKey is not null && empty && i == firstEmptyIndex;
                 var isDefaultMainColumn = id == 0 && i == 0 && !empty;
-                column.MinWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? _baseWidth : 0);
+                var minWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? _baseWidth : 0);
+
+                if (_draggingKey is not null)
+                {
+                    var floor = Math.Max(_dragColumnWidthFloor.GetValueOrDefault(column), Math.Max(minWidth, column.ActualWidth));
+                    _dragColumnWidthFloor[column] = floor;
+                    minWidth = floor;
+                }
+
+                column.MinWidth = minWidth;
                 column.Background = showsDropStrip ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
                 column.Margin = i == 0 || (empty && !showsDropStrip) ? new Thickness(0) : new Thickness(10, 0, 0, 0);
             }
@@ -764,6 +792,7 @@ public partial class OverlayWindow : Window
         if (sender is not FrameworkElement { Tag: string key } handle) return;
         _draggingKey = key;
         _draggingHandle = handle;
+        _dragColumnWidthFloor.Clear(); // nouveau glisser : repart d'aucune largeur figée
         handle.CaptureMouse();
         e.Handled = true;
         ShowDragGhost(key, handle.PointToScreen(e.GetPosition(handle)));
@@ -867,6 +896,7 @@ public partial class OverlayWindow : Window
         if (_draggingKey is null || Mouse.LeftButton != MouseButtonState.Pressed) return;
         _draggingKey = null;
         _draggingHandle = null;
+        _dragColumnWidthFloor.Clear();
         CloseDragGhost();
     }
 
@@ -903,6 +933,7 @@ public partial class OverlayWindow : Window
         _draggingHandle?.ReleaseMouseCapture();
         _draggingHandle = null;
         _draggingKey = null;
+        _dragColumnWidthFloor.Clear();
         e.Handled = true;
         CloseDragGhost();
 
