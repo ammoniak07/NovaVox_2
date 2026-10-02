@@ -606,7 +606,14 @@
         </Setter>
     </Style>
 
-    <Style TargetType="Calendar">
+    <!-- x:Key en plus de TargetType : DatePicker.OnApplyTemplate assigne le Style du Calendar
+         qu'il crée directement depuis sa propre propriété CalendarStyle (liaison explicite,
+         voir le Setter CalendarStyle ci-dessous) — contrairement à la plupart des contrôles,
+         un Style implicite TargetType="Calendar" seul n'est JAMAIS consulté pour ce Calendar-là
+         (constaté : restait blanc malgré ce Style, tant qu'il n'était pas branché via
+         CalendarStyle). Gardé aussi comme implicite (sans clé il resterait inutilisé par
+         ailleurs) pour tout futur Calendar autonome hors DatePicker. -->
+    <Style x:Key="NovaVoxCalendarStyle" TargetType="Calendar">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Calendar">
@@ -617,16 +624,18 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style TargetType="Calendar" BasedOn="{StaticResource NovaVoxCalendarStyle}" />
 
     <!-- Champ + bouton calendrier fermé (toujours visible) : même habillage que TextBox/Button
-         ci-dessus. Le popup lui-même (créé en code par DatePicker, pas déclaré ici) utilise
-         l'implicite Style TargetType="Calendar" ci-dessus. -->
+         ci-dessus. CalendarStyle rattache explicitement le Calendar du popup (créé en code par
+         DatePicker, jamais déclaré ici) au Style ci-dessus — voir son commentaire. -->
     <Style TargetType="DatePicker">
         <Setter Property="Background" Value="{DynamicResource PanelAltBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="6,4" />
+        <Setter Property="CalendarStyle" Value="{StaticResource NovaVoxCalendarStyle}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DatePicker">
