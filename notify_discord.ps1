@@ -52,7 +52,20 @@ function Split-IntoChunks {
     }
     if ($current.Length -gt 0) { $chunks.Add($current) }
     if ($chunks.Count -eq 0) { $chunks.Add($Text) }
-    return $chunks
+
+    # Virgule unaire OBLIGATOIRE : "return $chunks" tout seul laisse
+    # PowerShell DÉROULER la List[string] en écrivant chacun de ses éléments
+    # séparément dans le flux de sortie -- avec un SEUL morceau (le cas
+    # normal, un changelog qui tient sous 3500 caractères), l'appelant ne
+    # reçoit donc pas une liste à un élément mais la CHAÎNE elle-même.
+    # $chunks.Count valait alors 1 par pur hasard (PowerShell donne .Count=1
+    # à n'importe quel objet non-collection), et $chunks[0] n'indexait plus
+    # "le premier élément de la liste" mais "le premier CARACTÈRE de la
+    # chaîne" -- d'où une description Discord réduite à "-", le tout premier
+    # caractère du changelog. La virgule force PowerShell à transmettre la
+    # liste comme un seul objet, jamais déroulé, quel que soit son nombre
+    # d'éléments (0, 1 ou plus).
+    return ,$chunks
 }
 
 if (-not (Test-Path $WebhookFile)) {
@@ -94,11 +107,6 @@ if ($FirstPostFile -and (Test-Path $FirstPostFile)) {
 $chunks = Split-IntoChunks -Text $notes -MaxSize 3500
 $total = $chunks.Count
 
-# DIAGNOSTIC TEMPORAIRE : confirme ce que ce script a RÉELLEMENT en main
-# juste avant de construire/envoyer le JSON, pour isoler si le souci est ici
-# ou plus loin (Discord lui-même, ou le webhook configuré).
-Write-Host "  [diag] notes.Length=$($notes.Length) chunks.Count=$total chunks[0].Length=$($chunks[0].Length)"
-
 # HttpClient plutot qu'Invoke-RestMethod : ce dernier s'appuie, sous Windows
 # PowerShell 5.1 (.NET Framework), sur l'ancien System.Net.HttpWebRequest, qui
 # a un defaut connu -- si le serveur repond par une redirection, le POST est
@@ -130,13 +138,6 @@ try {
             username = "NovaVox"
             embeds   = @($embed)
         } | ConvertTo-Json -Depth 6
-
-        # DIAGNOSTIC TEMPORAIRE : écrit le JSON exact envoyé à Discord dans un
-        # fichier à côté du dépôt, pour vérifier octet pour octet ce qui part
-        # réellement (payload.Length seul ne dit pas si le texte est coupé
-        # AVANT ou APRÈS le JSON construit).
-        $payload | Set-Content -Path "discord_payload_debug.txt" -Encoding UTF8
-        Write-Host "  [diag] payload.Length=$($payload.Length) (écrit dans discord_payload_debug.txt)"
 
         try {
             $content = New-Object System.Net.Http.StringContent($payload, [System.Text.Encoding]::UTF8, "application/json")

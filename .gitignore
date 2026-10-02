@@ -26,9 +26,6 @@ novavoxnet_version.json
 discord_webhook.txt
 discord_first_post.txt
 
-# Diagnostic temporaire (payload JSON exact envoyé) — voir notify_discord.ps1
-discord_payload_debug.txt
-
 # Détails de connexion SSH vers le serveur de déploiement (IP, utilisateur,
 # nom de la clé) -- secret, jamais versionné — voir build.bat
 deploy_config.txt
