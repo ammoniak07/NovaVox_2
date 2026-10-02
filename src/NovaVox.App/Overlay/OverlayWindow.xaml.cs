@@ -52,11 +52,27 @@ public partial class OverlayWindow : Window
     private FrameworkElement? _draggingHandle;
     private OverlayDragGhostWindow? _dragGhost;
     /// <summary>
-    /// Largeur minimale "cliquet" (ne redescend jamais) par colonne, PENDANT
-    /// un glisser actif seulement — voir RefreshColumnEditingStrips. Vidé au
-    /// début et à la fin de chaque glisser.
+    /// Position écran (voir RowDragHandle_MouseMove) au dernier calcul de
+    /// placement réellement effectué — null tant qu'aucun n'a encore eu
+    /// lieu pour le glisser en cours (voir PlacementReevaluateThresholdPx).
     /// </summary>
-    private readonly Dictionary<Panel, double> _dragColumnWidthFloor = new();
+    private Point? _lastPlacementEvalScreenPos;
+    /// <summary>
+    /// Distance minimale (pixels physiques écran) depuis le dernier calcul
+    /// de placement avant d'en refaire un — un déplacement de colonne
+    /// change la géométrie de TOUTES les colonnes suivantes (largeur,
+    /// position), ce qui peut faire basculer le calcul vers une colonne
+    /// différente sous un curseur resté quasiment immobile (un vrai pouls
+    /// humain n'est jamais parfaitement stable) : la ligne repartait alors
+    /// aussitôt dans l'autre sens, et ainsi de suite — clignotement
+    /// constaté en conditions réelles, surtout en s'approchant d'une
+    /// colonne qui s'agrandit. Un seuil de mouvement RÉEL avant de
+    /// recalculer casse cette boucle sans toucher à la géométrie elle-même
+    /// (contrairement à une tentative précédente qui figeait les largeurs
+    /// de colonne — déplaçait le problème : la zone de dépôt ne
+    /// correspondait alors plus à son centre visuel réel).
+    /// </summary>
+    private const double PlacementReevaluateThresholdPx = 6.0;
     private readonly Dictionary<string, Grid> _rowGridByKey;
     private readonly Dictionary<Grid, string> _rowKeyByGrid;
     private Panel[] ColumnPanels => new Panel[] { Column0, Column1, Column2, Column3, Column4, Column5, Column6, Column7, Column8 };
@@ -250,19 +266,6 @@ public partial class OverlayWindow : Window
     /// MaxWidth qui tronquerait le contenu). Une fois vidée (toutes ses
     /// lignes glissées ailleurs), elle redevient une colonne comme les
     /// autres (largeur nulle hors glisser).
-    ///
-    /// PENDANT un glisser actif, chaque largeur appliquée ici est en plus un
-    /// CLIQUET (_dragColumnWidthFloor) qui ne redescend jamais tant que le
-    /// glisser continue, même si la colonne redevient vide entre-temps —
-    /// constaté en conditions réelles : sans ce cliquet, quitter une colonne
-    /// pleine (qui rétrécit aussitôt à 28px/0) décale tout ce qui suit vers
-    /// la GAUCHE sous un curseur resté immobile, ce qui change la colonne
-    /// que RowDragHandle_MouseMove calcule juste après — la ligne repart
-    /// aussitôt dans l'autre sens, et ainsi de suite (clignotement observé
-    /// surtout en s'approchant d'une colonne qui s'agrandit vers la droite).
-    /// Remis à zéro au début/à la fin de chaque glisser (RowDragHandle_*),
-    /// donc sans impact hors glisser : la colonne retrouve alors bien sa
-    /// largeur naturelle comme décrit ci-dessus.
     /// </summary>
     private void RefreshColumnEditingStrips()
     {
@@ -276,16 +279,7 @@ public partial class OverlayWindow : Window
                 var empty = column.Children.Count == 0;
                 var showsDropStrip = _draggingKey is not null && empty && i == firstEmptyIndex;
                 var isDefaultMainColumn = id == 0 && i == 0 && !empty;
-                var minWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? _baseWidth : 0);
-
-                if (_draggingKey is not null)
-                {
-                    var floor = Math.Max(_dragColumnWidthFloor.GetValueOrDefault(column), Math.Max(minWidth, column.ActualWidth));
-                    _dragColumnWidthFloor[column] = floor;
-                    minWidth = floor;
-                }
-
-                column.MinWidth = minWidth;
+                column.MinWidth = showsDropStrip ? 28 : (isDefaultMainColumn ? _baseWidth : 0);
                 column.Background = showsDropStrip ? new SolidColorBrush(Color.FromArgb(0x14, 0x2D, 0xD4, 0xFF)) : null;
                 column.Margin = i == 0 || (empty && !showsDropStrip) ? new Thickness(0) : new Thickness(10, 0, 0, 0);
             }
@@ -792,7 +786,7 @@ public partial class OverlayWindow : Window
         if (sender is not FrameworkElement { Tag: string key } handle) return;
         _draggingKey = key;
         _draggingHandle = handle;
-        _dragColumnWidthFloor.Clear(); // nouveau glisser : repart d'aucune largeur figée
+        _lastPlacementEvalScreenPos = null;
         handle.CaptureMouse();
         e.Handled = true;
         ShowDragGhost(key, handle.PointToScreen(e.GetPosition(handle)));
@@ -896,7 +890,6 @@ public partial class OverlayWindow : Window
         if (_draggingKey is null || Mouse.LeftButton != MouseButtonState.Pressed) return;
         _draggingKey = null;
         _draggingHandle = null;
-        _dragColumnWidthFloor.Clear();
         CloseDragGhost();
     }
 
@@ -914,6 +907,15 @@ public partial class OverlayWindow : Window
         if (_draggingKey is null || e.LeftButton != MouseButtonState.Pressed) return;
         var screenPos = _draggingHandle!.PointToScreen(e.GetPosition(_draggingHandle));
         MoveDragGhostTo(screenPos);
+
+        // Debounce : ne recalcule le placement que si le curseur a RÉELLEMENT
+        // bougé d'au moins PlacementReevaluateThresholdPx depuis le dernier
+        // calcul (voir le commentaire du champ) — casse la boucle de
+        // rétroaction entre le recalcul de géométrie des colonnes et un
+        // curseur resté quasiment immobile, sans figer la géométrie elle-même.
+        if (_lastPlacementEvalScreenPos is { } last && (screenPos - last).Length < PlacementReevaluateThresholdPx)
+            return;
+        _lastPlacementEvalScreenPos = screenPos;
 
         var targetWindowId = WindowIdAtScreenPoint(screenPos);
         if (targetWindowId is null) return;
@@ -933,7 +935,6 @@ public partial class OverlayWindow : Window
         _draggingHandle?.ReleaseMouseCapture();
         _draggingHandle = null;
         _draggingKey = null;
-        _dragColumnWidthFloor.Clear();
         e.Handled = true;
         CloseDragGhost();
 
