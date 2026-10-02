@@ -12,6 +12,7 @@ public sealed record GameLogBackupStatsResult(
     double PlayTimeSeconds,
     double AuecSent,
     IReadOnlyDictionary<string, int> DestinationVisitCounts,
+    IReadOnlyDictionary<string, int> GroupPlayerCounts,
     IReadOnlyList<string> ScannedFileNames);
 
 /// <summary>
@@ -138,18 +139,20 @@ public static class GameLogBackups
 
     /// <summary>
     /// Parcourt tous les .log de <paramref name="backupsFolder"/> en une
-    /// seule passe par fichier et retourne les 4 statistiques du panneau
+    /// seule passe par fichier et retourne les 5 statistiques du panneau
     /// "📊 Statistiques" : temps par vaisseau (voir
     /// GameLogAnnouncer.TryExtractShipChannelEvent et ShipTimeTracker),
     /// temps de jeu total (span entre le premier et le dernier horodatage
     /// lus dans le fichier — voir GameLogState.LastLineTimestamp pour
     /// l'équivalent en direct), aUEC envoyés (voir
-    /// GameLogAnnouncer.TryExtractAuecSent) et nombre de visites par
+    /// GameLogAnnouncer.TryExtractAuecSent), nombre de visites par
     /// destination (ZoneChange, résolu avec <paramref name="destinationAliases"/>
-    /// comme en direct) — SANS fusion avec un éventuel total déjà
-    /// enregistré (à la charge de l'appelant, comme ScanForReceivedSchemas).
-    /// Un intervalle de vaisseau encore ouvert à la fin d'un fichier est
-    /// crédité jusqu'au dernier horodatage lu plutôt que d'être perdu.
+    /// comme en direct) et nombre de fois groupé avec chaque joueur (voir
+    /// GameLogAnnouncer.TryExtractGroupMemberJoined) — SANS fusion avec un
+    /// éventuel total déjà enregistré (à la charge de l'appelant, comme
+    /// ScanForReceivedSchemas). Un intervalle de vaisseau encore ouvert à
+    /// la fin d'un fichier est crédité jusqu'au dernier horodatage lu
+    /// plutôt que d'être perdu.
     /// </summary>
     /// <param name="destinationAliases">AiConfig.GameLogDestinationAliases de l'utilisateur, pour résoudre les destinations exactement comme en direct — jamais modifié ici (lecture seule, contrairement à MaybeRegisterDestinationAlias côté direct).</param>
     /// <param name="alreadyScannedFileNames">
@@ -168,11 +171,12 @@ public static class GameLogBackups
     {
         var shipTotals = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var destinationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var groupPlayerCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         double playTimeSeconds = 0;
         double auecSent = 0;
         var scannedNow = new List<string>();
         if (!Directory.Exists(backupsFolder))
-            return new GameLogBackupStatsResult(shipTotals, 0, 0, destinationCounts, scannedNow);
+            return new GameLogBackupStatsResult(shipTotals, 0, 0, destinationCounts, groupPlayerCounts, scannedNow);
 
         var files = Directory.EnumerateFiles(backupsFolder, "*.log", SearchOption.TopDirectoryOnly).ToList();
         for (var i = 0; i < files.Count; i++)
@@ -185,20 +189,23 @@ public static class GameLogBackups
                     shipTotals[ship] = shipTotals.GetValueOrDefault(ship) + seconds;
                 foreach (var (destination, count) in fileStats.DestinationCounts)
                     destinationCounts[destination] = destinationCounts.GetValueOrDefault(destination) + count;
+                foreach (var (player, count) in fileStats.GroupPlayerCounts)
+                    groupPlayerCounts[player] = groupPlayerCounts.GetValueOrDefault(player) + count;
                 playTimeSeconds += fileStats.PlayTimeSeconds;
                 auecSent += fileStats.AuecSent;
                 scannedNow.Add(fileName);
             }
             progress?.Report((i + 1, files.Count));
         }
-        return new GameLogBackupStatsResult(shipTotals, playTimeSeconds, auecSent, destinationCounts, scannedNow);
+        return new GameLogBackupStatsResult(shipTotals, playTimeSeconds, auecSent, destinationCounts, groupPlayerCounts, scannedNow);
     }
 
     private sealed record FileStats(
         List<(string Ship, double Seconds)> ShipSeconds,
         double PlayTimeSeconds,
         double AuecSent,
-        Dictionary<string, int> DestinationCounts);
+        Dictionary<string, int> DestinationCounts,
+        Dictionary<string, int> GroupPlayerCounts);
 
     // Même principe que ScanFile (machine à états indépendante par fichier :
     // les archives sont des sessions indépendantes, pas la suite les unes
@@ -209,6 +216,7 @@ public static class GameLogBackups
     {
         var shipSeconds = new List<(string, double)>();
         var destinationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var groupPlayerCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         double auecSent = 0;
         DateTimeOffset? firstTs = null;
         DateTimeOffset? lastTs = null;
@@ -252,7 +260,15 @@ public static class GameLogBackups
                 }
 
                 var auec = GameLogAnnouncer.TryExtractAuecSent(cleanText);
-                if (auec is { } amount) auecSent += amount;
+                if (auec is { } amount)
+                {
+                    auecSent += amount;
+                    continue;
+                }
+
+                var groupMember = GameLogAnnouncer.TryExtractGroupMemberJoined(cleanText);
+                if (groupMember is not null)
+                    groupPlayerCounts[groupMember] = groupPlayerCounts.GetValueOrDefault(groupMember) + 1;
             }
             if (lastTs is { } ts && shipTracker.Flush(ts) is { } finalClosed)
                 shipSeconds.Add(finalClosed);
@@ -267,6 +283,6 @@ public static class GameLogBackups
         }
 
         var playTime = firstTs is { } first && lastTs is { } last ? Math.Max(0, (last - first).TotalSeconds) : 0;
-        return new FileStats(shipSeconds, playTime, auecSent, destinationCounts);
+        return new FileStats(shipSeconds, playTime, auecSent, destinationCounts, groupPlayerCounts);
     }
 }

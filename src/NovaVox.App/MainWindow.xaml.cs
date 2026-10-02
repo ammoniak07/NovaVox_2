@@ -101,6 +101,7 @@ public partial class MainWindow : Window
     private readonly ShipTimeTracker _shipTimeTracker = new();
     private readonly ObservableCollection<ShipTimeRowVm> _shipTimeRows = new();
     private readonly ObservableCollection<DestinationVisitRowVm> _destinationVisitRows = new();
+    private readonly ObservableCollection<GroupPlayerRowVm> _groupPlayerRows = new();
     private readonly DispatcherTimer _shipTimeFlushTimer;
     /// <summary>Dernier GameLogState.LastLineTimestamp connu au dernier flush du temps de jeu (voir FlushPlayTime) — null tant qu'aucune ligne du Game.log n'a encore été lue depuis le dernier démarrage de la surveillance, pour ne jamais créditer l'écart entre deux sessions de surveillance comme du temps de jeu.</summary>
     private DateTimeOffset? _playTimeAnchor;
@@ -2735,8 +2736,10 @@ public partial class MainWindow : Window
     {
         StatsList.ItemsSource = _shipTimeRows;
         DestinationsList.ItemsSource = _destinationVisitRows;
+        GroupPlayersList.ItemsSource = _groupPlayerRows;
         RefreshShipTimeStats();
         RefreshDestinationStats();
+        RefreshGroupPlayerStats();
         RefreshPlayTimeAndAuecDisplay();
     }
 
@@ -2754,6 +2757,14 @@ public partial class MainWindow : Window
         foreach (var (destination, count) in _state.Ai.DestinationVisitCounts.OrderByDescending(kv => kv.Value))
             _destinationVisitRows.Add(new DestinationVisitRowVm { DestinationName = destination, VisitCount = count });
         DestinationsEmptyText.Visibility = _destinationVisitRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshGroupPlayerStats()
+    {
+        _groupPlayerRows.Clear();
+        foreach (var (player, count) in _state.Ai.GroupPlayerCounts.OrderByDescending(kv => kv.Value))
+            _groupPlayerRows.Add(new GroupPlayerRowVm { PlayerName = player, JoinCount = count });
+        GroupPlayersEmptyText.Visibility = _groupPlayerRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void RefreshPlayTimeAndAuecDisplay()
@@ -2827,6 +2838,14 @@ public partial class MainWindow : Window
         if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
     }
 
+    /// <summary>Incrémente le compteur de groupement de <paramref name="player"/>, persiste, et rafraîchit la liste si le panneau est actuellement ouvert.</summary>
+    private void CreditGroupPlayer(string player)
+    {
+        _state.Ai.GroupPlayerCounts[player] = _state.Ai.GroupPlayerCounts.GetValueOrDefault(player) + 1;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshGroupPlayerStats();
+    }
+
     /// <summary>
     /// Vide toute la liste d'un coup, après confirmation — pas de retour en
     /// arrière possible une fois enregistré. Réinitialise AUSSI
@@ -2843,17 +2862,20 @@ public partial class MainWindow : Window
         // ne pouvait plus jamais réinitialiser StatsScannedBackupFiles — "Charger les
         // archives" restait cassé pour de bon, sans aucun moyen de s'en sortir.
         var hasAnything = _state.Ai.ShipTimeSeconds.Count > 0 || _state.Ai.DestinationVisitCounts.Count > 0
-            || _state.Ai.PlayTimeSeconds > 0 || _state.Ai.AuecSent > 0 || _state.Ai.StatsScannedBackupFiles.Count > 0;
+            || _state.Ai.GroupPlayerCounts.Count > 0 || _state.Ai.PlayTimeSeconds > 0 || _state.Ai.AuecSent > 0
+            || _state.Ai.StatsScannedBackupFiles.Count > 0;
         if (!hasAnything) return;
-        if (MessageBox.Show(this, "Supprimer toutes les statistiques enregistrées (vaisseaux, destinations, temps de jeu, aUEC) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "Supprimer toutes les statistiques enregistrées (vaisseaux, destinations, joueurs groupés, temps de jeu, aUEC) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
         _state.Ai.ShipTimeSeconds.Clear();
         _state.Ai.DestinationVisitCounts.Clear();
+        _state.Ai.GroupPlayerCounts.Clear();
         _state.Ai.PlayTimeSeconds = 0;
         _state.Ai.AuecSent = 0;
         _state.Ai.StatsScannedBackupFiles.Clear();
         RefreshShipTimeStats();
         RefreshDestinationStats();
+        RefreshGroupPlayerStats();
         RefreshPlayTimeAndAuecDisplay();
         SaveAiAndLog();
     }
@@ -2905,7 +2927,7 @@ public partial class MainWindow : Window
                 _state.Ai.StatsScannedBackupFiles.Add(name);
 
             var foundAnything = scanResult.ShipSecondsByShip.Count > 0 || scanResult.DestinationVisitCounts.Count > 0
-                || scanResult.PlayTimeSeconds > 0 || scanResult.AuecSent > 0;
+                || scanResult.GroupPlayerCounts.Count > 0 || scanResult.PlayTimeSeconds > 0 || scanResult.AuecSent > 0;
             if (!foundAnything)
             {
                 SaveAiAndLog(); // persiste quand même StatsScannedBackupFiles : inutile de rescanner les mêmes archives vides la prochaine fois
@@ -2917,11 +2939,14 @@ public partial class MainWindow : Window
                 _state.Ai.ShipTimeSeconds[ship] = _state.Ai.ShipTimeSeconds.GetValueOrDefault(ship) + seconds;
             foreach (var (destination, count) in scanResult.DestinationVisitCounts)
                 _state.Ai.DestinationVisitCounts[destination] = _state.Ai.DestinationVisitCounts.GetValueOrDefault(destination) + count;
+            foreach (var (player, count) in scanResult.GroupPlayerCounts)
+                _state.Ai.GroupPlayerCounts[player] = _state.Ai.GroupPlayerCounts.GetValueOrDefault(player) + count;
             _state.Ai.PlayTimeSeconds += scanResult.PlayTimeSeconds;
             _state.Ai.AuecSent += scanResult.AuecSent;
 
             RefreshShipTimeStats();
             RefreshDestinationStats();
+            RefreshGroupPlayerStats();
             RefreshPlayTimeAndAuecDisplay();
             SaveAiAndLog();
             MessageBox.Show(this, $"Statistiques complétées depuis {scanResult.ScannedFileNames.Count} archive(s).", "NovaVox");
@@ -3229,6 +3254,9 @@ public partial class MainWindow : Window
 
             var auecSent = GameLogAnnouncer.TryExtractAuecSent(cleanText);
             if (auecSent is { } amount) CreditAuecSent(amount);
+
+            var groupMember = GameLogAnnouncer.TryExtractGroupMemberJoined(cleanText);
+            if (groupMember is not null) CreditGroupPlayer(groupMember);
         }
 
         var result = GameLogAnnouncer.Build(evt, _state.Ai);

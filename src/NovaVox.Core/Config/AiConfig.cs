@@ -71,6 +71,8 @@ public sealed class AiConfig
     public double AuecSent { get; set; }
     /// <summary>Nombre de visites par destination (nom résolu, voir GameLogDestinations.ResolveDestinationLabel), déduit des changements de zone (ZoneChange). Panneau "📊 Statistiques".</summary>
     public Dictionary<string, int> DestinationVisitCounts { get; set; } = new();
+    /// <summary>Nombre de fois où chaque pseudo a rejoint un groupe dont le joueur local faisait déjà partie (voir GameLogAnnouncer.TryExtractGroupMemberJoined) — classement "joueurs les plus groupés", panneau "📊 Statistiques".</summary>
+    public Dictionary<string, int> GroupPlayerCounts { get; set; } = new();
     /// <summary>Noms des archives Game.log déjà prises en compte dans les statistiques ci-dessus (voir GameLogBackups.ScanForStats/GameLogBackupStatsResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
     public HashSet<string> StatsScannedBackupFiles { get; set; } = new();
 }
@@ -194,6 +196,7 @@ public sealed class AiConfigStore
             config.PlayTimeSeconds = Math.Max(0, GetDouble(data["play_time_seconds"]) ?? 0);
             config.AuecSent = Math.Max(0, GetDouble(data["auec_sent"]) ?? 0);
             config.DestinationVisitCounts = ToStringIntDict(data["destination_visit_counts"] as JsonObject);
+            config.GroupPlayerCounts = ToStringIntDict(data["group_player_counts"] as JsonObject);
             // Renommé de "ship_time_scanned_backup_files" : ce même ensemble couvre
             // désormais toutes les statistiques du scan d'archives (temps par
             // vaisseau, temps de jeu, aUEC, destinations), pas seulement les
@@ -252,6 +255,7 @@ public sealed class AiConfigStore
             ["play_time_seconds"] = config.PlayTimeSeconds,
             ["auec_sent"] = config.AuecSent,
             ["destination_visit_counts"] = FromStringIntDict(config.DestinationVisitCounts),
+            ["group_player_counts"] = FromStringIntDict(config.GroupPlayerCounts),
             ["stats_scanned_backup_files"] = FromStringList(config.StatsScannedBackupFiles.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));

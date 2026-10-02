@@ -47,6 +47,17 @@ public class GameLogAnnouncerTests
         Assert.Equal(expected, GameLogAnnouncer.TryExtractAuecSent(hudText));
     }
 
+    [Theory]
+    [InlineData("Un joueur a rejoint Bistic a rejoint le Groupe.", "Bistic")]
+    [InlineData("Un joueur a rejoint Tinou214 a rejoint le Groupe.", "Tinou214")]
+    [InlineData("A quitté le groupe : Tork a quitté le Groupe", null)]
+    [InlineData("Groupe : Dionico31 s'est connecté.", null)]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null)]
+    public void TryExtractGroupMemberJoined_ReturnsNameOrNullWithoutSideEffects(string hudText, string? expected)
+    {
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractGroupMemberJoined(hudText));
+    }
+
     [Fact]
     public void MigrateLegacySchemaNames_StripsLeftoverEmphasisTag()
     {

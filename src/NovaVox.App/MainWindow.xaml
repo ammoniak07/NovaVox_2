@@ -1390,7 +1390,7 @@
                     </Grid>
 
                     <TextBlock Grid.Row="1"
-                               Text="Temps de jeu, aUEC envoyés, destinations les plus visitées et temps passé dans chaque vaisseau, suivis automatiquement en direct depuis le Game.log. « Charger les archives » relit les anciens Game.log conservés par le jeu pour compléter les statistiques avec des sessions jamais suivies en direct (ex. avant la première utilisation de NovaVox)."
+                               Text="Temps de jeu, aUEC envoyés, destinations les plus visitées, joueurs les plus groupés et temps passé dans chaque vaisseau, suivis automatiquement en direct depuis le Game.log. « Charger les archives » relit les anciens Game.log conservés par le jeu pour compléter les statistiques avec des sessions jamais suivies en direct (ex. avant la première utilisation de NovaVox)."
                                Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
 
                     <!-- Temps de jeu / aUEC : deux chiffres uniques plutôt qu'une liste (voir
@@ -1465,7 +1465,7 @@
                             <TextBlock Text="🛰 Destinations les plus visitées" FontWeight="SemiBold" Margin="0,0,0,6" />
                             <TextBlock x:Name="DestinationsEmptyText" Text="Aucune destination pour l'instant." Foreground="{DynamicResource MutedBrush}"
                                        FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
-                            <ItemsControl x:Name="DestinationsList">
+                            <ItemsControl x:Name="DestinationsList" Margin="0,0,0,10">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
@@ -1476,6 +1476,34 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="{Binding DestinationName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding FormattedCount}" Foreground="{DynamicResource AccentBrush}"
+                                                           FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Classement basé sur "Un joueur a rejoint {pseudo} a rejoint le Groupe."
+                                 (voir GameLogAnnouncer.TryExtractGroupMemberJoined) : UNIQUEMENT les
+                                 arrivées dans un groupe dont le joueur local fait déjà partie, jamais
+                                 les connexions/déconnexions réseau (qui gonfleraient le compte de qui
+                                 a la connexion la moins stable plutôt que de qui est réellement le
+                                 plus souvent groupé). -->
+                            <TextBlock Text="👥 Joueurs les plus groupés" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock x:Name="GroupPlayersEmptyText" Text="Aucun groupement pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <ItemsControl x:Name="GroupPlayersList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Background="{DynamicResource PanelAltBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding PlayerName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
                                                 <TextBlock Grid.Column="1" Text="{Binding FormattedCount}" Foreground="{DynamicResource AccentBrush}"
                                                            FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
                                             </Grid>
