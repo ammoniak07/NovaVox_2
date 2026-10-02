@@ -148,6 +148,69 @@ public class GameLogAnnouncerTests
     }
 
     [Fact]
+    public void Build_GroupMemberConnected_SamePlayerTwiceWithoutDisconnect_SecondIsSuppressed()
+    {
+        // Vérifié en vrai Game.log (remontée utilisateur, 02/10/2026) : dès
+        // qu'un membre rejoint/quitte le groupe, le jeu réémet "s'est
+        // connecté" pour TOUS les membres déjà connectés, pas seulement
+        // celui qui vient de bouger -- observé plus d'une minute après la
+        // première annonce (donc hors de portée d'un simple filtre anti-
+        // rafale à fenêtre glissante, voir GameLogLineProcessor).
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Groupe : Dionico31 s'est connecté." };
+
+        var first = GameLogAnnouncer.Build(evt, config);
+        Assert.NotNull(first);
+        Assert.Contains("Dionico31", config.ConnectedGroupMembers);
+
+        var second = GameLogAnnouncer.Build(evt, config);
+        Assert.Null(second);
+    }
+
+    [Fact]
+    public void Build_GroupMemberConnected_ReannouncesAfterARealDisconnect()
+    {
+        var config = NewConfig();
+        var connected = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Groupe : Dionico31 s'est connecté." };
+        var disconnected = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Groupe : Dionico31 s'est déconnecté." };
+
+        Assert.NotNull(GameLogAnnouncer.Build(connected, config));
+        Assert.NotNull(GameLogAnnouncer.Build(disconnected, config));
+        Assert.DoesNotContain("Dionico31", config.ConnectedGroupMembers);
+
+        // Une vraie reconnexion après la déconnexion s'annonce de nouveau normalement.
+        var reconnected = GameLogAnnouncer.Build(connected, config);
+        Assert.NotNull(reconnected);
+    }
+
+    [Fact]
+    public void Build_GroupMemberDisconnected_WithoutPriorConnectedTracking_IsStillAnnounced()
+    {
+        // Pas de "s'est connecté" jamais vu pour ce pseudo (ex. NovaVox
+        // démarré après que tout le monde soit déjà connecté) : sa vraie
+        // déconnexion doit quand même être annoncée, jamais supprimée --
+        // seul le sens "connecté" doit l'être (voir les tests ci-dessus).
+        var config = NewConfig();
+        var evt = new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Groupe : Zeilos s'est déconnecté." };
+
+        var first = GameLogAnnouncer.Build(evt, config);
+        Assert.NotNull(first);
+    }
+
+    [Fact]
+    public void Build_GroupMemberConnected_DifferentPlayersAreAllAnnounced()
+    {
+        var config = NewConfig();
+
+        var first = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Groupe : Dionico31 s'est connecté." }, config);
+        var second = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Groupe : Zeilos s'est connecté." }, config);
+
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.Equal(2, config.ConnectedGroupMembers.Count);
+    }
+
+    [Fact]
     public void Build_HudNotification_CrimeReport_NormalizesPlayerNameIntoTemplate()
     {
         var config = NewConfig();
