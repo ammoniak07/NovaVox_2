@@ -430,6 +430,19 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_ConnectedGroupMembersRoundTripsAndIgnoresCase()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig();
+        config.ConnectedGroupMembers.Add("Dionico31");
+        store.Save(config);
+
+        var reloaded = new AiConfigStore(_dir).Load();
+        Assert.Contains("Dionico31", reloaded.ConnectedGroupMembers);
+        Assert.Contains("dionico31", reloaded.ConnectedGroupMembers); // comparaison insensible à la casse préservée au rechargement
+    }
+
+    [Fact]
     public void AiConfig_ShowSystemLogDefaultsToTrue()
     {
         var config = new AiConfigStore(_dir).Load();

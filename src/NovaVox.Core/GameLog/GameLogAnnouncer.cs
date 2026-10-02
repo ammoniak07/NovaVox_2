@@ -328,6 +328,8 @@ public static partial class GameLogAnnouncer
         var rawText = CleanHudNotificationText(evt.Text);
         if (rawText.Length == 0) return null;
 
+        if (SuppressDuplicateGroupConnectionChange(rawText, config)) return null;
+
         var (templateKey, captures) = ExtractHudTemplate(rawText);
 
         var isNew = false;
@@ -363,6 +365,47 @@ public static partial class GameLogAnnouncer
             ResolvedJurisdiction: resolvedJurisdiction,
             ResolvedArmistice: resolvedArmistice,
             ReceivedSchemaName: newSchemaName);
+    }
+
+    /// <summary>
+    /// Port du suivi anti-doublon pour "Groupe : {nom} s'est connecté" —
+    /// vérifié en vrai Game.log (remontée utilisateur, 02/10/2026) : dès
+    /// qu'UN membre du groupe rejoint/quitte, le jeu réémet une
+    /// notification HUD "s'est connecté" pour TOUS les membres déjà connus
+    /// comme connectés, pas seulement celui qui vient de bouger — observé
+    /// par exemple avec 9 pseudos simultanément à 22:55:03, puis 8 des 9
+    /// MÊMES pseudos (+ 2 nouveaux) de nouveau à 22:56:10, plus d'une
+    /// minute plus tard (donc hors de portée d'un simple filtre anti-
+    /// rafale à fenêtre glissante, voir
+    /// GameLogLineProcessor.HudNotificationRepeatSuppressWindow, qui ne
+    /// suffisait déjà pas pour un SEUL pseudo reconnecté deux fois à 13s
+    /// d'écart). Une vraie déconnexion (évènement "s'est déconnecté")
+    /// retire le pseudo du suivi pour réarmer sa prochaine "s'est
+    /// connecté" normalement — mais n'est, elle, JAMAIS supprimée : pas de
+    /// doublon constaté sur ce sens côté utilisateur, et un pseudo déjà
+    /// connecté avant le démarrage de NovaVox (donc jamais vu "connecté"
+    /// ici) doit quand même voir sa vraie déconnexion annoncée.
+    /// Retourne true si l'annonce doit être supprimée (jamais pour un texte
+    /// qui n'est ni "s'est connecté" ni "s'est déconnecté").
+    /// </summary>
+    private static bool SuppressDuplicateGroupConnectionChange(string rawText, AiConfig config)
+    {
+        var connected = GroupMemberConnectedRegex().Match(rawText);
+        if (connected.Success)
+        {
+            var name = connected.Groups["name"].Value.Trim();
+            if (name.Length == 0) return false;
+            return !config.ConnectedGroupMembers.Add(name);
+        }
+
+        var disconnected = GroupMemberDisconnectedRegex().Match(rawText);
+        if (disconnected.Success)
+        {
+            var name = disconnected.Groups["name"].Value.Trim();
+            if (name.Length > 0) config.ConnectedGroupMembers.Remove(name);
+        }
+
+        return false;
     }
 
     /// <summary>

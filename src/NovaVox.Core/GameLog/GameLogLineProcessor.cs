@@ -31,8 +31,19 @@ public sealed partial class GameLogLineProcessor
     /// que cet intervalle, mais réarmée dès qu'un vrai calme revient (ex.
     /// une reconnexion isolée, des minutes plus tard, s'annonce à nouveau
     /// normalement).
+    ///
+    /// CORRECTIF (vrai Game.log fourni par l'utilisateur, 02/10/2026) :
+    /// le même flapping réseau touche aussi "Groupe : {nom} s'est
+    /// connecté"/"s'est déconnecté" (deux évènements HUD distincts, avec
+    /// deux ID de notification différents, pour la même reconnexion), mais
+    /// avec un écart constaté entre les deux occurrences (~13s) supérieur à
+    /// l'ancienne fenêtre de 5s — le filtre ne les voyait donc jamais comme
+    /// une répétition et les annonçait toutes les deux. Élargie à 30s pour
+    /// couvrir ce cas réel tout en restant courte devant un vrai nouvel
+    /// évènement (une reconnexion volontaire minutes plus tard reste
+    /// annoncée normalement).
     /// </summary>
-    private static readonly TimeSpan HudNotificationRepeatSuppressWindow = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan HudNotificationRepeatSuppressWindow = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Candidat non vérifié pour le démarrage réel du saut quantique —

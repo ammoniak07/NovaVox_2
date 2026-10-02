@@ -77,6 +77,20 @@ public sealed class AiConfig
     public Dictionary<string, int> GroupPlayerCounts { get; set; } = new();
     /// <summary>Noms des archives Game.log déjà prises en compte dans les statistiques ci-dessus (voir GameLogBackups.ScanForStats/GameLogBackupStatsResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
     public HashSet<string> StatsScannedBackupFiles { get; set; } = new();
+    /// <summary>
+    /// Pseudos actuellement connus comme connectés au groupe (voir
+    /// GameLogAnnouncer.BuildHudAnnouncement) — vérifié en vrai Game.log
+    /// (remontée utilisateur, 02/10/2026) : dès qu'UN membre rejoint/quitte
+    /// le groupe, le jeu réémet une notification HUD "Groupe : {nom} s'est
+    /// connecté." pour TOUS les membres déjà connus comme connectés, pas
+    /// seulement celui qui vient de bouger — sans ce suivi, chaque
+    /// changement de composition du groupe réannonçait à voix haute tous
+    /// les membres déjà annoncés. Un pseudo déjà présent ici n'est donc
+    /// réannoncé "connecté" que s'il a d'abord été retiré par un "s'est
+    /// déconnecté" correspondant (vraie déconnexion, ou lui-même supprimé
+    /// une fois s'il n'y figurait pas déjà — jamais réannoncé en double).
+    /// </summary>
+    public HashSet<string> ConnectedGroupMembers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -210,6 +224,8 @@ public sealed class AiConfigStore
             config.StatsScannedBackupFiles = ToStringList(data["stats_scanned_backup_files"] as JsonArray).ToHashSet();
             if (config.StatsScannedBackupFiles.Count == 0)
                 config.StatsScannedBackupFiles = ToStringList(data["ship_time_scanned_backup_files"] as JsonArray).ToHashSet();
+            config.ConnectedGroupMembers = new HashSet<string>(
+                ToStringList(data["connected_group_members"] as JsonArray), StringComparer.OrdinalIgnoreCase);
         }
         catch
         {
@@ -263,6 +279,7 @@ public sealed class AiConfigStore
             ["destination_visit_counts"] = FromStringIntDict(config.DestinationVisitCounts),
             ["group_player_counts"] = FromStringIntDict(config.GroupPlayerCounts),
             ["stats_scanned_backup_files"] = FromStringList(config.StatsScannedBackupFiles.ToList()),
+            ["connected_group_members"] = FromStringList(config.ConnectedGroupMembers.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }
@@ -355,9 +372,18 @@ public sealed class AiConfigStore
 
     private static JsonArray FromStringList(List<string> list)
     {
+        // JsonValue.Create(value) (overload dédiée string), PAS array.Add(value) directement
+        // -- ce dernier résout vers JsonArray.Add<T>(T) (générique), qui construit la valeur
+        // via le chemin générique JsonValue.Create<T> plutôt que l'overload dédiée "string" :
+        // ce chemin générique exige un TypeInfoResolver sur JsonSerializerOptions (absent ici,
+        // voir WriteOptions) même pour un type aussi simple qu'une string, et plantait Save()
+        // dès qu'une LISTE de chaînes (SchemasReceived, StatsScannedBackupFiles,
+        // ConnectedGroupMembers...) contenait ne serait-ce qu'un élément -- jamais remarqué
+        // jusqu'ici faute de test exerçant cette sauvegarde avec un contenu réel (voir
+        // ConfigStoreTests.AiConfig_ConnectedGroupMembersRoundTripsAndIgnoresCase).
         var array = new JsonArray();
         foreach (var value in list)
-            array.Add(value);
+            array.Add(JsonValue.Create(value));
         return array;
     }
 }
