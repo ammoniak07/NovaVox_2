@@ -1840,6 +1840,7 @@ public partial class MainWindow : Window
 
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher(); else StopGameLogWatcher();
         RefreshGameLogStatus();
+        RefreshGameSpecificButtonsVisibility();
         _overlayWindow?.LoadFromConfig();
         _voiceOrchestrator?.UpdateListenHotkeySettings();
         ThemeManager.Apply(_state.Ai.UiTheme);
@@ -2465,6 +2466,7 @@ public partial class MainWindow : Window
         GameLogDestinationAliasesList.ItemsSource = _destinationAliasRows;
 
         RefreshGameLogStatus();
+        RefreshGameSpecificButtonsVisibility();
         if (_state.Ai.GameLogEnabled) StartGameLogWatcher();
     }
 
@@ -3239,6 +3241,23 @@ public partial class MainWindow : Window
         GameLogHeaderButton.Visibility = visibility;
         GameLogSettingsTab.Visibility = visibility;
         GeminiWikiEnabledCheckbox.Visibility = visibility;
+    }
+
+    /// <summary>
+    /// Les boutons d'en-tête "🚀 Vaisseaux"/"📐 Schémas"/"📊 Statistiques" ne
+    /// concernent que Star Citizen (aide-mémoire vaisseaux, base de schémas
+    /// de fabrication, statistiques dérivées du Game.log) — masqués en mode
+    /// "Autre jeu". Contrairement à RefreshGameLogStatus ci-dessus, dépend
+    /// uniquement du MODE DE JEU, pas de la case "Surveillance du
+    /// Game.log" : l'aide-mémoire vaisseaux et l'ajout manuel de schémas
+    /// restent utiles même surveillance coupée, en mode Star Citizen.
+    /// </summary>
+    private void RefreshGameSpecificButtonsVisibility()
+    {
+        var visibility = _state.GameMode.CurrentMode == GameModeConfig.StarCitizen ? Visibility.Visible : Visibility.Collapsed;
+        ShipCheatSheetHeaderButton.Visibility = visibility;
+        SchemasHeaderButton.Visibility = visibility;
+        StatsHeaderButton.Visibility = visibility;
     }
 
     private void OnGameLogEvent(GameLogEvent evt)
