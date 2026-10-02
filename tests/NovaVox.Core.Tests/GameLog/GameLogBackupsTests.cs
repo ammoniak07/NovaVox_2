@@ -166,4 +166,85 @@ public class GameLogBackupsTests : IDisposable
 
         Assert.Equal(backups, resolved);
     }
+
+    [Fact]
+    public void ScanForShipTimes_EntersAndLeavesSameShip_CreditsElapsedSeconds()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                Notification("CANAL 'Drake Cutter : Ammoniak' rejoint.", ts: "2026-09-20T18:00:00.000Z"),
+                Notification("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", ts: "2026-09-20T18:01:30.000Z"),
+            });
+
+        var result = GameLogBackups.ScanForShipTimes(backups);
+
+        Assert.Equal(90.0, result.SecondsByShip["Drake Cutter"]);
+        Assert.Single(result.ScannedFileNames);
+    }
+
+    [Fact]
+    public void ScanForShipTimes_OpenIntervalAtEndOfFile_CreditsUpToLastKnownTimestamp()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                Notification("CANAL 'Drake Cutter : Ammoniak' rejoint.", ts: "2026-09-20T18:00:00.000Z"),
+                "<2026-09-20T18:05:00.000Z> [Notice] <SomeOtherLine> rien à voir, juste pour avancer l'horloge",
+            });
+
+        var result = GameLogBackups.ScanForShipTimes(backups);
+
+        Assert.Equal(300.0, result.SecondsByShip["Drake Cutter"]);
+    }
+
+    [Fact]
+    public void ScanForShipTimes_IndependentAcrossFiles_NeverCarriesAnOpenIntervalOver()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[] { Notification("CANAL 'Drake Cutter : Ammoniak' rejoint.", ts: "2026-09-20T18:00:00.000Z") });
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(2) 02 Jun 18 (11 00 00).log"),
+            new[] { Notification("CANAL 'Anvil Paladin : Ammoniak' rejoint.", ts: "2026-09-21T09:00:00.000Z") });
+
+        var result = GameLogBackups.ScanForShipTimes(backups);
+
+        // Chaque fichier n'a vu qu'une entrée sans sortie ni autre ligne après : rien à créditer (pas de confusion entre les deux vaisseaux de fichiers différents).
+        Assert.Empty(result.SecondsByShip);
+        Assert.Equal(2, result.ScannedFileNames.Count);
+    }
+
+    [Fact]
+    public void ScanForShipTimes_AlreadyScannedFile_IsSkippedAndNotRecounted()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        const string fileName = "Game Build(1) 01 Jun 18 (10 09 04).log";
+        File.WriteAllLines(
+            Path.Combine(backups, fileName),
+            new[]
+            {
+                Notification("CANAL 'Drake Cutter : Ammoniak' rejoint.", ts: "2026-09-20T18:00:00.000Z"),
+                Notification("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", ts: "2026-09-20T18:01:30.000Z"),
+            });
+
+        var result = GameLogBackups.ScanForShipTimes(backups, alreadyScannedFileNames: new HashSet<string> { fileName });
+
+        Assert.Empty(result.SecondsByShip);
+        Assert.Empty(result.ScannedFileNames);
+    }
+
+    [Fact]
+    public void ScanForShipTimes_MissingFolder_ReturnsEmptyRatherThanThrowing()
+    {
+        var result = GameLogBackups.ScanForShipTimes(Path.Combine(_dir, "does-not-exist"));
+
+        Assert.Empty(result.SecondsByShip);
+        Assert.Empty(result.ScannedFileNames);
+    }
 }

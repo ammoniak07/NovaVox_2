@@ -120,6 +120,7 @@
                             <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
                             <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                             <Button x:Name="SchemasHeaderButton" Content="📐 Schémas" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenSchemas_Click" />
+                            <Button x:Name="StatsHeaderButton" Content="📊 Statistiques" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenStats_Click" />
                             <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                     ToolTip="Réglages" />
                         </StackPanel>
@@ -1350,6 +1351,83 @@
                                                                Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                                                 </StackPanel>
                                                 <Button Grid.Column="1" Content="Supprimer" VerticalAlignment="Top" Margin="8,0,0,0" Click="DeleteSchema_Click" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Temps passé dans chaque vaisseau — déduit des notifications HUD
+             d'entrée/sortie du canal de bord (voir GameLogAnnouncer.TryExtractShipChannelEvent,
+             ShipTimeTracker, suivies en direct dans OnGameLogEvent), avec la
+             possibilité de compléter depuis les anciens Game.log archivés
+             (ScanShipTimeBackups_Click). -->
+        <Border x:Name="StatsOverlay" Background="#B3000000" Visibility="Collapsed">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8"
+                    Width="560" MaxHeight="760" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="16,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="📊 STATISTIQUES" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseStats_Click" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="Temps total passé dans chaque vaisseau, suivi automatiquement en direct (entrée/sortie du canal de bord détectée dans le Game.log). « Charger les archives » relit les anciens Game.log conservés par le jeu pour compléter les statistiques avec des sessions jamais suivies en direct (ex. avant la première utilisation de NovaVox)."
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
+
+                    <WrapPanel Grid.Row="2" Margin="0,0,0,10">
+                        <Button x:Name="ScanShipTimeBackupsButton" Content="🔍 Charger les archives" Margin="0,0,0,6"
+                                ToolTip="Relit tous les anciens Game.log (logbackups) pour compléter les statistiques avec des sessions passées"
+                                Click="ScanShipTimeBackups_Click" />
+                        <Button Content="🗑 Tout supprimer" Margin="12,0,0,6"
+                                ToolTip="Supprime toutes les statistiques enregistrées"
+                                Click="DeleteAllShipTimes_Click" />
+                    </WrapPanel>
+
+                    <!-- Progression du scan des archives (ScanShipTimeBackups_Click) : masquée
+                         en dehors d'un scan, affichée pendant (le scan tourne hors du thread
+                         UI via Task.Run pour ne pas geler l'application) — même mécanique que
+                         SchemaScanProgressPanel. -->
+                    <StackPanel x:Name="StatsScanProgressPanel" Grid.Row="3" Margin="0,0,0,10" Visibility="Collapsed">
+                        <ProgressBar x:Name="StatsScanProgressBar" Height="6" Minimum="0" Maximum="100" />
+                        <TextBlock x:Name="StatsScanProgressText" Text="Scan en cours..."
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock x:Name="StatsEmptyText" Text="Aucune statistique pour l'instant." Foreground="{DynamicResource MutedBrush}"
+                                       FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />
+                            <ItemsControl x:Name="StatsList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                                Background="{DynamicResource PanelAltBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding ShipName}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding FormattedDuration}" Foreground="{DynamicResource AccentBrush}"
+                                                           FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" />
                                             </Grid>
                                         </Border>
                                     </DataTemplate>

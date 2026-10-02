@@ -17,6 +17,27 @@ public class GameLogAnnouncerTests
         Assert.Equal(expected, GameLogAnnouncer.TryExtractReceivedSchemaName(hudText));
     }
 
+    [Theory]
+    [InlineData("CANAL 'Drake Cutter : Ammoniak' rejoint.", "Drake Cutter", true)]
+    [InlineData("Vous avez quitté le CANAL 'Drake Cutter : Ammoniak'.", "Drake Cutter", false)]
+    [InlineData("Nouvel objectif : Livrer la cargaison", null, null)]
+    [InlineData("Un joueur a rejoint Bistic a rejoint le CANAL 'RSI Constellation Taurus : Tinou214'.", null, null)]
+    public void TryExtractShipChannelEvent_ReturnsShipAndDirectionOrNullWithoutSideEffects(string hudText, string? expectedShip, bool? expectedEntered)
+    {
+        var result = GameLogAnnouncer.TryExtractShipChannelEvent(hudText);
+
+        if (expectedShip is null)
+        {
+            Assert.Null(result);
+        }
+        else
+        {
+            Assert.NotNull(result);
+            Assert.Equal(expectedShip, result!.Value.ShipName);
+            Assert.Equal(expectedEntered, result!.Value.Entered);
+        }
+    }
+
     [Fact]
     public void MigrateLegacySchemaNames_StripsLeftoverEmphasisTag()
     {

@@ -398,6 +398,39 @@ public static partial class GameLogAnnouncer
     }
 
     /// <summary>
+    /// Détecte une notification HUD d'entrée/sortie du canal de bord d'un
+    /// vaisseau ("CANAL '{vaisseau} : {pilote}' rejoint." / "Vous avez
+    /// quitté le CANAL '{vaisseau} : {pilote}'.") — émise quand LE JOUEUR
+    /// LOCAL entre dans un vaisseau (le sien, ou celui d'un équipage en
+    /// tant que passager/tourelleur) ou en sort (voir
+    /// ShipChannelJoinedRegex/ShipChannelLeftRegex, déjà utilisés pour les
+    /// annoncer à voix haute). Utilisé pour le suivi du temps passé par
+    /// vaisseau (voir ShipTimeTracker), sans effet de bord — comme
+    /// TryExtractReceivedSchemaName. La variante "via un mouvement de
+    /// groupe" (PlayerJoinedShipChannelViaGroupRegex/PlayerLeftShipChannelViaGroupRegex)
+    /// concerne un AUTRE membre du groupe qui bouge, pas le joueur local,
+    /// et n'est donc volontairement pas prise en compte ici.
+    /// </summary>
+    public static (string ShipName, bool Entered)? TryExtractShipChannelEvent(string hudText)
+    {
+        var joined = ShipChannelJoinedRegex().Match(hudText);
+        if (joined.Success)
+        {
+            var name = joined.Groups["name"].Value.Trim();
+            return name.Length == 0 ? null : (name, true);
+        }
+
+        var left = ShipChannelLeftRegex().Match(hudText);
+        if (left.Success)
+        {
+            var name = left.Groups["name"].Value.Trim();
+            return name.Length == 0 ? null : (name, false);
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Remplace la ou les parties variables détectées (nom de joueur/pilote/
     /// ami/vaisseau, ou nom de mission/objectif) dans un texte HUD connu
     /// (voir HudTemplates) par leurs réservoirs "{xxx}", pour qu'une seule

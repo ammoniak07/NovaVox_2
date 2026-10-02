@@ -252,10 +252,22 @@ public sealed partial class GameLogLineProcessor
             }
             _lastHudNotificationSeenAt[text] = ts;
         }
-        return new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = text };
+        return new GameLogEvent
+        {
+            Type = GameLogEventTypes.HudNotification,
+            Text = text,
+            // Horodatage réel de la ligne plutôt que l'instant de traitement (par
+            // défaut sur GameLogEvent.Ts) : sans effet perceptible en direct (traité
+            // à quelques ms de l'écriture), mais indispensable pour le suivi du
+            // temps passé par vaisseau (voir ShipTimeTracker) lors d'un scan
+            // rétroactif des archives Game.log, où l'instant de traitement n'a
+            // aucun rapport avec quand l'évènement a vraiment eu lieu.
+            Ts = (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds() / 1000.0,
+        };
     }
 
-    private static DateTimeOffset? ParseLineTimestamp(string line)
+    /// <summary>Horodatage &lt;...&gt; en tête de ligne (UTC) — public car réutilisé par GameLogBackups pour suivre la dernière activité connue d'une archive (voir ScanForShipTimes).</summary>
+    public static DateTimeOffset? ParseLineTimestamp(string line)
     {
         var match = TimestampRegex().Match(line);
         if (!match.Success) return null;

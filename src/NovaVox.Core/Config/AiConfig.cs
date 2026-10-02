@@ -63,6 +63,10 @@ public sealed class AiConfig
     public string ActiveShipCheatSheet { get; set; } = "";
     /// <summary>Schémas de fabrication reçus (Réglages > 📐 Schémas) — ajoutés automatiquement à la détection d'une notification HUD "Schémas reçu : {nom}" dans le Game.log (voir GameLogAnnouncer), ou manuellement depuis le panneau.</summary>
     public List<string> SchemasReceived { get; set; } = new();
+    /// <summary>Temps total passé (secondes) dans chaque vaisseau, nom de vaisseau -> secondes — voir ShipTimeTracker (suivi en direct, panneau "📊 Statistiques") et GameLogBackups.ScanForShipTimes (complété depuis les archives).</summary>
+    public Dictionary<string, double> ShipTimeSeconds { get; set; } = new();
+    /// <summary>Noms des archives Game.log déjà prises en compte dans ShipTimeSeconds (voir GameLogBackups.ScanForShipTimes/ShipTimeScanResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
+    public HashSet<string> ShipTimeScannedBackupFiles { get; set; } = new();
 }
 
 /// <summary>
@@ -179,6 +183,9 @@ public sealed class AiConfigStore
             // fabricant ni description). Persisté tout de suite, comme les
             // deux migrations ci-dessus.
             schemasMigrated = GameLogAnnouncer.MigrateLegacySchemaNames(config.SchemasReceived);
+
+            config.ShipTimeSeconds = ToStringDoubleDict(data["ship_time_seconds"] as JsonObject);
+            config.ShipTimeScannedBackupFiles = ToStringList(data["ship_time_scanned_backup_files"] as JsonArray).ToHashSet();
         }
         catch
         {
@@ -225,6 +232,8 @@ public sealed class AiConfigStore
             ["ship_cheat_sheet_colors"] = FromNestedStringDict(config.ShipCheatSheetColors),
             ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
             ["schemas_received"] = FromStringList(config.SchemasReceived),
+            ["ship_time_seconds"] = FromStringDoubleDict(config.ShipTimeSeconds),
+            ["ship_time_scanned_backup_files"] = FromStringList(config.ShipTimeScannedBackupFiles.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }
@@ -239,6 +248,26 @@ public sealed class AiConfigStore
     }
 
     private static JsonObject FromStringDict(Dictionary<string, string> dict)
+    {
+        var obj = new JsonObject();
+        foreach (var (key, value) in dict)
+            obj[key] = value;
+        return obj;
+    }
+
+    private static Dictionary<string, double> ToStringDoubleDict(JsonObject? obj)
+    {
+        var result = new Dictionary<string, double>();
+        if (obj is null) return result;
+        foreach (var (key, value) in obj)
+        {
+            var seconds = GetDouble(value);
+            if (seconds is > 0) result[key] = seconds.Value;
+        }
+        return result;
+    }
+
+    private static JsonObject FromStringDoubleDict(Dictionary<string, double> dict)
     {
         var obj = new JsonObject();
         foreach (var (key, value) in dict)

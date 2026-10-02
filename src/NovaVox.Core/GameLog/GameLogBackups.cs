@@ -1,6 +1,15 @@
 namespace NovaVox.Core.GameLog;
 
 /// <summary>
+/// Résultat d'un scan GameLogBackups.ScanForShipTimes : le temps total
+/// (secondes) trouvé par vaisseau sur les fichiers effectivement parcourus
+/// cette fois-ci, et les noms de ces fichiers — à fusionner/persister par
+/// l'appelant (AiConfig.ShipTimeSeconds / ShipTimeScannedBackupFiles), pour
+/// qu'un second scan ne recompte jamais une archive déjà prise en compte.
+/// </summary>
+public sealed record ShipTimeScanResult(IReadOnlyDictionary<string, double> SecondsByShip, IReadOnlyList<string> ScannedFileNames);
+
+/// <summary>
 /// Scan rétroactif des archives Game.log ("logbackups", sessions passées
 /// roulées automatiquement par le jeu lui-même au lancement) pour y
 /// retrouver des notifications "Schémas reçu : {nom}" manquées — NovaVox
@@ -110,6 +119,93 @@ public static class GameLogBackups
                 var name = GameLogAnnouncer.TryExtractReceivedSchemaName(cleanText);
                 if (name is not null) result.Add(name);
             }
+        }
+        catch (IOException)
+        {
+            // Archive verrouillée/en cours d'écriture : ignorée, le reste du scan continue.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Idem pour un problème de permissions sur ce fichier précis.
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Parcourt tous les .log de <paramref name="backupsFolder"/> et
+    /// retourne le temps total (secondes) passé dans chaque vaisseau,
+    /// déduit des notifications d'entrée/sortie du canal de bord (voir
+    /// GameLogAnnouncer.TryExtractShipChannelEvent et ShipTimeTracker) —
+    /// SANS fusion avec un éventuel total déjà enregistré (à la charge de
+    /// l'appelant, comme ScanForReceivedSchemas). Un intervalle encore
+    /// ouvert à la fin d'un fichier (pas de notification de sortie avant
+    /// la fin de l'archive, ex. jeu fermé brutalement) est crédité jusqu'au
+    /// dernier horodatage lu dans ce fichier plutôt que d'être perdu.
+    /// </summary>
+    /// <param name="alreadyScannedFileNames">
+    /// Noms de fichiers (voir ShipTimeScanResult.ScannedFileNames d'un appel
+    /// précédent, persistés par l'appelant) à ignorer — sans ça, relancer le
+    /// scan une deuxième fois recompterait tout le temps déjà trouvé la
+    /// première fois en plus de l'existant. Une archive une fois roulée par
+    /// le jeu n'est jamais réécrite, donc son nom suffit à l'identifier de
+    /// façon stable d'un scan à l'autre.
+    /// </param>
+    public static ShipTimeScanResult ScanForShipTimes(
+        string backupsFolder,
+        IReadOnlySet<string>? alreadyScannedFileNames = null,
+        IProgress<(int Done, int Total)>? progress = null)
+    {
+        var totals = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var scannedNow = new List<string>();
+        if (!Directory.Exists(backupsFolder)) return new ShipTimeScanResult(totals, scannedNow);
+
+        var files = Directory.EnumerateFiles(backupsFolder, "*.log", SearchOption.TopDirectoryOnly).ToList();
+        for (var i = 0; i < files.Count; i++)
+        {
+            var fileName = Path.GetFileName(files[i]);
+            if (alreadyScannedFileNames is null || !alreadyScannedFileNames.Contains(fileName))
+            {
+                foreach (var (ship, seconds) in ScanFileForShipTimes(files[i]))
+                    totals[ship] = totals.GetValueOrDefault(ship) + seconds;
+                scannedNow.Add(fileName);
+            }
+            progress?.Report((i + 1, files.Count));
+        }
+        return new ShipTimeScanResult(totals, scannedNow);
+    }
+
+    // Même principe que ScanFile (machine à états indépendante par fichier),
+    // avec en plus le dernier horodatage lu (lastTs, sur TOUTE ligne —
+    // pas seulement les notifications HUD) pour pouvoir créditer un
+    // intervalle encore ouvert à la fin du fichier.
+    private static List<(string Ship, double Seconds)> ScanFileForShipTimes(string path)
+    {
+        var result = new List<(string, double)>();
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            var processor = new GameLogLineProcessor();
+            var tracker = new ShipTimeTracker();
+            DateTimeOffset? lastTs = null;
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (GameLogLineProcessor.ParseLineTimestamp(line) is { } lineTs) lastTs = lineTs;
+
+                var evt = processor.ProcessLine(line);
+                if (evt is null || evt.Type != GameLogEventTypes.HudNotification || evt.Text is null) continue;
+
+                var cleanText = GameLogAnnouncer.CleanHudNotificationText(evt.Text);
+                var change = GameLogAnnouncer.TryExtractShipChannelEvent(cleanText);
+                if (change is null) continue;
+
+                var eventTs = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
+                if (tracker.Process(eventTs, change.Value.ShipName, change.Value.Entered) is { } closed)
+                    result.Add(closed);
+            }
+            if (lastTs is { } ts && tracker.Flush(ts) is { } finalClosed)
+                result.Add(finalClosed);
         }
         catch (IOException)
         {

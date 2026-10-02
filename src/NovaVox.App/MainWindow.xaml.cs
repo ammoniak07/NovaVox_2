@@ -97,6 +97,11 @@ public partial class MainWindow : Window
 
     private readonly ObservableCollection<SchemaRowVm> _schemaRows = new();
 
+    /// <summary>Suivi en direct du temps passé dans le vaisseau actuellement occupé (panneau "📊 Statistiques") — voir ShipTimeTracker, OnGameLogEvent, _shipTimeFlushTimer.</summary>
+    private readonly ShipTimeTracker _shipTimeTracker = new();
+    private readonly ObservableCollection<ShipTimeRowVm> _shipTimeRows = new();
+    private readonly DispatcherTimer _shipTimeFlushTimer;
+
     private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
     /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
     private string? _selectedShipCheatSheetName;
@@ -151,6 +156,16 @@ public partial class MainWindow : Window
             AppendLog(OverlaySettingsLogSummary(), "diagnostic");
         };
 
+        // Clôt (et recrédite) périodiquement l'intervalle en cours du vaisseau
+        // actuellement suivi, sans attendre une notification de sortie — sinon
+        // une session qui reste dans le même vaisseau jusqu'à la fermeture de
+        // NovaVox (ou un simple crash du jeu) n'aurait jamais aucun temps
+        // crédité du tout. Perte maximale en cas d'arrêt brutal : l'intervalle
+        // entre deux déclenchements (voir Interval ci-dessous).
+        _shipTimeFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+        _shipTimeFlushTimer.Tick += (_, _) => FlushShipTime(DateTimeOffset.UtcNow);
+        _shipTimeFlushTimer.Start();
+
         Loaded += OnLoaded;
         Closing += OnClosing;
         SizeChanged += (_, _) => SaveWindowConfig();
@@ -190,6 +205,7 @@ public partial class MainWindow : Window
         InitializeGameLog();
         RegisterLiveSchemaNameAliases();
         InitializeSchemas();
+        InitializeShipTimeStats();
         InitializeShipCheatSheets();
         LoadAppLogoImage();
         AppendLog("NovaVox démarré.", "info");
@@ -1345,6 +1361,7 @@ public partial class MainWindow : Window
             Hide();
             return;
         }
+        FlushShipTime(DateTimeOffset.UtcNow); // crédite le vaisseau en cours jusqu'à la fermeture, sans attendre le prochain tick de _shipTimeFlushTimer
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
         _micLevelMonitor.Dispose();
@@ -2067,6 +2084,7 @@ public partial class MainWindow : Window
         SetHeaderButtonLabel(GameLogHeaderButton, UiLocalization.T(_state.Ai.UiLanguage, "topbar.gamelog"));
         SetHeaderButtonLabel(ShipCheatSheetHeaderButton, "🚀 Vaisseaux");
         SetHeaderButtonLabel(SchemasHeaderButton, "📐 Schémas");
+        SetHeaderButtonLabel(StatsHeaderButton, "📊 Statistiques");
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeaderButtonsCompactMode(e.NewSize.Width);
@@ -2700,6 +2718,124 @@ public partial class MainWindow : Window
         }
     }
 
+    // ------------------------------------------------------- Statistiques (temps par vaisseau)
+
+    private void InitializeShipTimeStats()
+    {
+        StatsList.ItemsSource = _shipTimeRows;
+        RefreshShipTimeStats();
+    }
+
+    private void RefreshShipTimeStats()
+    {
+        _shipTimeRows.Clear();
+        foreach (var (ship, seconds) in _state.Ai.ShipTimeSeconds.OrderByDescending(kv => kv.Value))
+            _shipTimeRows.Add(new ShipTimeRowVm { ShipName = ship, TotalSeconds = seconds });
+        StatsEmptyText.Visibility = _shipTimeRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OpenStats_Click(object sender, RoutedEventArgs e)
+    {
+        // Le temps du vaisseau actuellement occupé doit être à jour dès
+        // l'ouverture du panneau, sans attendre le prochain déclenchement
+        // de _shipTimeFlushTimer (jusqu'à 60s de retard sinon).
+        FlushShipTime(DateTimeOffset.UtcNow);
+        StatsOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CloseStats_Click(object sender, RoutedEventArgs e) => StatsOverlay.Visibility = Visibility.Collapsed;
+
+    /// <summary>Crédite <paramref name="seconds"/> au total de <paramref name="ship"/>, persiste, et rafraîchit la liste si le panneau est actuellement ouvert.</summary>
+    private void CreditShipTime(string ship, double seconds)
+    {
+        _state.Ai.ShipTimeSeconds[ship] = _state.Ai.ShipTimeSeconds.GetValueOrDefault(ship) + seconds;
+        SaveAiAndLog();
+        if (StatsOverlay.Visibility == Visibility.Visible) RefreshShipTimeStats();
+    }
+
+    /// <summary>Clôt (sans changer de vaisseau) l'intervalle en cours jusqu'à <paramref name="ts"/> — voir _shipTimeFlushTimer (constructeur) et OpenStats_Click.</summary>
+    private void FlushShipTime(DateTimeOffset ts)
+    {
+        if (_shipTimeTracker.Flush(ts) is { } closed)
+            CreditShipTime(closed.Ship, closed.Seconds);
+    }
+
+    /// <summary>Vide toute la liste d'un coup, après confirmation — pas de retour en arrière possible une fois enregistré. Ne réinitialise PAS ShipTimeScannedBackupFiles : un "Charger les archives" après coup ne doit pas recompter des archives déjà vues.</summary>
+    private void DeleteAllShipTimes_Click(object sender, RoutedEventArgs e)
+    {
+        if (_state.Ai.ShipTimeSeconds.Count == 0) return;
+        if (MessageBox.Show(this, $"Supprimer les statistiques de {_state.Ai.ShipTimeSeconds.Count} vaisseau(x) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+
+        _state.Ai.ShipTimeSeconds.Clear();
+        RefreshShipTimeStats();
+        SaveAiAndLog();
+    }
+
+    /// <summary>
+    /// Relit les archives Game.log (logbackups) pour compléter les
+    /// statistiques avec des sessions jamais suivies en direct par NovaVox
+    /// (avant sa première utilisation, ou simplement fermé à l'époque) —
+    /// même mécanique que ScanSchemaBackups_Click (hors du thread UI,
+    /// barre de progression). AiConfig.ShipTimeScannedBackupFiles évite de
+    /// recompter une archive déjà prise en compte lors d'un scan précédent.
+    /// </summary>
+    private async void ScanShipTimeBackups_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ScanShipTimeBackupsButton.IsEnabled) return; // scan déjà en cours
+
+        var customBackupsPath = _state.Ai.GameLogBackupsCustomPath;
+        var customPath = _state.Ai.GameLogCustomPath;
+        var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+        var backupsFolder = GameLogBackups.ResolveBackupsFolder(customBackupsPath, liveLogPath);
+        if (backupsFolder is null)
+        {
+            var message = string.IsNullOrWhiteSpace(customBackupsPath)
+                ? "Aucune archive Game.log trouvée (dossier « logbackups » introuvable)."
+                : $"Le dossier logbackups renseigné dans Réglages > 🛰 Game.log est introuvable :\n{customBackupsPath}";
+            MessageBox.Show(this, message, "NovaVox");
+            return;
+        }
+
+        ScanShipTimeBackupsButton.IsEnabled = false;
+        StatsScanProgressBar.Value = 0;
+        StatsScanProgressText.Text = "Scan en cours...";
+        StatsScanProgressPanel.Visibility = Visibility.Visible;
+
+        var progress = new Progress<(int Done, int Total)>(p =>
+        {
+            StatsScanProgressBar.Value = p.Total > 0 ? p.Done * 100.0 / p.Total : 100;
+            StatsScanProgressText.Text = $"Scan en cours... {p.Done} / {p.Total} archive(s)";
+        });
+
+        try
+        {
+            var alreadyScanned = _state.Ai.ShipTimeScannedBackupFiles;
+            var scanResult = await Task.Run(() => GameLogBackups.ScanForShipTimes(backupsFolder, alreadyScanned, progress));
+
+            foreach (var name in scanResult.ScannedFileNames)
+                _state.Ai.ShipTimeScannedBackupFiles.Add(name);
+
+            if (scanResult.SecondsByShip.Count == 0)
+            {
+                SaveAiAndLog(); // persiste quand même ShipTimeScannedBackupFiles : inutile de rescanner les mêmes archives vides la prochaine fois
+                MessageBox.Show(this, "Aucun nouveau temps de vaisseau trouvé dans les archives.", "NovaVox");
+                return;
+            }
+
+            foreach (var (ship, seconds) in scanResult.SecondsByShip)
+                _state.Ai.ShipTimeSeconds[ship] = _state.Ai.ShipTimeSeconds.GetValueOrDefault(ship) + seconds;
+
+            RefreshShipTimeStats();
+            SaveAiAndLog();
+            MessageBox.Show(this, $"Statistiques complétées pour {scanResult.SecondsByShip.Count} vaisseau(x) depuis les archives.", "NovaVox");
+        }
+        finally
+        {
+            StatsScanProgressPanel.Visibility = Visibility.Collapsed;
+            ScanShipTimeBackupsButton.IsEnabled = true;
+        }
+    }
+
     // ------------------------------------------------------- Aide-mémoire vaisseaux
 
     private void InitializeShipCheatSheets()
@@ -2971,6 +3107,18 @@ public partial class MainWindow : Window
                 AppendLog($"Pseudo RSI détecté automatiquement : « {evt.Nickname} ».", "info");
             }
             return;
+        }
+
+        if (evt.Type == GameLogEventTypes.HudNotification && evt.Text is not null)
+        {
+            var cleanText = GameLogAnnouncer.CleanHudNotificationText(evt.Text);
+            var shipChange = GameLogAnnouncer.TryExtractShipChannelEvent(cleanText);
+            if (shipChange is not null)
+            {
+                var ts = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
+                if (_shipTimeTracker.Process(ts, shipChange.Value.ShipName, shipChange.Value.Entered) is { } closed)
+                    CreditShipTime(closed.Ship, closed.Seconds);
+            }
         }
 
         var result = GameLogAnnouncer.Build(evt, _state.Ai);
