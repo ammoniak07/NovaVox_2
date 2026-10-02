@@ -1316,7 +1316,7 @@
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
                         <TextBlock Text="Archives à partir du :" VerticalAlignment="Center" Margin="0,0,8,0"
                                    Foreground="{DynamicResource MutedBrush}" FontSize="12" />
-                        <DatePicker x:Name="SchemaScanStartDatePicker" Width="135"
+                        <DatePicker x:Name="SchemaScanStartDatePicker" Width="200"
                                     ToolTip="Ignore les archives antérieures à cette date lors du scan (ex. après un wipe des schémas en jeu) — laisser vide pour tout scanner comme avant"
                                     SelectedDateChanged="SchemaScanStartDatePicker_SelectedDateChanged" />
                         <Button Content="Effacer" Margin="8,0,0,0" Padding="6,2" FontSize="11"
