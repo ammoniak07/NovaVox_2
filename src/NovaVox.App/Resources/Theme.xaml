@@ -470,16 +470,15 @@
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <!-- IsSelected n'est volontairement PAS utilisé ici : contrairement à
+                             CalendarDayButton, ce n'est pas une propriété de modèle accessible
+                             sur CalendarButton (erreur de build MC4109 constatée) — seul le
+                             survol/l'état inactif restent personnalisables pour ce bouton. -->
                         <Trigger Property="IsInactive" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentDimBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource BgBrush}" />
-                            <Setter Property="FontWeight" Value="Bold" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
