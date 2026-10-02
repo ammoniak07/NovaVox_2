@@ -151,6 +151,7 @@ public static partial class GameLogDestinations
         ["rs ext pyro2 l4"] = "Checkmate",
         ["rs ext pyro3 l1"] = "Station-service Starlight",
         ["rs ext pyro3 l3"] = "Patch City",
+        ["rs ext pyro5 l2"] = "Gaslight",
         ["rs ext pyro5 l4"] = "Rod's Fuel 'N Supplies",
         ["rs ext pyro5 l5"] = "Rat's Nest",
         ["p5 l3"] = "Pyro 5 L3",
