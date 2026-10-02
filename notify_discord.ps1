@@ -94,6 +94,11 @@ if ($FirstPostFile -and (Test-Path $FirstPostFile)) {
 $chunks = Split-IntoChunks -Text $notes -MaxSize 3500
 $total = $chunks.Count
 
+# DIAGNOSTIC TEMPORAIRE : confirme ce que ce script a RÉELLEMENT en main
+# juste avant de construire/envoyer le JSON, pour isoler si le souci est ici
+# ou plus loin (Discord lui-même, ou le webhook configuré).
+Write-Host "  [diag] notes.Length=$($notes.Length) chunks.Count=$total chunks[0].Length=$($chunks[0].Length)"
+
 # HttpClient plutot qu'Invoke-RestMethod : ce dernier s'appuie, sous Windows
 # PowerShell 5.1 (.NET Framework), sur l'ancien System.Net.HttpWebRequest, qui
 # a un defaut connu -- si le serveur repond par une redirection, le POST est
@@ -125,6 +130,13 @@ try {
             username = "NovaVox"
             embeds   = @($embed)
         } | ConvertTo-Json -Depth 6
+
+        # DIAGNOSTIC TEMPORAIRE : écrit le JSON exact envoyé à Discord dans un
+        # fichier à côté du dépôt, pour vérifier octet pour octet ce qui part
+        # réellement (payload.Length seul ne dit pas si le texte est coupé
+        # AVANT ou APRÈS le JSON construit).
+        $payload | Set-Content -Path "discord_payload_debug.txt" -Encoding UTF8
+        Write-Host "  [diag] payload.Length=$($payload.Length) (écrit dans discord_payload_debug.txt)"
 
         try {
             $content = New-Object System.Net.Http.StringContent($payload, [System.Text.Encoding]::UTF8, "application/json")
