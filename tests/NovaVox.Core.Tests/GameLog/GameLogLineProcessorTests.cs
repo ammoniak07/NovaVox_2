@@ -166,10 +166,35 @@ public class GameLogLineProcessorTests
             Assert.Null(down);
         }
 
-        // Un vrai calme revient (> fenêtre de 5s) : la prochaine occurrence s'annonce de nouveau normalement.
-        var later = processor.ProcessLine(Notification("CommLink hors service: ", 999, "2026-09-20T18:30:40.000Z"));
+        // Un vrai calme revient (> fenêtre de 30s) : la prochaine occurrence s'annonce de nouveau normalement.
+        var later = processor.ProcessLine(Notification("CommLink hors service: ", 999, "2026-09-20T18:31:05.000Z"));
         Assert.NotNull(later);
         Assert.Equal("CommLink hors service:", later!.Text);
+    }
+
+    [Fact]
+    public void HudNotification_GroupMemberConnectedRepeatedWithinWindow_IsSuppressedThenResumesAfterGap()
+    {
+        // Vérifié en vrai Game.log (remontée utilisateur, 02/10/2026) : une
+        // reconnexion réseau fait apparaître DEUX notifications HUD "Groupe :
+        // {nom} s'est connecté." distinctes (deux ID différents) pour le même
+        // joueur à une dizaine de secondes d'écart seulement -- trop pour
+        // l'ancienne fenêtre de 5s (voir le test CommLink ci-dessus), ce qui
+        // laissait passer l'annonce en double à voix haute/dans l'overlay.
+        var processor = new GameLogLineProcessor();
+        string Notification(string text, int id, string ts) =>
+            $"<{ts}> [Notice] <SHUDEvent_OnNotification> Added notification \"{text}\" [{id}] to queue. New queue size: 1, MissionId: [x]";
+
+        var first = processor.ProcessLine(Notification("Groupe : Dionico31 s'est connecté.: ", 1, "2026-10-02T20:53:27.000Z"));
+        Assert.NotNull(first);
+
+        // 13s plus tard (vu en vrai log) : toujours dans la fenêtre de 30s -> supprimée.
+        var repeated = processor.ProcessLine(Notification("Groupe : Dionico31 s'est connecté.: ", 2, "2026-10-02T20:53:40.000Z"));
+        Assert.Null(repeated);
+
+        // Un vrai calme revient (> fenêtre de 30s) : la prochaine occurrence s'annonce de nouveau normalement.
+        var later = processor.ProcessLine(Notification("Groupe : Dionico31 s'est connecté.: ", 3, "2026-10-02T20:54:30.000Z"));
+        Assert.NotNull(later);
     }
 
     [Fact]
