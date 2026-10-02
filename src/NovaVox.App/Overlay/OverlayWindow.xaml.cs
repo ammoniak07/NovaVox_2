@@ -1036,6 +1036,21 @@ public partial class OverlayWindow : Window
         // fois le glisser terminé — moins clair pour viser une 5e position.
         RefreshColumnEditingStrips();
 
+        // Force IMMÉDIATEMENT une passe de mise en page (Measure/Arrange) —
+        // sans ça, ColumnIndexAtX/RowIndexAtY (RowDragHandle_MouseMove,
+        // potentiellement redéclenché avant que WPF n'ait eu l'occasion de
+        // recalculer la géométrie après CE déplacement) continuent de lire
+        // ActualWidth/TranslatePoint d'AVANT ce changement de colonnes —
+        // géométrie périmée qui fait osciller la cible calculée d'un
+        // MouseMove à l'autre (clignotement constaté en conditions réelles,
+        // particulièrement net en glissant vers la droite : la colonne
+        // quittée rétrécit pendant que la colonne rejointe grandit, deux
+        // largeurs qui changent en même temps). UpdateLayout() force une
+        // passe SYNCHRONE plutôt que d'attendre le prochain cycle de rendu
+        // WPF (souvent plus lent que la fréquence des évènements souris).
+        Window.GetWindow(targetColumn)?.UpdateLayout();
+        if (!sameColumn) Window.GetWindow(currentColumn)?.UpdateLayout();
+
         if (previousWindowId != 0 && previousWindowId != targetWindowId)
             CloseSatelliteIfEmpty(previousWindowId);
     }
