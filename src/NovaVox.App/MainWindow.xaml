@@ -1261,6 +1261,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -1307,10 +1308,26 @@
                                 Click="DeleteAllSchemas_Click" />
                     </WrapPanel>
 
+                    <!-- Date de départ pour "🔍 Scanner les archives" : utile après un wipe des
+                         schémas en jeu, pour ne recharger que ce qui a été obtenu depuis plutôt
+                         que de ressusciter des schémas d'avant le wipe (voir
+                         GameLogBackups.ScanForReceivedSchemas, paramètre minTimestamp). Vide =
+                         aucun filtre (comportement d'avant), comme toujours. -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
+                        <TextBlock Text="Archives à partir du :" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+                        <DatePicker x:Name="SchemaScanStartDatePicker" Width="135"
+                                    ToolTip="Ignore les archives antérieures à cette date lors du scan (ex. après un wipe des schémas en jeu) — laisser vide pour tout scanner comme avant"
+                                    SelectedDateChanged="SchemaScanStartDatePicker_SelectedDateChanged" />
+                        <Button Content="Effacer" Margin="8,0,0,0" Padding="6,2" FontSize="11"
+                                ToolTip="Retire le filtre de date (scanne de nouveau toutes les archives)"
+                                Click="ClearSchemaScanStartDate_Click" />
+                    </StackPanel>
+
                     <!-- Progression du scan des archives (ScanSchemaBackups_Click) : masquée
                          en dehors d'un scan, affichée pendant (le scan tourne hors du thread
                          UI via Task.Run pour ne pas geler l'application). -->
-                    <StackPanel x:Name="SchemaScanProgressPanel" Grid.Row="3" Margin="0,0,0,10" Visibility="Collapsed">
+                    <StackPanel x:Name="SchemaScanProgressPanel" Grid.Row="4" Margin="0,0,0,10" Visibility="Collapsed">
                         <ProgressBar x:Name="SchemaScanProgressBar" Height="6" Minimum="0" Maximum="100" />
                         <TextBlock x:Name="SchemaScanProgressText" Text="Scan en cours..."
                                    Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
@@ -1318,14 +1335,14 @@
 
                     <!-- Même mécanique que RefreshGameLogSearchVisibility : filtre RowVisible par
                          ligne (voir SchemaRowVm), jamais _schemaRows lui-même. -->
-                    <Grid Grid.Row="4" Margin="0,0,0,10">
+                    <Grid Grid.Row="5" Margin="0,0,0,10">
                         <TextBox x:Name="SchemasSearchBox" Padding="8,6" TextChanged="SchemasSearchBox_TextChanged" />
                         <TextBlock x:Name="SchemasSearchPlaceholder" Text="🔍 Rechercher un schéma..."
                                    Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                    Foreground="{DynamicResource MutedBrush}" FontSize="12" />
                     </Grid>
 
-                    <ScrollViewer Grid.Row="5" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock x:Name="SchemasEmptyText" Text="Aucun schéma reçu pour l'instant." Foreground="{DynamicResource MutedBrush}"
                                        FontStyle="Italic" Visibility="Collapsed" Margin="0,4,0,0" />

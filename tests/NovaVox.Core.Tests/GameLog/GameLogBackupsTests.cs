@@ -99,6 +99,50 @@ public class GameLogBackupsTests : IDisposable
     }
 
     [Fact]
+    public void ScanForReceivedSchemas_MinTimestamp_ExcludesNotificationsBeforeCutoff()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                Notification("Schémas reçu : Ezra", ts: "2026-09-19T12:00:00.000Z"), // avant le wipe
+                Notification("Schémas reçu : Deadbolt IV Cannon", id: 2, ts: "2026-09-20T12:00:00.000Z"), // après le wipe
+            });
+
+        var found = GameLogBackups.ScanForReceivedSchemas(backups, minTimestamp: DateTimeOffset.Parse("2026-09-20T00:00:00Z"));
+
+        Assert.DoesNotContain("Ezra", found);
+        Assert.Contains("Deadbolt IV Cannon", found);
+    }
+
+    [Fact]
+    public void ScanForReceivedSchemas_MinTimestamp_NotificationExactlyAtCutoff_IsIncluded()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[] { Notification("Schémas reçu : Ezra", ts: "2026-09-20T00:00:00.000Z") });
+
+        var found = GameLogBackups.ScanForReceivedSchemas(backups, minTimestamp: DateTimeOffset.Parse("2026-09-20T00:00:00Z"));
+
+        Assert.Contains("Ezra", found);
+    }
+
+    [Fact]
+    public void ScanForReceivedSchemas_NoMinTimestamp_IncludesEverything()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[] { Notification("Schémas reçu : Ezra", ts: "2020-01-01T00:00:00.000Z") });
+
+        var found = GameLogBackups.ScanForReceivedSchemas(backups);
+
+        Assert.Contains("Ezra", found);
+    }
+
+    [Fact]
     public void ScanForReceivedSchemas_ReportsProgressAfterEachFile()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
@@ -112,7 +156,7 @@ public class GameLogBackupsTests : IDisposable
         var reports = new List<(int Done, int Total)>();
         var progress = new SynchronousProgress<(int Done, int Total)>(reports.Add);
 
-        GameLogBackups.ScanForReceivedSchemas(backups, progress);
+        GameLogBackups.ScanForReceivedSchemas(backups, progress: progress);
 
         Assert.Equal(2, reports.Count);
         Assert.Equal((1, 2), reports[0]);

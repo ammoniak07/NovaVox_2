@@ -2512,6 +2512,9 @@ public partial class MainWindow : Window
             _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage));
         SchemasList.ItemsSource = _schemaRows;
         RefreshSchemasEmptyState();
+
+        if (DateOnly.TryParse(_state.Ai.SchemaScanStartDate, System.Globalization.CultureInfo.InvariantCulture, out var startDate))
+            SchemaScanStartDatePicker.SelectedDate = startDate.ToDateTime(TimeOnly.MinValue);
     }
 
     private void RefreshSchemasEmptyState() =>
@@ -2634,6 +2637,15 @@ public partial class MainWindow : Window
         SaveAiAndLog();
     }
 
+    /// <summary>Persiste la date de départ du scan d'archives (voir ScanSchemaBackups_Click) dès qu'elle change.</summary>
+    private void SchemaScanStartDatePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _state.Ai.SchemaScanStartDate = SchemaScanStartDatePicker.SelectedDate?.ToString("yyyy-MM-dd") ?? "";
+        SaveAiAndLog();
+    }
+
+    private void ClearSchemaScanStartDate_Click(object sender, RoutedEventArgs e) => SchemaScanStartDatePicker.SelectedDate = null;
+
     private void SchemasSearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         SchemasSearchPlaceholder.Visibility = SchemasSearchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -2689,6 +2701,14 @@ public partial class MainWindow : Window
         SchemaScanProgressText.Text = "Scan en cours...";
         SchemaScanProgressPanel.Visibility = Visibility.Visible;
 
+        // Date de départ optionnelle (voir SchemaScanStartDatePicker) : interprétée comme
+        // minuit UTC de ce jour-là, cohérent avec les horodatages du Game.log (toujours en
+        // UTC, "Z") — simple et suffisant pour un filtre après un wipe, pas besoin de plus
+        // de précision qu'une journée.
+        var minTimestamp = DateOnly.TryParse(_state.Ai.SchemaScanStartDate, System.Globalization.CultureInfo.InvariantCulture, out var startDate)
+            ? new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero)
+            : (DateTimeOffset?)null;
+
         // IProgress<T>.Report capture le SynchronizationContext courant (thread UI) à la
         // création : les mises à jour arrivent donc déjà sur le bon thread, pas besoin de
         // Dispatcher.Invoke. Le scan lui-même (lecture de potentiellement des centaines
@@ -2701,7 +2721,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var found = await Task.Run(() => GameLogBackups.ScanForReceivedSchemas(backupsFolder, progress));
+            var found = await Task.Run(() => GameLogBackups.ScanForReceivedSchemas(backupsFolder, minTimestamp, progress));
             var added = new List<string>();
             foreach (var name in found)
             {

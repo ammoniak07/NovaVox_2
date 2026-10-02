@@ -73,13 +73,22 @@ public static class GameLogBackups
     /// ignoré plutôt que de faire échouer tout le scan.
     /// </summary>
     /// <param name="backupsFolder">Dossier "logbackups" à scanner.</param>
+    /// <param name="minTimestamp">
+    /// Optionnel : ignore toute notification "Schémas reçu : ..." antérieure
+    /// à cet horodatage (en se basant sur l'horodatage réel de la ligne du
+    /// Game.log, pas sur le nom/la date du fichier archive) — utile après un
+    /// wipe des schémas en jeu, pour ne recharger que ce qui a été obtenu
+    /// depuis, sans ressusciter des schémas d'avant le wipe qui ne sont plus
+    /// valides. Null = aucun filtre, comme avant.
+    /// </param>
     /// <param name="progress">
     /// Optionnel : notifié après chaque fichier (fichiers traités, total) —
     /// permet à l'appelant (UI) d'afficher une progression. Le scan lui-même
     /// reste synchrone/bloquant : c'est à l'appelant de l'exécuter hors du
     /// thread UI (ex. Task.Run) pour ne pas geler l'application.
     /// </param>
-    public static IReadOnlyList<string> ScanForReceivedSchemas(string backupsFolder, IProgress<(int Done, int Total)>? progress = null)
+    public static IReadOnlyList<string> ScanForReceivedSchemas(
+        string backupsFolder, DateTimeOffset? minTimestamp = null, IProgress<(int Done, int Total)>? progress = null)
     {
         var found = new List<string>();
         if (!Directory.Exists(backupsFolder)) return found;
@@ -88,7 +97,7 @@ public static class GameLogBackups
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < files.Count; i++)
         {
-            foreach (var name in ScanFile(files[i]))
+            foreach (var name in ScanFile(files[i], minTimestamp))
             {
                 if (seen.Add(name)) found.Add(name);
             }
@@ -101,7 +110,7 @@ public static class GameLogBackups
     // les archives sont des sessions indépendantes, pas la suite les unes
     // des autres (continuation de notification multi-lignes, fenêtre
     // anti-rafale... ne doivent pas franchir une frontière de fichier).
-    private static List<string> ScanFile(string path)
+    private static List<string> ScanFile(string path, DateTimeOffset? minTimestamp)
     {
         var result = new List<string>();
         try
@@ -114,6 +123,12 @@ public static class GameLogBackups
             {
                 var evt = processor.ProcessLine(line);
                 if (evt is null || evt.Type != GameLogEventTypes.HudNotification || evt.Text is null) continue;
+
+                if (minTimestamp is { } cutoff)
+                {
+                    var ts = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
+                    if (ts < cutoff) continue;
+                }
 
                 // Même nettoyage que la détection en direct (BuildHudAnnouncement) :
                 // sans lui, les balises d'emphase accolées au nom par le jeu (ex.
