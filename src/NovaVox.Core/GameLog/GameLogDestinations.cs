@@ -177,6 +177,7 @@ public static partial class GameLogDestinations
 
         ["nyxstar"] = "l'étoile Nyx",
         ["levski all 001"] = "Levski",
+        ["nyx levski"] = "Levski",
     };
 
     /// <summary>
