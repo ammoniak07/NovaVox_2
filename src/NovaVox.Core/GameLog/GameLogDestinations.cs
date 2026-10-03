@@ -165,6 +165,7 @@ public static partial class GameLogDestinations
         ["social 001 keeger segment rckcrk 102"] = "Qv Breaker Station",
         ["social 001 keeger segment rckcrk 105"] = "Qv Breaker Station",
         ["social 001 keeger segment rckcrk 112"] = "Qv Breaker Station",
+        ["asteroidclusterbase nyx social keeger 002"] = "Qv Breaker Station BRK 425",
         ["rs asmbl keeger 01"] = "Station-service Alpha de l'Alliance du Peuple",
         ["rs asmbl keeger 02"] = "Station-service Delta de l'Alliance du Peuple",
         ["rs asmbl keeger 03"] = "Station-service Theta de l'Alliance du Peuple",
