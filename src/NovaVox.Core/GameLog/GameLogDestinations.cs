@@ -91,6 +91,7 @@ public static partial class GameLogDestinations
         ["loc rr s4 l4"] = "Crossroads Station",
         ["loc rr s4 l5"] = "Modern Icarus Station",
         ["rr arc l4"] = "Faint Glen Station",
+        ["rr hur l2"] = "Faithful Dream Station",
 
         ["loc rs ext stan terra jp1"] = "Terra Gateway",
         ["loc rs ext stan magnus jp1"] = "Nyx Gateway",
