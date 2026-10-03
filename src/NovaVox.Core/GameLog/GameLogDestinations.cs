@@ -97,6 +97,12 @@ public static partial class GameLogDestinations
         ["rr jp stantonpyro"] = "Pyro Gateway",
         ["rr jp pyrostanton"] = "Stanton Gateway",
         ["rr jp stantonmagnus"] = "Nyx Gateway",
+        // Plusieurs portes distinctes portent le même nom affiché "Stanton
+        // Gateway" (une par système relié à Stanton -- confirmé par
+        // l'utilisateur : une dans Nyx, une dans Pyro ci-dessus) ; "nyxcastra"
+        // est l'identifiant interne de celle du système Nyx, malgré "castra"
+        // dans son nom.
+        ["rr jp nyxcastra"] = "Stanton Gateway",
 
         ["ooc stanton"] = "l'étoile Stanton",
         ["ooc stanton2 l2"] = "CRU L 2",
