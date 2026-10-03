@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.2
 ------
+- Reconnaissance automatique de nouvelles destinations Game.log remontées par des joueurs : porte "Nyx Gateway" (Stanton -> Nyx), porte "Stanton Gateway" (Nyx -> Stanton), Qv Breaker Station BRK 425, Levski (nouveau format d'identifiant), Faint Glen Station (nouveau format d'identifiant) — plus besoin de les corriger manuellement.
 
 v0.1.1
 ------
