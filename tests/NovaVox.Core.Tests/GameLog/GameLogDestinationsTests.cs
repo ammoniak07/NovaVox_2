@@ -27,6 +27,8 @@ public class GameLogDestinationsTests
     [InlineData("RR_JP_PyroStanton", "Stanton Gateway")]
     [InlineData("RR_JP_StantonMagnus", "Nyx Gateway")]
     [InlineData("RR_JP_NyxCastra", "Stanton Gateway")]
+    [InlineData("RR_JP_PyroNyx", "Nyx Gateway")]
+    [InlineData("RR_JP_NyxPyro", "Pyro Gateway")]
     [InlineData("RR_Arc_L4", "Faint Glen Station")]
     [InlineData("AsteroidClusterBase_Nyx_Social_Keeger_002", "Qv Breaker Station BRK 425")]
     [InlineData("Nyx_Levski", "Levski")]

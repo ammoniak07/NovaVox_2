@@ -104,6 +104,8 @@ public static partial class GameLogDestinations
         // est l'identifiant interne de celle du système Nyx, malgré "castra"
         // dans son nom.
         ["rr jp nyxcastra"] = "Stanton Gateway",
+        ["rr jp pyronyx"] = "Nyx Gateway",
+        ["rr jp nyxpyro"] = "Pyro Gateway",
 
         ["ooc stanton"] = "l'étoile Stanton",
         ["ooc stanton2 l2"] = "CRU L 2",
