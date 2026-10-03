@@ -25,6 +25,7 @@ public class GameLogDestinationsTests
     [Theory]
     [InlineData("RR_JP_StantonPyro", "Pyro Gateway")]
     [InlineData("RR_JP_PyroStanton", "Stanton Gateway")]
+    [InlineData("RR_JP_StantonMagnus", "Nyx Gateway")]
     [InlineData("Stanton2_Orison", "Orison")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
