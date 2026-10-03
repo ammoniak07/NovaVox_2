@@ -257,4 +257,41 @@ public class GameLogLineProcessorTests
         Assert.Null(second);
         Assert.Equal("RR_P6_L5", processor.State.CurrentZone);
     }
+
+    // CORRECTIF (vrai Game.log fourni par l'utilisateur, 03/10/2026) :
+    // "Arrivée à : Nyx Gateway" s'annonçait deux fois à quelques secondes
+    // d'écart pour la même arrivée au point de saut Stanton-Magnus -- le
+    // garde ci-dessus (RequestLocationInventory_RepeatedForSameLocation_DoesNotReannounce)
+    // ne suffit pas quand les DEUX occurrences utilisent un identifiant brut
+    // DIFFÉRENT pour le même lieu (ici "LOC_RS_EXT_Stan_Magnus_JP1" puis
+    // "RR_JP_StantonMagnus", tous deux déjà connus du catalogue sous le même
+    // nom affiché "Nyx Gateway", voir GameLogDestinations.KnownLocationAliases) :
+    // State.CurrentZone ne contenait que le premier identifiant brut, jamais
+    // égal au second. Comparer le nom RÉSOLU plutôt que l'identifiant brut
+    // couvre ce cas.
+    [Fact]
+    public void RequestLocationInventory_SameResolvedZoneViaDifferentRawIdSynonym_DoesNotReannounce()
+    {
+        var processor = new GameLogLineProcessor();
+
+        var first = processor.ProcessLine(
+            "<2026-10-03T11:36:20.000Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested " +
+            "inventory for Location[LOC_RS_EXT_Stan_Magnus_JP1] [Team_CoreGameplayFeatures][Inventory]");
+        var second = processor.ProcessLine(
+            "<2026-10-03T11:36:33.277Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested " +
+            "inventory for Location[RR_JP_StantonMagnus] [Team_CoreGameplayFeatures][Inventory]");
+
+        Assert.NotNull(first);
+        Assert.Equal(GameLogEventTypes.ZoneChange, first!.Type);
+        Assert.Null(second);
+
+        // Un vrai retour après avoir quitté la zone reste annoncé normalement.
+        processor.ProcessLine(
+            "<2026-10-03T11:40:00.000Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested " +
+            "inventory for Location[RR_P6_L5] [Team_CoreGameplayFeatures][Inventory]");
+        var backAgain = processor.ProcessLine(
+            "<2026-10-03T11:45:00.000Z> [Notice] <RequestLocationInventory> Player[Ammoniak] requested " +
+            "inventory for Location[LOC_RS_EXT_Stan_Magnus_JP1] [Team_CoreGameplayFeatures][Inventory]");
+        Assert.NotNull(backAgain);
+    }
 }

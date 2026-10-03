@@ -122,6 +122,7 @@ public sealed partial class GameLogLineProcessor
     private (string? Destination, string? ObstructionLabel)? _lastRouteSignature;
     private string? _pendingNotification;
     private readonly Dictionary<string, DateTimeOffset> _lastHudNotificationSeenAt = new();
+    private string? _lastAnnouncedZoneName;
 
     /// <summary>Traite une ligne et retourne l'événement détecté, ou null si rien à signaler.</summary>
     public GameLogEvent? ProcessLine(string line)
@@ -190,6 +191,7 @@ public sealed partial class GameLogLineProcessor
         {
             State.CurrentZone = _lastRouteDestination;
             State.Connected = true;
+            if (IsRepeatZoneArrival(_lastRouteDestination)) return null;
             return new GameLogEvent
             {
                 Type = GameLogEventTypes.ZoneChange,
@@ -214,6 +216,7 @@ public sealed partial class GameLogLineProcessor
             // à" déjà faite pour ce lieu.
             if (spawnLocation == State.CurrentZone) return null;
             State.CurrentZone = spawnLocation;
+            if (IsRepeatZoneArrival(spawnLocation)) return null;
             return new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = spawnLocation };
         }
 
@@ -281,6 +284,36 @@ public sealed partial class GameLogLineProcessor
             // aucun rapport avec quand l'évènement a vraiment eu lieu.
             Ts = (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds() / 1000.0,
         };
+    }
+
+    /// <summary>
+    /// true si <paramref name="rawZoneId"/> désigne le MÊME lieu (une fois
+    /// résolu vers son nom affiché, voir GameLogDestinations.HumanizeDestination)
+    /// que la dernière arrivée annoncée — auquel cas l'appelant doit
+    /// supprimer l'annonce. Vérifié en vrai Game.log (remontée utilisateur,
+    /// 03/10/2026) : "Arrivée à : Nyx Gateway" s'annonçait deux fois à
+    /// quelques secondes d'écart pour la même arrivée au point de saut
+    /// Stanton-Magnus — deux identifiants BRUTS différents pour ce même
+    /// point de saut (ex. "LOC_RS_EXT_Stan_Magnus_JP1" via un déclencheur,
+    /// "RR_JP_StantonMagnus" via un autre, tous deux déjà connus du
+    /// catalogue sous le même nom affiché "Nyx Gateway") déclenchaient
+    /// chacun leur propre évènement ZoneChange : les gardes existants (sur
+    /// State.CurrentZone, voir les deux appelants) ne comparaient que
+    /// l'identifiant BRUT, jamais le nom résolu, donc ne se reconnaissaient
+    /// pas comme la même arrivée. Comparer le nom résolu plutôt que
+    /// l'identifiant brut couvre ce cas quelle que soit la source de
+    /// l'évènement (arrivée en saut quantique ou inventaire de lieu).
+    /// N'affecte jamais State.CurrentZone lui-même (toujours mis à jour par
+    /// l'appelant avec l'identifiant BRUT, inchangé) ni le cas d'un vrai
+    /// retour sur un lieu déjà quitté entre-temps (le nom résolu de la
+    /// dernière arrivée annoncée aura changé entre-temps).
+    /// </summary>
+    private bool IsRepeatZoneArrival(string? rawZoneId)
+    {
+        var resolved = GameLogDestinations.HumanizeDestination(rawZoneId);
+        if (resolved is not null && resolved == _lastAnnouncedZoneName) return true;
+        _lastAnnouncedZoneName = resolved;
+        return false;
     }
 
     /// <summary>Horodatage &lt;...&gt; en tête de ligne (UTC) — public car réutilisé par GameLogBackups pour suivre la dernière activité connue d'une archive (voir ScanForStats).</summary>
