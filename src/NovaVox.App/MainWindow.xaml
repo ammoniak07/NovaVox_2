@@ -1380,6 +1380,8 @@
                                                     <!-- Fabricant/type/temps de fabrication, uniquement si ce nom est reconnu dans SchemaDatabase (voir SchemaRowVm.Create). -->
                                                     <TextBlock Text="{Binding Subtitle}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVis}}"
                                                                Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Stats}" Visibility="{Binding HasStats, Converter={StaticResource BoolToVis}}"
+                                                               FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
                                                     <TextBlock Text="{Binding Description}" Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}}"
                                                                Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                                                 </StackPanel>

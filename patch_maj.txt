@@ -9,6 +9,7 @@ v0.1.2
 - Panneau "📐 Schémas" : les pièces d'armure et combinaisons affichent désormais leur pourcentage de résistance aux dégâts, tel qu'indiqué en jeu (ex. "Résistance aux dégâts 40 %").
 - Panneau "📐 Schémas" : les composants de vaisseau (refroidisseurs, générateurs, moteurs quantiques, radars, boucliers) affichent désormais leur taille, leur grade (A à D, ou sur mesure) et leur classe (Militaire, Civil, Industriel, Furtif, Compétition).
 - Panneau "📐 Schémas" : les sacs à dos affichent désormais leur capacité de transport, telle qu'indiquée en jeu (ex. "Capacité 127,5K µSCU").
+- Panneau "📐 Schémas" : fiches enrichies avec toutes les caractéristiques fournies par le jeu, en français — type d'objet lisible (ex. "Armure lourde", "Fusil de précision", "Canon laser") au lieu de l'identifiant interne, et une ligne de caractéristiques selon le type : température/radiations/capacité pour les armures, portée/cadence/chargeur/accessoires pour les armes, taille pour les armes de vaisseau, capacité pour les chargeurs et conteneurs, portées/puissance/modules pour les lasers de minage, compatibilité pour les sacs à dos. La recherche du panneau porte aussi sur ces caractéristiques.
 
 v0.1.1
 ------

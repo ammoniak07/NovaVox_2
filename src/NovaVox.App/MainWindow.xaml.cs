@@ -2674,6 +2674,7 @@ public partial class MainWindow : Window
                 && (query.Length == 0
                     || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
+                    || NormalizeForSearch(row.Stats).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Description).Contains(query, StringComparison.Ordinal));
 
         SchemasNoSearchResultText.Visibility = _schemaRows.Count > 0 && (query.Length > 0 || category is not null) && _schemaRows.All(r => !r.RowVisible)

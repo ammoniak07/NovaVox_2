@@ -12,6 +12,10 @@ public sealed record SchemaIngredient(
     /// <summary>"SCU" (ressource brute, ex. Agricium) ou "pcs" (objet discret, ex. un autre composant déjà fabriqué).</summary>
     [property: JsonPropertyName("unit")] string Unit);
 
+public sealed record SchemaStat(
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("value")] string Value);
+
 /// <summary>Fiche d'un schéma de fabrication — une entrée de SchemaDatabase.json, Description éventuellement traduite (voir SchemaDatabase.Find).</summary>
 public sealed record SchemaInfo(
     [property: JsonPropertyName("name")] string Name,
@@ -25,6 +29,8 @@ public sealed record SchemaInfo(
     [property: JsonPropertyName("grade")] string? Grade,
     [property: JsonPropertyName("componentClass")] string? ComponentClass,
     [property: JsonPropertyName("capacityMicroScu")] int? CapacityMicroScu,
+    [property: JsonPropertyName("itemType")] string? ItemType,
+    [property: JsonPropertyName("stats")] IReadOnlyList<SchemaStat>? Stats,
     [property: JsonPropertyName("ingredients")] IReadOnlyList<SchemaIngredient> Ingredients);
 
 /// <summary>

@@ -19,10 +19,12 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public required string Name { get; init; }
     public required string Category { get; init; }
     public string? Subtitle { get; init; }
+    public string? Stats { get; init; }
     public string? Description { get; init; }
     public string? ImagePath { get; init; }
 
     public bool HasSubtitle => !string.IsNullOrEmpty(Subtitle);
+    public bool HasStats => !string.IsNullOrEmpty(Stats);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
     public bool HasImage => ImagePath is not null;
 
@@ -39,6 +41,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
             Name = name,
             Category = SchemaCategories.Of(info?.Type),
             Subtitle = BuildSubtitle(info),
+            Stats = info?.Stats is { Count: > 0 } stats ? string.Join(" · ", stats.Select(SchemaFrenchLabels.Stat)) : null,
             Description = info?.Description,
             ImagePath = info is null ? null : SchemaImages.FindPath(AppContext.BaseDirectory, info.Name),
         };
@@ -49,26 +52,18 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
         if (info is null) return null;
         var parts = new List<string>();
         if (!string.IsNullOrEmpty(info.Manufacturer)) parts.Add(info.Manufacturer);
-        if (!string.IsNullOrEmpty(info.Type)) parts.Add(info.Type);
+        if (!string.IsNullOrEmpty(info.ItemType)) parts.Add(SchemaFrenchLabels.ItemType(info.ItemType));
+        else if (!string.IsNullOrEmpty(info.Type)) parts.Add(info.Type);
         if (info.DamageReductionPercent is { } reduction) parts.Add($"Résistance aux dégâts {reduction} %");
         if (info.CapacityMicroScu is { } capacity) parts.Add($"Capacité {(capacity / 1000.0).ToString("0.#", FrenchCulture)}K µSCU");
         if (info.Size is { } size) parts.Add($"Taille {size}");
         if (!string.IsNullOrEmpty(info.Grade)) parts.Add(info.Grade == "Bespoke" ? "Grade sur mesure" : $"Grade {info.Grade}");
-        if (!string.IsNullOrEmpty(info.ComponentClass)) parts.Add(ComponentClassLabels.GetValueOrDefault(info.ComponentClass, info.ComponentClass));
+        if (!string.IsNullOrEmpty(info.ComponentClass)) parts.Add(SchemaFrenchLabels.Class(info.ComponentClass));
         if (info.CraftTimeSeconds is { } seconds) parts.Add($"{FormatCraftTime(seconds)}");
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
     private static readonly System.Globalization.CultureInfo FrenchCulture = new("fr-FR");
-
-    private static readonly Dictionary<string, string> ComponentClassLabels = new()
-    {
-        ["Military"] = "Militaire",
-        ["Civilian"] = "Civil",
-        ["Industrial"] = "Industriel",
-        ["Stealth"] = "Furtif",
-        ["Competition"] = "Compétition",
-    };
 
     private static string FormatCraftTime(int seconds)
     {
