@@ -18,6 +18,13 @@ public class SchemaDatabaseTests
     }
 
     [Fact]
+    public void Find_Armor_HasDamageReduction_OtherTypesDoNot()
+    {
+        Assert.Equal(40, SchemaDatabase.Find("Antium Arms")!.DamageReductionPercent);
+        Assert.Null(SchemaDatabase.Find("Ezra")!.DamageReductionPercent);
+    }
+
+    [Fact]
     public void Find_French_ReturnsActualTranslatedDescriptionNotEnglishFallback()
     {
         var english = SchemaDatabase.Find("Ezra");

@@ -50,6 +50,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
         var parts = new List<string>();
         if (!string.IsNullOrEmpty(info.Manufacturer)) parts.Add(info.Manufacturer);
         if (!string.IsNullOrEmpty(info.Type)) parts.Add(info.Type);
+        if (info.DamageReductionPercent is { } reduction) parts.Add($"Résistance aux dégâts {reduction} %");
         if (info.CraftTimeSeconds is { } seconds) parts.Add($"{FormatCraftTime(seconds)}");
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }

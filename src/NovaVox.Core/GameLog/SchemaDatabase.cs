@@ -20,6 +20,7 @@ public sealed record SchemaInfo(
     [property: JsonPropertyName("manufacturer")] string? Manufacturer,
     [property: JsonPropertyName("description")] string? Description,
     [property: JsonPropertyName("craftTimeSeconds")] int? CraftTimeSeconds,
+    [property: JsonPropertyName("damageReduction")] int? DamageReductionPercent,
     [property: JsonPropertyName("ingredients")] IReadOnlyList<SchemaIngredient> Ingredients);
 
 /// <summary>
