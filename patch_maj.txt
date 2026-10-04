@@ -1,5 +1,10 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.1.2
+------
+- Reconnaissance automatique de nouvelles destinations Game.log remontées par des joueurs : porte "Nyx Gateway" (Stanton -> Nyx, Pyro -> Nyx), porte "Stanton Gateway" (Nyx -> Stanton), porte "Pyro Gateway" (Nyx -> Pyro), Qv Breaker Station BRK 425, Levski (nouveau format d'identifiant), Faint Glen Station (nouveau format d'identifiant) — plus besoin de les corriger manuellement.
+- Correction : l'annonce "Arrivée à : Nyx Gateway" (et potentiellement d'autres destinations) pouvait se répéter deux fois à quelques secondes d'écart — le jeu signale parfois la même arrivée via deux identifiants internes différents pour le même lieu, que NovaVox ne reconnaissait pas encore comme identiques avant de décider d'annoncer ou non. Corrigé en comparant le nom affiché plutôt que l'identifiant brut.
+
 v0.1.1
 ------
 - Panneau "📐 Schémas" : la reconnaissance des schémas (fabricant/description) fonctionne désormais avec N'IMPORTE QUELLE traduction communautaire française installée (SCEFRA via Multitool, ou une autre), pas seulement celle déjà constatée précédemment. NovaVox lit ton propre fichier de traduction local (jamais redistribué) et le compare à la base anglaise pour reconnaître tes schémas automatiquement, quelle que soit la formulation exacte choisie par ta traduction.
