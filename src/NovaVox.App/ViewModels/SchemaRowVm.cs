@@ -17,6 +17,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     private void Raise([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     public required string Name { get; init; }
+    public required string Category { get; init; }
     public string? Subtitle { get; init; }
     public string? Description { get; init; }
 
@@ -34,6 +35,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
         return new SchemaRowVm
         {
             Name = name,
+            Category = SchemaCategories.Of(info?.Type),
             Subtitle = BuildSubtitle(info),
             Description = info?.Description,
         };

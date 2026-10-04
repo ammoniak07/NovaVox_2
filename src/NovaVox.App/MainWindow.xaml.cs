@@ -2513,6 +2513,8 @@ public partial class MainWindow : Window
         foreach (var name in _state.Ai.SchemasReceived)
             _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage));
         SchemasList.ItemsSource = _schemaRows;
+        SchemaCategoryCombo.ItemsSource = SchemaCategories.All.Prepend(AllSchemaCategoriesLabel).ToList();
+        SchemaCategoryCombo.SelectedIndex = 0;
         RefreshSchemasEmptyState();
 
         if (DateOnly.TryParse(_state.Ai.SchemaScanStartDate, System.Globalization.CultureInfo.InvariantCulture, out var startDate))
@@ -2659,16 +2661,22 @@ public partial class MainWindow : Window
     /// description) — même mécanique que RefreshGameLogSearchVisibility
     /// (RowVisible par ligne, jamais _schemaRows lui-même).
     /// </summary>
+    private const string AllSchemaCategoriesLabel = "Toutes catégories";
+
+    private void SchemaCategoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshSchemasSearchVisibility();
+
     private void RefreshSchemasSearchVisibility()
     {
         var query = NormalizeForSearch(SchemasSearchBox.Text.Trim());
+        var category = SchemaCategoryCombo.SelectedItem is string selected && selected != AllSchemaCategoriesLabel ? selected : null;
         foreach (var row in _schemaRows)
-            row.RowVisible = query.Length == 0
-                || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
-                || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
-                || NormalizeForSearch(row.Description).Contains(query, StringComparison.Ordinal);
+            row.RowVisible = (category is null || row.Category == category)
+                && (query.Length == 0
+                    || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
+                    || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
+                    || NormalizeForSearch(row.Description).Contains(query, StringComparison.Ordinal));
 
-        SchemasNoSearchResultText.Visibility = _schemaRows.Count > 0 && query.Length > 0 && _schemaRows.All(r => !r.RowVisible)
+        SchemasNoSearchResultText.Visibility = _schemaRows.Count > 0 && (query.Length > 0 || category is not null) && _schemaRows.All(r => !r.RowVisible)
             ? Visibility.Visible : Visibility.Collapsed;
     }
 

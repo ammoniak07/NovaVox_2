@@ -1336,10 +1336,16 @@
                     <!-- Même mécanique que RefreshGameLogSearchVisibility : filtre RowVisible par
                          ligne (voir SchemaRowVm), jamais _schemaRows lui-même. -->
                     <Grid Grid.Row="5" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <TextBox x:Name="SchemasSearchBox" Padding="8,6" TextChanged="SchemasSearchBox_TextChanged" />
                         <TextBlock x:Name="SchemasSearchPlaceholder" Text="🔍 Rechercher un schéma..."
                                    Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                    Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+                        <ComboBox x:Name="SchemaCategoryCombo" Grid.Column="1" Width="190" Margin="8,0,0,0"
+                                  ToolTip="Filtrer par catégorie" SelectionChanged="SchemaCategoryCombo_SelectionChanged" />
                     </Grid>
 
                     <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto">
@@ -1361,6 +1367,10 @@
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    <Border HorizontalAlignment="Left" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+                                                            CornerRadius="3" Padding="5,0" Margin="0,3,0,0">
+                                                        <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentBrush}" FontSize="10" />
+                                                    </Border>
                                                     <!-- Fabricant/type/temps de fabrication, uniquement si ce nom est reconnu dans SchemaDatabase (voir SchemaRowVm.Create). -->
                                                     <TextBlock Text="{Binding Subtitle}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVis}}"
                                                                Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" Margin="0,2,0,0" TextWrapping="Wrap" />
