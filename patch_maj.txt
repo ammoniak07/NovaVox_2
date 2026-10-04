@@ -8,6 +8,7 @@ v0.1.2
 - Panneau "📐 Schémas" : les fiches affichent désormais une miniature de l'objet (environ 1 330 schémas sur 1 590), tirée du wiki communautaire starcitizen.tools et intégrée à l'appli — aucune connexion requise pour l'afficher.
 - Panneau "📐 Schémas" : les pièces d'armure et combinaisons affichent désormais leur pourcentage de résistance aux dégâts, tel qu'indiqué en jeu (ex. "Résistance aux dégâts 40 %").
 - Panneau "📐 Schémas" : les composants de vaisseau (refroidisseurs, générateurs, moteurs quantiques, radars, boucliers) affichent désormais leur taille, leur grade (A à D, ou sur mesure) et leur classe (Militaire, Civil, Industriel, Furtif, Compétition).
+- Panneau "📐 Schémas" : les sacs à dos affichent désormais leur capacité de transport, telle qu'indiquée en jeu (ex. "Capacité 127,5K µSCU").
 
 v0.1.1
 ------

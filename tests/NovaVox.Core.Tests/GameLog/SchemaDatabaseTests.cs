@@ -35,6 +35,10 @@ public class SchemaDatabaseTests
     }
 
     [Fact]
+    public void Find_Backpack_HasCapacity() =>
+        Assert.Equal(127500, SchemaDatabase.Find("Aril Backpack")!.CapacityMicroScu);
+
+    [Fact]
     public void Find_French_ReturnsActualTranslatedDescriptionNotEnglishFallback()
     {
         var english = SchemaDatabase.Find("Ezra");

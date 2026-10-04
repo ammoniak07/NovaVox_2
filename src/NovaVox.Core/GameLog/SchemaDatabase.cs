@@ -24,6 +24,7 @@ public sealed record SchemaInfo(
     [property: JsonPropertyName("size")] int? Size,
     [property: JsonPropertyName("grade")] string? Grade,
     [property: JsonPropertyName("componentClass")] string? ComponentClass,
+    [property: JsonPropertyName("capacityMicroScu")] int? CapacityMicroScu,
     [property: JsonPropertyName("ingredients")] IReadOnlyList<SchemaIngredient> Ingredients);
 
 /// <summary>
