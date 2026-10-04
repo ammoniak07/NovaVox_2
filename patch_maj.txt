@@ -5,6 +5,7 @@ v0.1.2
 - Reconnaissance automatique de nouvelles destinations Game.log remontées par des joueurs : porte "Nyx Gateway" (Stanton -> Nyx, Pyro -> Nyx), porte "Stanton Gateway" (Nyx -> Stanton), porte "Pyro Gateway" (Nyx -> Pyro), Qv Breaker Station BRK 425, Levski (nouveau format d'identifiant), Faint Glen Station (nouveau format d'identifiant) — plus besoin de les corriger manuellement.
 - Correction : l'annonce "Arrivée à : Nyx Gateway" (et potentiellement d'autres destinations) pouvait se répéter deux fois à quelques secondes d'écart — le jeu signale parfois la même arrivée via deux identifiants internes différents pour le même lieu, que NovaVox ne reconnaissait pas encore comme identiques avant de décider d'annoncer ou non. Corrigé en comparant le nom affiché plutôt que l'identifiant brut.
 - Panneau "📐 Schémas" : chaque schéma affiche désormais sa catégorie (Armure, Vêtement, Arme, Munition, Arme de vaisseau, Composant de vaisseau, Outil, Divers, ou Non reconnu s'il est absent de la base locale), et une nouvelle liste déroulante à côté de la recherche permet de filtrer la liste par catégorie.
+- Panneau "📐 Schémas" : les fiches affichent désormais une miniature de l'objet (environ 1 277 schémas sur 1 590), tirée du wiki communautaire starcitizen.tools et intégrée à l'appli — aucune connexion requise pour l'afficher.
 
 v0.1.1
 ------

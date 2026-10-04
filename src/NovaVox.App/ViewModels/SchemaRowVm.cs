@@ -20,9 +20,11 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public required string Category { get; init; }
     public string? Subtitle { get; init; }
     public string? Description { get; init; }
+    public string? ImagePath { get; init; }
 
     public bool HasSubtitle => !string.IsNullOrEmpty(Subtitle);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
+    public bool HasImage => ImagePath is not null;
 
     /// <summary>Correspond à la recherche du panneau Schémas — voir RefreshSchemasSearchVisibility, MainWindow.xaml.cs.</summary>
     private bool _rowVisible = true;
@@ -38,6 +40,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
             Category = SchemaCategories.Of(info?.Type),
             Subtitle = BuildSubtitle(info),
             Description = info?.Description,
+            ImagePath = info is null ? null : SchemaImages.FindPath(AppContext.BaseDirectory, info.Name),
         };
     }
 
