@@ -51,9 +51,21 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
         if (!string.IsNullOrEmpty(info.Manufacturer)) parts.Add(info.Manufacturer);
         if (!string.IsNullOrEmpty(info.Type)) parts.Add(info.Type);
         if (info.DamageReductionPercent is { } reduction) parts.Add($"Résistance aux dégâts {reduction} %");
+        if (info.Size is { } size) parts.Add($"Taille {size}");
+        if (!string.IsNullOrEmpty(info.Grade)) parts.Add(info.Grade == "Bespoke" ? "Grade sur mesure" : $"Grade {info.Grade}");
+        if (!string.IsNullOrEmpty(info.ComponentClass)) parts.Add(ComponentClassLabels.GetValueOrDefault(info.ComponentClass, info.ComponentClass));
         if (info.CraftTimeSeconds is { } seconds) parts.Add($"{FormatCraftTime(seconds)}");
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
+
+    private static readonly Dictionary<string, string> ComponentClassLabels = new()
+    {
+        ["Military"] = "Militaire",
+        ["Civilian"] = "Civil",
+        ["Industrial"] = "Industriel",
+        ["Stealth"] = "Furtif",
+        ["Competition"] = "Compétition",
+    };
 
     private static string FormatCraftTime(int seconds)
     {

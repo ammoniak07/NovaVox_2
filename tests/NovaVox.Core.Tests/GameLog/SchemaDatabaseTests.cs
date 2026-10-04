@@ -25,6 +25,16 @@ public class SchemaDatabaseTests
     }
 
     [Fact]
+    public void Find_ShipComponent_HasSizeGradeAndClass()
+    {
+        var info = SchemaDatabase.Find("AbsoluteZero")!;
+
+        Assert.Equal(2, info.Size);
+        Assert.Equal("B", info.Grade);
+        Assert.Equal("Competition", info.ComponentClass);
+    }
+
+    [Fact]
     public void Find_French_ReturnsActualTranslatedDescriptionNotEnglishFallback()
     {
         var english = SchemaDatabase.Find("Ezra");
