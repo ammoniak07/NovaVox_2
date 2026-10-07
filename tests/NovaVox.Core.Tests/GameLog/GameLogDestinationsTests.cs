@@ -34,6 +34,7 @@ public class GameLogDestinationsTests
     [InlineData("AsteroidClusterBase_Nyx_Social_Keeger_002", "Qv Breaker Station BRK 425")]
     [InlineData("Nyx_Levski", "Levski")]
     [InlineData("Stanton2_Orison", "Orison")]
+    [InlineData("Stanton1_Lorville", "Lorville")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));

@@ -135,6 +135,7 @@ public static partial class GameLogDestinations
         ["ooc stanton 4c euterpe"] = "Euterpe",
 
         ["lorville city"] = "Lorville City",
+        ["stanton1 lorville"] = "Lorville",
         ["area18 city"] = "Area18 City",
         ["orison loc"] = "Orison City",
         ["stanton2 orison"] = "Orison",
