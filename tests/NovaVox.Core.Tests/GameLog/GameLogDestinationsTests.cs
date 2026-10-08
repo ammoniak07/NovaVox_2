@@ -35,6 +35,7 @@ public class GameLogDestinationsTests
     [InlineData("Nyx_Levski", "Levski")]
     [InlineData("Stanton2_Orison", "Orison")]
     [InlineData("Stanton1_Lorville", "Lorville")]
+    [InlineData("GrimHEX", "GrimHEX")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
