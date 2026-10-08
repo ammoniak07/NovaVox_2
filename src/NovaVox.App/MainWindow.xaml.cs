@@ -2612,7 +2612,8 @@ public partial class MainWindow : Window
         if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return;
 
         _state.Ai.SchemasReceived.Add(name);
-        _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+        _state.Ai.SchemasUnseen.Add(name);
+        _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage, isNew: true));
         RefreshSchemasEmptyState();
         RefreshSchemasSearchVisibility();
         SaveAiAndLog();

@@ -3,7 +3,7 @@ NOVAVOX — Notes de mise à jour
 v0.1.3
 ------
 - Ajout de "Lorville" (stanton1 lorville) et "GrimHEX" (grimhex) au catalogue intégré de destinations.
-- Panneau "📐 Schémas" : un schéma nouvellement reçu en jeu (ou retrouvé par "🔍 Scanner les archives") est encadré en jaune jusqu'à ce que tu cliques dessus pour le marquer comme vu — conservé d'un lancement à l'autre.
+- Panneau "📐 Schémas" : un schéma nouvellement reçu en jeu (ou retrouvé par "🔍 Scanner les archives", ou ajouté manuellement) est encadré en jaune jusqu'à ce que tu cliques dessus pour le marquer comme vu — conservé d'un lancement à l'autre.
 
 v0.1.2
 ------
