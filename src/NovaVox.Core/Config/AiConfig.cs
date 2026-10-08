@@ -63,6 +63,7 @@ public sealed class AiConfig
     public string ActiveShipCheatSheet { get; set; } = "";
     /// <summary>Schémas de fabrication reçus (Réglages > 📐 Schémas) — ajoutés automatiquement à la détection d'une notification HUD "Schémas reçu : {nom}" dans le Game.log (voir GameLogAnnouncer), ou manuellement depuis le panneau.</summary>
     public List<string> SchemasReceived { get; set; } = new();
+    public HashSet<string> SchemasUnseen { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Date de départ (format "yyyy-MM-dd", vide = aucun filtre) pour "🔍 Scanner les archives" (panneau "📐 Schémas") : ignore toute notification antérieure — utile après un wipe des schémas en jeu, pour ne recharger que ce qui a été obtenu depuis. Voir GameLogBackups.ScanForReceivedSchemas.</summary>
     public string SchemaScanStartDate { get; set; } = "";
     /// <summary>Temps total passé (secondes) dans chaque vaisseau, nom de vaisseau -> secondes — voir ShipTimeTracker (suivi en direct, panneau "📊 Statistiques") et GameLogBackups.ScanForStats (complété depuis les archives).</summary>
@@ -208,6 +209,9 @@ public sealed class AiConfigStore
             // deux migrations ci-dessus.
             schemasMigrated = GameLogAnnouncer.MigrateLegacySchemaNames(config.SchemasReceived);
 
+            config.SchemasUnseen = new HashSet<string>(
+                ToStringList(data["schemas_unseen"] as JsonArray), StringComparer.OrdinalIgnoreCase);
+
             var scanStartDate = GetString(data["schema_scan_start_date"]).Trim();
             config.SchemaScanStartDate = DateOnly.TryParse(scanStartDate, System.Globalization.CultureInfo.InvariantCulture, out _) ? scanStartDate : "";
 
@@ -272,6 +276,7 @@ public sealed class AiConfigStore
             ["ship_cheat_sheet_colors"] = FromNestedStringDict(config.ShipCheatSheetColors),
             ["active_ship_cheat_sheet"] = config.ActiveShipCheatSheet,
             ["schemas_received"] = FromStringList(config.SchemasReceived),
+            ["schemas_unseen"] = FromStringList(config.SchemasUnseen.ToList()),
             ["schema_scan_start_date"] = config.SchemaScanStartDate,
             ["ship_time_seconds"] = FromStringDoubleDict(config.ShipTimeSeconds),
             ["play_time_seconds"] = config.PlayTimeSeconds,

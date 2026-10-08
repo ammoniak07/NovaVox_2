@@ -29,16 +29,20 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public bool HasImage => ImagePath is not null;
 
     /// <summary>Correspond à la recherche du panneau Schémas — voir RefreshSchemasSearchVisibility, MainWindow.xaml.cs.</summary>
+    private bool _isNew;
+    public bool IsNew { get => _isNew; set { _isNew = value; Raise(); } }
+
     private bool _rowVisible = true;
     public bool RowVisible { get => _rowVisible; set { _rowVisible = value; Raise(); } }
 
     /// <param name="language">Code langue de l'interface (ex. "fr") pour traduire la description — voir SchemaDatabase.Find. Null/anglais = description source.</param>
-    public static SchemaRowVm Create(string name, string? language = null)
+    public static SchemaRowVm Create(string name, string? language = null, bool isNew = false)
     {
         var info = SchemaDatabase.Find(name, language);
         return new SchemaRowVm
         {
             Name = name,
+            IsNew = isNew,
             Category = SchemaCategories.Of(info?.Type),
             Subtitle = BuildSubtitle(info),
             Stats = info?.Stats is { Count: > 0 } stats ? string.Join(" · ", stats.Select(SchemaFrenchLabels.Stat)) : null,

@@ -677,6 +677,7 @@ public class GameLogAnnouncerTests
         Assert.NotNull(result);
         Assert.Equal("Ezra", result!.ReceivedSchemaName);
         Assert.Contains("Ezra", config.SchemasReceived);
+        Assert.Contains("Ezra", config.SchemasUnseen);
         Assert.Equal("Schémas reçu : Ezra", result.Text); // toujours annoncé normalement, via le gabarit générique
     }
 

@@ -1359,9 +1359,23 @@
                             <ItemsControl x:Name="SchemasList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
-                                                Background="{DynamicResource PanelAltBrush}"
-                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}">
+                                        <Border CornerRadius="6" Padding="10" Margin="0,0,0,8" Background="{DynamicResource PanelAltBrush}"
+                                                Visibility="{Binding RowVisible, Converter={StaticResource BoolToVis}}"
+                                                MouseLeftButtonUp="SchemaRow_MouseLeftButtonUp">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                    <Setter Property="BorderThickness" Value="1" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#FFD400" />
+                                                            <Setter Property="BorderThickness" Value="2" />
+                                                            <Setter Property="Cursor" Value="Hand" />
+                                                            <Setter Property="ToolTip" Value="Nouveau schéma — clique pour le marquer comme vu" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />

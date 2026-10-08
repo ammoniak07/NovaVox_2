@@ -422,6 +422,7 @@ public static partial class GameLogAnnouncer
         if (config.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) return null;
 
         config.SchemasReceived.Add(name);
+        config.SchemasUnseen.Add(name);
         return name;
     }
 

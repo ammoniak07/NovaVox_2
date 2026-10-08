@@ -430,6 +430,17 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_SchemasUnseenRoundTripsAndIgnoresCase()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig();
+        config.SchemasUnseen.Add("Ezra");
+        store.Save(config);
+
+        Assert.Contains("ezra", new AiConfigStore(_dir).Load().SchemasUnseen);
+    }
+
+    [Fact]
     public void AiConfig_ConnectedGroupMembersRoundTripsAndIgnoresCase()
     {
         var store = new AiConfigStore(_dir);

@@ -1977,7 +1977,7 @@ public partial class MainWindow : Window
             // de la prochaine détection/ajout) — reconstruit chaque ligne pour
             // refléter tout de suite la nouvelle langue.
             for (var i = 0; i < _schemaRows.Count; i++)
-                _schemaRows[i] = SchemaRowVm.Create(_schemaRows[i].Name, _state.Ai.UiLanguage);
+                _schemaRows[i] = SchemaRowVm.Create(_schemaRows[i].Name, _state.Ai.UiLanguage, _schemaRows[i].IsNew);
             // Chaque ligne remplacée ci-dessus repart de RowVisible=true (nouvelle
             // instance) : réapplique le filtre de recherche actif pour ne pas
             // réafficher des schémas qu'une recherche en cours masquait.
@@ -2511,7 +2511,7 @@ public partial class MainWindow : Window
     private void InitializeSchemas()
     {
         foreach (var name in _state.Ai.SchemasReceived)
-            _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+            _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage, _state.Ai.SchemasUnseen.Contains(name)));
         SchemasList.ItemsSource = _schemaRows;
         SchemaCategoryCombo.ItemsSource = SchemaCategories.All.Prepend(AllSchemaCategoriesLabel).ToList();
         SchemaCategoryCombo.SelectedIndex = 0;
@@ -2619,10 +2619,19 @@ public partial class MainWindow : Window
         NewSchemaNameBox.Text = "";
     }
 
+    private void SchemaRow_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not SchemaRowVm { IsNew: true } row) return;
+        row.IsNew = false;
+        _state.Ai.SchemasUnseen.Remove(row.Name);
+        SaveAiAndLog();
+    }
+
     private void DeleteSchema_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not SchemaRowVm row) return;
         _state.Ai.SchemasReceived.RemoveAll(s => string.Equals(s, row.Name, StringComparison.OrdinalIgnoreCase));
+        _state.Ai.SchemasUnseen.Remove(row.Name);
         _schemaRows.Remove(row);
         RefreshSchemasEmptyState();
         SaveAiAndLog();
@@ -2635,6 +2644,7 @@ public partial class MainWindow : Window
         if (MessageBox.Show(this, $"Supprimer les {_schemaRows.Count} schéma(s) reçu(s) ?", "NovaVox", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
 
         _state.Ai.SchemasReceived.Clear();
+        _state.Ai.SchemasUnseen.Clear();
         _schemaRows.Clear();
         RefreshSchemasEmptyState();
         RefreshSchemasSearchVisibility();
@@ -2738,6 +2748,7 @@ public partial class MainWindow : Window
             {
                 if (_state.Ai.SchemasReceived.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) continue;
                 _state.Ai.SchemasReceived.Add(name);
+                _state.Ai.SchemasUnseen.Add(name);
                 added.Add(name);
             }
 
@@ -2748,7 +2759,7 @@ public partial class MainWindow : Window
             }
 
             foreach (var name in added)
-                _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage));
+                _schemaRows.Insert(0, SchemaRowVm.Create(name, _state.Ai.UiLanguage, isNew: true));
             RefreshSchemasEmptyState();
             RefreshSchemasSearchVisibility();
             SaveAiAndLog();
@@ -3346,7 +3357,7 @@ public partial class MainWindow : Window
         }
         if (result.ReceivedSchemaName is not null)
         {
-            _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName, _state.Ai.UiLanguage));
+            _schemaRows.Insert(0, SchemaRowVm.Create(result.ReceivedSchemaName, _state.Ai.UiLanguage, isNew: true));
             RefreshSchemasEmptyState();
             RefreshSchemasSearchVisibility();
         }

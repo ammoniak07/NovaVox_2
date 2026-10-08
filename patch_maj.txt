@@ -11,6 +11,7 @@ v0.1.2
 - Panneau "📐 Schémas" : les sacs à dos affichent désormais leur capacité de transport, telle qu'indiquée en jeu (ex. "Capacité 127,5K µSCU").
 - Panneau "📐 Schémas" : fiches enrichies avec toutes les caractéristiques fournies par le jeu, en français — type d'objet lisible (ex. "Armure lourde", "Fusil de précision", "Canon laser") au lieu de l'identifiant interne, et une ligne de caractéristiques selon le type : température/radiations/capacité pour les armures, portée/cadence/chargeur/accessoires pour les armes, taille pour les armes de vaisseau, capacité pour les chargeurs et conteneurs, portées/puissance/modules pour les lasers de minage, compatibilité pour les sacs à dos. La recherche du panneau porte aussi sur ces caractéristiques.
 - Ajout de "Lorville" (stanton1 lorville) et "GrimHEX" (grimhex) au catalogue intégré de destinations.
+- Panneau "📐 Schémas" : un schéma nouvellement reçu en jeu (ou retrouvé par "🔍 Scanner les archives") est encadré en jaune jusqu'à ce que tu cliques dessus pour le marquer comme vu — conservé d'un lancement à l'autre.
 
 v0.1.1
 ------
