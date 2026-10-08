@@ -78,6 +78,7 @@ public sealed class AiConfig
     public Dictionary<string, int> GroupPlayerCounts { get; set; } = new();
     /// <summary>Noms des archives Game.log déjà prises en compte dans les statistiques ci-dessus (voir GameLogBackups.ScanForStats/GameLogBackupStatsResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
     public HashSet<string> StatsScannedBackupFiles { get; set; } = new();
+    public List<TimeInterval> StatsLiveIntervals { get; set; } = new();
     /// <summary>
     /// Pseudos actuellement connus comme connectés au groupe (voir
     /// GameLogAnnouncer.BuildHudAnnouncement) — vérifié en vrai Game.log
@@ -228,6 +229,7 @@ public sealed class AiConfigStore
             config.StatsScannedBackupFiles = ToStringList(data["stats_scanned_backup_files"] as JsonArray).ToHashSet();
             if (config.StatsScannedBackupFiles.Count == 0)
                 config.StatsScannedBackupFiles = ToStringList(data["ship_time_scanned_backup_files"] as JsonArray).ToHashSet();
+            config.StatsLiveIntervals = ToIntervals(data["stats_live_intervals"] as JsonArray);
             config.ConnectedGroupMembers = new HashSet<string>(
                 ToStringList(data["connected_group_members"] as JsonArray), StringComparer.OrdinalIgnoreCase);
         }
@@ -284,6 +286,7 @@ public sealed class AiConfigStore
             ["destination_visit_counts"] = FromStringIntDict(config.DestinationVisitCounts),
             ["group_player_counts"] = FromStringIntDict(config.GroupPlayerCounts),
             ["stats_scanned_backup_files"] = FromStringList(config.StatsScannedBackupFiles.ToList()),
+            ["stats_live_intervals"] = FromIntervals(config.StatsLiveIntervals),
             ["connected_group_members"] = FromStringList(config.ConnectedGroupMembers.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
@@ -361,6 +364,32 @@ public sealed class AiConfigStore
         foreach (var (key, value) in dict)
             obj[key] = FromStringDict(value);
         return obj;
+    }
+
+    private static List<TimeInterval> ToIntervals(JsonArray? array)
+    {
+        var result = new List<TimeInterval>();
+        if (array is null) return result;
+        foreach (var item in array)
+        {
+            if (item is not JsonObject obj) continue;
+            if (DateTimeOffset.TryParse(GetString(obj["start"]), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var start)
+                && DateTimeOffset.TryParse(GetString(obj["end"]), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var end))
+                result.Add(new TimeInterval(start, end));
+        }
+        return result;
+    }
+
+    private static JsonArray FromIntervals(List<TimeInterval> intervals)
+    {
+        var array = new JsonArray();
+        foreach (var interval in intervals)
+            array.Add(new JsonObject
+            {
+                ["start"] = interval.Start.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                ["end"] = interval.End.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            });
+        return array;
     }
 
     private static List<string> ToStringList(JsonArray? array)

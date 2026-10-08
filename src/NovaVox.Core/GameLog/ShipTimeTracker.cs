@@ -54,6 +54,12 @@ public sealed class ShipTimeTracker
         return closed;
     }
 
+    public void Reset()
+    {
+        CurrentShip = null;
+        _anchor = null;
+    }
+
     private (string Ship, double Seconds)? CloseCurrentInterval(DateTimeOffset ts)
     {
         if (CurrentShip is null || _anchor is null) return null;

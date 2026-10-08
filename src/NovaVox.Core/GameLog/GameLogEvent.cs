@@ -40,6 +40,8 @@ public sealed class GameLogState
     public string? LastEventSummary { get; set; }
     /// <summary>Horodatage (réel, lu dans le Game.log) de la toute dernière ligne traitée, QUE le jeu ait réellement écrit — mis à jour à CHAQUE appel de ProcessLine, pas seulement sur une ligne reconnue. Sert de proxy pour "le jeu tourne encore" (temps de jeu, voir le panneau "📊 Statistiques" côté App) : contrairement à l'horloge de la machine, n'avance plus si le jeu ne produit plus d'activité dans son journal.</summary>
     public DateTimeOffset? LastLineTimestamp { get; set; }
+    public DateTimeOffset? FirstLineTimestamp { get; set; }
+    public int SessionNumber { get; set; }
 
     public GameLogState Clone() => new()
     {
@@ -51,5 +53,7 @@ public sealed class GameLogState
         SessionDestructions = SessionDestructions,
         LastEventSummary = LastEventSummary,
         LastLineTimestamp = LastLineTimestamp,
+        FirstLineTimestamp = FirstLineTimestamp,
+        SessionNumber = SessionNumber,
     };
 }

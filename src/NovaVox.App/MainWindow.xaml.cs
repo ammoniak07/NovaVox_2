@@ -103,8 +103,9 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<DestinationVisitRowVm> _destinationVisitRows = new();
     private readonly ObservableCollection<GroupPlayerRowVm> _groupPlayerRows = new();
     private readonly DispatcherTimer _shipTimeFlushTimer;
-    /// <summary>Dernier GameLogState.LastLineTimestamp connu au dernier flush du temps de jeu (voir FlushPlayTime) — null tant qu'aucune ligne du Game.log n'a encore été lue depuis le dernier démarrage de la surveillance, pour ne jamais créditer l'écart entre deux sessions de surveillance comme du temps de jeu.</summary>
+    /// <summary>Dernier GameLogState.LastLineTimestamp connu au dernier flush du temps de jeu (voir FlushLiveStats) — null tant qu'aucune ligne du Game.log n'a encore été lue depuis le dernier démarrage de la surveillance, pour ne jamais créditer l'écart entre deux sessions de surveillance comme du temps de jeu.</summary>
     private DateTimeOffset? _playTimeAnchor;
+    private int _liveSessionNumber;
 
     private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
     /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
@@ -171,8 +172,7 @@ public partial class MainWindow : Window
         _shipTimeFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
         _shipTimeFlushTimer.Tick += (_, _) =>
         {
-            FlushShipTime(DateTimeOffset.UtcNow);
-            FlushPlayTime();
+            FlushLiveStats();
         };
         _shipTimeFlushTimer.Start();
 
@@ -1372,8 +1372,7 @@ public partial class MainWindow : Window
             return;
         }
         // Crédite le vaisseau en cours et le temps de jeu écoulé jusqu'à la fermeture, sans attendre le prochain tick de _shipTimeFlushTimer.
-        FlushShipTime(DateTimeOffset.UtcNow);
-        FlushPlayTime();
+        FlushLiveStats();
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
         _micLevelMonitor.Dispose();
@@ -2821,8 +2820,7 @@ public partial class MainWindow : Window
         // Les statistiques en cours (vaisseau occupé, temps de jeu) doivent
         // être à jour dès l'ouverture du panneau, sans attendre le prochain
         // déclenchement de _shipTimeFlushTimer (jusqu'à 60s de retard sinon).
-        FlushShipTime(DateTimeOffset.UtcNow);
-        FlushPlayTime();
+        FlushLiveStats();
         StatsOverlay.Visibility = Visibility.Visible;
     }
 
@@ -2836,41 +2834,45 @@ public partial class MainWindow : Window
         if (StatsOverlay.Visibility == Visibility.Visible) RefreshShipTimeStats();
     }
 
-    /// <summary>Clôt (sans changer de vaisseau) l'intervalle en cours jusqu'à <paramref name="ts"/> — voir _shipTimeFlushTimer (constructeur) et OpenStats_Click.</summary>
-    private void FlushShipTime(DateTimeOffset ts)
+    /// <summary>
+    /// Crédite le temps de jeu et le temps du vaisseau occupé depuis le
+    /// dernier appel, en heure du Game.log (dernière ligne lue) plutôt qu'en
+    /// heure de la machine : jeu fermé, plus aucune ligne, plus rien n'est
+    /// crédité. Chaque intervalle crédité est mémorisé dans
+    /// AiConfig.StatsLiveIntervals pour que "Charger les archives" ne le
+    /// recompte pas quand le jeu archivera cette session.
+    /// </summary>
+    private void FlushLiveStats()
     {
+        SyncLiveSession();
+        var state = _gameLogWatcher?.GetState();
+        if (state?.LastLineTimestamp is not { } ts) return;
+
         if (_shipTimeTracker.Flush(ts) is { } closed)
             CreditShipTime(closed.Ship, closed.Seconds);
-    }
 
-    /// <summary>
-    /// Crédite le temps de jeu écoulé depuis le dernier flush, à partir de
-    /// GameLogState.LastLineTimestamp (horodatage réel de la dernière ligne
-    /// lue dans le Game.log) plutôt que de l'horloge de la machine — tant
-    /// que le jeu n'écrit plus rien (fermé, ou NovaVox pas en train de
-    /// surveiller), aucun temps n'est crédité. Premier appel après un
-    /// (re)démarrage de la surveillance : établit juste la référence de
-    /// départ, sans rien créditer encore (sinon tout l'écart depuis la
-    /// dernière session de surveillance serait compté comme du temps de jeu).
-    /// </summary>
-    private void FlushPlayTime()
-    {
-        var lastKnown = _gameLogWatcher?.GetState().LastLineTimestamp;
-        if (lastKnown is not { } ts) return;
-
-        if (_playTimeAnchor is not { } anchor)
-        {
-            _playTimeAnchor = ts;
-            return;
-        }
-
-        var elapsed = (ts - anchor).TotalSeconds;
+        var anchor = _playTimeAnchor ?? state.FirstLineTimestamp ?? ts;
         _playTimeAnchor = ts;
+        var elapsed = (ts - anchor).TotalSeconds;
         if (elapsed <= 0) return;
 
         _state.Ai.PlayTimeSeconds += elapsed;
+        StatsLiveIntervals.Add(_state.Ai.StatsLiveIntervals, anchor, ts);
         SaveAiAndLog();
         if (StatsOverlay.Visibility == Visibility.Visible) RefreshPlayTimeAndAuecDisplay();
+    }
+
+    /// <summary>
+    /// Le jeu a été relancé (Game.log remis à zéro, voir GameLogWatcher) :
+    /// repart de zéro sans créditer l'écart entre les deux sessions comme du
+    /// temps de jeu ou de vaisseau.
+    /// </summary>
+    private void SyncLiveSession()
+    {
+        if (_gameLogWatcher?.GetState().SessionNumber is not { } session || session == _liveSessionNumber) return;
+        _liveSessionNumber = session;
+        _playTimeAnchor = null;
+        _shipTimeTracker.Reset();
     }
 
     /// <summary>Crédite <paramref name="amount"/> au total aUEC envoyé, persiste, et rafraîchit l'affichage si le panneau est actuellement ouvert.</summary>
@@ -2916,6 +2918,7 @@ public partial class MainWindow : Window
         _state.Ai.PlayTimeSeconds = 0;
         _state.Ai.AuecSent = 0;
         _state.Ai.StatsScannedBackupFiles.Clear();
+        _state.Ai.StatsLiveIntervals.Clear();
         RefreshShipTimeStats();
         RefreshDestinationStats();
         RefreshGroupPlayerStats();
@@ -2964,7 +2967,8 @@ public partial class MainWindow : Window
         {
             var alreadyScanned = _state.Ai.StatsScannedBackupFiles;
             var destinationAliases = _state.Ai.GameLogDestinationAliases;
-            var scanResult = await Task.Run(() => GameLogBackups.ScanForStats(backupsFolder, destinationAliases, alreadyScanned, progress));
+            var liveIntervals = _state.Ai.StatsLiveIntervals.ToList();
+            var scanResult = await Task.Run(() => GameLogBackups.ScanForStats(backupsFolder, destinationAliases, alreadyScanned, progress, liveIntervals));
 
             foreach (var name in scanResult.ScannedFileNames)
                 _state.Ai.StatsScannedBackupFiles.Add(name);
@@ -3239,10 +3243,11 @@ public partial class MainWindow : Window
         // jeu) plutôt que de le perdre. _playTimeAnchor est remis à null —
         // sans ça, une réactivation plus tard après une longue pause
         // créditerait d'un coup tout l'écart comme s'il s'agissait de temps
-        // de jeu (voir FlushPlayTime).
-        FlushShipTime(DateTimeOffset.UtcNow);
-        FlushPlayTime();
+        // de jeu (voir FlushLiveStats).
+        FlushLiveStats();
         _playTimeAnchor = null;
+        _liveSessionNumber = 0;
+        _shipTimeTracker.Reset();
 
         if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = null;
         _gameLogWatcher?.Dispose();
@@ -3307,6 +3312,7 @@ public partial class MainWindow : Window
             var shipChange = GameLogAnnouncer.TryExtractShipChannelEvent(cleanText);
             if (shipChange is not null)
             {
+                SyncLiveSession();
                 var ts = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
                 if (_shipTimeTracker.Process(ts, shipChange.Value.ShipName, shipChange.Value.Entered) is { } closed)
                     CreditShipTime(closed.Ship, closed.Seconds);

@@ -430,6 +430,18 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_StatsLiveIntervalsRoundTrip()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig();
+        var interval = new NovaVox.Core.GameLog.TimeInterval(DateTimeOffset.Parse("2026-09-20T18:00:00Z"), DateTimeOffset.Parse("2026-09-20T19:30:00Z"));
+        config.StatsLiveIntervals.Add(interval);
+        store.Save(config);
+
+        Assert.Equal(new[] { interval }, new AiConfigStore(_dir).Load().StatsLiveIntervals);
+    }
+
+    [Fact]
     public void AiConfig_SchemasUnseenRoundTripsAndIgnoresCase()
     {
         var store = new AiConfigStore(_dir);

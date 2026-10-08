@@ -4,6 +4,8 @@ v0.1.3
 ------
 - Ajout de "Lorville" (stanton1 lorville) et "GrimHEX" (grimhex) au catalogue intégré de destinations.
 - Panneau "📐 Schémas" : un schéma nouvellement reçu en jeu (ou retrouvé par "🔍 Scanner les archives", ou ajouté manuellement) est encadré en jaune jusqu'à ce que tu cliques dessus pour le marquer comme vu — conservé d'un lancement à l'autre.
+- Correction des statistiques : "Charger les archives" recomptait une session déjà suivie en direct par NovaVox une fois archivée par le jeu (temps de jeu, vaisseaux, aUEC, destinations et joueurs comptés deux fois) — les périodes déjà suivies en direct sont désormais ignorées lors du scan.
+- Correction des statistiques : le temps passé dans un vaisseau continuait d'augmenter quand le jeu était fermé alors que NovaVox restait ouvert, et relancer le jeu pouvait compter tout le temps passé jeu fermé comme du temps de jeu — le suivi en direct se base désormais uniquement sur l'activité réelle du Game.log.
 
 v0.1.2
 ------

@@ -337,6 +337,29 @@ public class GameLogBackupsTests : IDisposable
     }
 
     [Fact]
+    public void ScanForStats_LiveIntervals_SkipsWhatWasAlreadyCountedLive()
+    {
+        var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 01 Jun 18 (10 09 04).log"),
+            new[]
+            {
+                Notification("CANAL 'Drake Cutter : Ammoniak' rejoint.", ts: "2026-09-20T18:00:00.000Z"),
+                Notification("Vous avez envoyé Droz64: 500 aUEC", ts: "2026-09-20T18:05:00.000Z"),
+                "<2026-09-20T18:10:00.000Z> [Notice] <Something> NovaVox commence à suivre en direct",
+                Notification("Vous avez envoyé Zeilos: 300 aUEC", ts: "2026-09-20T18:15:00.000Z"),
+                "<2026-09-20T18:20:00.000Z> [Notice] <Something> fin de session",
+            });
+        var live = new[] { new TimeInterval(DateTimeOffset.Parse("2026-09-20T18:10:00Z"), DateTimeOffset.Parse("2026-09-20T18:20:00Z")) };
+
+        var result = GameLogBackups.ScanForStats(backups, liveIntervals: live);
+
+        Assert.Equal(500.0, result.AuecSent);
+        Assert.Equal(600.0, result.PlayTimeSeconds);
+        Assert.Equal(600.0, result.ShipSecondsByShip["Drake Cutter"]);
+    }
+
+    [Fact]
     public void ScanForStats_AuecSent_AccumulatesAcrossNotifications()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;

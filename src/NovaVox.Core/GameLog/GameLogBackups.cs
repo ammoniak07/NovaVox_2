@@ -182,7 +182,8 @@ public static class GameLogBackups
         string backupsFolder,
         IReadOnlyDictionary<string, string>? destinationAliases = null,
         IReadOnlySet<string>? alreadyScannedFileNames = null,
-        IProgress<(int Done, int Total)>? progress = null)
+        IProgress<(int Done, int Total)>? progress = null,
+        IReadOnlyList<TimeInterval>? liveIntervals = null)
     {
         var shipTotals = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var destinationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -199,7 +200,7 @@ public static class GameLogBackups
             var fileName = Path.GetFileName(files[i]);
             if (alreadyScannedFileNames is null || !alreadyScannedFileNames.Contains(fileName))
             {
-                var fileStats = ScanFileForStats(files[i], destinationAliases);
+                var fileStats = ScanFileForStats(files[i], destinationAliases, liveIntervals);
                 foreach (var (ship, seconds) in fileStats.ShipSeconds)
                     shipTotals[ship] = shipTotals.GetValueOrDefault(ship) + seconds;
                 foreach (var (destination, count) in fileStats.DestinationCounts)
@@ -216,7 +217,7 @@ public static class GameLogBackups
     }
 
     private sealed record FileStats(
-        List<(string Ship, double Seconds)> ShipSeconds,
+        Dictionary<string, double> ShipSeconds,
         double PlayTimeSeconds,
         double AuecSent,
         Dictionary<string, int> DestinationCounts,
@@ -227,13 +228,13 @@ public static class GameLogBackups
     // des autres) — une seule passe sur le fichier calcule les 4
     // statistiques à la fois plutôt que de le relire une fois par
     // statistique.
-    private static FileStats ScanFileForStats(string path, IReadOnlyDictionary<string, string>? destinationAliases)
+    private static FileStats ScanFileForStats(string path, IReadOnlyDictionary<string, string>? destinationAliases, IReadOnlyList<TimeInterval>? liveIntervals)
     {
-        var shipSeconds = new List<(string, double)>();
+        var shipSeconds = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var destinationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var groupPlayerCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         double auecSent = 0;
-        DateTimeOffset? firstTs = null;
+        double playTime = 0;
         DateTimeOffset? lastTs = null;
         try
         {
@@ -246,17 +247,27 @@ public static class GameLogBackups
             {
                 if (GameLogLineProcessor.ParseLineTimestamp(line) is { } lineTs)
                 {
-                    firstTs ??= lineTs;
+                    if (lastTs is { } previous && lineTs > previous
+                        && !StatsLiveIntervals.Contains(liveIntervals, previous + (lineTs - previous) / 2))
+                    {
+                        var gap = (lineTs - previous).TotalSeconds;
+                        playTime += gap;
+                        if (shipTracker.CurrentShip is { } ship)
+                            shipSeconds[ship] = shipSeconds.GetValueOrDefault(ship) + gap;
+                    }
                     lastTs = lineTs;
                 }
 
                 var evt = processor.ProcessLine(line);
                 if (evt is null) continue;
 
+                var eventTs = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
+                var countedLive = StatsLiveIntervals.Contains(liveIntervals, eventTs);
+
                 if (evt.Type == GameLogEventTypes.ZoneChange)
                 {
                     var resolved = GameLogDestinations.ResolveDestinationLabel(evt.Zone, evt.ObstructionLabel, destinationAliases, evt.StartLocation);
-                    if (!string.IsNullOrEmpty(resolved))
+                    if (!countedLive && !string.IsNullOrEmpty(resolved))
                         destinationCounts[resolved] = destinationCounts.GetValueOrDefault(resolved) + 1;
                     continue;
                 }
@@ -268,11 +279,10 @@ public static class GameLogBackups
                 var shipChange = GameLogAnnouncer.TryExtractShipChannelEvent(cleanText);
                 if (shipChange is not null)
                 {
-                    var eventTs = DateTimeOffset.FromUnixTimeMilliseconds((long)(evt.Ts * 1000));
-                    if (shipTracker.Process(eventTs, shipChange.Value.ShipName, shipChange.Value.Entered) is { } closed)
-                        shipSeconds.Add(closed);
+                    shipTracker.Process(eventTs, shipChange.Value.ShipName, shipChange.Value.Entered);
                     continue;
                 }
+                if (countedLive) continue;
 
                 var auec = GameLogAnnouncer.TryExtractAuecSent(cleanText);
                 if (auec is { } amount)
@@ -285,8 +295,6 @@ public static class GameLogBackups
                 if (groupMember is not null)
                     groupPlayerCounts[groupMember] = groupPlayerCounts.GetValueOrDefault(groupMember) + 1;
             }
-            if (lastTs is { } ts && shipTracker.Flush(ts) is { } finalClosed)
-                shipSeconds.Add(finalClosed);
         }
         catch (IOException)
         {
@@ -297,7 +305,6 @@ public static class GameLogBackups
             // Idem pour un problème de permissions sur ce fichier précis.
         }
 
-        var playTime = firstTs is { } first && lastTs is { } last ? Math.Max(0, (last - first).TotalSeconds) : 0;
         return new FileStats(shipSeconds, playTime, auecSent, destinationCounts, groupPlayerCounts);
     }
 }

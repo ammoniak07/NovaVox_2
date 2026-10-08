@@ -92,6 +92,12 @@ public sealed class GameLogWatcher : IDisposable
                     {
                         stream.Seek(0, SeekOrigin.Begin);
                         reader.DiscardBufferedData();
+                        lock (_stateLock)
+                        {
+                            _processor.State.FirstLineTimestamp = null;
+                            _processor.State.LastLineTimestamp = null;
+                            _processor.State.SessionNumber++;
+                        }
                     }
                     lastSize = currentSize.Value;
                     continue;

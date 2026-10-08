@@ -131,7 +131,11 @@ public sealed partial class GameLogLineProcessor
         // "continuation de notification" ci-dessous — pour que
         // State.LastLineTimestamp reflète vraiment la dernière activité du
         // jeu (temps de jeu, voir GameLogBackups.ScanForStats côté archives).
-        if (ParseLineTimestamp(line) is { } lineTs) State.LastLineTimestamp = lineTs;
+        if (ParseLineTimestamp(line) is { } lineTs)
+        {
+            State.LastLineTimestamp = lineTs;
+            State.FirstLineTimestamp ??= lineTs;
+        }
 
         if (_pendingNotification is not null)
             return ProcessNotificationContinuation(line);

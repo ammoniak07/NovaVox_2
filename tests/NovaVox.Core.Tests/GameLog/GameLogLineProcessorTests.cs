@@ -27,6 +27,17 @@ public class GameLogLineProcessorTests
     }
 
     [Fact]
+    public void ProcessLine_FirstLineTimestamp_KeepsTheFirstLineSeen()
+    {
+        var processor = new GameLogLineProcessor();
+
+        processor.ProcessLine("<2026-09-20T18:00:00.000Z> [Notice] <A> première ligne");
+        processor.ProcessLine("<2026-09-20T18:05:00.000Z> [Notice] <B> deuxième ligne");
+
+        Assert.Equal(DateTimeOffset.Parse("2026-09-20T18:00:00.000Z"), processor.State.FirstLineTimestamp);
+    }
+
+    [Fact]
     public void ProcessLine_LineWithoutTimestamp_LeavesLastLineTimestampUnchanged()
     {
         var processor = new GameLogLineProcessor();
