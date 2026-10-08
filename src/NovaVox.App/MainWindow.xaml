@@ -1545,12 +1545,9 @@
                             </ScrollViewer>
                         </TabItem>
 
-                        <!-- Classement basé sur "Un joueur a rejoint {pseudo} a rejoint le Groupe."
-                             (voir GameLogAnnouncer.TryExtractGroupMemberJoined) : UNIQUEMENT les
-                             arrivées dans un groupe dont le joueur local fait déjà partie, jamais
-                             les connexions/déconnexions réseau (qui gonfleraient le compte de qui
-                             a la connexion la moins stable plutôt que de qui est réellement le
-                             plus souvent groupé). -->
+                        <!-- Nombre de sessions de jeu passées dans le même groupe (voir
+                             GameLogAnnouncer.TryExtractGroupMember) : une fois par joueur et par
+                             session, quelles que soient les reconnexions. -->
                         <TabItem Header="👥 Joueurs">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel Margin="0,10,0,0">

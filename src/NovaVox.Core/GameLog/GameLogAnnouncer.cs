@@ -492,22 +492,17 @@ public static partial class GameLogAnnouncer
     }
 
     /// <summary>
-    /// Détecte un texte HUD "Un joueur a rejoint {pseudo} a rejoint le
-    /// Groupe." (voir PlayerJoinedGroupRegex, déjà utilisé pour l'annonce
-    /// vocale) — un autre joueur qui rejoint un groupe dont LE JOUEUR LOCAL
-    /// fait déjà partie. Utilisé pour le classement "joueurs les plus
-    /// groupés" (panneau "📊 Statistiques"), sans effet de bord — comme
-    /// TryExtractReceivedSchemaName. Volontairement PAS basé sur "s'est
-    /// connecté"/"a quitté le Groupe" (GroupMemberConnectedRegex/
-    /// PlayerLeftGroupRegex) : ces notifications-là peuvent se répéter
-    /// plusieurs fois pour la même personne au sein d'une même session de
-    /// groupe (reconnexion réseau, crash du jeu...), ce qui fausserait le
-    /// classement en faveur de qui a la connexion la moins stable plutôt
-    /// que de qui est réellement le plus souvent groupé.
+    /// Pseudo d'un membre du groupe du joueur local : un joueur qui rejoint
+    /// le groupe ("Un joueur a rejoint {pseudo} a rejoint le Groupe.") ou un
+    /// membre déjà présent ("Groupe : {pseudo} s'est connecté.", émis aussi
+    /// pour chaque membre quand le joueur local rejoint un groupe existant).
+    /// Ces notifications se répètent au sein d'une même session : l'appelant
+    /// ne compte chaque pseudo qu'une fois par session de jeu.
     /// </summary>
-    public static string? TryExtractGroupMemberJoined(string hudText)
+    public static string? TryExtractGroupMember(string hudText)
     {
         var match = PlayerJoinedGroupRegex().Match(hudText);
+        if (!match.Success) match = GroupMemberConnectedRegex().Match(hudText);
         if (!match.Success) return null;
         var name = match.Groups["name"].Value.Trim();
         return name.Length == 0 ? null : name;

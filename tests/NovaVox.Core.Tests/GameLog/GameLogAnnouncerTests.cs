@@ -51,11 +51,12 @@ public class GameLogAnnouncerTests
     [InlineData("Un joueur a rejoint Bistic a rejoint le Groupe.", "Bistic")]
     [InlineData("Un joueur a rejoint Tinou214 a rejoint le Groupe.", "Tinou214")]
     [InlineData("A quitté le groupe : Tork a quitté le Groupe", null)]
-    [InlineData("Groupe : Dionico31 s'est connecté.", null)]
+    [InlineData("Groupe : Dionico31 s'est connecté.", "Dionico31")]
+    [InlineData("Groupe : Dionico31 s'est déconnecté.", null)]
     [InlineData("Nouvel objectif : Livrer la cargaison", null)]
-    public void TryExtractGroupMemberJoined_ReturnsNameOrNullWithoutSideEffects(string hudText, string? expected)
+    public void TryExtractGroupMember_ReturnsNameOrNullWithoutSideEffects(string hudText, string? expected)
     {
-        Assert.Equal(expected, GameLogAnnouncer.TryExtractGroupMemberJoined(hudText));
+        Assert.Equal(expected, GameLogAnnouncer.TryExtractGroupMember(hudText));
     }
 
     [Fact]

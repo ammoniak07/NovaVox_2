@@ -106,6 +106,7 @@ public partial class MainWindow : Window
     /// <summary>Dernier GameLogState.LastLineTimestamp connu au dernier flush du temps de jeu (voir FlushLiveStats) — null tant qu'aucune ligne du Game.log n'a encore été lue depuis le dernier démarrage de la surveillance, pour ne jamais créditer l'écart entre deux sessions de surveillance comme du temps de jeu.</summary>
     private DateTimeOffset? _playTimeAnchor;
     private int _liveSessionNumber;
+    private readonly HashSet<string> _groupedThisSession = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly ObservableCollection<ShipCheatSheetPointRowVm> _shipCheatSheetPointRows = new();
     /// <summary>Vaisseau actuellement édité dans Réglages > 🚀 Vaisseaux — aussi celui affiché dans l'overlay (AiConfig.ActiveShipCheatSheet), voir ShipCheatSheetCombo_SelectionChanged.</summary>
@@ -2873,6 +2874,7 @@ public partial class MainWindow : Window
         _liveSessionNumber = session;
         _playTimeAnchor = null;
         _shipTimeTracker.Reset();
+        _groupedThisSession.Clear();
     }
 
     /// <summary>Crédite <paramref name="amount"/> au total aUEC envoyé, persiste, et rafraîchit l'affichage si le panneau est actuellement ouvert.</summary>
@@ -2886,6 +2888,9 @@ public partial class MainWindow : Window
     /// <summary>Incrémente le compteur de groupement de <paramref name="player"/>, persiste, et rafraîchit la liste si le panneau est actuellement ouvert.</summary>
     private void CreditGroupPlayer(string player)
     {
+        SyncLiveSession();
+        if (string.Equals(player, _state.Ai.GameLogPlayerHandle, StringComparison.OrdinalIgnoreCase)) return;
+        if (!_groupedThisSession.Add(player)) return;
         _state.Ai.GroupPlayerCounts[player] = _state.Ai.GroupPlayerCounts.GetValueOrDefault(player) + 1;
         SaveAiAndLog();
         if (StatsOverlay.Visibility == Visibility.Visible) RefreshGroupPlayerStats();
@@ -2968,7 +2973,8 @@ public partial class MainWindow : Window
             var alreadyScanned = _state.Ai.StatsScannedBackupFiles;
             var destinationAliases = _state.Ai.GameLogDestinationAliases;
             var liveIntervals = _state.Ai.StatsLiveIntervals.ToList();
-            var scanResult = await Task.Run(() => GameLogBackups.ScanForStats(backupsFolder, destinationAliases, alreadyScanned, progress, liveIntervals));
+            var playerName = _state.Ai.GameLogPlayerHandle;
+            var scanResult = await Task.Run(() => GameLogBackups.ScanForStats(backupsFolder, destinationAliases, alreadyScanned, progress, liveIntervals, playerName));
 
             foreach (var name in scanResult.ScannedFileNames)
                 _state.Ai.StatsScannedBackupFiles.Add(name);
@@ -3248,6 +3254,7 @@ public partial class MainWindow : Window
         _playTimeAnchor = null;
         _liveSessionNumber = 0;
         _shipTimeTracker.Reset();
+        _groupedThisSession.Clear();
 
         if (_voiceOrchestrator is not null) _voiceOrchestrator.GameLogWatcher = null;
         _gameLogWatcher?.Dispose();
@@ -3321,7 +3328,7 @@ public partial class MainWindow : Window
             var auecSent = GameLogAnnouncer.TryExtractAuecSent(cleanText);
             if (auecSent is { } amount) CreditAuecSent(amount);
 
-            var groupMember = GameLogAnnouncer.TryExtractGroupMemberJoined(cleanText);
+            var groupMember = GameLogAnnouncer.TryExtractGroupMember(cleanText);
             if (groupMember is not null) CreditGroupPlayer(groupMember);
         }
 

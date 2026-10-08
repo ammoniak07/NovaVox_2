@@ -393,7 +393,7 @@ public class GameLogBackupsTests : IDisposable
     }
 
     [Fact]
-    public void ScanForStats_GroupPlayerCounts_CountsEachGroupJoinByPlayer()
+    public void ScanForStats_GroupPlayerCounts_CountsEachPlayerOncePerSession()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
         File.WriteAllLines(
@@ -401,9 +401,13 @@ public class GameLogBackupsTests : IDisposable
             new[]
             {
                 Notification("Un joueur a rejoint Bistic a rejoint le Groupe.", ts: "2026-09-20T18:00:00.000Z"),
-                Notification("Un joueur a rejoint Bistic a rejoint le Groupe.", id: 2, ts: "2026-09-21T18:00:00.000Z"),
-                Notification("Un joueur a rejoint Tinou214 a rejoint le Groupe.", id: 3, ts: "2026-09-22T18:00:00.000Z"),
+                Notification("Groupe : Bistic s'est connecté.", id: 2, ts: "2026-09-20T18:05:00.000Z"),
+                Notification("Un joueur a rejoint Bistic a rejoint le Groupe.", id: 3, ts: "2026-09-20T18:10:00.000Z"),
+                Notification("Un joueur a rejoint Tinou214 a rejoint le Groupe.", id: 4, ts: "2026-09-20T18:15:00.000Z"),
             });
+        File.WriteAllLines(
+            Path.Combine(backups, "Game Build(1) 02 Jun 18 (10 09 04).log"),
+            new[] { Notification("Un joueur a rejoint Bistic a rejoint le Groupe.", ts: "2026-09-21T18:00:00.000Z") });
 
         var result = GameLogBackups.ScanForStats(backups);
 
@@ -412,7 +416,7 @@ public class GameLogBackupsTests : IDisposable
     }
 
     [Fact]
-    public void ScanForStats_GroupPlayerCounts_IgnoresConnectAndDisconnectNotifications()
+    public void ScanForStats_GroupPlayerCounts_JoiningAnExistingGroupCountsMembersAlreadyThere()
     {
         var backups = Directory.CreateDirectory(Path.Combine(_dir, "logbackups")).FullName;
         File.WriteAllLines(
@@ -420,12 +424,13 @@ public class GameLogBackupsTests : IDisposable
             new[]
             {
                 Notification("Groupe : Dionico31 s'est connecté.", ts: "2026-09-20T18:00:00.000Z"),
-                Notification("Groupe : Dionico31 s'est déconnecté.", id: 2, ts: "2026-09-20T18:05:00.000Z"),
-                Notification("A quitté le groupe : Tork a quitté le Groupe", id: 3, ts: "2026-09-20T18:10:00.000Z"),
+                Notification("Groupe : Ammoniak s'est connecté.", id: 2, ts: "2026-09-20T18:00:00.000Z"),
+                Notification("Groupe : Dionico31 s'est déconnecté.", id: 3, ts: "2026-09-20T18:05:00.000Z"),
+                Notification("A quitté le groupe : Tork a quitté le Groupe", id: 4, ts: "2026-09-20T18:10:00.000Z"),
             });
 
-        var result = GameLogBackups.ScanForStats(backups);
+        var result = GameLogBackups.ScanForStats(backups, localPlayerName: "Ammoniak");
 
-        Assert.Empty(result.GroupPlayerCounts);
+        Assert.Equal(new Dictionary<string, int> { ["Dionico31"] = 1 }, result.GroupPlayerCounts);
     }
 }

@@ -9,5 +9,5 @@ public sealed class GroupPlayerRowVm
 {
     public required string PlayerName { get; init; }
     public required int JoinCount { get; init; }
-    public string FormattedCount => JoinCount == 1 ? "1 fois" : $"{JoinCount} fois";
+    public string FormattedCount => JoinCount == 1 ? "1 session" : $"{JoinCount} sessions";
 }

@@ -74,7 +74,7 @@ public sealed class AiConfig
     public double AuecSent { get; set; }
     /// <summary>Nombre de visites par destination (nom résolu, voir GameLogDestinations.ResolveDestinationLabel), déduit des changements de zone (ZoneChange). Panneau "📊 Statistiques".</summary>
     public Dictionary<string, int> DestinationVisitCounts { get; set; } = new();
-    /// <summary>Nombre de fois où chaque pseudo a rejoint un groupe dont le joueur local faisait déjà partie (voir GameLogAnnouncer.TryExtractGroupMemberJoined) — classement "joueurs les plus groupés", panneau "📊 Statistiques".</summary>
+    /// <summary>Nombre de sessions de jeu où chaque pseudo a été dans le même groupe que le joueur local (voir GameLogAnnouncer.TryExtractGroupMember) — classement "joueurs les plus groupés", panneau "📊 Statistiques".</summary>
     public Dictionary<string, int> GroupPlayerCounts { get; set; } = new();
     /// <summary>Noms des archives Game.log déjà prises en compte dans les statistiques ci-dessus (voir GameLogBackups.ScanForStats/GameLogBackupStatsResult) — une archive une fois roulée par le jeu n'est jamais réécrite, donc son nom suffit à ne jamais la recompter sur un scan ultérieur.</summary>
     public HashSet<string> StatsScannedBackupFiles { get; set; } = new();

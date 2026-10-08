@@ -163,7 +163,7 @@ public static class GameLogBackups
     /// GameLogAnnouncer.TryExtractAuecSent), nombre de visites par
     /// destination (ZoneChange, résolu avec <paramref name="destinationAliases"/>
     /// comme en direct) et nombre de fois groupé avec chaque joueur (voir
-    /// GameLogAnnouncer.TryExtractGroupMemberJoined) — SANS fusion avec un
+    /// GameLogAnnouncer.TryExtractGroupMember, une fois par joueur et par archive) — SANS fusion avec un
     /// éventuel total déjà enregistré (à la charge de l'appelant, comme
     /// ScanForReceivedSchemas). Un intervalle de vaisseau encore ouvert à
     /// la fin d'un fichier est crédité jusqu'au dernier horodatage lu
@@ -183,7 +183,8 @@ public static class GameLogBackups
         IReadOnlyDictionary<string, string>? destinationAliases = null,
         IReadOnlySet<string>? alreadyScannedFileNames = null,
         IProgress<(int Done, int Total)>? progress = null,
-        IReadOnlyList<TimeInterval>? liveIntervals = null)
+        IReadOnlyList<TimeInterval>? liveIntervals = null,
+        string? localPlayerName = null)
     {
         var shipTotals = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var destinationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -200,7 +201,7 @@ public static class GameLogBackups
             var fileName = Path.GetFileName(files[i]);
             if (alreadyScannedFileNames is null || !alreadyScannedFileNames.Contains(fileName))
             {
-                var fileStats = ScanFileForStats(files[i], destinationAliases, liveIntervals);
+                var fileStats = ScanFileForStats(files[i], destinationAliases, liveIntervals, localPlayerName);
                 foreach (var (ship, seconds) in fileStats.ShipSeconds)
                     shipTotals[ship] = shipTotals.GetValueOrDefault(ship) + seconds;
                 foreach (var (destination, count) in fileStats.DestinationCounts)
@@ -228,11 +229,12 @@ public static class GameLogBackups
     // des autres) — une seule passe sur le fichier calcule les 4
     // statistiques à la fois plutôt que de le relire une fois par
     // statistique.
-    private static FileStats ScanFileForStats(string path, IReadOnlyDictionary<string, string>? destinationAliases, IReadOnlyList<TimeInterval>? liveIntervals)
+    private static FileStats ScanFileForStats(string path, IReadOnlyDictionary<string, string>? destinationAliases, IReadOnlyList<TimeInterval>? liveIntervals, string? localPlayerName)
     {
         var shipSeconds = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var destinationCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var groupPlayerCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var groupedPlayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         double auecSent = 0;
         double playTime = 0;
         DateTimeOffset? lastTs = null;
@@ -291,8 +293,10 @@ public static class GameLogBackups
                     continue;
                 }
 
-                var groupMember = GameLogAnnouncer.TryExtractGroupMemberJoined(cleanText);
-                if (groupMember is not null)
+                var groupMember = GameLogAnnouncer.TryExtractGroupMember(cleanText);
+                if (groupMember is not null
+                    && !string.Equals(groupMember, localPlayerName, StringComparison.OrdinalIgnoreCase)
+                    && groupedPlayers.Add(groupMember))
                     groupPlayerCounts[groupMember] = groupPlayerCounts.GetValueOrDefault(groupMember) + 1;
             }
         }
