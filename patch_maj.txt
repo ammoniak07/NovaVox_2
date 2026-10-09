@@ -8,6 +8,7 @@ v0.1.3
 - Correction des statistiques : le temps passé dans un vaisseau continuait d'augmenter quand le jeu était fermé alors que NovaVox restait ouvert, et relancer le jeu pouvait compter tout le temps passé jeu fermé comme du temps de jeu — le suivi en direct se base désormais uniquement sur l'activité réelle du Game.log.
 - Statistiques "👥 Joueurs" : compte désormais le nombre de sessions de jeu passées dans le même groupe que chaque joueur, y compris quand c'est toi qui rejoins le groupe de quelqu'un (avant, seuls les joueurs arrivant dans un groupe où tu étais déjà étaient comptés) — une seule fois par session, même en cas de reconnexions.
 - Nouvelle image de fond pour le thème Sombre.
+- Game.log : depuis la mise à jour du jeu du 07/10/2026, les notifications de contrat ("CONTRAT PARTAGÉ", "Contrat accepté", "CONTRAT TERMINÉ", "CONTRAT ÉCHOUÉ") et "Calibration du voyage quantique démarrée/terminée par" arrivent sans nom de contrat/joueur dans le Game.log — NovaVox les reconnaît désormais quand même (plus de fausses "nouvelles entrées", les anciennes sont fusionnées automatiquement au lancement) et les annonce proprement sans finir sur " :" ou "par".
 
 v0.1.2
 ------

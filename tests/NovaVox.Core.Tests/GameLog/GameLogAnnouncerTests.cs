@@ -118,6 +118,38 @@ public class GameLogAnnouncerTests
         Assert.Equal(expected, GameLogAnnouncer.CleanHudNotificationText(raw));
     }
 
+    [Theory]
+    [InlineData("CONTRAT PARTAGÉ : : ", "CONTRAT PARTAGÉ : {name}", "CONTRAT PARTAGÉ")]
+    [InlineData("Contrat accepté :  : ", "Contrat accepté : {name}", "Contrat accepté")]
+    [InlineData("CONTRAT TERMINÉ : : ", "CONTRAT TERMINÉ : {name}", "CONTRAT TERMINÉ")]
+    [InlineData("CONTRAT ÉCHOUÉ : : ", "CONTRAT ÉCHOUÉ : {name}", "CONTRAT ÉCHOUÉ")]
+    [InlineData("Calibration du voyage quantique démarrée par .: ", "Calibration du voyage quantique démarrée par {name}.", "Calibration du voyage quantique démarrée")]
+    public void Build_HudNotification_EmptyNameFromGameBuild12881860_UsesExistingTemplate(string raw, string templateKey, string spoken)
+    {
+        var config = NewConfig();
+        config.GameLogHudOverrides[templateKey] = templateKey;
+
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = raw }, config);
+
+        Assert.False(result!.IsNewHudOverride);
+        Assert.Equal(spoken, result.Text);
+    }
+
+    [Fact]
+    public void MergeLegacyNameTemplateOverrides_EmptyNameEntries_AreMergedIntoTheirTemplate()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["CONTRAT ÉCHOUÉ : {name}"] = "CONTRAT ÉCHOUÉ : {name}",
+            ["CONTRAT ÉCHOUÉ :"] = "CONTRAT ÉCHOUÉ :",
+            ["Calibration du voyage quantique démarrée par ."] = "Calibration du voyage quantique démarrée par .",
+        };
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides);
+
+        Assert.Equal(new[] { "CONTRAT ÉCHOUÉ : {name}", "Calibration du voyage quantique démarrée par {name}." }.OrderBy(k => k), overrides.Keys.OrderBy(k => k));
+    }
+
     [Fact]
     public void Build_HudNotification_RegistersNewOverrideAndSpeaksRawTextFirstTime()
     {

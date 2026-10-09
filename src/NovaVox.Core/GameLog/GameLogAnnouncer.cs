@@ -47,6 +47,10 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"\s*\n\s*")]
     private static partial Regex InternalNewlineRegex();
 
+    /// <summary>Fin de phrase orpheline (" :", " par .") laissée par un nom vide — voir les notifications de contrat/calibration.</summary>
+    [GeneratedRegex(@"(?:\s+par)?\s*[:.]?\s*$")]
+    private static partial Regex EmptyCaptureLeftoverRegex();
+
     [GeneratedRegex(@"\s+")]
     private static partial Regex MultiSpaceRegex();
 
@@ -102,10 +106,12 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^AMI AJOUTÉ ! (?<name>.+)$")]
     private static partial Regex FriendAddedRegex();
 
-    [GeneratedRegex(@"^Calibration du voyage quantique démarrée par (?<name>.+)\.$")]
+    // Build 12881860 (07/10/2026) : le jeu écrit ces notifications avec le
+    // nom vide ("démarrée par .", "CONTRAT PARTAGÉ : :") — d'où (?<name>.*).
+    [GeneratedRegex(@"^Calibration du voyage quantique démarrée par\s*(?<name>.*)\.$")]
     private static partial Regex QuantumCalibrationStartedRegex();
 
-    [GeneratedRegex(@"^Calibration du voyage quantique terminée par (?<name>.+)\.$")]
+    [GeneratedRegex(@"^Calibration du voyage quantique terminée par\s*(?<name>.*)\.$")]
     private static partial Regex QuantumCalibrationFinishedRegex();
 
     // Notifications d'objectif/contrat : un préfixe fixe toujours identique,
@@ -122,16 +128,16 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^Objectif retiré\s*:\s*(?<name>.+)$")]
     private static partial Regex ObjectiveRemovedRegex();
 
-    [GeneratedRegex(@"^CONTRAT PARTAGÉ\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^CONTRAT PARTAGÉ\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractSharedRegex();
 
-    [GeneratedRegex(@"^Contrat accepté\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^Contrat accepté\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractAcceptedRegex();
 
-    [GeneratedRegex(@"^CONTRAT TERMINÉ\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^CONTRAT TERMINÉ\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractCompletedRegex();
 
-    [GeneratedRegex(@"^CONTRAT ÉCHOUÉ\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^CONTRAT ÉCHOUÉ\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractFailedRegex();
 
     [GeneratedRegex(@"^ENTRÉE DU JOURNAL AJOUTÉE\s*:\s*(?<name>.+)$")]
@@ -343,6 +349,8 @@ public static partial class GameLogAnnouncer
         var spokenText = storedTemplate;
         foreach (var (placeholder, value) in captures)
             spokenText = spokenText.Replace($"{{{placeholder}}}", value);
+        if (captures.Count > 0 && captures.Values.All(string.IsNullOrWhiteSpace))
+            spokenText = EmptyCaptureLeftoverRegex().Replace(spokenText, "");
 
         const string key = "hud_notification";
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
