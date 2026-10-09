@@ -35,6 +35,8 @@ public class GameLogDestinationsTests
     [InlineData("Nyx_Levski", "Levski")]
     [InlineData("Stanton2_Orison", "Orison")]
     [InlineData("Stanton1_Lorville", "Lorville")]
+    [InlineData("ObjectContainer_Lorville_City", "Lorville")]
+    [InlineData("Orison_LOC", "Orison")]
     [InlineData("GrimHEX", "GrimHEX")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
