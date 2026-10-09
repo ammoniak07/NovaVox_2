@@ -10,6 +10,7 @@ v0.1.3
 - Nouvelle image de fond pour le thème Sombre.
 - Game.log : depuis la mise à jour du jeu du 07/10/2026, les notifications de contrat ("CONTRAT PARTAGÉ", "Contrat accepté", "CONTRAT TERMINÉ", "CONTRAT ÉCHOUÉ") et "Calibration du voyage quantique démarrée/terminée par" arrivent sans nom de contrat/joueur dans le Game.log — NovaVox les reconnaît désormais quand même (plus de fausses "nouvelles entrées", les anciennes sont fusionnées automatiquement au lancement) et les annonce proprement sans finir sur " :" ou "par".
 - Statistiques "destinations" : Lorville, Orison et Area18 étaient comptées deux fois par visite (une fois en "… City" à l'arrivée en saut quantique, une fois sous leur nom court à l'ouverture d'un inventaire de la station) — un seul nom désormais.
+- Game.log : "{joueur} Demande d'ami: Ajouter aux amis ?" et "{joueur} Invité au lobby: Accepter l'invitation ?" sont regroupées en une seule correction de lecture chacune, quel que soit le joueur (les entrées déjà créées par joueur sont fusionnées automatiquement au lancement).
 
 v0.1.2
 ------

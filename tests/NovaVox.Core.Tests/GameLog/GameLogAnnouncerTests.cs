@@ -135,6 +135,19 @@ public class GameLogAnnouncerTests
         Assert.Equal(spoken, result.Text);
     }
 
+    [Theory]
+    [InlineData("Lomaxxx Demande d'ami: Ajouter aux amis ?", "{name} Demande d'ami: Ajouter aux amis ?")]
+    [InlineData("Spakhugar Invité au lobby: Accepter l'invitation ?", "{name} Invité au lobby: Accepter l'invitation ?")]
+    public void Build_HudNotification_FriendAndLobbyInvites_UseNameTemplate(string raw, string templateKey)
+    {
+        var config = NewConfig();
+
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = raw }, config);
+
+        Assert.Equal(templateKey, result!.HudOverrideKey);
+        Assert.Equal(raw, result.Text);
+    }
+
     [Fact]
     public void MergeLegacyNameTemplateOverrides_EmptyNameEntries_AreMergedIntoTheirTemplate()
     {

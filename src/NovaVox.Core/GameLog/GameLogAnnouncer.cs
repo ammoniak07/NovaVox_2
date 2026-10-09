@@ -187,6 +187,12 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^(?<name>.+) ! INVITATION À UN GROUPE REÇUE\s*:\s*Accepter l'invitation \?$")]
     private static partial Regex GroupInviteReceivedRegex();
 
+    [GeneratedRegex(@"^(?<name>.+) Demande d'ami\s*:\s*Ajouter aux amis \?$")]
+    private static partial Regex FriendRequestReceivedRegex();
+
+    [GeneratedRegex(@"^(?<name>.+) Invité au lobby\s*:\s*Accepter l'invitation \?$")]
+    private static partial Regex LobbyInviteReceivedRegex();
+
     [GeneratedRegex(@"^Groupe\s*:\s*(?<name>.+) s'est connecté\.?$")]
     private static partial Regex GroupMemberConnectedRegex();
 
@@ -246,6 +252,8 @@ public static partial class GameLogAnnouncer
         (PlayerJoinedShipChannelViaGroupRegex(), _ => "Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'."),
         (PlayerLeftShipChannelViaGroupRegex(), _ => "A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'"),
         (GroupInviteReceivedRegex(), _ => "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?"),
+        (FriendRequestReceivedRegex(), _ => "{name} Demande d'ami: Ajouter aux amis ?"),
+        (LobbyInviteReceivedRegex(), _ => "{name} Invité au lobby: Accepter l'invitation ?"),
         (GroupMemberConnectedRegex(), _ => "Groupe : {name} s'est connecté."),
         (GroupMemberDisconnectedRegex(), _ => "Groupe : {name} s'est déconnecté."),
         (GroupLaunchFollowPromptRegex(), _ => "Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?"),
