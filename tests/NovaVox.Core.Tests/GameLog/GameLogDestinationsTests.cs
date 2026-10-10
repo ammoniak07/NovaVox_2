@@ -45,6 +45,7 @@ public class GameLogDestinationsTests
     [InlineData("Stanton4a_Shubin_SMCa_6", "Mine Shubin SMCA6")]
     [InlineData("Stanton2b_ShubinMining_SCD1", "Mine Shubin SCD1")]
     [InlineData("Stanton1_DistributionCentre_Covalex_S1DC06", "Centre de Distribution Covalex S1DC06")]
+    [InlineData("Stanton3b_ArcCorp_Area045", "Mine ArcCorp Area045")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));

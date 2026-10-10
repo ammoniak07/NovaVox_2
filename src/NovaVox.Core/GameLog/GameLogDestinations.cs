@@ -60,17 +60,23 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^stanton\d+[a-z]? distributioncentre covalex (?<site>.+)$")]
     private static partial Regex CovalexDistributionCentreIdRegex();
 
+    [GeneratedRegex(@"^stanton\d+[a-z]? arccorp (?<site>.+)$")]
+    private static partial Regex ArcCorpMineIdRegex();
+
     /// <summary>Sites numérotés d'une même famille ("stanton4a shubin smca 6" -> "Mine Shubin SMCA6") : un seul motif plutôt qu'une entrée de catalogue par site.</summary>
     private static string? HumanizeNumberedSite(string normalized)
     {
-        foreach (var (regex, prefix) in new (Regex, string)[]
+        foreach (var (regex, prefix, upperCase) in new (Regex, string, bool)[]
         {
-            (ShubinMineIdRegex(), "Mine Shubin"),
-            (CovalexDistributionCentreIdRegex(), "Centre de Distribution Covalex"),
+            (ShubinMineIdRegex(), "Mine Shubin", true),
+            (CovalexDistributionCentreIdRegex(), "Centre de Distribution Covalex", true),
+            (ArcCorpMineIdRegex(), "Mine ArcCorp", false),
         })
         {
             var match = regex.Match(normalized);
-            if (match.Success) return $"{prefix} {match.Groups["site"].Value.Replace(" ", "").ToUpperInvariant()}";
+            if (!match.Success) continue;
+            var site = match.Groups["site"].Value.Replace(" ", "");
+            return $"{prefix} {(upperCase ? site.ToUpperInvariant() : char.ToUpperInvariant(site[0]) + site[1..])}";
         }
         return null;
     }
