@@ -15,6 +15,9 @@ public sealed class HudOverrideRowVm : INotifyPropertyChanged
     private string _customText = "";
     public string CustomText { get => _customText; set { _customText = value; Raise(); } }
 
+    private bool _isHidden;
+    public bool IsHidden { get => _isHidden; set { _isHidden = value; Raise(); } }
+
     private bool _isNew;
     public bool IsNew { get => _isNew; set { _isNew = value; Raise(); } }
 

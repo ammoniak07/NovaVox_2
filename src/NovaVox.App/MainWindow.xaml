@@ -1034,6 +1034,8 @@
                             <TextBlock Text="🔧 Corrections de lecture pour des notifications précises" FontWeight="Bold" Margin="0,16,0,4" />
                             <TextBlock Text="Chaque nouvelle notification HUD du jeu apparaît automatiquement ci-dessous dès qu'elle est détectée. Modifie le texte à lire, ou laisse-le tel quel pour l'entendre lu mot pour mot."
                                        Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
+                            <CheckBox x:Name="ShowHiddenHudOverridesCheckbox" Content="Afficher les lignes cachées" Margin="0,0,0,10"
+                                      ToolTip="Affiche aussi les corrections cochées « Cacher »" Click="ShowHiddenHudOverridesCheckbox_Click" />
                             <ItemsControl x:Name="GameLogHudOverridesList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -1051,6 +1053,9 @@
                                                              y compris par-dessus le orange "nouvelle entrée" — disparaît une fois enregistré. -->
                                                         <DataTrigger Binding="{Binding IsDirty}" Value="True">
                                                             <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsHidden}" Value="True">
+                                                            <Setter Property="Opacity" Value="0.6" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -1076,10 +1081,13 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBox Grid.Column="0" Text="{Binding CustomText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" />
                                                     <Button Grid.Column="1" Content="Enregistrer" Click="SaveHudOverride_Click" />
                                                     <Button Grid.Column="2" Content="Supprimer" Margin="6,0,0,0" Click="DeleteHudOverride_Click" />
+                                                    <CheckBox Grid.Column="3" Content="Cacher" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                              IsChecked="{Binding IsHidden}" Click="HideHudOverride_Click" />
                                                 </Grid>
                                             </StackPanel>
                                         </Border>

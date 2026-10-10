@@ -44,6 +44,7 @@ public sealed class AiConfig
     public string GameLogBackupsCustomPath { get; set; } = "";
     public Dictionary<string, string> GameLogPhrases { get; set; } = new();
     public Dictionary<string, string> GameLogHudOverrides { get; set; } = new();
+    public HashSet<string> GameLogHudOverridesHidden { get; set; } = new();
     public Dictionary<string, string> GameLogDestinationAliases { get; set; } = new();
     public bool GeminiEnabled { get; set; } = true;
     /// <summary>Recherche de contexte sur le wiki Star Citizen (starcitizen.tools) avant de répondre — pertinent seulement pour ce jeu, décoché automatiquement par le sélecteur "Mode de jeu" (en-tête) sur "Autre jeu".</summary>
@@ -163,6 +164,7 @@ public sealed class AiConfigStore
             // sinon ai_config.json sur disque garde les anciennes entrées tant
             // qu'aucun autre réglage n'a par ailleurs déclenché une sauvegarde.
             hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
+            config.GameLogHudOverridesHidden = ToStringList(data["game_log_hud_overrides_hidden"] as JsonArray).ToHashSet();
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
             // Nettoie les alias de destinations qui ne faisaient que dupliquer un
             // lieu déjà dans le catalogue intégré ou résoluble par l'algorithme
@@ -264,6 +266,7 @@ public sealed class AiConfigStore
             ["game_log_backups_custom_path"] = config.GameLogBackupsCustomPath,
             ["game_log_phrases"] = FromStringDict(config.GameLogPhrases),
             ["game_log_hud_overrides"] = FromStringDict(config.GameLogHudOverrides),
+            ["game_log_hud_overrides_hidden"] = FromStringList(config.GameLogHudOverridesHidden.ToList()),
             ["game_log_destination_aliases"] = FromStringDict(config.GameLogDestinationAliases),
             ["gemini_enabled"] = config.GeminiEnabled,
             ["gemini_wiki_enabled"] = config.GeminiWikiEnabled,

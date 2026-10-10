@@ -442,6 +442,17 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_GameLogHudOverridesHiddenRoundTrips()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig();
+        config.GameLogHudOverridesHidden.Add("Hangar Request Completed");
+        store.Save(config);
+
+        Assert.Contains("Hangar Request Completed", new AiConfigStore(_dir).Load().GameLogHudOverridesHidden);
+    }
+
+    [Fact]
     public void AiConfig_SchemasUnseenRoundTripsAndIgnoresCase()
     {
         var store = new AiConfigStore(_dir);

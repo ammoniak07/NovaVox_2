@@ -137,6 +137,7 @@ public static partial class GameLogDestinations
         ["lorville city"] = "Lorville",
         ["stanton1 lorville"] = "Lorville",
         ["grimhex"] = "GrimHEX",
+        ["stanton4a shubin smca 6"] = "Mine Shubin",
         ["area18 city"] = "Area18",
         ["orison loc"] = "Orison",
         ["stanton2 orison"] = "Orison",

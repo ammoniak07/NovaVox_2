@@ -2451,11 +2451,13 @@ public partial class MainWindow : Window
 
         foreach (var (rawText, customText) in _state.Ai.GameLogHudOverrides)
         {
-            var row = new HudOverrideRowVm { RawText = rawText, CustomText = customText };
+            var row = new HudOverrideRowVm { RawText = rawText, CustomText = customText, IsHidden = _state.Ai.GameLogHudOverridesHidden.Contains(rawText) };
             HookHudOverrideRow(row);
             _hudOverrideRows.Add(row);
         }
         GameLogHudOverridesList.ItemsSource = _hudOverrideRows;
+        RefreshHiddenHudOverridesCount();
+        RefreshGameLogSearchVisibility();
 
         foreach (var (rawKey, customName) in _state.Ai.GameLogDestinationAliases)
         {
@@ -3424,9 +3426,26 @@ public partial class MainWindow : Window
     {
         if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
         _state.Ai.GameLogHudOverrides.Remove(row.RawText);
+        _state.Ai.GameLogHudOverridesHidden.Remove(row.RawText);
         _hudOverrideRows.Remove(row);
+        RefreshHiddenHudOverridesCount();
         SaveAiAndLog();
     }
+
+    private void HideHudOverride_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
+        if (row.IsHidden) _state.Ai.GameLogHudOverridesHidden.Add(row.RawText);
+        else _state.Ai.GameLogHudOverridesHidden.Remove(row.RawText);
+        SaveAiAndLog();
+        RefreshHiddenHudOverridesCount();
+        RefreshGameLogSearchVisibility();
+    }
+
+    private void ShowHiddenHudOverridesCheckbox_Click(object sender, RoutedEventArgs e) => RefreshGameLogSearchVisibility();
+
+    private void RefreshHiddenHudOverridesCount() =>
+        ShowHiddenHudOverridesCheckbox.Content = $"Afficher les lignes cachées ({_hudOverrideRows.Count(r => r.IsHidden)})";
 
     private void SaveDestinationAlias_Click(object sender, RoutedEventArgs e)
     {
@@ -3476,8 +3495,10 @@ public partial class MainWindow : Window
         var query = NormalizeForSearch(GameLogSearchBox.Text.Trim());
         foreach (var row in _gameLogPhraseRows)
             row.RowVisible = query.Length == 0 || NormalizeForSearch(row.Label).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.Text).Contains(query, StringComparison.Ordinal);
+        var showHidden = ShowHiddenHudOverridesCheckbox.IsChecked == true;
         foreach (var row in _hudOverrideRows)
-            row.RowVisible = query.Length == 0 || NormalizeForSearch(row.RawText).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.CustomText).Contains(query, StringComparison.Ordinal);
+            row.RowVisible = (showHidden || !row.IsHidden)
+                && (query.Length == 0 || NormalizeForSearch(row.RawText).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.CustomText).Contains(query, StringComparison.Ordinal));
         foreach (var row in _destinationAliasRows)
             row.RowVisible = query.Length == 0 || NormalizeForSearch(row.RawKey).Contains(query, StringComparison.Ordinal) || NormalizeForSearch(row.CustomName).Contains(query, StringComparison.Ordinal);
     }
