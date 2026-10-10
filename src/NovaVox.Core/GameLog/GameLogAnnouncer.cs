@@ -63,7 +63,7 @@ public static partial class GameLogAnnouncer
     /// autres notifications HUD ; en plus, sa valeur est extraite ici pour
     /// alimenter la ligne dédiée de l'overlay (voir ResolvedJurisdiction).
     /// </summary>
-    [GeneratedRegex(@"^JURIDICTION\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:JURIDICTION\s*:\s*(?<name>.+)|Entered (?<name>.+) Jurisdiction)$")]
     private static partial Regex JurisdictionRegex();
 
     /// <summary>
@@ -74,10 +74,10 @@ public static partial class GameLogAnnouncer
     /// dédiée de l'overlay (voir ResolvedArmistice), en plus de l'annonce
     /// HUD normale.
     /// </summary>
-    [GeneratedRegex(@"^VOUS ENTREZ EN ZONE D'ARMISTICE")]
+    [GeneratedRegex(@"^(?:VOUS ENTREZ EN ZONE D'ARMISTICE|Entering Armistice Zone)")]
     private static partial Regex ArmisticeEnteredRegex();
 
-    [GeneratedRegex(@"^VOUS QUITTEZ LA ZONE D'ARMISTICE")]
+    [GeneratedRegex(@"^(?:VOUS QUITTEZ LA ZONE D'ARMISTICE|Leaving Armistice Zone)")]
     private static partial Regex ArmisticeLeftRegex();
 
     /// <summary>
@@ -100,18 +100,18 @@ public static partial class GameLogAnnouncer
     /// nom du joueur en tête de phrase change d'une rencontre à l'autre
     /// pour un même type de délit.
     /// </summary>
-    [GeneratedRegex(@"^(?<name>\S+) a commis (?<rest>.+)$")]
+    [GeneratedRegex(@"^(?<name>\S+) (?:a commis|committed) (?<rest>.+)$")]
     private static partial Regex CrimeReportRegex();
 
-    [GeneratedRegex(@"^AMI AJOUTÉ ! (?<name>.+)$")]
+    [GeneratedRegex(@"^(?:AMI AJOUTÉ !|Friend Added!?) (?<name>.+)$")]
     private static partial Regex FriendAddedRegex();
 
     // Build 12881860 (07/10/2026) : le jeu écrit ces notifications avec le
     // nom vide ("démarrée par .", "CONTRAT PARTAGÉ : :") — d'où (?<name>.*).
-    [GeneratedRegex(@"^Calibration du voyage quantique démarrée par\s*(?<name>.*)\.$")]
+    [GeneratedRegex(@"^(?:Calibration du voyage quantique démarrée par|Quantum Travel Calibration Started By)\s*(?<name>.*?)\.?$")]
     private static partial Regex QuantumCalibrationStartedRegex();
 
-    [GeneratedRegex(@"^Calibration du voyage quantique terminée par\s*(?<name>.*)\.$")]
+    [GeneratedRegex(@"^(?:Calibration du voyage quantique terminée par|Quantum Travel Calibration Complete By)\s*(?<name>.*?)\.?$")]
     private static partial Regex QuantumCalibrationFinishedRegex();
 
     // Notifications d'objectif/contrat : un préfixe fixe toujours identique,
@@ -119,34 +119,54 @@ public static partial class GameLogAnnouncer
     // change à chaque nouvelle mission, jamais le préfixe. Sans regrouper
     // par préfixe, chaque mission crée une correction HUD séparée pour
     // toujours (voir HudTemplates ci-dessous).
-    [GeneratedRegex(@"^Nouvel objectif\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Nouvel objectif|New Objective)\s*:\s*(?<name>.+)$")]
     private static partial Regex NewObjectiveRegex();
 
-    [GeneratedRegex(@"^Objectif terminé\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Objectif terminé|Objective Complete)\s*:\s*(?<name>.+)$")]
     private static partial Regex ObjectiveCompletedRegex();
 
-    [GeneratedRegex(@"^Objectif retiré\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Objectif retiré|Objective Withdrawn)\s*:\s*(?<name>.+)$")]
     private static partial Regex ObjectiveRemovedRegex();
 
-    [GeneratedRegex(@"^CONTRAT PARTAGÉ\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT PARTAGÉ|Contract Shared)\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractSharedRegex();
 
-    [GeneratedRegex(@"^Contrat accepté\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:Contrat accepté|Contract Accepted)\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractAcceptedRegex();
 
-    [GeneratedRegex(@"^CONTRAT TERMINÉ\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT TERMINÉ|Contract Complete)\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractCompletedRegex();
 
-    [GeneratedRegex(@"^CONTRAT ÉCHOUÉ\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT ÉCHOUÉ|Contract Failed)\s*:?\s*(?<name>.*)$")]
     private static partial Regex ContractFailedRegex();
 
-    [GeneratedRegex(@"^ENTRÉE DU JOURNAL AJOUTÉE\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^Joined hangar queue\. Your place: (?<place>\d+)\. Max\. estimated wait: (?<wait>[\d.]+) s\.$")]
+    private static partial Regex HangarQueueJoinedRegex();
+
+    // Textes fixes du client anglais rattachés à leur équivalent français
+    // (même correction de lecture pour les deux langues du jeu).
+    [GeneratedRegex(@"^Entering Armistice Zone - Combat Prohibited$")]
+    private static partial Regex EnglishArmisticeEnteredRegex();
+
+    [GeneratedRegex(@"^Leaving Armistice Zone - Caution Advised$")]
+    private static partial Regex EnglishArmisticeLeftRegex();
+
+    [GeneratedRegex(@"^Restricted Area For your safety, you've been relocated\.$")]
+    private static partial Regex EnglishRestrictedAreaRelocatedRegex();
+
+    [GeneratedRegex(@"^Leaving Restricted Area$")]
+    private static partial Regex EnglishLeavingRestrictedAreaRegex();
+
+    [GeneratedRegex(@"^(?:CONTRAT DISPONIBLE|Contract Available)\s*:?\s*(?<name>.*)$")]
+    private static partial Regex ContractAvailableRegex();
+
+    [GeneratedRegex(@"^(?:ENTRÉE DU JOURNAL AJOUTÉE|Journal Entry Added)\s*:\s*(?<name>.+)$")]
     private static partial Regex JournalEntryAddedRegex();
 
     // Schéma de fabrication reçu (ex. "Schémas reçu : Ezra") : même principe
     // que les préfixes d'objectif/contrat ci-dessus — seul le nom du schéma
     // change d'une rencontre à l'autre, jamais le préfixe.
-    [GeneratedRegex(@"^Schémas reçu\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^(?:Schémas reçu|Received Blueprint)\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex SchemaReceivedRegex();
 
     // Canal de discussion d'un vaisseau ("CANAL 'Drake Cutter : Ammoniak'
@@ -155,19 +175,19 @@ public static partial class GameLogAnnouncer
     // d'intérêt à être annoncé et est donc purement ignoré ici (ni capturé,
     // ni reproduit dans le gabarit), plutôt que de faire partie d'un {name}
     // qui inclurait aussi bien le vaisseau que le pilote.
-    [GeneratedRegex(@"^CANAL '(?<name>.+) : [^']+' rejoint\.$")]
+    [GeneratedRegex(@"^(?:CANAL '(?<name>.+) : [^']+' rejoint|You have joined channel '(?<name>.+) : [^']+')\.$")]
     private static partial Regex ShipChannelJoinedRegex();
 
-    [GeneratedRegex(@"^Vous avez quitté le CANAL '(?<name>.+) : [^']+'\.$")]
+    [GeneratedRegex(@"^(?:Vous avez quitté le CANAL|You have left the channel) '(?<name>.+) : [^']+'\.$")]
     private static partial Regex ShipChannelLeftRegex();
 
-    [GeneratedRegex(@"^Nouveau chef de groupe\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Nouveau chef de groupe|New Party Leader)\s*:\s*(?<name>.+)$")]
     private static partial Regex NewGroupLeaderRegex();
 
-    [GeneratedRegex(@"^Un joueur a rejoint (?<name>.+) a rejoint le Groupe\.$")]
+    [GeneratedRegex(@"^(?:Un joueur a rejoint (?<name>.+) a rejoint le Groupe|(?:.+\s)?(?<name>\S+) has joined the party)\.$")]
     private static partial Regex PlayerJoinedGroupRegex();
 
-    [GeneratedRegex(@"^A quitté le groupe\s*:\s*(?<name>.+) a quitté le Groupe$")]
+    [GeneratedRegex(@"^(?:A quitté le groupe\s*:\s*(?<name>.+) a quitté le Groupe|(?:.+\s)?(?<name>\S+) has left the party\.?)$")]
     private static partial Regex PlayerLeftGroupRegex();
 
     // Rejoindre/quitter le canal d'un vaisseau EN PASSANT PAR un mouvement de
@@ -178,40 +198,40 @@ public static partial class GameLogAnnouncer
     // et son pilote/propriétaire — d'où 3 réservoirs {member}/{ship}/{owner}
     // plutôt qu'un seul {name} (voir ExtractHudTemplate, qui gère
     // désormais un nombre quelconque de groupes nommés par motif).
-    [GeneratedRegex(@"^Un joueur a rejoint (?<member>.+) a rejoint le CANAL '(?<ship>.+) : (?<owner>[^']+)'\.$")]
+    [GeneratedRegex(@"^(?:Un joueur a rejoint (?<member>.+) a rejoint le CANAL|(?:.+\s)?(?<member>\S+) has joined the channel) '(?<ship>.+) : (?<owner>[^']+)'\.$")]
     private static partial Regex PlayerJoinedShipChannelViaGroupRegex();
 
-    [GeneratedRegex(@"^A quitté le groupe\s*:\s*(?<member>.+) a quitté le CANAL '(?<ship>.+) : (?<owner>[^']+)'$")]
+    [GeneratedRegex(@"^(?:A quitté le groupe\s*:\s*(?<member>.+) a quitté le CANAL|(?:.+\s)?(?<member>\S+) has left the channel) '(?<ship>.+) : (?<owner>[^']+)'\.?$")]
     private static partial Regex PlayerLeftShipChannelViaGroupRegex();
 
-    [GeneratedRegex(@"^(?<name>.+) ! INVITATION À UN GROUPE REÇUE\s*:\s*Accepter l'invitation \?$")]
+    [GeneratedRegex(@"^(?<name>.+) (?:! INVITATION À UN GROUPE REÇUE\s*:\s*Accepter l'invitation \?|Party Invite Received\s*:\s*Accept Invitation\?)$")]
     private static partial Regex GroupInviteReceivedRegex();
 
-    [GeneratedRegex(@"^(?<name>.+) Demande d'ami\s*:\s*Ajouter aux amis \?$")]
+    [GeneratedRegex(@"^(?<name>.+) (?:Demande d'ami\s*:\s*Ajouter aux amis \?|Friend Request\s*:\s*Add to Friends\?)$")]
     private static partial Regex FriendRequestReceivedRegex();
 
-    [GeneratedRegex(@"^(?<name>.+) Invité au lobby\s*:\s*Accepter l'invitation \?$")]
+    [GeneratedRegex(@"^(?<name>.+) (?:Invité au lobby\s*:\s*Accepter l'invitation \?|Invited To Lobby\s*:\s*Accept Invitation\?)$")]
     private static partial Regex LobbyInviteReceivedRegex();
 
-    [GeneratedRegex(@"^Groupe\s*:\s*(?<name>.+) s'est connecté\.?$")]
+    [GeneratedRegex(@"^(?:Groupe\s*:\s*(?<name>.+) s'est connecté|Party\s*:\s*(?<name>.+) connected)\.?$")]
     private static partial Regex GroupMemberConnectedRegex();
 
-    [GeneratedRegex(@"^Groupe\s*:\s*(?<name>.+) s'est déconnecté\.?$")]
+    [GeneratedRegex(@"^(?:Groupe\s*:\s*(?<name>.+) s'est déconnecté|Party\s*:\s*(?<name>.+) disconnected)\.?$")]
     private static partial Regex GroupMemberDisconnectedRegex();
 
     // Lancement de groupe dans l'univers persistant : deux notifications HUD
     // distinctes pour le même évènement, chacune avec le nom du chef qui
     // l'a initié à un endroit différent de la phrase.
-    [GeneratedRegex(@"^Initié par (?<name>.+) Lancement du groupe\s*:\s*Suivre le groupe dans l'univers persistant \?$")]
+    [GeneratedRegex(@"^(?:Initié par (?<name>.+) Lancement du groupe\s*:\s*Suivre le groupe dans l'univers persistant \?|Initiated by (?<name>.+) Party Launching\s*:\s*Join Party In PU\?)$")]
     private static partial Regex GroupLaunchFollowPromptRegex();
 
-    [GeneratedRegex(@"^Lancement du groupe Initié par le chef du parti (?<name>.+)\.$")]
+    [GeneratedRegex(@"^(?:Lancement du groupe Initié par le chef du parti|Party Launch Initiated by party leader) (?<name>.+)\.$")]
     private static partial Regex GroupLaunchInitiatedByLeaderRegex();
 
     // Transfert d'aUEC à un autre joueur ("Vous avez envoyé Droz64: 2,000,000
     // aUEC.") : le pseudo du destinataire ET le montant changent à chaque
     // transfert — deux réservoirs {name}/{montant} plutôt qu'un seul.
-    [GeneratedRegex(@"^Vous avez envoyé (?<name>.+)\s*:\s*(?<montant>[\d,]+) aUEC\.?$")]
+    [GeneratedRegex(@"^(?:Vous avez envoyé|(?:Transfer Sent\s*:?\s*)?You sent) (?<name>.+?)\s*:\s*(?<montant>[\d,]+) aUEC\.?(?:\s.*)?$")]
     private static partial Regex AuecSentRegex();
 
     /// <summary>
@@ -242,6 +262,12 @@ public static partial class GameLogAnnouncer
         (ContractAcceptedRegex(), _ => "Contrat accepté : {name}"),
         (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}"),
         (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}"),
+        (ContractAvailableRegex(), _ => "CONTRAT DISPONIBLE : {name}"),
+        (HangarQueueJoinedRegex(), _ => "Joined hangar queue. Your place: {place}. Max. estimated wait: {wait} s."),
+        (EnglishArmisticeEnteredRegex(), _ => "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT"),
+        (EnglishArmisticeLeftRegex(), _ => "VOUS QUITTEZ LA ZONE D'ARMISTICE - PRUDENCE EST MÈRE DE SÛRETÉ"),
+        (EnglishRestrictedAreaRelocatedRegex(), _ => "Zone interdite Pour votre sécurité, vous avez été relocalisé."),
+        (EnglishLeavingRestrictedAreaRegex(), _ => "Sortie de la zone restreinte"),
         (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
         (SchemaReceivedRegex(), _ => "Schémas reçu : {name}"),
         (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint."),

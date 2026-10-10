@@ -148,6 +148,36 @@ public class GameLogAnnouncerTests
         Assert.Equal(raw, result.Text);
     }
 
+    [Theory]
+    [InlineData("Contract Accepted:  RSI Disc. Month: Relay Race", "Contrat accepté : {name}", "Contrat accepté : RSI Disc. Month: Relay Race")]
+    [InlineData("Contract Complete: RSI Disc. Month: Relay Race", "CONTRAT TERMINÉ : {name}", "CONTRAT TERMINÉ : RSI Disc. Month: Relay Race")]
+    [InlineData("New Objective: Neutralize Targets", "Nouvel objectif : {name}", "Nouvel objectif : Neutralize Targets")]
+    [InlineData("Entered UEE Jurisdiction", "JURIDICTION : {name}", "JURIDICTION : UEE")]
+    [InlineData("Entering Armistice Zone - Combat Prohibited", "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT", "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT")]
+    [InlineData("You have joined channel 'MISC Starlancer MAX : Ammoniak'.", "CANAL '{name}' rejoint.", "CANAL 'MISC Starlancer MAX' rejoint.")]
+    [InlineData("Joined hangar queue. Your place: 1. Max. estimated wait: 100.000000 s.", "Joined hangar queue. Your place: {place}. Max. estimated wait: {wait} s.", "Joined hangar queue. Your place: 1. Max. estimated wait: 100.000000 s.")]
+    public void Build_HudNotification_EnglishGameClient_SharesTheFrenchTemplate(string raw, string templateKey, string spoken)
+    {
+        var config = NewConfig();
+
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = raw }, config);
+
+        Assert.Equal(templateKey, result!.HudOverrideKey);
+        Assert.Equal(spoken, result.Text);
+    }
+
+    [Fact]
+    public void EnglishGameClient_StatsAndSchemaExtractors_RecognizeEnglishTexts()
+    {
+        Assert.Equal(("MISC Starlancer MAX", true), GameLogAnnouncer.TryExtractShipChannelEvent("You have joined channel 'MISC Starlancer MAX : Ammoniak'."));
+        Assert.Equal(("MISC Starlancer MAX", false), GameLogAnnouncer.TryExtractShipChannelEvent("You have left the channel 'MISC Starlancer MAX : Ammoniak'."));
+        Assert.Equal("Ezra", GameLogAnnouncer.TryExtractReceivedSchemaName("Received Blueprint: Ezra"));
+        Assert.Equal(2_000_000.0, GameLogAnnouncer.TryExtractAuecSent("You sent Droz64: 2,000,000 aUEC"));
+        Assert.Equal("Bistic", GameLogAnnouncer.TryExtractGroupMember("Bistic has joined the party."));
+        Assert.Equal("Dionico31", GameLogAnnouncer.TryExtractGroupMember("Party: Dionico31 connected."));
+        Assert.Null(GameLogAnnouncer.TryExtractGroupMember("Party: Dionico31 disconnected."));
+    }
+
     [Fact]
     public void MergeLegacyNameTemplateOverrides_EmptyNameEntries_AreMergedIntoTheirTemplate()
     {
