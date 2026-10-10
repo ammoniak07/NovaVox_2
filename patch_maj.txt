@@ -13,7 +13,7 @@ v0.1.3
 - Game.log : "{joueur} Demande d'ami: Ajouter aux amis ?" et "{joueur} Invité au lobby: Accepter l'invitation ?" sont regroupées en une seule correction de lecture chacune, quel que soit le joueur (les entrées déjà créées par joueur sont fusionnées automatiquement au lancement).
 - Compatibilité avec Star Citizen en anglais (sans traduction française installée) : contrats, objectifs, journal, juridiction et armistice (overlay compris), canal du vaisseau (temps par vaisseau), schémas reçus ("Received Blueprint"), aUEC envoyés, groupe (statistiques joueurs), invitations, calibration quantique et lancement de groupe sont reconnus dans les deux langues du jeu. Les notifications anglaises reprennent les mêmes entrées (et donc les mêmes corrections de lecture) que leur équivalent français, et restent annoncées en français.
 - Panneau Game.log > "🔧 Corrections de lecture" : nouvelle case "Cacher" sur chaque ligne pour masquer les notifications déjà réglées, et une case "Afficher les lignes cachées (N)" au-dessus de la liste pour les faire réapparaître (grisées) — conservé d'un lancement à l'autre.
-- Ajout de "Mine Shubin SMCA6" (stanton4a shubin smca 6) et "Mine Shubin SCD1" (stanton2b shubinmining scd1) au catalogue intégré de destinations.
+- Reconnaissance automatique des mines Shubin ("Mine Shubin SMCA6", "Mine Shubin SCD1"...) et des centres de distribution Covalex ("Centre de Distribution Covalex S1DC06"...) : le nom affiché reprend le code du site, quel que soit le site — plus besoin d'un alias par site (ceux déjà créés sont supprimés automatiquement au lancement).
 
 v0.1.2
 ------

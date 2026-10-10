@@ -54,6 +54,27 @@ public static partial class GameLogDestinations
     private static partial Regex RrLeoStationIdRegex();
 
     /// <summary>Réécrit un identifiant déjà normalisé (espaces) vers la forme canonique attendue par le reste de la résolution, si un format alternatif connu le désigne.</summary>
+    [GeneratedRegex(@"^stanton\d+[a-z]? shubin(?:mining)? (?<site>.+)$")]
+    private static partial Regex ShubinMineIdRegex();
+
+    [GeneratedRegex(@"^stanton\d+[a-z]? distributioncentre covalex (?<site>.+)$")]
+    private static partial Regex CovalexDistributionCentreIdRegex();
+
+    /// <summary>Sites numérotés d'une même famille ("stanton4a shubin smca 6" -> "Mine Shubin SMCA6") : un seul motif plutôt qu'une entrée de catalogue par site.</summary>
+    private static string? HumanizeNumberedSite(string normalized)
+    {
+        foreach (var (regex, prefix) in new (Regex, string)[]
+        {
+            (ShubinMineIdRegex(), "Mine Shubin"),
+            (CovalexDistributionCentreIdRegex(), "Centre de Distribution Covalex"),
+        })
+        {
+            var match = regex.Match(normalized);
+            if (match.Success) return $"{prefix} {match.Groups["site"].Value.Replace(" ", "").ToUpperInvariant()}";
+        }
+        return null;
+    }
+
     private static string NormalizeKnownIdSynonyms(string normalized)
     {
         var rrPyroMatch = RrPyroStationIdRegex().Match(normalized);
@@ -137,8 +158,6 @@ public static partial class GameLogDestinations
         ["lorville city"] = "Lorville",
         ["stanton1 lorville"] = "Lorville",
         ["grimhex"] = "GrimHEX",
-        ["stanton4a shubin smca 6"] = "Mine Shubin SMCA6",
-        ["stanton2b shubinmining scd1"] = "Mine Shubin SCD1",
         ["area18 city"] = "Area18",
         ["orison loc"] = "Orison",
         ["stanton2 orison"] = "Orison",
@@ -208,7 +227,7 @@ public static partial class GameLogDestinations
     /// </summary>
     public static bool PruneAliasesCoveredByCatalog(Dictionary<string, string> userAliases)
     {
-        var toRemove = userAliases.Keys.Where(k => KnownLocationAliases.ContainsKey(k) || IsJumpPointResolvable(k)).ToList();
+        var toRemove = userAliases.Keys.Where(k => KnownLocationAliases.ContainsKey(k) || IsJumpPointResolvable(k) || HumanizeNumberedSite(k) is not null).ToList();
         foreach (var key in toRemove) userAliases.Remove(key);
         return toRemove.Count > 0;
     }
@@ -320,6 +339,9 @@ public static partial class GameLogDestinations
         if (KnownLocationAliases.TryGetValue(normalized, out var alias))
             return alias;
 
+        if (HumanizeNumberedSite(normalized) is { } site)
+            return site;
+
         var jumpMatch = JumpPointIdRegex().Match(withoutOc.ToLowerInvariant());
         if (jumpMatch.Success)
         {
@@ -365,6 +387,7 @@ public static partial class GameLogDestinations
         if (userAliases is not null && userAliases.TryGetValue(normalized, out var existing) && !string.IsNullOrEmpty(existing))
             return false;
         if (KnownLocationAliases.ContainsKey(normalized)) return false;
+        if (HumanizeNumberedSite(normalized) is not null) return false;
 
         var jumpMatch = JumpPointIdRegex().Match(withoutOc.ToLowerInvariant());
         if (jumpMatch.Success) return !SystemNames.ContainsKey(jumpMatch.Groups["sys2"].Value);

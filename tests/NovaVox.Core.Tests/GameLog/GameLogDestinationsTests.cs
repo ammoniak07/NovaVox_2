@@ -40,6 +40,7 @@ public class GameLogDestinationsTests
     [InlineData("GrimHEX", "GrimHEX")]
     [InlineData("Stanton4a_Shubin_SMCa_6", "Mine Shubin SMCA6")]
     [InlineData("Stanton2b_ShubinMining_SCD1", "Mine Shubin SCD1")]
+    [InlineData("Stanton1_DistributionCentre_Covalex_S1DC06", "Centre de Distribution Covalex S1DC06")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
@@ -218,5 +219,16 @@ public class GameLogDestinationsTests
 
         Assert.False(changed);
         Assert.Single(userAliases);
+    }
+
+    [Fact]
+    public void NumberedSites_AreResolvedAndTheirAliasesPruned()
+    {
+        Assert.False(GameLogDestinations.DestinationIsUnresolved("Stanton3a_ShubinMining_SMCa8"));
+        var aliases = new Dictionary<string, string> { ["stanton4a shubin smca 6"] = "Mine Shubin", ["autre lieu"] = "Autre" };
+
+        GameLogDestinations.PruneAliasesCoveredByCatalog(aliases);
+
+        Assert.Equal(new[] { "autre lieu" }, aliases.Keys);
     }
 }
