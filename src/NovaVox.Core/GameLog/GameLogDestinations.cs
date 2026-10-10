@@ -110,7 +110,8 @@ public static partial class GameLogDestinations
         ["loc rr s4 l1"] = "Shallow Frontier Station",
         ["loc rr s4 l2"] = "Long Forest Station",
         ["loc rr s4 l4"] = "Crossroads Station",
-        ["loc rr s4 l5"] = "Modern Icarus Station",
+        ["loc rr s4 l5"] = "Modern Icarus Station MIC L5",
+        ["rr mic l5"] = "Modern Icarus Station MIC L5",
         ["rr arc l4"] = "Faint Glen Station",
         ["rr hur l2"] = "Faithful Dream Station",
 
