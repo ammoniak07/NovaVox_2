@@ -40,6 +40,8 @@ public class GameLogDestinationsTests
     [InlineData("GrimHEX", "GrimHEX")]
     [InlineData("Stanton3_Area18", "Area 18")]
     [InlineData("RR_MIC_L5", "Modern Icarus Station MIC L5")]
+    [InlineData("RR_HUR_L3", "Thundering Express Station HUR L 3")]
+    [InlineData("LOC_RR_S1_L3", "Thundering Express Station HUR L 3")]
     [InlineData("LOC_RR_S4_L5", "Modern Icarus Station MIC L5")]
     [InlineData("ObjectContainer_Area18_City", "Area 18")]
     [InlineData("Stanton4a_Shubin_SMCa_6", "Mine Shubin SMCA6")]

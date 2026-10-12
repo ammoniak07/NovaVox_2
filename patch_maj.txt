@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.4
 ------
+- Ajout de "Thundering Express Station HUR L 3" (rr hur l3) au catalogue intégré de destinations, même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
 
 v0.1.3
 ------
