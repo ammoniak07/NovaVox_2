@@ -57,8 +57,18 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^stanton\d+[a-z]? shubin(?:mining)? (?<site>.+)$")]
     private static partial Regex ShubinMineIdRegex();
 
-    [GeneratedRegex(@"^stanton\d+[a-z]? distributioncentre covalex (?<site>.+)$")]
-    private static partial Regex CovalexDistributionCentreIdRegex();
+    [GeneratedRegex(@"^stanton\d+[a-z]? distributioncentre (?<company>[a-z]+) (?<site>.+)$")]
+    private static partial Regex DistributionCentreIdRegex();
+
+    private static readonly IReadOnlyDictionary<string, string> CompanyNames = new Dictionary<string, string>
+    {
+        ["covalex"] = "Covalex",
+        ["microtech"] = "microTech",
+        ["hurston"] = "Hurston",
+        ["arccorp"] = "ArcCorp",
+        ["crusader"] = "Crusader",
+        ["shubin"] = "Shubin",
+    };
 
     [GeneratedRegex(@"^stanton\d+[a-z]? arccorp (?<site>.+)$")]
     private static partial Regex ArcCorpMineIdRegex();
@@ -69,7 +79,6 @@ public static partial class GameLogDestinations
         foreach (var (regex, prefix, upperCase) in new (Regex, string, bool)[]
         {
             (ShubinMineIdRegex(), "Mine Shubin", true),
-            (CovalexDistributionCentreIdRegex(), "Centre de Distribution Covalex", true),
             (ArcCorpMineIdRegex(), "Mine ArcCorp", false),
         })
         {
@@ -77,6 +86,13 @@ public static partial class GameLogDestinations
             if (!match.Success) continue;
             var site = match.Groups["site"].Value.Replace(" ", "");
             return $"{prefix} {(upperCase ? site.ToUpperInvariant() : char.ToUpperInvariant(site[0]) + site[1..])}";
+        }
+        var centre = DistributionCentreIdRegex().Match(normalized);
+        if (centre.Success)
+        {
+            var company = centre.Groups["company"].Value;
+            var companyName = CompanyNames.GetValueOrDefault(company, char.ToUpperInvariant(company[0]) + company[1..]);
+            return $"Centre de Distribution {companyName} {centre.Groups["site"].Value.Replace(" ", "").ToUpperInvariant()}";
         }
         return null;
     }
