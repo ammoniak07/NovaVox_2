@@ -60,15 +60,7 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^stanton\d+[a-z]? distributioncentre (?<company>[a-z]+) (?<site>.+)$")]
     private static partial Regex DistributionCentreIdRegex();
 
-    private static readonly IReadOnlyDictionary<string, string> CompanyNames = new Dictionary<string, string>
-    {
-        ["covalex"] = "Covalex",
-        ["microtech"] = "microTech",
-        ["hurston"] = "Hurston",
-        ["arccorp"] = "ArcCorp",
-        ["crusader"] = "Crusader",
-        ["shubin"] = "Shubin",
-    };
+
 
     [GeneratedRegex(@"^stanton\d+[a-z]? arccorp (?<site>.+)$")]
     private static partial Regex ArcCorpMineIdRegex();
@@ -90,9 +82,8 @@ public static partial class GameLogDestinations
         var centre = DistributionCentreIdRegex().Match(normalized);
         if (centre.Success)
         {
-            var company = centre.Groups["company"].Value;
-            var companyName = CompanyNames.GetValueOrDefault(company, char.ToUpperInvariant(company[0]) + company[1..]);
-            return $"Centre de Distribution {companyName} {centre.Groups["site"].Value.Replace(" ", "").ToUpperInvariant()}";
+            var companyName = centre.Groups["company"].Value == "covalex" ? "Covalex " : "";
+            return $"Centre de Distribution {companyName}{centre.Groups["site"].Value.Replace(" ", "").ToUpperInvariant()}";
         }
         return null;
     }

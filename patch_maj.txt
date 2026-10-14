@@ -2,7 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.4
 ------
-- Centres de distribution : la reconnaissance automatique ne se limite plus à Covalex, tous les centres de distribution sont nommés "Centre de Distribution {entreprise} {site}" (ex. "Centre de Distribution microTech S4LD13").
+- Centres de distribution : la reconnaissance automatique ne se limite plus à Covalex, les autres centres de distribution sont nommés "Centre de Distribution {site}" (ex. "Centre de Distribution S4LD13").
 - Ajout de "Thundering Express Station HUR L 3" (rr hur l3) "Green Glade Station HUR L1" (rr hur l1) et "NavPoint Dynamic" (navpoint dynamic) au catalogue intégré de destinations, même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
 
 v0.1.3
