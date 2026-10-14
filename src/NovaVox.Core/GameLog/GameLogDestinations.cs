@@ -167,6 +167,7 @@ public static partial class GameLogDestinations
         ["lorville city"] = "Lorville",
         ["stanton1 lorville"] = "Lorville",
         ["grimhex"] = "GrimHEX",
+        ["navpoint dynamic"] = "NavPoint Dynamic",
         ["area18 city"] = "Area 18",
         ["stanton3 area18"] = "Area 18",
         ["orison loc"] = "Orison",

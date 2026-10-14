@@ -2,7 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.4
 ------
-- Ajout de "Thundering Express Station HUR L 3" (rr hur l3) et "Green Glade Station HUR L1" (rr hur l1) au catalogue intégré de destinations, même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
+- Ajout de "Thundering Express Station HUR L 3" (rr hur l3) "Green Glade Station HUR L1" (rr hur l1) et "NavPoint Dynamic" (navpoint dynamic) au catalogue intégré de destinations, même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
 
 v0.1.3
 ------

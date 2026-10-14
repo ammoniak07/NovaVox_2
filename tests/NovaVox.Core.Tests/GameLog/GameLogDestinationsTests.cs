@@ -38,6 +38,7 @@ public class GameLogDestinationsTests
     [InlineData("ObjectContainer_Lorville_City", "Lorville")]
     [InlineData("Orison_LOC", "Orison")]
     [InlineData("GrimHEX", "GrimHEX")]
+    [InlineData("NavPoint_Dynamic", "NavPoint Dynamic")]
     [InlineData("Stanton3_Area18", "Area 18")]
     [InlineData("RR_MIC_L5", "Modern Icarus Station MIC L5")]
     [InlineData("RR_HUR_L3", "Thundering Express Station HUR L 3")]
