@@ -152,6 +152,10 @@ public class GameLogDestinationsTests
     [InlineData("RR_CRU_L4", "Shallow Fields Station")]
     [InlineData("RR_CRU_L5", "Beautiful Glen Station")]
     [InlineData("RR_MIC_L3", "Endless Odyssey Station")]
+    [InlineData("LOC_RR_S2_L1", "Ambitious Dream Station")]
+    [InlineData("LOC_RR_S2_L4", "Shallow Fields Station")]
+    [InlineData("LOC_RR_S3_L2", "Lively Pathway Station")]
+    [InlineData("LOC_RR_S4_L3", "Endless Odyssey Station")]
     public void HumanizeDestination_RestStopShortIds(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
