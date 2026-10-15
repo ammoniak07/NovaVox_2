@@ -1,9 +1,5 @@
 NOVAVOX — Notes de mise à jour
 ==============================
-v0.1.5
-------
-- Correction : en arrivant à Area 18, l'app annonçait "Arrivée à : Baijini Point" — quand la planète (ArcCorp) bloquait la trajectoire du saut quantique, NovaVox annonçait systématiquement la station orbitale de la planète au lieu de la vraie destination. La destination est désormais annoncée par son propre nom dès qu'elle est reconnue (Area 18, Lorville, Orison, NewBabbage...) ; la station orbitale ne sert plus que de repli pour un identifiant inconnu. Corrige aussi le comptage des destinations dans les statistiques.
-
 v0.1.4
 ------
 - Réglages > 🛰 Game.log : nouvelle liste "Types d'annonces lues" pour choisir, type par type, ce qui est lu à voix haute — direction (route tracée), arrivée à destination, contrats, objectifs, journal, juridiction, zones (armistice, zone restreinte), groupe, invitations et amis, canal du vaisseau, schémas reçus, transferts d'aUEC, calibration quantique, délits, hangar, autres notifications du jeu, et réponses de l'IA. Une annonce décochée reste affichée dans le journal système.
@@ -11,6 +7,7 @@ v0.1.4
 - Reconnaissance automatique des sites miniers Hurston Dynamics ("HDMS Pinewood", "HDMS Edmond"...) et des avant-postes de recherche Rayari ("Rayari Deltana Research", "Rayari Anvik Research"...), quel que soit le site.
 - Centres de distribution : la reconnaissance automatique ne se limite plus à Covalex, les autres centres de distribution sont nommés "Centre de Distribution {site}" (ex. "Centre de Distribution S4LD13").
 - Ajout de "Thundering Express Station HUR L 3" (rr hur l3) "Green Glade Station HUR L1" (rr hur l1), "High Course Station HUR L5" (rr hur l5), "Port Tressler" (rs ext mic leo1), "Baijini Point" (rs ext arc leo1) et "NavPoint Dynamic" (navpoint dynamic) au catalogue intégré de destinations, même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
+- Correction : en arrivant à Area 18, l'app annonçait "Arrivée à : Baijini Point" — quand la planète (ArcCorp) bloquait la trajectoire du saut quantique, NovaVox annonçait systématiquement la station orbitale de la planète au lieu de la vraie destination. La destination est désormais annoncée par son propre nom dès qu'elle est reconnue (Area 18, Lorville, Orison, NewBabbage...) ; la station orbitale ne sert plus que de repli pour un identifiant inconnu. Corrige aussi le comptage des destinations dans les statistiques.
 
 v0.1.3
 ------
