@@ -123,6 +123,8 @@ public static partial class GameLogDestinations
     {
         ["rs ext cru leo1"] = "Seraphim Station",
         ["rs ext hur leo1"] = "Everus Harbor",
+        ["rs ext mic leo1"] = "Port Tressler",
+        ["rs ext arc leo1"] = "Baijini Point",
 
         ["loc rr s1 l1"] = "Green Glade Station HUR L1",
         ["loc rr s1 l2"] = "Faithful Dream Station",
