@@ -68,6 +68,9 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^stanton\d+[a-z]? hurdynmining hdms ?(?<site>.+)$")]
     private static partial Regex HurstonMiningIdRegex();
 
+    [GeneratedRegex(@"^stanton\d+[a-z]? rayarihydro (?<site>.+)$")]
+    private static partial Regex RayariResearchIdRegex();
+
     /// <summary>Sites numérotés d'une même famille ("stanton4a shubin smca 6" -> "Mine Shubin SMCA6") : un seul motif plutôt qu'une entrée de catalogue par site.</summary>
     private static string? HumanizeNumberedSite(string normalized)
     {
@@ -83,6 +86,13 @@ public static partial class GameLogDestinations
             var site = match.Groups["site"].Value.Replace(" ", "");
             return $"{prefix} {(upperCase ? site.ToUpperInvariant() : char.ToUpperInvariant(site[0]) + site[1..])}";
         }
+        var rayari = RayariResearchIdRegex().Match(normalized);
+        if (rayari.Success)
+        {
+            var site = rayari.Groups["site"].Value.Replace(" ", "");
+            return $"Rayari {char.ToUpperInvariant(site[0]) + site[1..]} Research";
+        }
+
         var centre = DistributionCentreIdRegex().Match(normalized);
         if (centre.Success)
         {
