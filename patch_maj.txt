@@ -2,18 +2,25 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.4
 ------
+ANNONCES VOCALES
 - Réglages > 🛰 Game.log : nouvelle liste "Types d'annonces lues" pour choisir, type par type, ce qui est lu à voix haute — direction (route tracée), arrivée à destination, contrats, objectifs, journal, juridiction, zones (armistice, zone restreinte), groupe, invitations et amis, canal du vaisseau, schémas reçus, transferts d'aUEC, calibration quantique, délits, hangar, autres notifications du jeu, et réponses de l'IA. Une annonce décochée reste affichée dans le journal système.
-- Lecture vocale : "SCU" est désormais épelé ("S C U") au lieu d'être lu comme un mot, dans toutes les annonces (objectifs de livraison, réponses de l'IA...). L'affichage n'est pas modifié.
-- Reconnaissance automatique des sites miniers Hurston Dynamics ("HDMS Pinewood", "HDMS Edmond"...) et des avant-postes de recherche Rayari ("Rayari Deltana Research", "Rayari Anvik Research"...), quel que soit le site.
-- Centres de distribution : la reconnaissance automatique ne se limite plus à Covalex, les autres centres de distribution sont nommés "Centre de Distribution {site}" (ex. "Centre de Distribution S4LD13").
-- Ajout de "Thundering Express Station HUR L 3" (rr hur l3) "Green Glade Station HUR L1" (rr hur l1), "High Course Station HUR L5" (rr hur l5), "Port Tressler" (rs ext mic leo1), "Baijini Point" (rs ext arc leo1) et "NavPoint Dynamic" (navpoint dynamic) au catalogue intégré de destinations, même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
-- Correction : en arrivant à Area 18, l'app annonçait "Arrivée à : Baijini Point" — quand la planète (ArcCorp) bloquait la trajectoire du saut quantique, NovaVox annonçait systématiquement la station orbitale de la planète au lieu de la vraie destination. La destination est désormais annoncée par son propre nom dès qu'elle est reconnue (Area 18, Lorville, Orison, NewBabbage...) ; la station orbitale ne sert plus que de repli pour un identifiant inconnu. Corrige aussi le comptage des destinations dans les statistiques.
+- "SCU" est désormais épelé ("S C U") au lieu d'être lu comme un mot, dans toutes les annonces (objectifs de livraison, réponses de l'IA...). L'affichage n'est pas modifié.
 
-- Destinations : NovaVox lit désormais les noms de lieux directement dans le global.ini de ton installation de Star Citizen (le même fichier que la traduction française) — plus de 1 200 lieux reconnus automatiquement (bases minières d'astéroïdes, sites HDMS/Shubin/ArcCorp, avant-postes, stations Pyro et Nyx, points de saut...), dans la langue installée et à jour à chaque patch. Le catalogue intégré et tes alias personnels restent prioritaires.
-- Rest & Refuel Stanton : tous les identifiants rr {système} l{n} et loc rr s{n} l{n} sont reconnus ; correction de ARC-L2 (Lively Pathway Station) et ajout de ARC-L1, CRU-L1/L4/L5 et MIC-L3.
+DESTINATIONS — NOMS DU JEU (global.ini)
+- NovaVox lit désormais les noms de lieux directement dans le global.ini de ton installation de Star Citizen (le même fichier que la traduction française) : plus de 1 200 lieux reconnus automatiquement (bases minières d'astéroïdes, sites HDMS/Shubin/ArcCorp, avant-postes, stations Pyro et Nyx, points de saut...), dans la langue installée et à jour à chaque patch. Le catalogue intégré et tes alias personnels restent prioritaires.
+- Le fichier est trouvé tout seul à côté du Game.log, y compris dans le dossier de langue choisi dans user.cfg (ex. data\Localization\french_(france)\global.ini). Une ligne du journal système indique au démarrage s'il a été chargé et combien de lieux il contient.
+
+DESTINATIONS — CATALOGUE INTÉGRÉ
+- Rest & Refuel Stanton : les 18 stations sont reconnues sous leurs deux identifiants (rr {système} l{n} et loc rr s{n} l{n}) ; ajout de ARC-L1 (Wide Forest), ARC-L2 (Lively Pathway), CRU-L1 (Ambitious Dream), CRU-L4 (Shallow Fields), CRU-L5 (Beautiful Glen) et MIC-L3 (Endless Odyssey).
+- Ajout de "Port Tressler" (rs ext mic leo1), "Baijini Point" (rs ext arc leo1) et "NavPoint Dynamic" (navpoint dynamic), même nom qu'à l'arrivée en saut quantique (une seule destination dans les statistiques).
 - Points de saut : chaque Gateway indique maintenant le système où elle se trouve — "Nyx Gateway (Stanton)" et "Nyx Gateway (Pyro)" sont deux stations différentes et ne sont plus confondues dans les statistiques. Les visites déjà comptées sous l'ancien nom ("Nyx Gateway") restent sous cet ancien nom.
-- Correction : RR_P6_L4 (Terminus L4) était annoncé "Nyx Gateway" alors que c'est la station "Dudley & Daughters".
-- Correction : un alias de destination que tu as renommé toi-même n'est plus effacé au démarrage quand NovaVox apprend à reconnaître ce lieu (ex. "stanton2c arccorpmining area157").
+- Reconnaissance automatique, quel que soit le site, des sites miniers Hurston Dynamics ("HDMS Pinewood", "HDMS Edmond"...), des mines ArcCorp (y compris le format "arccorpmining", ex. ArcCorp Area157 sur Yela), des avant-postes de recherche Rayari ("Rayari Deltana Research"...) et de tous les centres de distribution, plus seulement Covalex ("Centre de Distribution S4LD13").
+
+CORRECTIONS
+- En arrivant à Area 18, l'app annonçait "Arrivée à : Baijini Point" : quand la planète (ArcCorp) bloquait la trajectoire du saut quantique, NovaVox annonçait systématiquement la station orbitale de la planète au lieu de la vraie destination. La destination est désormais annoncée par son propre nom dès qu'elle est reconnue (Area 18, Lorville, Orison, NewBabbage...) ; la station orbitale ne sert plus que de repli pour un identifiant inconnu. Corrige aussi le comptage des destinations dans les statistiques.
+- RR_P6_L4 (Terminus L4) était annoncé "Nyx Gateway" alors que c'est la station "Dudley & Daughters".
+- ARC-L2 était annoncé "Wide Forest Station" au lieu de "Lively Pathway Station".
+- Un alias de destination que tu as renommé toi-même n'est plus effacé au démarrage quand NovaVox apprend à reconnaître ce lieu (ex. "stanton2c arccorpmining area157").
 
 v0.1.3
 ------
