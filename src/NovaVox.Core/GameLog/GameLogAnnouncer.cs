@@ -30,7 +30,9 @@ public sealed record GameLogAnnouncement(
     /// <summary>true si la notification HUD signale l'entrée en zone d'armistice, false si elle signale la sortie, null si la notification n'a rien à voir — à afficher dans l'overlay (jamais écrasé par un texte HUD sans rapport, comme ResolvedZone/ResolvedJurisdiction).</summary>
     bool? ResolvedArmistice = null,
     /// <summary>Nom du schéma extrait d'une notification HUD "Schémas reçu : {nom}", uniquement si cette notification vient d'être ajoutée à AiConfig.SchemasReceived (pas déjà présent) — à ajouter à la liste affichée (Réglages > 📐 Schémas).</summary>
-    string? ReceivedSchemaName = null);
+    string? ReceivedSchemaName = null,
+    /// <summary>Catégorie d'annonce (voir AnnouncementCategories) — permet de couper la lecture à voix haute par type d'annonce.</summary>
+    string Category = AnnouncementCategories.OtherHud);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -245,46 +247,46 @@ public static partial class GameLogAnnouncer
     /// Étendre la détection revient à ajouter une entrée ici, sans toucher
     /// au reste du mécanisme (BuildHudAnnouncement, MergeLegacyNameTemplateOverrides).
     /// </summary>
-    private static readonly (Regex Pattern, Func<Match, string> BuildTemplateKey)[] HudTemplates =
+    private static readonly (Regex Pattern, Func<Match, string> BuildTemplateKey, string Category)[] HudTemplates =
     {
         // "rest" n'est PAS un réservoir substitué au moment de l'annonce : il
         // sert seulement ici à construire une clé de gabarit distincte par
         // type de délit (voir ExtractHudTemplate/NamedCaptures, qui l'ignore).
-        (CrimeReportRegex(), m => $"{{name}} a commis {m.Groups["rest"].Value}"),
-        (FriendAddedRegex(), _ => "AMI AJOUTÉ ! {name}"),
-        (QuantumCalibrationStartedRegex(), _ => "Calibration du voyage quantique démarrée par {name}."),
-        (QuantumCalibrationFinishedRegex(), _ => "Calibration du voyage quantique terminée par {name}."),
-        (JurisdictionRegex(), _ => "JURIDICTION : {name}"),
-        (NewObjectiveRegex(), _ => "Nouvel objectif : {name}"),
-        (ObjectiveCompletedRegex(), _ => "Objectif terminé : {name}"),
-        (ObjectiveRemovedRegex(), _ => "Objectif retiré : {name}"),
-        (ContractSharedRegex(), _ => "CONTRAT PARTAGÉ : {name}"),
-        (ContractAcceptedRegex(), _ => "Contrat accepté : {name}"),
-        (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}"),
-        (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}"),
-        (ContractAvailableRegex(), _ => "CONTRAT DISPONIBLE : {name}"),
-        (HangarQueueJoinedRegex(), _ => "Joined hangar queue. Your place: {place}. Max. estimated wait: {wait} s."),
-        (EnglishArmisticeEnteredRegex(), _ => "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT"),
-        (EnglishArmisticeLeftRegex(), _ => "VOUS QUITTEZ LA ZONE D'ARMISTICE - PRUDENCE EST MÈRE DE SÛRETÉ"),
-        (EnglishRestrictedAreaRelocatedRegex(), _ => "Zone interdite Pour votre sécurité, vous avez été relocalisé."),
-        (EnglishLeavingRestrictedAreaRegex(), _ => "Sortie de la zone restreinte"),
-        (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}"),
-        (SchemaReceivedRegex(), _ => "Schémas reçu : {name}"),
-        (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint."),
-        (ShipChannelLeftRegex(), _ => "Vous avez quitté le CANAL '{name}'."),
-        (NewGroupLeaderRegex(), _ => "Nouveau chef de groupe : {name}"),
-        (PlayerJoinedGroupRegex(), _ => "Un joueur a rejoint {name} a rejoint le Groupe."),
-        (PlayerLeftGroupRegex(), _ => "A quitté le groupe : {name} a quitté le Groupe"),
-        (PlayerJoinedShipChannelViaGroupRegex(), _ => "Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'."),
-        (PlayerLeftShipChannelViaGroupRegex(), _ => "A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'"),
-        (GroupInviteReceivedRegex(), _ => "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?"),
-        (FriendRequestReceivedRegex(), _ => "{name} Demande d'ami: Ajouter aux amis ?"),
-        (LobbyInviteReceivedRegex(), _ => "{name} Invité au lobby: Accepter l'invitation ?"),
-        (GroupMemberConnectedRegex(), _ => "Groupe : {name} s'est connecté."),
-        (GroupMemberDisconnectedRegex(), _ => "Groupe : {name} s'est déconnecté."),
-        (GroupLaunchFollowPromptRegex(), _ => "Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?"),
-        (GroupLaunchInitiatedByLeaderRegex(), _ => "Lancement du groupe Initié par le chef du parti {name}."),
-        (AuecSentRegex(), _ => "Vous avez envoyé {name}: {montant} aUEC"),
+        (CrimeReportRegex(), m => $"{{name}} a commis {m.Groups["rest"].Value}", AnnouncementCategories.Crimes),
+        (FriendAddedRegex(), _ => "AMI AJOUTÉ ! {name}", AnnouncementCategories.Invites),
+        (QuantumCalibrationStartedRegex(), _ => "Calibration du voyage quantique démarrée par {name}.", AnnouncementCategories.Calibration),
+        (QuantumCalibrationFinishedRegex(), _ => "Calibration du voyage quantique terminée par {name}.", AnnouncementCategories.Calibration),
+        (JurisdictionRegex(), _ => "JURIDICTION : {name}", AnnouncementCategories.Jurisdiction),
+        (NewObjectiveRegex(), _ => "Nouvel objectif : {name}", AnnouncementCategories.Objectives),
+        (ObjectiveCompletedRegex(), _ => "Objectif terminé : {name}", AnnouncementCategories.Objectives),
+        (ObjectiveRemovedRegex(), _ => "Objectif retiré : {name}", AnnouncementCategories.Objectives),
+        (ContractSharedRegex(), _ => "CONTRAT PARTAGÉ : {name}", AnnouncementCategories.Contracts),
+        (ContractAcceptedRegex(), _ => "Contrat accepté : {name}", AnnouncementCategories.Contracts),
+        (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}", AnnouncementCategories.Contracts),
+        (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}", AnnouncementCategories.Contracts),
+        (ContractAvailableRegex(), _ => "CONTRAT DISPONIBLE : {name}", AnnouncementCategories.Contracts),
+        (HangarQueueJoinedRegex(), _ => "Joined hangar queue. Your place: {place}. Max. estimated wait: {wait} s.", AnnouncementCategories.Hangar),
+        (EnglishArmisticeEnteredRegex(), _ => "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT", AnnouncementCategories.Zones),
+        (EnglishArmisticeLeftRegex(), _ => "VOUS QUITTEZ LA ZONE D'ARMISTICE - PRUDENCE EST MÈRE DE SÛRETÉ", AnnouncementCategories.Zones),
+        (EnglishRestrictedAreaRelocatedRegex(), _ => "Zone interdite Pour votre sécurité, vous avez été relocalisé.", AnnouncementCategories.Zones),
+        (EnglishLeavingRestrictedAreaRegex(), _ => "Sortie de la zone restreinte", AnnouncementCategories.Zones),
+        (JournalEntryAddedRegex(), _ => "ENTRÉE DU JOURNAL AJOUTÉE : {name}", AnnouncementCategories.Journal),
+        (SchemaReceivedRegex(), _ => "Schémas reçu : {name}", AnnouncementCategories.Schemas),
+        (ShipChannelJoinedRegex(), _ => "CANAL '{name}' rejoint.", AnnouncementCategories.Ship),
+        (ShipChannelLeftRegex(), _ => "Vous avez quitté le CANAL '{name}'.", AnnouncementCategories.Ship),
+        (NewGroupLeaderRegex(), _ => "Nouveau chef de groupe : {name}", AnnouncementCategories.Group),
+        (PlayerJoinedGroupRegex(), _ => "Un joueur a rejoint {name} a rejoint le Groupe.", AnnouncementCategories.Group),
+        (PlayerLeftGroupRegex(), _ => "A quitté le groupe : {name} a quitté le Groupe", AnnouncementCategories.Group),
+        (PlayerJoinedShipChannelViaGroupRegex(), _ => "Un joueur a rejoint {member} a rejoint le CANAL '{ship} : {owner}'.", AnnouncementCategories.Group),
+        (PlayerLeftShipChannelViaGroupRegex(), _ => "A quitté le groupe : {member} a quitté le CANAL '{ship} : {owner}'", AnnouncementCategories.Group),
+        (GroupInviteReceivedRegex(), _ => "{name} ! INVITATION À UN GROUPE REÇUE : Accepter l'invitation ?", AnnouncementCategories.Invites),
+        (FriendRequestReceivedRegex(), _ => "{name} Demande d'ami: Ajouter aux amis ?", AnnouncementCategories.Invites),
+        (LobbyInviteReceivedRegex(), _ => "{name} Invité au lobby: Accepter l'invitation ?", AnnouncementCategories.Invites),
+        (GroupMemberConnectedRegex(), _ => "Groupe : {name} s'est connecté.", AnnouncementCategories.Group),
+        (GroupMemberDisconnectedRegex(), _ => "Groupe : {name} s'est déconnecté.", AnnouncementCategories.Group),
+        (GroupLaunchFollowPromptRegex(), _ => "Initié par {name} Lancement du groupe: Suivre le groupe dans l'univers persistant ?", AnnouncementCategories.Group),
+        (GroupLaunchInitiatedByLeaderRegex(), _ => "Lancement du groupe Initié par le chef du parti {name}.", AnnouncementCategories.Group),
+        (AuecSentRegex(), _ => "Vous avez envoyé {name}: {montant} aUEC", AnnouncementCategories.Transfers),
     };
 
     /// <summary>Port de _clean_hud_notification_text.</summary>
@@ -332,7 +334,8 @@ public static partial class GameLogAnnouncer
             IsNewDestinationAlias: isNewAlias, DestinationAliasKey: aliasKey,
             IsNewHudOverride: false, HudOverrideKey: null,
             UnresolvedDestinationWarning: unresolvedWarning, UnresolvedDestinationRawId: unresolvedWarning ? aliasKey : null,
-            ResolvedZone: isZone && hasDest ? resolved : null);
+            ResolvedZone: isZone && hasDest ? resolved : null,
+            Category: isZone ? AnnouncementCategories.Arrival : AnnouncementCategories.Route);
     }
 
     /// <summary>
@@ -370,7 +373,7 @@ public static partial class GameLogAnnouncer
 
         if (SuppressDuplicateGroupConnectionChange(rawText, config)) return null;
 
-        var (templateKey, captures) = ExtractHudTemplate(rawText);
+        var (templateKey, captures, category) = ExtractHudTemplate(rawText);
 
         var isNew = false;
         if (!config.GameLogHudOverrides.ContainsKey(templateKey))
@@ -406,7 +409,8 @@ public static partial class GameLogAnnouncer
             UnresolvedDestinationWarning: false, UnresolvedDestinationRawId: null,
             ResolvedJurisdiction: resolvedJurisdiction,
             ResolvedArmistice: resolvedArmistice,
-            ReceivedSchemaName: newSchemaName);
+            ReceivedSchemaName: newSchemaName,
+            Category: category);
     }
 
     /// <summary>
@@ -562,14 +566,17 @@ public static partial class GameLogAnnouncer
     /// vaisseau ou son propriétaire. Tout autre texte HUD n'a pas de motif
     /// reconnu et reste inchangé (clé = son propre texte, comme avant).
     /// </summary>
-    private static (string TemplateKey, IReadOnlyDictionary<string, string> Captures) ExtractHudTemplate(string rawText)
+    private static (string TemplateKey, IReadOnlyDictionary<string, string> Captures, string Category) ExtractHudTemplate(string rawText)
     {
-        foreach (var (pattern, buildTemplateKey) in HudTemplates)
+        foreach (var (pattern, buildTemplateKey, category) in HudTemplates)
         {
             var match = pattern.Match(rawText);
-            if (match.Success) return (buildTemplateKey(match), NamedCaptures(match));
+            if (match.Success) return (buildTemplateKey(match), NamedCaptures(match), category);
         }
-        return (rawText, new Dictionary<string, string>());
+        var fallbackCategory = ArmisticeEnteredRegex().IsMatch(rawText) || ArmisticeLeftRegex().IsMatch(rawText)
+            ? AnnouncementCategories.Zones
+            : AnnouncementCategories.OtherHud;
+        return (rawText, new Dictionary<string, string>(), fallbackCategory);
     }
 
     /// <summary>
@@ -619,7 +626,7 @@ public static partial class GameLogAnnouncer
         var changed = false;
         foreach (var rawKey in overrides.Keys.ToList())
         {
-            var (templateKey, _) = ExtractHudTemplate(CleanHudNotificationText(rawKey));
+            var (templateKey, _, _) = ExtractHudTemplate(CleanHudNotificationText(rawKey));
             if (templateKey == rawKey) continue;
 
             var rawValue = overrides[rawKey];

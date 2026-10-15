@@ -132,7 +132,7 @@ public sealed class VoiceOrchestrator : IDisposable
         _geminiClient.ReplyReceived += (_, e) =>
         {
             RaiseLog(e.IsError ? e.Reply : $"{_state.Ai.GeminiName} : {e.Reply}", e.IsError ? "error" : "info");
-            if (!e.IsError) _tts.Speak(e.Reply);
+            if (!e.IsError && !_state.Ai.MutedAnnouncementCategories.Contains(AnnouncementCategories.AiReply)) _tts.Speak(e.Reply);
         };
     }
 

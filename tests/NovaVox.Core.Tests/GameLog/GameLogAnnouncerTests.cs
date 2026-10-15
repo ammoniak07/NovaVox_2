@@ -166,6 +166,29 @@ public class GameLogAnnouncerTests
         Assert.Equal(spoken, result.Text);
     }
 
+    [Theory]
+    [InlineData("Contrat accepté : Relay Race", AnnouncementCategories.Contracts)]
+    [InlineData("Nouvel objectif : Neutraliser les cibles", AnnouncementCategories.Objectives)]
+    [InlineData("VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT", AnnouncementCategories.Zones)]
+    [InlineData("Groupe : Dionico31 s'est connecté.", AnnouncementCategories.Group)]
+    [InlineData("Schémas reçu : Ezra", AnnouncementCategories.Schemas)]
+    [InlineData("Hangar Request Completed", AnnouncementCategories.OtherHud)]
+    public void Build_HudNotification_HasCategory(string raw, string category)
+    {
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = raw }, NewConfig());
+
+        Assert.Equal(category, result!.Category);
+    }
+
+    [Fact]
+    public void Build_RouteAndArrival_HaveTheirOwnCategories()
+    {
+        var config = NewConfig();
+
+        Assert.Equal(AnnouncementCategories.Route, GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.RouteSet, Destination = "Stanton1_Lorville" }, config)!.Category);
+        Assert.Equal(AnnouncementCategories.Arrival, GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.ZoneChange, Zone = "Stanton1_Lorville" }, config)!.Category);
+    }
+
     [Fact]
     public void EnglishGameClient_StatsAndSchemaExtractors_RecognizeEnglishTexts()
     {

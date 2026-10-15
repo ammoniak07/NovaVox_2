@@ -37,6 +37,8 @@ public sealed class AiConfig
     public string FrenchNumberStyle { get; set; } = DefaultFrenchNumberStyle;
     public bool GameLogEnabled { get; set; }
     public bool GameLogAnnounceEvents { get; set; } = true;
+    /// <summary>Catégories d'annonces (voir AnnouncementCategories) à ne pas lire à voix haute — toujours affichées dans le journal.</summary>
+    public HashSet<string> MutedAnnouncementCategories { get; set; } = new();
     public string GameLogPlayerHandle { get; set; } = "";
     /// <summary>Chemin manuel vers Game.log — vide par défaut (détection automatique, voir GameLogPaths.FindGameLogPath), à renseigner quand Star Citizen est installé ailleurs qu'un des emplacements standards.</summary>
     public string GameLogCustomPath { get; set; } = "";
@@ -151,6 +153,7 @@ public sealed class AiConfigStore
             config.GeminiWikiEnabled = GetBool(data["gemini_wiki_enabled"], true);
             config.GameLogEnabled = GetBool(data["game_log_enabled"]);
             config.GameLogAnnounceEvents = GetBool(data["game_log_announce_events"], true);
+            config.MutedAnnouncementCategories = ToStringList(data["muted_announcement_categories"] as JsonArray).ToHashSet();
             config.GameLogPlayerHandle = GetString(data["game_log_player_handle"]).Trim();
             config.GameLogCustomPath = GetString(data["game_log_custom_path"]).Trim();
             config.GameLogBackupsCustomPath = GetString(data["game_log_backups_custom_path"]).Trim();
@@ -261,6 +264,7 @@ public sealed class AiConfigStore
             ["french_number_style"] = config.FrenchNumberStyle,
             ["game_log_enabled"] = config.GameLogEnabled,
             ["game_log_announce_events"] = config.GameLogAnnounceEvents,
+            ["muted_announcement_categories"] = FromStringList(config.MutedAnnouncementCategories.ToList()),
             ["game_log_player_handle"] = config.GameLogPlayerHandle,
             ["game_log_custom_path"] = config.GameLogCustomPath,
             ["game_log_backups_custom_path"] = config.GameLogBackupsCustomPath,

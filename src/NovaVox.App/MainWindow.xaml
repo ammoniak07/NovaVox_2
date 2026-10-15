@@ -656,8 +656,12 @@
                         <TabItem x:Name="GameLogSettingsTab" Header="🛰 Game.log">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="GameLogEnabledCheckbox" Content="Surveiller le Game.log" Checked="GameLogEnabledCheckbox_Changed" Unchecked="GameLogEnabledCheckbox_Changed" />
-                                <CheckBox x:Name="GameLogAnnounceCheckbox" Content="Annoncer les changements de zone à voix haute" Margin="0,8,0,0"
+                                <CheckBox x:Name="GameLogAnnounceCheckbox" Content="Lire les annonces à voix haute" Margin="0,8,0,0"
                                           Checked="GameLogAnnounceCheckbox_Changed" Unchecked="GameLogAnnounceCheckbox_Changed" />
+                                <TextBlock Text="Types d'annonces lues (décocher pour ne plus l'entendre — toujours affichée dans le journal système) :"
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="20,8,0,0" />
+                                <StackPanel x:Name="AnnouncementCategoriesPanel" Margin="20,0,0,0"
+                                            IsEnabled="{Binding IsChecked, ElementName=GameLogAnnounceCheckbox}" />
                                 <TextBlock Text="Pseudo RSI" Margin="0,16,0,4" />
                                 <TextBox x:Name="PlayerHandleBox" LostFocus="PlayerHandleBox_LostFocus" />
 

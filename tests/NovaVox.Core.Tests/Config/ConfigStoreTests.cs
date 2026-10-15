@@ -442,6 +442,17 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_MutedAnnouncementCategoriesRoundTrip()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig();
+        config.MutedAnnouncementCategories.Add(NovaVox.Core.GameLog.AnnouncementCategories.Route);
+        store.Save(config);
+
+        Assert.Contains(NovaVox.Core.GameLog.AnnouncementCategories.Route, new AiConfigStore(_dir).Load().MutedAnnouncementCategories);
+    }
+
+    [Fact]
     public void AiConfig_GameLogHudOverridesHiddenRoundTrips()
     {
         var store = new AiConfigStore(_dir);

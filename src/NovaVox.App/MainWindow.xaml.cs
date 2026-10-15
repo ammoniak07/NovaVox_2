@@ -1432,6 +1432,7 @@ public partial class MainWindow : Window
 
             GameLogEnabledCheckbox.IsChecked = ai.GameLogEnabled;
             GameLogAnnounceCheckbox.IsChecked = ai.GameLogAnnounceEvents;
+            BuildAnnouncementCategoryCheckboxes();
             PlayerHandleBox.Text = ai.GameLogPlayerHandle;
             GameLogPathBox.Text = ai.GameLogCustomPath;
             GameLogBackupsPathBox.Text = ai.GameLogBackupsCustomPath;
@@ -1867,6 +1868,25 @@ public partial class MainWindow : Window
         InitializePiperCatalog();
 
         AppendLog($"Mode de jeu : {(starCitizen ? "Star Citizen" : "Autre jeu")}.", "info");
+    }
+
+    private void BuildAnnouncementCategoryCheckboxes()
+    {
+        AnnouncementCategoriesPanel.Children.Clear();
+        foreach (var (id, label) in AnnouncementCategories.All)
+        {
+            var checkbox = new CheckBox { Content = label, Tag = id, Margin = new Thickness(0, 4, 0, 0), IsChecked = !_state.Ai.MutedAnnouncementCategories.Contains(id) };
+            checkbox.Click += AnnouncementCategoryCheckbox_Click;
+            AnnouncementCategoriesPanel.Children.Add(checkbox);
+        }
+    }
+
+    private void AnnouncementCategoryCheckbox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox { Tag: string id } checkbox) return;
+        if (checkbox.IsChecked == true) _state.Ai.MutedAnnouncementCategories.Remove(id);
+        else _state.Ai.MutedAnnouncementCategories.Add(id);
+        SaveAiAndLog();
     }
 
     private void GameLogAnnounceCheckbox_Changed(object sender, RoutedEventArgs e)
@@ -3386,7 +3406,7 @@ public partial class MainWindow : Window
             RefreshGameLogSearchVisibility();
         }
 
-        if (_state.Ai.GameLogAnnounceEvents && result.Text.Length > 0)
+        if (_state.Ai.GameLogAnnounceEvents && result.Text.Length > 0 && !_state.Ai.MutedAnnouncementCategories.Contains(result.Category))
         {
             EnsureTestTts();
             _testTts!.Speak(result.Text);
