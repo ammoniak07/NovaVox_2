@@ -147,6 +147,13 @@ public static partial class GameLogDestinations
         ["rr hur l1"] = "Green Glade Station HUR L1",
         ["rr hur l3"] = "Thundering Express Station HUR L 3",
         ["rr hur l5"] = "High Course Station HUR L5",
+        ["rr hur l4"] = "Melodic Fields Station",
+        ["rr arc l2"] = "Wide Forest Station",
+        ["rr arc l3"] = "Modern Express Station",
+        ["rr arc l5"] = "yellow core station",
+        ["rr mic l1"] = "Shallow Frontier Station",
+        ["rr mic l2"] = "Long Forest Station",
+        ["rr mic l4"] = "Crossroads Station",
 
         ["loc rs ext stan terra jp1"] = "Terra Gateway",
         ["loc rs ext stan magnus jp1"] = "Nyx Gateway",
