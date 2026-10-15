@@ -166,20 +166,20 @@ public static partial class GameLogDestinations
         ["rr cru l5"] = "Beautiful Glen Station",
         ["rr mic l3"] = "Endless Odyssey Station",
 
-        ["loc rs ext stan terra jp1"] = "Terra Gateway",
-        ["loc rs ext stan magnus jp1"] = "Nyx Gateway",
-        ["loc rs ext stan pyro jp1"] = "Pyro Gateway",
-        ["rr jp stantonpyro"] = "Pyro Gateway",
-        ["rr jp pyrostanton"] = "Stanton Gateway",
-        ["rr jp stantonmagnus"] = "Nyx Gateway",
+        ["loc rs ext stan terra jp1"] = "Terra Gateway (Stanton)",
+        ["loc rs ext stan magnus jp1"] = "Nyx Gateway (Stanton)",
+        ["loc rs ext stan pyro jp1"] = "Pyro Gateway (Stanton)",
+        ["rr jp stantonpyro"] = "Pyro Gateway (Stanton)",
+        ["rr jp pyrostanton"] = "Stanton Gateway (Pyro)",
+        ["rr jp stantonmagnus"] = "Nyx Gateway (Stanton)",
         // Plusieurs portes distinctes portent le même nom affiché "Stanton
         // Gateway" (une par système relié à Stanton -- confirmé par
         // l'utilisateur : une dans Nyx, une dans Pyro ci-dessus) ; "nyxcastra"
         // est l'identifiant interne de celle du système Nyx, malgré "castra"
         // dans son nom.
-        ["rr jp nyxcastra"] = "Stanton Gateway",
-        ["rr jp pyronyx"] = "Nyx Gateway",
-        ["rr jp nyxpyro"] = "Pyro Gateway",
+        ["rr jp nyxcastra"] = "Stanton Gateway (Nyx)",
+        ["rr jp pyronyx"] = "Nyx Gateway (Pyro)",
+        ["rr jp nyxpyro"] = "Pyro Gateway (Nyx)",
 
         ["ooc stanton"] = "l'étoile Stanton",
         ["ooc stanton2 l2"] = "CRU L 2",
@@ -244,7 +244,9 @@ public static partial class GameLogDestinations
         ["rs ext pyro5 l5"] = "Rat's Nest",
         ["p5 l3"] = "Pyro 5 L3",
         ["rs ext pyro6 l3"] = "Endgame",
-        ["rs ext pyro6 l4"] = "Nyx Gateway",
+        // "Nyx Gateway" auparavant : le global.ini du jeu nomme RR_P6_L4
+        // "Dudley & Daughters" ; la vraie Nyx Gateway de Pyro est Pyro_Nyx_JPStation.
+        ["rs ext pyro6 l4"] = "Dudley & Daughters",
         ["rs ext pyro6 l5"] = "Megumi Ravitaillement",
 
         ["social 001 keeger segment rckcrk 095"] = "Qv Breaker Station",
@@ -281,10 +283,22 @@ public static partial class GameLogDestinations
     /// </summary>
     public static bool PruneAliasesCoveredByCatalog(Dictionary<string, string> userAliases)
     {
-        var toRemove = userAliases.Keys.Where(k => KnownLocationAliases.ContainsKey(k) || IsJumpPointResolvable(k) || HumanizeNumberedSite(k) is not null).ToList();
+        var toRemove = userAliases
+            .Where(kv => KnownLocationAliases.ContainsKey(kv.Key) || IsJumpPointResolvable(kv.Key) ||
+                         // Site numéroté : seulement l'entrée restée telle que détectée,
+                         // jamais un nom choisi par l'utilisateur (ex. "stanton2c
+                         // arccorpmining area157" renommé "Installation minière Arccorp 157"
+                         // avant que le motif ArcCorp ne reconnaisse "arccorpmining").
+                         (HumanizeNumberedSite(kv.Key) is not null && IsUneditedAlias(kv.Key, kv.Value)))
+            .Select(kv => kv.Key).ToList();
         foreach (var key in toRemove) userAliases.Remove(key);
         return toRemove.Count > 0;
     }
+
+    /// <summary>Valeur vide, simple recopie de l'identifiant détecté, ou début du nom que le catalogue donne déjà (ex. "Mine Shubin" pour "Mine Shubin SMCA6").</summary>
+    private static bool IsUneditedAlias(string key, string value) =>
+        value.Trim().Length == 0 || NormalizeForAliasLookup(value) == key ||
+        (HumanizeNumberedSite(key) is { } site && site.StartsWith(value.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// True si <paramref name="normalizedKey"/> (déjà passé par NormalizeForAliasLookup,
@@ -394,9 +408,27 @@ public static partial class GameLogDestinations
             if (name.Length == 0 || name.Length > 70 || name.Contains("\\n") || name.Equals(rawKey, StringComparison.OrdinalIgnoreCase)) continue;
             var key = NormalizeKnownIdSynonyms(NormalizeForAliasLookup(StripObjectContainerPrefix(rawKey)));
             if (key.Length == 0 || KnownLocationAliases.ContainsKey(key)) continue;
+            var jumpStation = JumpStationKeyRegex().Match(rawKey);
+            if (jumpStation.Success && !name.Contains('('))
+            {
+                var host = jumpStation.Groups["host"].Value;
+                name = $"{name} ({char.ToUpperInvariant(host[0])}{host[1..].ToLowerInvariant()})";
+            }
             LiveLocationNames[key] = name;
         }
     }
+
+    /// <summary>
+    /// "Nyx Gateway (Pyro)" : plusieurs stations de saut portent le même nom
+    /// dans le jeu (une Nyx Gateway côté Stanton ET une côté Pyro...) — le
+    /// système où se trouve la station, entre parenthèses, les distingue dans
+    /// les annonces et surtout dans les statistiques (comptées par nom).
+    /// </summary>
+    private static string GatewayName(string targetSystem, string? hostSystem) =>
+        string.IsNullOrEmpty(hostSystem) ? $"{targetSystem} Gateway" : $"{targetSystem} Gateway ({hostSystem})";
+
+    [GeneratedRegex(@"^(?<host>[a-z]+)_[a-z]+_jpstation$", RegexOptions.IgnoreCase)]
+    private static partial Regex JumpStationKeyRegex();
 
     /// <summary>Nombre de lieux chargés depuis le global.ini (journal de démarrage).</summary>
     public static int LiveLocationNameCount => LiveLocationNames.Count;
@@ -450,7 +482,7 @@ public static partial class GameLogDestinations
         if (jumpMatch.Success)
         {
             if (SystemNames.TryGetValue(jumpMatch.Groups["sys2"].Value, out var systemName))
-                return $"{systemName} Gateway";
+                return GatewayName(systemName, SystemNames.GetValueOrDefault(jumpMatch.Groups["sys1"].Value));
             return "Endroit inconnu";
         }
 

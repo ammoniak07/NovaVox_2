@@ -9,7 +9,7 @@ public class GameLogDestinationsTests
     // (voir historique de session) pour garantir la parité de comportement.
     [Theory]
     [InlineData("ObjectContainer_RestStop", "RestStop")]
-    [InlineData("rs_ext_pyro-stan_jp1", "Stanton Gateway")]
+    [InlineData("rs_ext_pyro-stan_jp1", "Stanton Gateway (Pyro)")]
     [InlineData("OOC_Stanton_1d_Ita", "Ita")]
     [InlineData("ab_mine_stanton3_med_005", "Base minière DYV-JKE")]
     [InlineData("MISSION_QT_Quantum_Beacon_732699457697", "Quantum Beacon")]
@@ -23,12 +23,12 @@ public class GameLogDestinationsTests
     }
 
     [Theory]
-    [InlineData("RR_JP_StantonPyro", "Pyro Gateway")]
-    [InlineData("RR_JP_PyroStanton", "Stanton Gateway")]
-    [InlineData("RR_JP_StantonMagnus", "Nyx Gateway")]
-    [InlineData("RR_JP_NyxCastra", "Stanton Gateway")]
-    [InlineData("RR_JP_PyroNyx", "Nyx Gateway")]
-    [InlineData("RR_JP_NyxPyro", "Pyro Gateway")]
+    [InlineData("RR_JP_StantonPyro", "Pyro Gateway (Stanton)")]
+    [InlineData("RR_JP_PyroStanton", "Stanton Gateway (Pyro)")]
+    [InlineData("RR_JP_StantonMagnus", "Nyx Gateway (Stanton)")]
+    [InlineData("RR_JP_NyxCastra", "Stanton Gateway (Nyx)")]
+    [InlineData("RR_JP_PyroNyx", "Nyx Gateway (Pyro)")]
+    [InlineData("RR_JP_NyxPyro", "Pyro Gateway (Nyx)")]
     [InlineData("RR_Arc_L4", "Faint Glen Station")]
     [InlineData("RR_Hur_L2", "Faithful Dream Station")]
     [InlineData("AsteroidClusterBase_Nyx_Social_Keeger_002", "Qv Breaker Station BRK 425")]
@@ -237,6 +237,38 @@ public class GameLogDestinationsTests
 
         Assert.False(changed);
         Assert.Single(userAliases);
+    }
+
+    [Fact]
+    public void PruneAliasesCoveredByCatalog_KeepsUserRenamedNumberedSite()
+    {
+        var userAliases = new Dictionary<string, string>
+        {
+            ["stanton2c arccorpmining area157"] = "Installation minière Arccorp 157",
+            ["stanton3b arccorp area045"] = "Stanton3b ArcCorp Area045", // jamais renommé : couvert par le catalogue
+        };
+
+        Assert.True(GameLogDestinations.PruneAliasesCoveredByCatalog(userAliases));
+        Assert.Equal("Installation minière Arccorp 157", Assert.Single(userAliases).Value);
+    }
+
+    [Fact]
+    public void RrP6L4_IsDudleyAndDaughters_NotNyxGateway()
+    {
+        Assert.Equal("Dudley & Daughters", GameLogDestinations.HumanizeDestination("RR_P6_L4"));
+    }
+
+    [Fact]
+    public void LiveLocationNames_JumpStationsNamedAfterHostSystem()
+    {
+        GameLogDestinations.RegisterLiveLocationNames(new Dictionary<string, string>
+        {
+            ["Stanton_Nyx_JPStation"] = "Nyx Gateway",
+            ["Pyro_Nyx_JPStation"] = "Nyx Gateway",
+        });
+
+        Assert.Equal("Nyx Gateway (Stanton)", GameLogDestinations.HumanizeDestination("Stanton_Nyx_JPStation"));
+        Assert.Equal("Nyx Gateway (Pyro)", GameLogDestinations.HumanizeDestination("Pyro_Nyx_JPStation"));
     }
 
     [Fact]
