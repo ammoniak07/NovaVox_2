@@ -22,6 +22,33 @@ public class GameLogLocalizationTests : IDisposable
     }
 
     [Fact]
+    public void FindGlobalIniPath_UserCfgLanguage_ReturnsThatLanguagesFile()
+    {
+        var gameLogPath = Path.Combine(_dir, "Game.log");
+        File.WriteAllText(gameLogPath, "");
+        File.WriteAllText(Path.Combine(_dir, "user.cfg"), "r_DisplayInfo = 0\ng_language = french_(france)\n");
+        var frDir = Directory.CreateDirectory(Path.Combine(_dir, "data", "Localization", "french_(france)"));
+        var frIni = Path.Combine(frDir.FullName, "global.ini");
+        File.WriteAllText(frIni, "");
+        var enDir = Directory.CreateDirectory(Path.Combine(_dir, "data", "Localization", "english"));
+        File.WriteAllText(Path.Combine(enDir.FullName, "global.ini"), "");
+
+        Assert.Equal(frIni, GameLogLocalization.FindGlobalIniPath(gameLogPath));
+    }
+
+    [Fact]
+    public void FindGlobalIniPath_OnlyOtherLanguageFolder_ReturnsIt()
+    {
+        var gameLogPath = Path.Combine(_dir, "Game.log");
+        File.WriteAllText(gameLogPath, "");
+        var frDir = Directory.CreateDirectory(Path.Combine(_dir, "data", "Localization", "french_(france)"));
+        var frIni = Path.Combine(frDir.FullName, "global.ini");
+        File.WriteAllText(frIni, "");
+
+        Assert.Equal(frIni, GameLogLocalization.FindGlobalIniPath(gameLogPath));
+    }
+
+    [Fact]
     public void FindGlobalIniPath_NoIniFile_ReturnsNull()
     {
         var gameLogPath = Path.Combine(_dir, "Game.log");

@@ -29,8 +29,55 @@ public static class GameLogLocalization
         var dir = Path.GetDirectoryName(logPath);
         if (string.IsNullOrEmpty(dir)) return null;
 
-        var iniPath = Path.Combine(dir, "data", "Localization", "english", "global.ini");
-        return File.Exists(iniPath) ? iniPath : null;
+        var localizationDir = Path.Combine(dir, "data", "Localization");
+
+        // 1) Langue choisie dans user.cfg ("g_language = french_(france)"),
+        //    méthode d'installation des traductions depuis 2024 : le fichier
+        //    est alors dans data/Localization/french_(france)/, pas english/.
+        var language = ReadUserCfgLanguage(Path.Combine(dir, "user.cfg"));
+        if (language is not null)
+        {
+            var chosen = Path.Combine(localizationDir, language, "global.ini");
+            if (File.Exists(chosen)) return chosen;
+        }
+
+        // 2) Ancienne méthode : traduction copiée à la place du fichier anglais.
+        var english = Path.Combine(localizationDir, "english", "global.ini");
+        if (File.Exists(english)) return english;
+
+        // 3) Repli : le global.ini le plus récent de n'importe quelle langue.
+        try
+        {
+            return Directory.Exists(localizationDir)
+                ? Directory.GetDirectories(localizationDir)
+                    .Select(d => Path.Combine(d, "global.ini"))
+                    .Where(File.Exists)
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .FirstOrDefault()
+                : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Valeur de g_language dans user.cfg (null si absent/illisible).</summary>
+    private static string? ReadUserCfgLanguage(string userCfgPath)
+    {
+        try
+        {
+            if (!File.Exists(userCfgPath)) return null;
+            foreach (var line in File.ReadLines(userCfgPath))
+            {
+                var eq = line.IndexOf('=');
+                if (eq <= 0 || !line[..eq].Trim().Equals("g_language", StringComparison.OrdinalIgnoreCase)) continue;
+                var value = line[(eq + 1)..].Trim().Trim('"');
+                return value.Length > 0 && value.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 ? value : null;
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        return null;
     }
 
     /// <summary>
