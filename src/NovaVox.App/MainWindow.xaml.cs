@@ -2524,7 +2524,12 @@ public partial class MainWindow : Window
         var customPath = _state.Ai.GameLogCustomPath;
         var liveLogPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
         var globalIniPath = GameLogLocalization.FindGlobalIniPath(liveLogPath);
-        if (globalIniPath is null) return;
+        if (globalIniPath is null)
+        {
+            GameLogDestinations.RegisterLiveLocationNames(new Dictionary<string, string>());
+            AppendLog("🌐 global.ini introuvable à côté du Game.log — noms de lieux du jeu non chargés (seul le catalogue intégré est utilisé).", "warning");
+            return;
+        }
 
         var values = GameLogLocalization.ReadKeyedValues(globalIniPath, SchemaDatabase.LocalizationKeysOfInterest);
         SchemaDatabase.RegisterLiveNameAliases(values);
@@ -2532,6 +2537,8 @@ public partial class MainWindow : Window
         // Même fichier : noms de toutes les destinations du jeu (stations,
         // bases minières, avant-postes...) dans la langue installée.
         GameLogDestinations.RegisterLiveLocationNames(GameLogLocalization.ReadKeyedValues(globalIniPath, GameLogDestinations.IsLiveLocationKey));
+        AppendLog($"🌐 global.ini chargé : {GameLogDestinations.LiveLocationNameCount} noms de lieux ({globalIniPath}).",
+            GameLogDestinations.LiveLocationNameCount > 0 ? "success" : "warning");
     }
 
     private void InitializeSchemas()
