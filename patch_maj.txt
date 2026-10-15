@@ -1,5 +1,9 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.1.5
+------
+- Correction : en arrivant à Area 18, l'app annonçait "Arrivée à : Baijini Point" — quand la planète (ArcCorp) bloquait la trajectoire du saut quantique, NovaVox annonçait systématiquement la station orbitale de la planète au lieu de la vraie destination. La destination est désormais annoncée par son propre nom dès qu'elle est reconnue (Area 18, Lorville, Orison, NewBabbage...) ; la station orbitale ne sert plus que de repli pour un identifiant inconnu. Corrige aussi le comptage des destinations dans les statistiques.
+
 v0.1.4
 ------
 - Réglages > 🛰 Game.log : nouvelle liste "Types d'annonces lues" pour choisir, type par type, ce qui est lu à voix haute — direction (route tracée), arrivée à destination, contrats, objectifs, journal, juridiction, zones (armistice, zone restreinte), groupe, invitations et amis, canal du vaisseau, schémas reçus, transferts d'aUEC, calibration quantique, délits, hangar, autres notifications du jeu, et réponses de l'IA. Une annonce décochée reste affichée dans le journal système.

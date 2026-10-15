@@ -479,6 +479,12 @@ public static partial class GameLogDestinations
                 if (userAliases is not null && !string.IsNullOrEmpty(rawDestination) &&
                     userAliases.TryGetValue(normalized, out var custom) && !string.IsNullOrEmpty(custom))
                     return custom;
+                // La planète n'est qu'un obstacle sur la route : si la
+                // destination elle-même est déjà reconnue (ex. "Stanton3_Area18"
+                // derrière ArcCorp), c'est elle qu'on annonce — la station
+                // orbitale n'est qu'un repli pour un identifiant inconnu.
+                if (!string.IsNullOrEmpty(rawDestination) && !DestinationIsUnresolved(rawDestination, userAliases))
+                    return HumanizeDestination(rawDestination, userAliases);
                 return station;
             }
             return label;

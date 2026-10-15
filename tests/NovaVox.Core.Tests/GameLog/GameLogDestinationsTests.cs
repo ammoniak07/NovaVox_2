@@ -118,6 +118,20 @@ public class GameLogDestinationsTests
         Assert.Equal("Baijini Point", GameLogDestinations.ResolveDestinationLabel("ObjectContainer_RestStop", obstructionLabel: "ArcCorp"));
     }
 
+    [Theory]
+    [InlineData("Stanton3_Area18")]
+    [InlineData("Area18_City")]
+    public void ResolveDestinationLabel_KnownDestinationWinsOverGenericPlanetObstruction(string rawId)
+    {
+        Assert.Equal("Area 18", GameLogDestinations.ResolveDestinationLabel(rawId, obstructionLabel: "ArcCorp"));
+    }
+
+    [Fact]
+    public void ResolveDestinationLabel_UnknownDestinationBehindPlanetFallsBackToStation()
+    {
+        Assert.Equal("Baijini Point", GameLogDestinations.ResolveDestinationLabel("Some_Unknown_Place", obstructionLabel: "ArcCorp"));
+    }
+
     [Fact]
     public void ResolveDestinationLabel_UsesSpecificObstructionLabelVerbatim()
     {
