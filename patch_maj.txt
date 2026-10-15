@@ -19,7 +19,6 @@ DESTINATIONS — CATALOGUE INTÉGRÉ
 CORRECTIONS
 - En arrivant à Area 18, l'app annonçait "Arrivée à : Baijini Point" : quand la planète (ArcCorp) bloquait la trajectoire du saut quantique, NovaVox annonçait systématiquement la station orbitale de la planète au lieu de la vraie destination. La destination est désormais annoncée par son propre nom dès qu'elle est reconnue (Area 18, Lorville, Orison, NewBabbage...) ; la station orbitale ne sert plus que de repli pour un identifiant inconnu. Corrige aussi le comptage des destinations dans les statistiques.
 - RR_P6_L4 (Terminus L4) était annoncé "Nyx Gateway" alors que c'est la station "Dudley & Daughters".
-- ARC-L2 était annoncé "Wide Forest Station" au lieu de "Lively Pathway Station".
 - Un alias de destination que tu as renommé toi-même n'est plus effacé au démarrage quand NovaVox apprend à reconnaître ce lieu (ex. "stanton2c arccorpmining area157").
 
 v0.1.3
