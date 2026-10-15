@@ -327,4 +327,33 @@ public class SchemaDatabaseTests
             SchemaDatabase.RegisterLiveDescriptions(new Dictionary<string, string>());
         }
     }
+
+    [Fact]
+    public void Find_SchemaNewerThanDatabase_IsDescribedFromGlobalIni()
+    {
+        try
+        {
+            SchemaDatabase.RegisterLiveDescriptions(new Dictionary<string, string>
+            {
+                ["item_Name_zorg_heavy_helmet_01_01_01"] = "Casque Zorg",
+                ["item_Desc_zorg_heavy_helmet_01"] = "Type d'article : Armure lourde\\nFabricant : Zorg Industries\\nRéduction des dégâts : 40%\\n\\nUn casque tout neuf.",
+            });
+
+            var info = SchemaDatabase.Find("Casque Zorg", "fr");
+
+            Assert.NotNull(info);
+            Assert.Equal("Casque Zorg", info!.Name);
+            Assert.Equal("Zorg Industries", info.Manufacturer);
+            Assert.Equal("Armure lourde", info.ItemType);
+            Assert.Equal("Char_Armor_Helmet", info.Type);
+            Assert.Equal("Un casque tout neuf.", info.Description);
+            Assert.Equal(new SchemaStat("Réduction des dégâts", "40%"), Assert.Single(info.Stats!));
+            Assert.Empty(info.Ingredients);
+            Assert.Null(SchemaDatabase.Find("Objet totalement inconnu", "fr"));
+        }
+        finally
+        {
+            SchemaDatabase.RegisterLiveDescriptions(new Dictionary<string, string>());
+        }
+    }
 }

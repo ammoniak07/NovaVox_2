@@ -153,16 +153,27 @@ public static class SchemaDatabase
     public static void RegisterLiveDescriptions(IReadOnlyDictionary<string, string> descriptionValues)
     {
         LiveDescriptions.Clear();
+        LiveItemNameKeys.Clear();
         LiveDescriptionLanguage = null;
         var byKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var languageVotes = new Dictionary<string, int>();
         foreach (var (key, value) in descriptionValues)
         {
+            if (key.StartsWith("item_Name", StringComparison.OrdinalIgnoreCase))
+            {
+                // Tous les objets du jeu (pas seulement ceux de la base) : permet
+                // de décrire un schéma reçu après un patch, avant la mise à jour
+                // de SchemaDatabase.json — voir FindFromGameText.
+                var shown = value.Trim();
+                if (shown.Length > 0) LiveItemNameKeys.TryAdd(NormalizeForMatch(shown), key.EndsWith(",P", StringComparison.Ordinal) ? key[..^2] : key);
+                continue;
+            }
             byKey[key] = value;
             var colon = value.IndexOf(':');
             if (colon > 0 && ManufacturerLabelToLanguage.TryGetValue(value[..colon].Trim(), out var lang))
                 languageVotes[lang] = languageVotes.GetValueOrDefault(lang) + 1;
         }
+        LiveDescriptionsByKey = byKey;
         if (languageVotes.Count == 0) return;
         LiveDescriptionLanguage = languageVotes.MaxBy(kv => kv.Value).Key;
 
@@ -170,23 +181,108 @@ public static class SchemaDatabase
         {
             var baseKey = nameKey.EndsWith(",P", StringComparison.Ordinal) ? nameKey[..^2] : nameKey;
             if (!baseKey.StartsWith("item_Name", StringComparison.OrdinalIgnoreCase)) continue;
-            var tail = baseKey["item_Name".Length..];
-            while (true)
-            {
-                // Plusieurs clés possibles (item_DescX / item_Desc_X) : le jeu en a
-                // parfois deux, dont une réduite à l'en-tête — on garde la plus longue.
-                var best = DescriptionCandidates(tail)
-                    .Select(k => byKey.TryGetValue(k, out var raw) ? CleanIniDescription(raw) : "")
-                    .MaxBy(d => d.Length) ?? "";
-                if (best.Length > 0)
-                {
-                    LiveDescriptions[canonicalName] = best;
-                    break;
-                }
-                var lastUnderscore = tail.LastIndexOf('_');
-                if (lastUnderscore <= 0 || !tail[(lastUnderscore + 1)..].Any(char.IsDigit)) break;
-                tail = tail[..lastUnderscore];
-            }
+            var raw = FindRawDescription(byKey, baseKey);
+            if (raw is null) continue;
+            var cleaned = CleanIniDescription(raw);
+            if (cleaned.Length > 0) LiveDescriptions[canonicalName] = cleaned;
+        }
+    }
+
+    /// <summary>
+    /// Texte brut de la description associée à une clé de nom item_Name...
+    /// Plusieurs clés possibles (item_DescX / item_Desc_X) : le jeu en a
+    /// parfois deux, dont une réduite à l'en-tête — on garde celle au texte
+    /// le plus long. Repli : retire un à un les derniers segments contenant
+    /// un chiffre (variantes de couleur sans description propre).
+    /// </summary>
+    private static string? FindRawDescription(IReadOnlyDictionary<string, string> byKey, string nameKey)
+    {
+        var tail = nameKey["item_Name".Length..];
+        while (true)
+        {
+            var best = DescriptionCandidates(tail)
+                .Select(k => byKey.TryGetValue(k, out var raw) ? raw : null)
+                .Where(r => r is not null && CleanIniDescription(r).Length > 0)
+                .MaxBy(r => CleanIniDescription(r!).Length);
+            if (best is not null) return best;
+            var lastUnderscore = tail.LastIndexOf('_');
+            if (lastUnderscore <= 0 || !tail[(lastUnderscore + 1)..].Any(char.IsDigit)) return null;
+            tail = tail[..lastUnderscore];
+        }
+    }
+
+    /// <summary>Texte affiché (normalisé) -> clé item_Name..., pour tous les objets du global.ini.</summary>
+    private static readonly ConcurrentDictionary<string, string> LiveItemNameKeys = new(StringComparer.OrdinalIgnoreCase);
+    private static IReadOnlyDictionary<string, string> LiveDescriptionsByKey = new Dictionary<string, string>();
+
+    private static readonly HashSet<string> ManufacturerLabels = new(StringComparer.OrdinalIgnoreCase)
+        { "Manufacturer", "Fabricant", "Hersteller", "Fabricante", "Produttore", "Fabrikant" };
+    private static readonly HashSet<string> ItemTypeLabels = new(StringComparer.OrdinalIgnoreCase)
+        { "Item Type", "Type d'article", "Type d'objet", "Type d'item", "Objekttyp", "Gegenstandstyp", "Tipo de objeto", "Tipo di oggetto", "Itemtype" };
+
+    /// <summary>
+    /// Fiche minimale d'un schéma ABSENT de la base (reçu après un patch du
+    /// jeu, avant la mise à jour de SchemaDatabase.json) : nom, fabricant,
+    /// type, caractéristiques et description lus dans le global.ini du
+    /// joueur. Pas d'ingrédients ni de temps de fabrication (absents du
+    /// global.ini). Null si ce nom n'est pas un objet connu du global.ini.
+    /// </summary>
+    private static SchemaInfo? FindFromGameText(string name)
+    {
+        if (!LiveItemNameKeys.TryGetValue(NormalizeForMatch(name), out var nameKey)) return null;
+        var raw = FindRawDescription(LiveDescriptionsByKey, nameKey);
+        if (raw is null) return null;
+
+        string? manufacturer = null, itemType = null;
+        var stats = new List<SchemaStat>();
+        foreach (var line in IniDescriptionHeader(raw))
+        {
+            var colon = line.IndexOf(':');
+            var label = line[..colon].Trim().Replace('’', '\'');
+            var value = line[(colon + 1)..].Trim();
+            if (ManufacturerLabels.Contains(label)) manufacturer = value;
+            else if (ItemTypeLabels.Contains(label)) itemType = value;
+            else stats.Add(new SchemaStat(label, value));
+        }
+        var description = CleanIniDescription(raw);
+        return new SchemaInfo(name.Trim(), GuessType(nameKey), null, manufacturer,
+            description.Length > 0 ? description : null, null, null, null, null, null, null,
+            itemType, stats.Count > 0 ? stats : null, Array.Empty<SchemaIngredient>());
+    }
+
+    /// <summary>Catégorie (voir SchemaCategories.Of) devinée d'après le nom de classe de l'objet.</summary>
+    private static string? GuessType(string nameKey)
+    {
+        var k = nameKey.ToLowerInvariant();
+        if (k.Contains("helmet")) return "Char_Armor_Helmet";
+        if (k.Contains("backpack")) return "Char_Armor_Backpack";
+        if (k.Contains("_core_") || k.EndsWith("_core")) return "Char_Armor_Torso";
+        if (k.Contains("_arms_") || k.EndsWith("_arms")) return "Char_Armor_Arms";
+        if (k.Contains("_legs_") || k.EndsWith("_legs")) return "Char_Armor_Legs";
+        if (k.Contains("powr_")) return "PowerPlant";
+        if (k.Contains("qdrv_")) return "QuantumDrive";
+        if (k.Contains("shld_")) return "Shield";
+        if (k.Contains("cool_")) return "Cooler";
+        if (k.Contains("radr_")) return "Radar";
+        if (System.Text.RegularExpressions.Regex.IsMatch(k, "_(lmg|rifle|pistol|sniper|smg|shotgun|grenade_launcher|crossbow)_")) return "WeaponPersonal";
+        if (System.Text.RegularExpressions.Regex.IsMatch(k, "cannon|repeater|gatling|scattergun|ballisticgun|massdriver")) return "WeaponGun";
+        return null;
+    }
+
+    /// <summary>Lignes d'en-tête "Libellé : valeur" retirées par CleanIniDescription.</summary>
+    private static IEnumerable<string> IniDescriptionHeader(string raw)
+    {
+        var lines = MarkupRegex.Replace(raw, "").Replace("\\n", "\n").Split('\n').Select(l => l.Trim()).ToList();
+        var i = 0;
+        while (i < lines.Count)
+        {
+            if (lines[i].Length == 0) { i++; continue; }
+            var end = i;
+            while (end < lines.Count && lines[end].Length > 0) end++;
+            var block = lines.Skip(i).Take(end - i).ToList();
+            if (!block.All(l => l.Length <= 80 && HeaderLineRegex.IsMatch(l))) yield break;
+            foreach (var l in block) yield return l;
+            i = end;
         }
     }
 
@@ -247,7 +343,9 @@ public static class SchemaDatabase
                 info = LookupEntry(canonicalName);
             if (info is null && LiveNameAliases.TryGetValue(normalized, out var liveCanonicalName))
                 info = LookupEntry(liveCanonicalName);
-            if (info is null) return null;
+            // Toujours rien : schéma plus récent que la base, décrit d'après le
+            // global.ini (déjà dans la langue installée).
+            if (info is null) return FindFromGameText(trimmed);
         }
 
         if (!string.IsNullOrEmpty(language)

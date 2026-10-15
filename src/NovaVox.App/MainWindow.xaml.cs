@@ -2533,9 +2533,10 @@ public partial class MainWindow : Window
 
         var values = GameLogLocalization.ReadKeyedValues(globalIniPath, SchemaDatabase.LocalizationKeysOfInterest);
         SchemaDatabase.RegisterLiveNameAliases(values);
-        // Descriptions des schémas dans la langue de la traduction installée.
+        // Descriptions des schémas dans la langue de la traduction installée,
+        // et noms de tous les objets du jeu (fiche d'un schéma plus récent que la base).
         SchemaDatabase.RegisterLiveDescriptions(GameLogLocalization.ReadKeyedValues(globalIniPath,
-            key => key.StartsWith("item_Desc", StringComparison.OrdinalIgnoreCase)));
+            key => key.StartsWith("item_Desc", StringComparison.OrdinalIgnoreCase) || key.StartsWith("item_Name", StringComparison.OrdinalIgnoreCase)));
 
         // Même fichier : noms de toutes les destinations du jeu (stations,
         // bases minières, avant-postes...) dans la langue installée.
