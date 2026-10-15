@@ -1587,5 +1587,18 @@
   "Zenith Laser Sniper Rifle": "item_Namevolt_sniper_energy_01",
   "Zenith Laser Sniper Rifle Battery (22 Cap)": "item_Namevolt_sniper_energy_01_mag",
   "Zephyr": "item_Name_QDRV_RACO_S01_Zephyr",
-  "ZeroRush": "item_Name_COOL_ACOM_S01_ZeroRush"
+  "ZeroRush": "item_Name_COOL_ACOM_S01_ZeroRush",
+  "DayBreak": "item_NamePOWR_SASU_S02_DayBreak_SCItem",
+  "F55 \"Shadowflux\" LMG": "item_Namegmni_lmg_ballistic_01_collector02",
+  "Monolith Armor Arms": "item_Name_kap_combat_heavy_arms_01_01_01",
+  "Monolith Armor Arms Shadowflux": "item_Name_kap_combat_heavy_arms_01_04_01",
+  "Monolith Backpack": "item_Name_kap_combat_heavy_backpack_01_01_01",
+  "Monolith Backpack Shadowflux": "item_Name_kap_combat_heavy_backpack_01_04_01",
+  "Monolith Armor Core": "item_Name_kap_combat_heavy_core_01_01_01",
+  "Monolith Armor Core Shadowflux": "item_Name_kap_combat_heavy_core_01_04_01",
+  "Monolith Armor Legs": "item_Name_kap_combat_heavy_legs_01_01_01",
+  "Monolith Armor Legs Shadowflux": "item_Name_kap_combat_heavy_legs_01_04_01",
+  "Goliath": "item_NameQDRV_JUST_S01_Goliath",
+  "Monolith Helmet": "item_Name_kap_combat_heavy_helmet_01_01_01,P",
+  "Monolith Helmet Shadowflux": "item_Name_kap_combat_heavy_helmet_01_04_01,P"
 }

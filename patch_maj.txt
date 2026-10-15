@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.5
 ------
+- Schémas : base mise à jour avec les données du jeu 4.10.2 — 13 nouveaux schémas reconnus avec fabricant, description, caractéristiques et ingrédients : armure lourde Monolith complète (casque, torse, bras, jambes, sac à dos) et sa variante Shadowflux, F55 "Shadowflux" LMG, générateur DayBreak et moteur quantique Goliath.
 - Schémas : 25 noms traduits n'étaient jamais trouvés dans le global.ini (variantes de combinaisons de vol, arbalète Novian, têtes de minage S0, casques...) — ils s'affichent désormais dans la langue installée comme les autres.
 
 v0.1.4
