@@ -62,7 +62,8 @@ public static partial class GameLogDestinations
 
 
 
-    [GeneratedRegex(@"^stanton\d+[a-z]? arccorp (?<site>.+)$")]
+    /// <summary>"stanton3b arccorp area045" ou "stanton2c arccorpmining area157" (variante vue sur Yela, 10/2026).</summary>
+    [GeneratedRegex(@"^stanton\d+[a-z]? arccorp(?:mining)? (?<site>.+)$")]
     private static partial Regex ArcCorpMineIdRegex();
 
     [GeneratedRegex(@"^stanton\d+[a-z]? hurdynmining hdms ?(?<site>.+)$")]
