@@ -17,6 +17,12 @@ public class TtsTextSanitizerTests
     }
 
     [Fact]
+    public void StripMarkdownForSpeech_SpellsOutScu()
+    {
+        Assert.Equal("Livrez 0/128 S C U de Leurres", TtsTextSanitizer.StripMarkdownForSpeech("Livrez 0/128 SCU de Leurres"));
+    }
+
+    [Fact]
     public void StripMarkdownForSpeech_EmptyStringUnchanged()
     {
         Assert.Equal("", TtsTextSanitizer.StripMarkdownForSpeech(""));

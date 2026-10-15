@@ -35,6 +35,10 @@ public static partial class TtsTextSanitizer
     [GeneratedRegex("[*_#`]")]
     private static partial Regex StraySymbols();
 
+    // Piper lit "SCU" comme un mot ("scu") : épelé lettre par lettre.
+    [GeneratedRegex(@"\bSCU\b")]
+    private static partial Regex ScuUnit();
+
     public static string StripMarkdownForSpeech(string? text)
     {
         if (string.IsNullOrEmpty(text)) return text ?? "";
@@ -50,6 +54,7 @@ public static partial class TtsTextSanitizer
         // Symboles restants isolés (rares, mais au cas où) : retirés
         // plutôt que de risquer que Piper les épelle.
         result = StraySymbols().Replace(result, "");
+        result = ScuUnit().Replace(result, "S C U");
         return result;
     }
 }
