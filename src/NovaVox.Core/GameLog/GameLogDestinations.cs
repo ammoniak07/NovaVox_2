@@ -483,7 +483,9 @@ public static partial class GameLogDestinations
                 // destination elle-même est déjà reconnue (ex. "Stanton3_Area18"
                 // derrière ArcCorp), c'est elle qu'on annonce — la station
                 // orbitale n'est qu'un repli pour un identifiant inconnu.
-                if (!string.IsNullOrEmpty(rawDestination) && !DestinationIsUnresolved(rawDestination, userAliases))
+                // "NavPoint_Dynamic_…" est un point générique : la station reste plus parlante.
+                if (!string.IsNullOrEmpty(rawDestination) && normalized != "navpoint dynamic" &&
+                    !DestinationIsUnresolved(rawDestination, userAliases))
                     return HumanizeDestination(rawDestination, userAliases);
                 return station;
             }

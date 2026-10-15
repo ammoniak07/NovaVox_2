@@ -133,6 +133,12 @@ public class GameLogDestinationsTests
     }
 
     [Fact]
+    public void ResolveDestinationLabel_GenericNavPointBehindPlanetFallsBackToStation()
+    {
+        Assert.Equal("Baijini Point", GameLogDestinations.ResolveDestinationLabel("NavPoint_Dynamic_862331558486", obstructionLabel: "ArcCorp"));
+    }
+
+    [Fact]
     public void ResolveDestinationLabel_UsesSpecificObstructionLabelVerbatim()
     {
         Assert.Equal("Base minière #ODD-E9B", GameLogDestinations.ResolveDestinationLabel("ObjectContainer_RestStop", obstructionLabel: "Base minière #ODD-E9B"));
