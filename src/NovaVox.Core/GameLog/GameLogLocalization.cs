@@ -115,6 +115,12 @@ public static class GameLogLocalization
                 // les clés de nom d'objet qui nous intéressent ici, mais
                 // retiré par precaution pour rester robuste au format.
                 var key = rawKey.EndsWith(",P", StringComparison.Ordinal) ? rawKey[..^2] : rawKey;
+                // Certaines clés de schéma sont référencées AVEC leur suffixe
+                // (SchemaNameLocalizationKeys.json, ex. "item_Name..._01_07_12,P",
+                // dont le texte diffère de la clé sans suffixe) : on les cherche
+                // aussi telles quelles, sinon elles n'étaient jamais trouvées.
+                if (!ReferenceEquals(key, rawKey) && isKeyOfInterest(rawKey))
+                    result[rawKey] = line[(eq + 1)..];
                 if (!isKeyOfInterest(key)) continue;
 
                 result[key] = line[(eq + 1)..];

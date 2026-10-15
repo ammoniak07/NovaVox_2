@@ -64,6 +64,24 @@ public class GameLogLocalizationTests : IDisposable
     }
 
     [Fact]
+    public void ReadKeyedValues_KeyRequestedWithPluralSuffix_IsFound()
+    {
+        var iniPath = Path.Combine(_dir, "global.ini");
+        File.WriteAllLines(iniPath, new[]
+        {
+            "item_Name_suit_01=Combinaison simple",
+            "item_Name_suit_01,P=Combinaison de course",
+            "item_Name_helmet_01,P=Casque",
+        });
+
+        var values = GameLogLocalization.ReadKeyedValues(iniPath,
+            new HashSet<string> { "item_Name_suit_01,P", "item_Name_helmet_01" });
+
+        Assert.Equal("Combinaison de course", values["item_Name_suit_01,P"]);
+        Assert.Equal("Casque", values["item_Name_helmet_01"]);
+    }
+
+    [Fact]
     public void ReadKeyedValues_ReturnsOnlyRequestedKeys()
     {
         var iniPath = Path.Combine(_dir, "global.ini");

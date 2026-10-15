@@ -388,7 +388,7 @@ public static partial class GameLogDestinations
 
     /// <summary>Filtre de clés à passer à GameLogLocalization.ReadKeyedValues pour RegisterLiveLocationNames.</summary>
     public static bool IsLiveLocationKey(string key) =>
-        LiveLocationKeyRegex().IsMatch(key) && !LiveLocationNoiseRegex().IsMatch(key)
+        !key.Contains(',') && LiveLocationKeyRegex().IsMatch(key) && !LiveLocationNoiseRegex().IsMatch(key)
         // Textes d'interface du système Nyx ("NYX_DecryptionSuccessful"...), sauf les vrais lieux.
         && !(key.StartsWith("NYX_", StringComparison.Ordinal) && !Regex.IsMatch(key, "station|base|transit", RegexOptions.IgnoreCase));
 
