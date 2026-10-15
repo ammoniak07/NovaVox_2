@@ -2528,6 +2528,10 @@ public partial class MainWindow : Window
 
         var values = GameLogLocalization.ReadKeyedValues(globalIniPath, SchemaDatabase.LocalizationKeysOfInterest);
         SchemaDatabase.RegisterLiveNameAliases(values);
+
+        // Même fichier : noms de toutes les destinations du jeu (stations,
+        // bases minières, avant-postes...) dans la langue installée.
+        GameLogDestinations.RegisterLiveLocationNames(GameLogLocalization.ReadKeyedValues(globalIniPath, GameLogDestinations.IsLiveLocationKey));
     }
 
     private void InitializeSchemas()

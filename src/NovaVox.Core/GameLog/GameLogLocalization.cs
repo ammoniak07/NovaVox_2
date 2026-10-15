@@ -42,10 +42,15 @@ public static class GameLogLocalization
     /// sur un patch récent) et les lignes mal formées, plutôt que de faire
     /// échouer toute la lecture pour une seule ligne corrompue.
     /// </summary>
-    public static IReadOnlyDictionary<string, string> ReadKeyedValues(string globalIniPath, IReadOnlySet<string> keysOfInterest)
+    public static IReadOnlyDictionary<string, string> ReadKeyedValues(string globalIniPath, IReadOnlySet<string> keysOfInterest) =>
+        keysOfInterest.Count == 0
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : ReadKeyedValues(globalIniPath, keysOfInterest.Contains);
+
+    /// <summary>Même lecture, avec un filtre de clés plutôt qu'une liste figée (ex. GameLogDestinations.IsLiveLocationKey).</summary>
+    public static IReadOnlyDictionary<string, string> ReadKeyedValues(string globalIniPath, Func<string, bool> isKeyOfInterest)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (keysOfInterest.Count == 0) return result;
 
         try
         {
@@ -63,7 +68,7 @@ public static class GameLogLocalization
                 // les clés de nom d'objet qui nous intéressent ici, mais
                 // retiré par precaution pour rester robuste au format.
                 var key = rawKey.EndsWith(",P", StringComparison.Ordinal) ? rawKey[..^2] : rawKey;
-                if (!keysOfInterest.Contains(key)) continue;
+                if (!isKeyOfInterest(key)) continue;
 
                 result[key] = line[(eq + 1)..];
             }

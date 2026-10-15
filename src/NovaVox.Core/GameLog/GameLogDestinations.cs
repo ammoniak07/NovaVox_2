@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace NovaVox.Core.GameLog;
@@ -353,6 +354,53 @@ public static partial class GameLogDestinations
         ["newbabbage"] = "microtech",
     };
 
+    /// <summary>
+    /// Noms de lieux lus dans le global.ini LOCAL du joueur (voir
+    /// GameLogLocalization) pour la session en cours, indexés par clé
+    /// normalisée comme KnownLocationAliases — jamais redistribués par
+    /// NovaVox, juste lus sur la machine du joueur, dans la langue de la
+    /// traduction qu'il a installée. Consultés APRÈS le catalogue intégré
+    /// (qui garde la main sur les noms déjà choisis à la main) et après les
+    /// alias de l'utilisateur.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, string> LiveLocationNames = new(StringComparer.Ordinal);
+
+    [GeneratedRegex(@"^(stanton|pyro|nyx|castra|magnus|terra|rr_|asteroid|ab_mine|levski|lorville|area18|orison|newbab|grim|glaciem|keeger|social|[a-z]+_jumppoint)", RegexOptions.IgnoreCase)]
+    private static partial Regex LiveLocationKeyRegex();
+
+    /// <summary>Entrées du global.ini qui ne sont pas des destinations (cliniques, entrées, hangars, textes d'interface...).</summary>
+    [GeneratedRegex(@"(desc|_clinic|_entrance|_add$|hangar|_floor|courier_org|approaching|_hospital|stationdecal|cargobay|tooltip|_title|_body|_text|_info|_hint|_marker|_mission|_contract|_shop|_kiosk|_lore|_short|residences)", RegexOptions.IgnoreCase)]
+    private static partial Regex LiveLocationNoiseRegex();
+
+    /// <summary>Filtre de clés à passer à GameLogLocalization.ReadKeyedValues pour RegisterLiveLocationNames.</summary>
+    public static bool IsLiveLocationKey(string key) =>
+        LiveLocationKeyRegex().IsMatch(key) && !LiveLocationNoiseRegex().IsMatch(key)
+        // Textes d'interface du système Nyx ("NYX_DecryptionSuccessful"...), sauf les vrais lieux.
+        && !(key.StartsWith("NYX_", StringComparison.Ordinal) && !Regex.IsMatch(key, "station|base|transit", RegexOptions.IgnoreCase));
+
+    /// <summary>
+    /// Remplace les noms de lieux de la session par ceux du global.ini du
+    /// joueur (clé brute -> texte), ex. "AsteroidCluster_MiningBase_
+    /// Stanton01_Medium_08" -> "Base minière #ODD-E9B". Ignore les textes
+    /// vides, trop longs (phrase plutôt que nom) ou multi-lignes.
+    /// </summary>
+    public static void RegisterLiveLocationNames(IReadOnlyDictionary<string, string> rawKeyToName)
+    {
+        LiveLocationNames.Clear();
+        foreach (var (rawKey, rawName) in rawKeyToName)
+        {
+            if (!IsLiveLocationKey(rawKey)) continue;
+            var name = rawName.Trim();
+            if (name.Length == 0 || name.Length > 70 || name.Contains("\\n") || name.Equals(rawKey, StringComparison.OrdinalIgnoreCase)) continue;
+            var key = NormalizeKnownIdSynonyms(NormalizeForAliasLookup(StripObjectContainerPrefix(rawKey)));
+            if (key.Length == 0 || KnownLocationAliases.ContainsKey(key)) continue;
+            LiveLocationNames[key] = name;
+        }
+    }
+
+    /// <summary>Nombre de lieux chargés depuis le global.ini (journal de démarrage).</summary>
+    public static int LiveLocationNameCount => LiveLocationNames.Count;
+
     public static string? ExtractShipName(string? rawId)
     {
         if (string.IsNullOrEmpty(rawId)) return rawId;
@@ -391,6 +439,9 @@ public static partial class GameLogDestinations
 
         if (KnownLocationAliases.TryGetValue(normalized, out var alias))
             return alias;
+
+        if (LiveLocationNames.TryGetValue(normalized, out var liveName))
+            return liveName;
 
         if (HumanizeNumberedSite(normalized) is { } site)
             return site;
@@ -440,6 +491,7 @@ public static partial class GameLogDestinations
         if (userAliases is not null && userAliases.TryGetValue(normalized, out var existing) && !string.IsNullOrEmpty(existing))
             return false;
         if (KnownLocationAliases.ContainsKey(normalized)) return false;
+        if (LiveLocationNames.ContainsKey(normalized)) return false;
         if (HumanizeNumberedSite(normalized) is not null) return false;
 
         var jumpMatch = JumpPointIdRegex().Match(withoutOc.ToLowerInvariant());

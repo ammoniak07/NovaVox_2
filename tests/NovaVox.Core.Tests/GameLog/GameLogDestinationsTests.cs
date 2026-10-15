@@ -162,6 +162,26 @@ public class GameLogDestinationsTests
     }
 
     [Fact]
+    public void LiveLocationNames_FromGlobalIni_ResolveUnknownDestinations()
+    {
+        GameLogDestinations.RegisterLiveLocationNames(new Dictionary<string, string>
+        {
+            ["AsteroidCluster_MiningBase_Stanton01_Medium_08"] = "Base minière #ODD-E9B",
+            ["Stanton1_HurDynMining_001"] = "HDMS-Edmond",
+            ["RR_ARC_L2"] = "ARC-L2 Lively Pathway Station",       // déjà au catalogue : le catalogue garde la main
+            ["RR_ARC_L1_clinic"] = "Clinique de ARC-L1",             // bruit : ignoré
+            ["NYX_DecryptionSuccessful"] = "Décryptage réussi",      // texte d'interface : ignoré
+        });
+
+        Assert.Equal("Base minière #ODD-E9B", GameLogDestinations.HumanizeDestination("AsteroidCluster_MiningBase_Stanton01_Medium_08_1234567890"));
+        Assert.Equal("HDMS-Edmond", GameLogDestinations.HumanizeDestination("Stanton1_HurDynMining_001"));
+        Assert.False(GameLogDestinations.DestinationIsUnresolved("Stanton1_HurDynMining_001"));
+        Assert.Equal("Lively Pathway Station", GameLogDestinations.HumanizeDestination("RR_ARC_L2"));
+        Assert.True(GameLogDestinations.DestinationIsUnresolved("NYX_DecryptionSuccessful"));
+        Assert.False(GameLogDestinations.IsLiveLocationKey("RR_ARC_L1_clinic"));
+    }
+
+    [Fact]
     public void ResolveDestinationLabel_UsesSpecificObstructionLabelVerbatim()
     {
         Assert.Equal("Base minière #ODD-E9B", GameLogDestinations.ResolveDestinationLabel("ObjectContainer_RestStop", obstructionLabel: "Base minière #ODD-E9B"));
