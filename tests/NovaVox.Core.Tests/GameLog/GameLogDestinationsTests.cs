@@ -141,12 +141,17 @@ public class GameLogDestinationsTests
 
     [Theory]
     [InlineData("RR_HUR_L4", "Melodic Fields Station")]
-    [InlineData("RR_ARC_L2", "Wide Forest Station")]
+    [InlineData("RR_ARC_L2", "Lively Pathway Station")]
     [InlineData("RR_ARC_L3", "Modern Express Station")]
-    [InlineData("RR_ARC_L5", "yellow core station")]
+    [InlineData("RR_ARC_L5", "Yellow Core Station")]
     [InlineData("RR_MIC_L1", "Shallow Frontier Station")]
     [InlineData("RR_MIC_L2", "Long Forest Station")]
     [InlineData("RR_MIC_L4", "Crossroads Station")]
+    [InlineData("RR_ARC_L1", "Wide Forest Station")]
+    [InlineData("RR_CRU_L1", "Ambitious Dream Station")]
+    [InlineData("RR_CRU_L4", "Shallow Fields Station")]
+    [InlineData("RR_CRU_L5", "Beautiful Glen Station")]
+    [InlineData("RR_MIC_L3", "Endless Odyssey Station")]
     public void HumanizeDestination_RestStopShortIds(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
