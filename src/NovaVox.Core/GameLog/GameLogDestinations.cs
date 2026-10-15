@@ -65,6 +65,9 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^stanton\d+[a-z]? arccorp (?<site>.+)$")]
     private static partial Regex ArcCorpMineIdRegex();
 
+    [GeneratedRegex(@"^stanton\d+[a-z]? hurdynmining hdms ?(?<site>.+)$")]
+    private static partial Regex HurstonMiningIdRegex();
+
     /// <summary>Sites numérotés d'une même famille ("stanton4a shubin smca 6" -> "Mine Shubin SMCA6") : un seul motif plutôt qu'une entrée de catalogue par site.</summary>
     private static string? HumanizeNumberedSite(string normalized)
     {
@@ -72,6 +75,7 @@ public static partial class GameLogDestinations
         {
             (ShubinMineIdRegex(), "Mine Shubin", true),
             (ArcCorpMineIdRegex(), "Mine ArcCorp", false),
+            (HurstonMiningIdRegex(), "HDMS", false),
         })
         {
             var match = regex.Match(normalized);
