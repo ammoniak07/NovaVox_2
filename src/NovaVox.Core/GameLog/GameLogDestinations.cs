@@ -114,7 +114,7 @@ public static partial class GameLogDestinations
         ["loc rr s1 l2"] = "Faithful Dream Station",
         ["loc rr s1 l3"] = "Thundering Express Station HUR L 3",
         ["loc rr s1 l4"] = "Melodic Fields Station",
-        ["loc rr s1 l5"] = "High Course Station",
+        ["loc rr s1 l5"] = "High Course Station HUR L5",
         ["loc rr s2 l5"] = "Beautiful Glen Station",
         ["loc rr s3 l1"] = "Wide Forest Station",
         ["loc rr s3 l3"] = "Modern Express Station",
@@ -129,6 +129,7 @@ public static partial class GameLogDestinations
         ["rr hur l2"] = "Faithful Dream Station",
         ["rr hur l1"] = "Green Glade Station HUR L1",
         ["rr hur l3"] = "Thundering Express Station HUR L 3",
+        ["rr hur l5"] = "High Course Station HUR L5",
 
         ["loc rs ext stan terra jp1"] = "Terra Gateway",
         ["loc rs ext stan magnus jp1"] = "Nyx Gateway",

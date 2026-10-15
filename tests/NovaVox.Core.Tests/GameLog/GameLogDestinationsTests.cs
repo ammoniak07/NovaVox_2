@@ -43,6 +43,8 @@ public class GameLogDestinationsTests
     [InlineData("RR_MIC_L5", "Modern Icarus Station MIC L5")]
     [InlineData("RR_HUR_L3", "Thundering Express Station HUR L 3")]
     [InlineData("RR_HUR_L1", "Green Glade Station HUR L1")]
+    [InlineData("RR_HUR_L5", "High Course Station HUR L5")]
+    [InlineData("LOC_RR_S1_L5", "High Course Station HUR L5")]
     [InlineData("LOC_RR_S1_L1", "Green Glade Station HUR L1")]
     [InlineData("LOC_RR_S1_L3", "Thundering Express Station HUR L 3")]
     [InlineData("LOC_RR_S4_L5", "Modern Icarus Station MIC L5")]
