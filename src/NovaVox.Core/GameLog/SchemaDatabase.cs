@@ -120,6 +120,103 @@ public static class SchemaDatabase
         }
     }
 
+    /// <summary>Descriptions lues dans le global.ini du joueur (nom canonique -> texte), voir RegisterLiveDescriptions.</summary>
+    private static readonly ConcurrentDictionary<string, string> LiveDescriptions = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Langue des descriptions du global.ini chargé ("fr", "de"...), déduite
+    /// de l'en-tête des descriptions ("Fabricant:", "Hersteller:"...) plutôt
+    /// que du nom de dossier : une traduction installée à l'ancienne
+    /// remplace le fichier du dossier "english". Null si non reconnue.
+    /// </summary>
+    public static string? LiveDescriptionLanguage { get; private set; }
+
+    private static readonly Dictionary<string, string> ManufacturerLabelToLanguage = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Manufacturer"] = "en", ["Fabricant"] = "fr", ["Hersteller"] = "de",
+        ["Fabricante"] = "es", ["Produttore"] = "it", ["Fabrikant"] = "nl",
+    };
+
+    private static readonly System.Text.RegularExpressions.Regex HeaderLineRegex = new(@"^[^:]{1,40}:\s*\S.*$");
+    private static readonly System.Text.RegularExpressions.Regex MarkupRegex = new(@"</?EM\d*>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Enregistre les descriptions du global.ini du joueur (clés item_Desc...,
+    /// voir GameLogLocalization.ReadKeyedValues), dans la langue de SA
+    /// traduction installée — jamais redistribuées par NovaVox. La clé de
+    /// description d'un schéma se déduit de sa clé de nom (item_Name... ->
+    /// item_Desc...) ; les variantes de couleur partagent souvent la
+    /// description du modèle de base, d'où le repli qui retire un à un les
+    /// derniers segments contenant un chiffre ("..._arms_01_01_17" ->
+    /// "..._arms_01_01" -> "..._arms_01").
+    /// </summary>
+    public static void RegisterLiveDescriptions(IReadOnlyDictionary<string, string> descriptionValues)
+    {
+        LiveDescriptions.Clear();
+        LiveDescriptionLanguage = null;
+        var byKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var languageVotes = new Dictionary<string, int>();
+        foreach (var (key, value) in descriptionValues)
+        {
+            byKey[key] = value;
+            var colon = value.IndexOf(':');
+            if (colon > 0 && ManufacturerLabelToLanguage.TryGetValue(value[..colon].Trim(), out var lang))
+                languageVotes[lang] = languageVotes.GetValueOrDefault(lang) + 1;
+        }
+        if (languageVotes.Count == 0) return;
+        LiveDescriptionLanguage = languageVotes.MaxBy(kv => kv.Value).Key;
+
+        foreach (var (nameKey, canonicalName) in LocalizationKeyToName.Value)
+        {
+            var baseKey = nameKey.EndsWith(",P", StringComparison.Ordinal) ? nameKey[..^2] : nameKey;
+            if (!baseKey.StartsWith("item_Name", StringComparison.OrdinalIgnoreCase)) continue;
+            var tail = baseKey["item_Name".Length..];
+            while (true)
+            {
+                // Plusieurs clés possibles (item_DescX / item_Desc_X) : le jeu en a
+                // parfois deux, dont une réduite à l'en-tête — on garde la plus longue.
+                var best = DescriptionCandidates(tail)
+                    .Select(k => byKey.TryGetValue(k, out var raw) ? CleanIniDescription(raw) : "")
+                    .MaxBy(d => d.Length) ?? "";
+                if (best.Length > 0)
+                {
+                    LiveDescriptions[canonicalName] = best;
+                    break;
+                }
+                var lastUnderscore = tail.LastIndexOf('_');
+                if (lastUnderscore <= 0 || !tail[(lastUnderscore + 1)..].Any(char.IsDigit)) break;
+                tail = tail[..lastUnderscore];
+            }
+        }
+    }
+
+    private static IEnumerable<string> DescriptionCandidates(string tail)
+    {
+        var trimmed = tail.TrimStart('_');
+        return new[] { "item_Desc" + tail, "item_Desc_" + trimmed, "item_Desc" + trimmed }.Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Retire l'en-tête "Fabricant: ...\nType d'article: ..." (déjà affiché à part), le balisage et convertit les "\n" littéraux.</summary>
+    internal static string CleanIniDescription(string raw)
+    {
+        var lines = MarkupRegex.Replace(raw, "").Replace("\\n", "\n").Split('\n').Select(l => l.TrimEnd()).ToList();
+        var i = 0;
+        // Bloc(s) d'en-tête en tête de texte : lignes courtes "Libellé : valeur",
+        // séparés par des lignes vides. Un bloc ne compte comme en-tête que s'il
+        // est ENTIÈREMENT fait de telles lignes (une phrase du texte peut contenir
+        // " : " : "Élégante, fonctionnelle et mortelle : la gamme...").
+        while (i < lines.Count)
+        {
+            if (lines[i].Length == 0) { i++; continue; }
+            var end = i;
+            while (end < lines.Count && lines[end].Length > 0) end++;
+            if (!lines.Skip(i).Take(end - i).All(l => l.Length <= 80 && HeaderLineRegex.IsMatch(l))) break;
+            i = end;
+        }
+        // Rien après l'en-tête : la traduction n'a pas de texte pour cet objet.
+        return string.Join("\n", lines.Skip(i)).Trim();
+    }
+
     /// <summary>
     /// Recherche insensible à la casse/aux espaces/au style de guillemets
     /// (voir NormalizeForMatch) — null si ce nom ne correspond à aucun
@@ -151,6 +248,16 @@ public static class SchemaDatabase
             if (info is null && LiveNameAliases.TryGetValue(normalized, out var liveCanonicalName))
                 info = LookupEntry(liveCanonicalName);
             if (info is null) return null;
+        }
+
+        if (!string.IsNullOrEmpty(language)
+            && string.Equals(language, LiveDescriptionLanguage, StringComparison.OrdinalIgnoreCase)
+            && LiveDescriptions.TryGetValue(info.Name, out var liveDescription)
+            // Traduction manifestement tronquée (ex. Aves Shrike : une phrase sur
+            // quatre) : la traduction intégrée, complète, est préférable.
+            && liveDescription.Length >= 0.5 * (info.Description?.Length ?? 0))
+        {
+            return info with { Description = liveDescription };
         }
 
         if (!string.IsNullOrEmpty(language)

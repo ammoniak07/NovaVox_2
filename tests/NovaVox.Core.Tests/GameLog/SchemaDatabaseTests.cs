@@ -301,4 +301,30 @@ public class SchemaDatabaseTests
     {
         Assert.Empty(SchemaDatabase.SearchNames("zzzzznevermatchesanything"));
     }
+
+    [Fact]
+    public void RegisterLiveDescriptions_UsesInstalledTranslationForMatchingLanguageOnly()
+    {
+        try
+        {
+            SchemaDatabase.RegisterLiveDescriptions(new Dictionary<string, string>
+            {
+                ["item_DescKBAR_BallisticCannon_S2"] = "Fabricant: KnightBridge Arms\\nType d'article: Canon balistique\\nTaille: 2\\n\\n<EM4>Texte</EM4> officiel.\\nLe polyvalent Greatsword 10-Series de taille deux, avec ses puissantes munitions balistiques, vous accompagnera jusqu'au bout du conflit grâce à sa longue portée et à son fort potentiel de dégâts.",
+                // Variante de couleur sans description propre : repli sur le modèle de base.
+                ["item_Desc_cds_legacy_armor_heavy_arms_01"] = "Fabricant: CDS\\n\\nArmure ADP.",
+                ["item_Desc_ccc_medium_armor_arms_01_01_shrike"] = "Type d'article : Armure Moyenne\\n\\nHonorez l'esthétique Tevarin",
+            });
+
+            Assert.Equal("fr", SchemaDatabase.LiveDescriptionLanguage);
+            Assert.Equal("Texte officiel.\nLe polyvalent Greatsword 10-Series de taille deux, avec ses puissantes munitions balistiques, vous accompagnera jusqu'au bout du conflit grâce à sa longue portée et à son fort potentiel de dégâts.", SchemaDatabase.Find("10-Series Greatsword Cannon", "fr")!.Description);
+            // Traduction tronquée (moins de la moitié du texte anglais) : la traduction intégrée reste utilisée.
+            Assert.DoesNotContain("Honorez l'esthétique Tevarin", SchemaDatabase.Find("Aves Shrike Arms", "fr")!.Description);
+            // Autre langue d'interface : la traduction installée (en français) ne s'applique pas.
+            Assert.StartsWith("KnightBridge Arms knows", SchemaDatabase.Find("10-Series Greatsword Cannon", "de")!.Description);
+        }
+        finally
+        {
+            SchemaDatabase.RegisterLiveDescriptions(new Dictionary<string, string>());
+        }
+    }
 }
