@@ -325,7 +325,6 @@
                                                                 ToolTip="Afficher/masquer les étapes supplémentaires" Click="ToggleExtraSteps_Click" />
                                                         <Button Content="+ étape" Height="34" Margin="6,0,0,0" Click="AddExtraStep_Click"
                                                                 ToolTip="Ajouter une étape : une suite de touches jouée après l'action principale" />
-                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="6,0,0,0" Click="CommandKeysButton_Click" ToolTip="Modifier la touche / maintien / répétition" Content="⌨️" />
                                                         <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" Margin="6,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
                                                             <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="16" />
                                                         </Button>
