@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.5
 ------
+- Réglages réorganisés, sans aucune option retirée : l'onglet "Sons" devient "🎤 Micro & écoute" (modèle vocal, micro, seuil, mode d'écoute, touche, annulation d'écho) et un nouvel onglet "🔊 Voix" regroupe tout ce qui concerne la voix de NovaVox (sortie, volume, prononciation des nombres, confirmation des commandes, effet radio, moteur Piper, voix, vitesse, expressivité) — ces trois derniers réglages étaient rangés dans "IA Gemini" alors qu'ils servent à toutes les annonces. La disposition clavier passe dans l'onglet "⬡ NovaVox", et "Réinitialiser l'application" est isolé tout en bas dans une "Zone sensible". Onglet Game.log : les emplacements du Game.log et des archives sont rangés derrière une case "Afficher les réglages avancés" (cochée automatiquement si un chemin est renseigné).
 - Commandes : les flèches 🔼/🔽 de chaque ligne (groupes et commandes) sont retirées — on réordonne les lignes en les faisant glisser par la poignée ⠿ à gauche.
 - Commandes : le bouton ⌨️ de chaque commande est retiré — il faisait doublon avec le badge de touche à gauche de la ligne, qui ouvre la même fenêtre (touche, maintien, répétition).
 - Schémas : base mise à jour avec les données du jeu 4.10.2 — 13 nouveaux schémas reconnus avec fabricant, description, caractéristiques et ingrédients : armure lourde Monolith complète (casque, torse, bras, jambes, sac à dos) et sa variante Shadowflux, F55 "Shadowflux" LMG, générateur DayBreak et moteur quantique Goliath.

@@ -491,12 +491,12 @@
                         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}">
                             <Run Text="👋 Bienvenue !" FontWeight="Bold" />
                             <LineBreak />
-                            <Run Text="Avant de pouvoir utiliser NovaVox, installe ci-dessous un modèle de reconnaissance vocale ET le moteur de synthèse Piper (onglet Sons)." />
+                            <Run Text="Avant de pouvoir utiliser NovaVox, installe ci-dessous un modèle de reconnaissance vocale (onglet 🎤 Micro &amp; écoute) ET le moteur de synthèse Piper (onglet 🔊 Voix)." />
                         </TextBlock>
                     </Border>
 
                     <TabControl x:Name="SettingsTabControl" Grid.Row="2" Background="Transparent" Margin="10,4,10,10">
-                        <TabItem x:Name="SonsSettingsTab" Header="🔊 Sons">
+                        <TabItem x:Name="SonsSettingsTab" Header="🎤 Micro &amp; écoute">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <TextBlock x:Name="VoskModelLabelText" Text="Modèle de reconnaissance vocale (Vosk)" FontWeight="Bold" Margin="0,0,0,6" />
@@ -560,15 +560,18 @@
                                 </StackPanel>
                                 <TextBlock x:Name="ListenHotkeyKeyboardHintText" Text="Ou saisis une combinaison clavier (ex : ctrl+f9) :" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
                                 <TextBox x:Name="ListenHotkeyBox" Margin="0,4,0,0" LostFocus="ListenHotkeyBox_LostFocus" />
+                                <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
+                            </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
 
-                                <TextBlock x:Name="KbLayoutLabelText" Text="Disposition clavier" FontWeight="Bold" Margin="0,16,0,6" />
-                                <ComboBox x:Name="KbLayoutCombo" SelectionChanged="KbLayoutCombo_SelectionChanged">
-                                    <ComboBoxItem Content="AZERTY (France)" Tag="azerty_fr" />
-                                    <ComboBoxItem Content="AZERTY (Belgique)" Tag="azerty_be" />
-                                    <ComboBoxItem Content="QWERTY" Tag="qwerty" />
-                                </ComboBox>
-
-                                <TextBlock x:Name="VoiceOutputSectionLabelText" Text="Voix (sortie)" FontWeight="Bold" Margin="0,16,0,6" />
+                        <!-- Voix de NovaVox (sortie) : utilisée par TOUTES les annonces
+                             (Game.log, confirmations, réponses de Gemini) — avant répartie
+                             entre l'onglet Sons et l'onglet IA Gemini. -->
+                        <TabItem x:Name="VoiceSettingsTab" Header="🔊 Voix">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="10">
+                                <TextBlock x:Name="VoiceOutputSectionLabelText" Text="Voix (sortie)" FontWeight="Bold" Margin="0,0,0,6" />
                                 <TextBlock x:Name="OutputDeviceLabelText" Text="Périphérique de sortie" />
                                 <ComboBox x:Name="OutputDeviceCombo" Margin="0,0,0,8" SelectionChanged="OutputDeviceCombo_SelectionChanged" />
                                 <TextBlock x:Name="TtsVolumeLabelText" Text="Volume de la voix" />
@@ -578,36 +581,6 @@
                                     <ComboBoxItem Content="Français (France) — soixante-dix, quatre-vingt-dix" Tag="france" />
                                     <ComboBoxItem Content="Français (Belgique) — septante, nonante" Tag="belgique" />
                                 </ComboBox>
-                                <CheckBox x:Name="AecEnabledCheckbox" Content="Annulation d'écho (expérimentale)" Margin="0,12,0,0" Checked="AecEnabledCheckbox_Changed" Unchecked="AecEnabledCheckbox_Changed" />
-                            </StackPanel>
-                            </ScrollViewer>
-                        </TabItem>
-
-                        <TabItem x:Name="GeminiSettingsTab" Header="🌟 IA Gemini">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel Margin="10">
-                                <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
-                                <CheckBox x:Name="GeminiWikiEnabledCheckbox" Content="Rechercher du contexte sur le wiki Star Citizen" Margin="0,6,0,0"
-                                          ToolTip="À désactiver pour un profil sans rapport avec Star Citizen (voir Profil > 🕹 Autre jeu)."
-                                          Checked="GeminiWikiEnabledCheckbox_Changed" Unchecked="GeminiWikiEnabledCheckbox_Changed" />
-                                <TextBlock Text="Clé API" Margin="0,12,0,4" />
-                                <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
-                                <TextBlock Text="Modèle" Margin="0,12,0,4" />
-                                <ComboBox x:Name="GeminiModelCombo" DisplayMemberPath="Label" SelectionChanged="GeminiModelCombo_SelectionChanged" />
-                                <TextBlock x:Name="GeminiModelDescText" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
-                                <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
-                                <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
-                                <TextBlock Text="Ton prénom" Margin="0,12,0,4" />
-                                <TextBox x:Name="UserNameBox" LostFocus="UserNameBox_LostFocus" ToolTip="Gemini t'appellera par ce prénom dans ses réponses — laisse vide pour ne pas le préciser." />
-                                <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />
-                                <ComboBox x:Name="GeminiResponseLengthCombo" SelectionChanged="GeminiResponseLengthCombo_SelectionChanged">
-                                    <ComboBoxItem Content="Courte" Tag="short" />
-                                    <ComboBoxItem Content="Normale" Tag="normal" />
-                                    <ComboBoxItem Content="Longue" Tag="long" />
-                                </ComboBox>
-                                <TextBlock Text="Contexte personnalisé" Margin="0,12,0,4" />
-                                <TextBox x:Name="GeminiContextBox" AcceptsReturn="True" Height="70" TextWrapping="Wrap"
-                                         VerticalScrollBarVisibility="Auto" LostFocus="GeminiContextBox_LostFocus" />
                                 <CheckBox x:Name="ConfirmCommandsCheckbox" Content="Confirmer les commandes à voix haute" Margin="0,16,0,0"
                                           Checked="ConfirmCommandsCheckbox_Changed" Unchecked="ConfirmCommandsCheckbox_Changed" />
                                 <CheckBox x:Name="RadioEffectCheckbox" Content="Effet radio de vaisseau" Margin="0,8,0,0" Checked="RadioEffectCheckbox_Changed" Unchecked="RadioEffectCheckbox_Changed" />
@@ -648,6 +621,36 @@
                             </ScrollViewer>
                         </TabItem>
 
+                        <TabItem x:Name="GeminiSettingsTab" Header="🌟 IA Gemini">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="10">
+                                <CheckBox x:Name="GeminiEnabledCheckbox" Content="Activer l'assistante Gemini" Checked="GeminiEnabledCheckbox_Changed" Unchecked="GeminiEnabledCheckbox_Changed" />
+                                <CheckBox x:Name="GeminiWikiEnabledCheckbox" Content="Rechercher du contexte sur le wiki Star Citizen" Margin="0,6,0,0"
+                                          ToolTip="À désactiver pour un profil sans rapport avec Star Citizen (voir Profil > 🕹 Autre jeu)."
+                                          Checked="GeminiWikiEnabledCheckbox_Changed" Unchecked="GeminiWikiEnabledCheckbox_Changed" />
+                                <TextBlock Text="Clé API" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiApiKeyBox" LostFocus="GeminiApiKeyBox_LostFocus" />
+                                <TextBlock Text="Modèle" Margin="0,12,0,4" />
+                                <ComboBox x:Name="GeminiModelCombo" DisplayMemberPath="Label" SelectionChanged="GeminiModelCombo_SelectionChanged" />
+                                <TextBlock x:Name="GeminiModelDescText" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock Text="Nom de l'assistante" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiNameBox" LostFocus="GeminiNameBox_LostFocus" />
+                                <TextBlock Text="Ton prénom" Margin="0,12,0,4" />
+                                <TextBox x:Name="UserNameBox" LostFocus="UserNameBox_LostFocus" ToolTip="Gemini t'appellera par ce prénom dans ses réponses — laisse vide pour ne pas le préciser." />
+                                <TextBlock Text="Longueur des réponses" Margin="0,12,0,4" />
+                                <ComboBox x:Name="GeminiResponseLengthCombo" SelectionChanged="GeminiResponseLengthCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Courte" Tag="short" />
+                                    <ComboBoxItem Content="Normale" Tag="normal" />
+                                    <ComboBoxItem Content="Longue" Tag="long" />
+                                </ComboBox>
+                                <TextBlock Text="Contexte personnalisé" Margin="0,12,0,4" />
+                                <TextBox x:Name="GeminiContextBox" AcceptsReturn="True" Height="70" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" LostFocus="GeminiContextBox_LostFocus" />
+
+                            </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
                         <TabItem x:Name="GameLogSettingsTab" Header="🛰 Game.log">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="GameLogEnabledCheckbox" Content="Surveiller le Game.log" Checked="GameLogEnabledCheckbox_Changed" Unchecked="GameLogEnabledCheckbox_Changed" />
@@ -660,22 +663,27 @@
                                 <TextBlock Text="Pseudo RSI" Margin="0,16,0,4" />
                                 <TextBox x:Name="PlayerHandleBox" LostFocus="PlayerHandleBox_LostFocus" />
 
-                                <TextBlock Text="Emplacement du Game.log" Margin="0,16,0,4" />
-                                <TextBlock Text="Laisse vide pour une détection automatique (tous les disques sont essayés). À renseigner seulement si Star Citizen est installé ailleurs qu'un emplacement standard."
-                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBox x:Name="GameLogPathBox" Width="280" LostFocus="GameLogPathBox_LostFocus"
-                                             ToolTip="Chemin complet vers Game.log (ex. D:\StarCitizen\LIVE\Game.log)" />
-                                    <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogPathBrowseButton_Click" />
-                                </StackPanel>
+                                <!-- Rarement utile (détection automatique) : replié par défaut, déplié
+                                     au chargement si un chemin personnalisé est déjà renseigné. -->
+                                <CheckBox x:Name="GameLogAdvancedCheckbox" Content="Afficher les réglages avancés (emplacements des fichiers)" Margin="0,16,0,0" />
+                                <StackPanel Margin="20,4,0,0" Visibility="{Binding IsChecked, ElementName=GameLogAdvancedCheckbox, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="Emplacement du Game.log" Margin="0,4,0,4" />
+                                    <TextBlock Text="Laisse vide pour une détection automatique (tous les disques sont essayés). À renseigner seulement si Star Citizen est installé ailleurs qu'un emplacement standard."
+                                        Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox x:Name="GameLogPathBox" Width="280" LostFocus="GameLogPathBox_LostFocus"
+                                            ToolTip="Chemin complet vers Game.log (ex. D:\StarCitizen\LIVE\Game.log)" />
+                                        <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogPathBrowseButton_Click" />
+                                    </StackPanel>
 
-                                <TextBlock Text="Emplacement du dossier logbackups" Margin="0,16,0,4" />
-                                <TextBlock Text="Laisse vide pour utiliser le dossier « logbackups » juste à côté du Game.log ci-dessus. À renseigner seulement si tes archives sont ailleurs (ex. copiées sur un autre disque) — utilisé par « 🔍 Scanner les archives » dans Réglages > 📐 Schémas."
-                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBox x:Name="GameLogBackupsPathBox" Width="280" LostFocus="GameLogBackupsPathBox_LostFocus"
-                                             ToolTip="Chemin complet vers le dossier logbackups (ex. D:\StarCitizen\LIVE\logbackups)" />
-                                    <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogBackupsPathBrowseButton_Click" />
+                                    <TextBlock Text="Emplacement du dossier logbackups" Margin="0,16,0,4" />
+                                    <TextBlock Text="Laisse vide pour utiliser le dossier « logbackups » juste à côté du Game.log ci-dessus. À renseigner seulement si tes archives sont ailleurs (ex. copiées sur un autre disque) — utilisé par « 🔍 Scanner les archives » dans Réglages > 📐 Schémas."
+                                        Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox x:Name="GameLogBackupsPathBox" Width="280" LostFocus="GameLogBackupsPathBox_LostFocus"
+                                            ToolTip="Chemin complet vers le dossier logbackups (ex. D:\StarCitizen\LIVE\logbackups)" />
+                                        <Button Content="Parcourir…" Margin="6,0,0,0" Click="GameLogBackupsPathBrowseButton_Click" />
+                                    </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </TabItem>
@@ -737,6 +745,7 @@
                         </TabItem>
 
                         <TabItem Header="⬡ NovaVox">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="AutolaunchCheckbox" Content="Lancer NovaVox automatiquement au démarrage de Star Citizen"
                                           Checked="AutolaunchCheckbox_Changed" Unchecked="AutolaunchCheckbox_Changed" />
@@ -773,7 +782,14 @@
                                     <ComboBoxItem Content="Deutsch" Tag="de" />
                                 </ComboBox>
 
-                                <Button Content="Réinitialiser l'application" Margin="0,24,0,0" HorizontalAlignment="Left" Click="ResetApplication_Click" />
+
+                                <!-- Disposition du clavier utilisée pour les touches des commandes. -->
+                                <TextBlock x:Name="KbLayoutLabelText" Text="Disposition clavier" FontWeight="Bold" Margin="0,24,0,6" />
+                                <ComboBox x:Name="KbLayoutCombo" SelectionChanged="KbLayoutCombo_SelectionChanged">
+                                    <ComboBoxItem Content="AZERTY (France)" Tag="azerty_fr" />
+                                    <ComboBoxItem Content="AZERTY (Belgique)" Tag="azerty_be" />
+                                    <ComboBoxItem Content="QWERTY" Tag="qwerty" />
+                                </ComboBox>
 
                                 <TextBlock Text="Configuration" FontWeight="Bold" Margin="0,24,0,6" />
                                 <StackPanel Orientation="Horizontal">
@@ -785,7 +801,13 @@
                                 <TextBlock Text="Mise à jour" FontWeight="Bold" Margin="0,24,0,6" />
                                 <Button Content="Vérifier les mises à jour" HorizontalAlignment="Left" Click="CheckForUpdate_Click" />
                                 <TextBlock x:Name="UpdateStatusText" Margin="0,4,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+
+                                <!-- Action sensible, isolée en bas de l'onglet. -->
+                                <TextBlock Text="Zone sensible" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" Margin="0,32,0,6" />
+                                <Button Content="Réinitialiser l'application" Foreground="{DynamicResource DangerBrush}" BorderBrush="{DynamicResource DangerBrush}"
+                                        HorizontalAlignment="Left" Click="ResetApplication_Click" />
                             </StackPanel>
+                            </ScrollViewer>
                         </TabItem>
 
                         <TabItem Header="🙏 Crédits">

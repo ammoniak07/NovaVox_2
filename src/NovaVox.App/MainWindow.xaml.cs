@@ -1420,6 +1420,8 @@ public partial class MainWindow : Window
             PlayerHandleBox.Text = ai.GameLogPlayerHandle;
             GameLogPathBox.Text = ai.GameLogCustomPath;
             GameLogBackupsPathBox.Text = ai.GameLogBackupsCustomPath;
+            // Section "Avancé" repliée par défaut, sauf si un chemin y est déjà renseigné.
+            GameLogAdvancedCheckbox.IsChecked = !string.IsNullOrWhiteSpace(ai.GameLogCustomPath) || !string.IsNullOrWhiteSpace(ai.GameLogBackupsCustomPath);
 
             var overlay = _state.Overlay;
             OverlayEnabledCheckbox.IsChecked = overlay.Enabled;
@@ -2010,6 +2012,7 @@ public partial class MainWindow : Window
         ThemeCombo.ToolTip = T("topbar.theme");
         SettingsTitleText.Text = T("settings.title");
         SonsSettingsTab.Header = T("settings.tab.sons");
+        VoiceSettingsTab.Header = T("settings.tab.voice");
         GeminiSettingsTab.Header = T("settings.tab.gemini");
         GameLogSettingsTab.Header = T("settings.tab.gamelog");
         UiLanguageLabelText.Text = T("settings.language.label");
