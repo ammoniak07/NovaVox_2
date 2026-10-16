@@ -276,8 +276,6 @@
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                                                     <Button Width="34" Height="34" Padding="0" FontSize="15" Content="{Binding CollapseGlyph}"
                                                             Click="ToggleTitleCollapsed_Click" ToolTip="Replier/déplier ce groupe" />
-                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
-                                                    <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
                                                     <Button Style="{StaticResource DeleteIconButtonStyle}" Width="34" Height="34" Margin="4,0,0,0" Click="DeleteRow_Click" ToolTip="Supprimer">
                                                         <TextBlock Style="{StaticResource DeleteIconGlyphStyle}" FontSize="16" />
                                                     </Button>
@@ -319,9 +317,7 @@
                                                             ToolTip="Afficher/masquer les synonymes" Click="ToggleSynonyms_Click" Margin="0,0,6,0" />
 
                                                     <StackPanel Grid.Column="4" Orientation="Horizontal">
-                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Click="MoveUp_Click" ToolTip="Monter" Content="🔼" />
-                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="4,0,0,0" Click="MoveDown_Click" ToolTip="Descendre" Content="🔽" />
-                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Margin="8,0,0,0" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
+                                                        <Button Width="34" Height="34" Padding="0" FontSize="15" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
                                                         <Button Content="+ syn" Height="34" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
                                                         <Button Content="{Binding ExtraStepsCountLabel}" Visibility="{Binding HasExtraSteps, Converter={StaticResource BoolToVis}}"
                                                                 Background="{DynamicResource PanelBrush}" Foreground="{DynamicResource AccentBrush}"

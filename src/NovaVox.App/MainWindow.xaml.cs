@@ -533,22 +533,6 @@ public partial class MainWindow : Window
     private static VoiceCommandRow? RowFromSender(object sender) =>
         (sender as FrameworkElement)?.DataContext as VoiceCommandRow;
 
-    private void MoveUp_Click(object sender, RoutedEventArgs e)
-    {
-        var row = RowFromSender(sender);
-        if (row is null) return;
-        var idx = _state.Commands.IndexOf(row);
-        if (idx > 0) _state.Commands.Move(idx, idx - 1);
-    }
-
-    private void MoveDown_Click(object sender, RoutedEventArgs e)
-    {
-        var row = RowFromSender(sender);
-        if (row is null) return;
-        var idx = _state.Commands.IndexOf(row);
-        if (idx >= 0 && idx < _state.Commands.Count - 1) _state.Commands.Move(idx, idx + 1);
-    }
-
     private void DeleteRow_Click(object sender, RoutedEventArgs e)
     {
         var row = RowFromSender(sender);
