@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.6
 ------
+- Destinations : "rr p3 leo" est reconnu comme Orbituary (et "rr p6 leo" comme Ruine Station), identifiants utilisés par le jeu pour les stations LEO de Pyro.
 
 v0.1.5
 ------

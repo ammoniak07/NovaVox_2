@@ -30,6 +30,8 @@ public class GameLogDestinationsTests
     [InlineData("RR_JP_PyroNyx", "Nyx Gateway (Pyro)")]
     [InlineData("RR_JP_NyxPyro", "Pyro Gateway (Nyx)")]
     [InlineData("RR_Arc_L4", "Faint Glen Station")]
+    [InlineData("RR_P3_LEO", "Orbituary")]
+    [InlineData("RR_P6_LEO", "Ruine Station")]
     [InlineData("RR_Hur_L2", "Faithful Dream Station")]
     [InlineData("AsteroidClusterBase_Nyx_Social_Keeger_002", "Qv Breaker Station BRK 425")]
     [InlineData("Nyx_Levski", "Levski")]

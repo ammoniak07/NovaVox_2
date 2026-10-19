@@ -40,7 +40,8 @@ public static partial class GameLogDestinations
     /// équivalence, ces identifiants ne correspondaient à aucune entrée du
     /// catalogue et retombaient sur un repli générique.
     /// </summary>
-    [GeneratedRegex(@"^rr p(?<system>\d+) l(?<point>\d+)$")]
+    /// (Aussi "rr p3 leo" : la station LEO du système, ex. Orbituary = pyro3 leo.)
+    [GeneratedRegex(@"^rr p(?<system>\d+) (?:l(?<point>\d+)|(?<leo>leo))$")]
     private static partial Regex RrPyroStationIdRegex();
 
     /// <summary>
@@ -108,7 +109,9 @@ public static partial class GameLogDestinations
     {
         var rrPyroMatch = RrPyroStationIdRegex().Match(normalized);
         if (rrPyroMatch.Success)
-            return $"rs ext pyro{rrPyroMatch.Groups["system"].Value} l{rrPyroMatch.Groups["point"].Value}";
+            return rrPyroMatch.Groups["leo"].Success
+                ? $"rs ext pyro{rrPyroMatch.Groups["system"].Value} leo"
+                : $"rs ext pyro{rrPyroMatch.Groups["system"].Value} l{rrPyroMatch.Groups["point"].Value}";
 
         var rrLeoMatch = RrLeoStationIdRegex().Match(normalized);
         if (rrLeoMatch.Success)
