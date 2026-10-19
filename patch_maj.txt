@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.1.6
+------
+
 v0.1.5
 ------
 - Réglages réorganisés, sans aucune option retirée : l'onglet "Sons" devient "🎤 Micro & écoute" (modèle vocal, micro, seuil, mode d'écoute, touche, annulation d'écho) et un nouvel onglet "🔊 Voix" regroupe tout ce qui concerne la voix de NovaVox (sortie, volume, prononciation des nombres, confirmation des commandes, effet radio, moteur Piper, voix, vitesse, expressivité) — ces trois derniers réglages étaient rangés dans "IA Gemini" alors qu'ils servent à toutes les annonces. La disposition clavier passe dans l'onglet "⬡ NovaVox", et "Réinitialiser l'application" est isolé tout en bas dans une "Zone sensible". Onglet Game.log : les emplacements du Game.log et des archives sont rangés derrière une case "Afficher les réglages avancés" (cochée automatiquement si un chemin est renseigné).
