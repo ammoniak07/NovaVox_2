@@ -1053,7 +1053,7 @@
                             </ItemsControl>
 
                             <TextBlock Text="🔧 Corrections de lecture pour des notifications précises" FontWeight="Bold" Margin="0,16,0,4" />
-                            <TextBlock Text="Chaque nouvelle notification HUD du jeu apparaît automatiquement ci-dessous dès qu'elle est détectée. Modifie le texte à lire, ou laisse-le tel quel pour l'entendre lu mot pour mot."
+                            <TextBlock Text="Chaque nouvelle notification HUD du jeu apparaît automatiquement ci-dessous dès qu'elle est détectée. Modifie le texte à lire, ou laisse-le tel quel pour l'entendre lu mot pour mot. {name} (et les autres mots entre accolades) est remplacé par le vrai nom (contrat, objectif, joueur…). « 🎯 Seulement celle-ci » crée une correction pour la dernière notification vue uniquement, sans changer les autres. « ▶ Écouter » lit le texte avant d'enregistrer."
                                        Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
                             <CheckBox x:Name="ShowHiddenHudOverridesCheckbox" Content="Afficher les lignes cachées" Margin="0,0,0,10"
                                       ToolTip="Affiche aussi les corrections cochées « Cacher »" Click="ShowHiddenHudOverridesCheckbox_Click" />
@@ -1088,7 +1088,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap">
-                                                        <Run Text="Détecté : « " /><Run Text="{Binding RawText, Mode=OneWay}" /><Run Text=" »" />
+                                                        <Run Text="{Binding DetectedPrefix, Mode=OneWay}" /><Run Text="{Binding RawText, Mode=OneWay}" /><Run Text=" »" />
                                                     </TextBlock>
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                         <TextBlock Text="● nouvelle entrée" Foreground="{DynamicResource AmberBrush}" FontSize="11" FontWeight="Bold"
@@ -1097,17 +1097,32 @@
                                                                    Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
                                                     </StackPanel>
                                                 </Grid>
+                                                <Grid Margin="0,4,0,0" Visibility="{Binding HasExample, Converter={StaticResource BoolToVis}}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center">
+                                                        <Run Text="Dernière vue : « " /><Run Text="{Binding LastExample, Mode=OneWay}" /><Run Text=" »" />
+                                                    </TextBlock>
+                                                    <Button Grid.Column="1" Content="🎯 Seulement celle-ci" Margin="8,0,0,0" Click="MakeExactHudOverride_Click"
+                                                            ToolTip="Crée une correction pour cette notification précise uniquement — les autres gardent la correction ci-dessous"
+                                                            Visibility="{Binding CanMakeExact, Converter={StaticResource BoolToVis}}" />
+                                                </Grid>
                                                 <Grid Margin="0,4,0,0">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBox Grid.Column="0" Text="{Binding CustomText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" />
-                                                    <Button Grid.Column="1" Content="Enregistrer" Click="SaveHudOverride_Click" />
-                                                    <Button Grid.Column="2" Content="Supprimer" Margin="6,0,0,0" Click="DeleteHudOverride_Click" />
-                                                    <CheckBox Grid.Column="3" Content="Cacher" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                    <Button Grid.Column="1" Content="▶ Écouter" Margin="0,0,6,0" Click="ListenHudOverride_Click"
+                                                            ToolTip="Lit ce texte avec la voix actuelle (avec le dernier nom vu à la place de {name})" />
+                                                    <Button Grid.Column="2" Content="Enregistrer" Click="SaveHudOverride_Click" />
+                                                    <Button Grid.Column="3" Content="Supprimer" Margin="6,0,0,0" Click="DeleteHudOverride_Click" />
+                                                    <CheckBox Grid.Column="4" Content="Cacher" Margin="10,0,0,0" VerticalAlignment="Center"
                                                               IsChecked="{Binding IsHidden}" Click="HideHudOverride_Click" />
                                                 </Grid>
                                             </StackPanel>

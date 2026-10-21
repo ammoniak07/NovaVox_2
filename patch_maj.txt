@@ -3,6 +3,8 @@ NOVAVOX — Notes de mise à jour
 v0.1.6
 ------
 - Destinations : "rr p3 leo" est reconnu comme Orbituary (et "rr p6 leo" comme Ruine Station), identifiants utilisés par le jeu pour les stations LEO de Pyro.
+- Corrections de lecture des notifications : nouveau bouton "🎯 Seulement celle-ci" sur chaque modèle (ex. "Contrat accepté : {name}"), qui crée une correction pour la dernière notification vue uniquement (un contrat, un objectif ou un joueur précis), rangée juste sous son modèle. Les autres notifications du même type gardent la correction commune.
+- Corrections de lecture des notifications : chaque ligne affiche la dernière notification vue pour ce modèle, et un bouton "▶ Écouter" lit le texte corrigé avec la voix actuelle (avec le vrai nom à la place de {name}) avant d'enregistrer.
 
 v0.1.5
 ------

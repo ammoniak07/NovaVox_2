@@ -12,6 +12,23 @@ public sealed class HudOverrideRowVm : INotifyPropertyChanged
     /// <summary>Texte brut exact détecté dans le jeu — sert de clé.</summary>
     public required string RawText { get; init; }
 
+    /// <summary>true pour une correction de CETTE notification précise (AiConfig.GameLogHudExactOverrides), false pour un gabarit commun (AiConfig.GameLogHudOverrides).</summary>
+    public bool IsExact { get; init; }
+
+    public string DetectedPrefix => IsExact ? "🎯 Seulement pour : « " : "Détecté : « ";
+
+    /// <summary>Dernier texte exact vu pendant cette session pour ce gabarit (ex. "Contrat accepté : Relay Race") — exemple pour "▶ Écouter" et "🎯 Seulement celle-ci".</summary>
+    private string? _lastExample;
+    public string? LastExample
+    {
+        get => _lastExample;
+        set { _lastExample = value; Raise(); Raise(nameof(HasExample)); Raise(nameof(CanMakeExact)); }
+    }
+
+    public bool HasExample => !IsExact && !string.IsNullOrEmpty(_lastExample) && _lastExample != RawText;
+
+    public bool CanMakeExact => HasExample;
+
     private string _customText = "";
     public string CustomText { get => _customText; set { _customText = value; Raise(); } }
 

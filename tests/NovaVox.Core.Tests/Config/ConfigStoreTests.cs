@@ -453,6 +453,19 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_GameLogHudExactOverridesRoundTripWithoutTemplateMerge()
+    {
+        var store = new AiConfigStore(_dir);
+        var config = new AiConfig();
+        config.GameLogHudExactOverrides["Contrat accepté : Relay Race"] = "Contrat accepté : course de relais";
+        store.Save(config);
+
+        var loaded = new AiConfigStore(_dir).Load();
+        Assert.Equal("Contrat accepté : course de relais", loaded.GameLogHudExactOverrides["Contrat accepté : Relay Race"]);
+        Assert.DoesNotContain("Contrat accepté : {name}", loaded.GameLogHudOverrides.Keys);
+    }
+
+    [Fact]
     public void AiConfig_GameLogHudOverridesHiddenRoundTrips()
     {
         var store = new AiConfigStore(_dir);

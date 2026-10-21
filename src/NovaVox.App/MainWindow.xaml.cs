@@ -2462,6 +2462,12 @@ public partial class MainWindow : Window
             HookHudOverrideRow(row);
             _hudOverrideRows.Add(row);
         }
+        foreach (var (exactText, customText) in _state.Ai.GameLogHudExactOverrides)
+        {
+            var row = new HudOverrideRowVm { RawText = exactText, CustomText = customText, IsExact = true, IsHidden = _state.Ai.GameLogHudOverridesHidden.Contains(exactText) };
+            HookHudOverrideRow(row);
+            InsertExactHudOverrideRow(row);
+        }
         GameLogHudOverridesList.ItemsSource = _hudOverrideRows;
         RefreshHiddenHudOverridesCount();
         RefreshGameLogSearchVisibility();
@@ -3387,6 +3393,11 @@ public partial class MainWindow : Window
             HookHudOverrideRow(row);
             _hudOverrideRows.Insert(0, row);
         }
+        if (result.HudTemplateKey is not null && result.HudExactText is not null)
+        {
+            var templateRow = _hudOverrideRows.FirstOrDefault(r => !r.IsExact && r.RawText == result.HudTemplateKey);
+            if (templateRow is not null) templateRow.LastExample = result.HudExactText;
+        }
         if (result.IsNewDestinationAlias && result.DestinationAliasKey is not null)
         {
             var row = new DestinationAliasRowVm { RawKey = result.DestinationAliasKey, CustomName = _state.Ai.GameLogDestinationAliases[result.DestinationAliasKey], IsNew = true };
@@ -3433,10 +3444,71 @@ public partial class MainWindow : Window
         AppendLog($"Phrase « {row.Label} » enregistrée.", "success");
     }
 
+    /// <summary>Place une correction "notification précise" juste sous la ligne de son gabarit commun (ou à la fin si ce gabarit n'est pas dans la liste).</summary>
+    private void InsertExactHudOverrideRow(HudOverrideRowVm row)
+    {
+        var templateKey = GameLogAnnouncer.HudTemplateKeyOf(row.RawText);
+        var index = -1;
+        for (var i = 0; i < _hudOverrideRows.Count; i++)
+        {
+            var r = _hudOverrideRows[i];
+            if ((!r.IsExact && r.RawText == templateKey) || (r.IsExact && index >= 0 && GameLogAnnouncer.HudTemplateKeyOf(r.RawText) == templateKey))
+                index = i;
+        }
+        if (index < 0) _hudOverrideRows.Add(row);
+        else _hudOverrideRows.Insert(index + 1, row);
+    }
+
+    private void MakeExactHudOverride_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm templateRow || templateRow.LastExample is not { } exactText) return;
+        var existing = _hudOverrideRows.FirstOrDefault(r => r.IsExact && r.RawText == exactText);
+        if (existing is not null)
+        {
+            existing.IsHidden = false;
+            existing.IsNew = true;
+            if (_state.Ai.GameLogHudOverridesHidden.Remove(exactText)) SaveAiAndLog();
+            RefreshHiddenHudOverridesCount();
+            RefreshGameLogSearchVisibility();
+            return;
+        }
+        var row = new HudOverrideRowVm
+        {
+            RawText = exactText,
+            CustomText = GameLogAnnouncer.PreviewHudText(templateRow.CustomText, exactText),
+            IsExact = true,
+            IsNew = true,
+        };
+        HookHudOverrideRow(row);
+        row.IsDirty = true;
+        InsertExactHudOverrideRow(row);
+        RefreshGameLogSearchVisibility();
+        AppendLog($"🎯 Correction pour « {exactText} » ajoutée sous son modèle — modifie le texte puis clique sur Enregistrer.", "info");
+    }
+
+    private void ListenHudOverride_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
+        var custom = row.CustomText.Trim();
+        if (custom.Length == 0) custom = row.RawText;
+        var text = row.IsExact ? custom : GameLogAnnouncer.PreviewHudText(custom, row.LastExample);
+        EnsureTestTts();
+        _testTts!.Speak(text);
+    }
+
     private void SaveHudOverride_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
         var custom = row.CustomText.Trim();
+        if (row.IsExact)
+        {
+            _state.Ai.GameLogHudExactOverrides[row.RawText] = custom.Length == 0 ? row.RawText : custom;
+            row.IsNew = false;
+            row.IsDirty = false;
+            SaveAiAndLog();
+            AppendLog($"🎯 Correction enregistrée pour « {row.RawText} » uniquement.", "success");
+            return;
+        }
         _state.Ai.GameLogHudOverrides[row.RawText] = custom.Length == 0 ? row.RawText : custom;
         row.IsNew = false;
         row.IsDirty = false;
@@ -3447,7 +3519,8 @@ public partial class MainWindow : Window
     private void DeleteHudOverride_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not HudOverrideRowVm row) return;
-        _state.Ai.GameLogHudOverrides.Remove(row.RawText);
+        if (row.IsExact) _state.Ai.GameLogHudExactOverrides.Remove(row.RawText);
+        else _state.Ai.GameLogHudOverrides.Remove(row.RawText);
         _state.Ai.GameLogHudOverridesHidden.Remove(row.RawText);
         _hudOverrideRows.Remove(row);
         RefreshHiddenHudOverridesCount();

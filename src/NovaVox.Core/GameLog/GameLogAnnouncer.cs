@@ -32,7 +32,13 @@ public sealed record GameLogAnnouncement(
     /// <summary>Nom du schéma extrait d'une notification HUD "Schémas reçu : {nom}", uniquement si cette notification vient d'être ajoutée à AiConfig.SchemasReceived (pas déjà présent) — à ajouter à la liste affichée (Réglages > 📐 Schémas).</summary>
     string? ReceivedSchemaName = null,
     /// <summary>Catégorie d'annonce (voir AnnouncementCategories) — permet de couper la lecture à voix haute par type d'annonce.</summary>
-    string Category = AnnouncementCategories.OtherHud);
+    string Category = AnnouncementCategories.OtherHud,
+    /// <summary>Clé de gabarit de la notification HUD (ex. "Contrat accepté : {name}"), toujours renseignée pour une notification HUD — permet à l'interface de rattacher le texte exact (HudExactText) à sa ligne de correction.</summary>
+    string? HudTemplateKey = null,
+    /// <summary>Texte HUD exact (nettoyé) de cette notification — sert de clé à une correction pour cette notification précise (AiConfig.GameLogHudExactOverrides).</summary>
+    string? HudExactText = null,
+    /// <summary>true si une correction pour cette notification précise a été appliquée (plutôt que le gabarit commun).</summary>
+    bool UsedExactHudOverride = false);
 
 /// <summary>
 /// Port de Api._gamelog_announce / _maybe_register_destination_alias /
@@ -382,12 +388,15 @@ public static partial class GameLogAnnouncer
             isNew = true;
         }
 
-        var storedTemplate = config.GameLogHudOverrides.GetValueOrDefault(templateKey, templateKey);
-        var spokenText = storedTemplate;
-        foreach (var (placeholder, value) in captures)
-            spokenText = spokenText.Replace($"{{{placeholder}}}", value);
-        if (captures.Count > 0 && captures.Values.All(string.IsNullOrWhiteSpace))
-            spokenText = EmptyCaptureLeftoverRegex().Replace(spokenText, "");
+        // Une correction pour CETTE notification précise (texte exact) passe
+        // avant le gabarit commun : ex. corriger la lecture d'un seul nom de
+        // contrat sans changer celle de tous les autres contrats.
+        var usedExact = rawText != templateKey
+            && config.GameLogHudExactOverrides.TryGetValue(rawText, out var exact)
+            && !string.IsNullOrWhiteSpace(exact);
+        var spokenText = usedExact
+            ? config.GameLogHudExactOverrides[rawText]
+            : FillTemplate(config.GameLogHudOverrides.GetValueOrDefault(templateKey, templateKey), captures);
 
         const string key = "hud_notification";
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
@@ -410,7 +419,36 @@ public static partial class GameLogAnnouncer
             ResolvedJurisdiction: resolvedJurisdiction,
             ResolvedArmistice: resolvedArmistice,
             ReceivedSchemaName: newSchemaName,
-            Category: category);
+            Category: category,
+            HudTemplateKey: templateKey,
+            HudExactText: rawText,
+            UsedExactHudOverride: usedExact);
+    }
+
+    private static string FillTemplate(string template, IReadOnlyDictionary<string, string> captures)
+    {
+        var text = template;
+        foreach (var (placeholder, value) in captures)
+            text = text.Replace($"{{{placeholder}}}", value);
+        if (captures.Count > 0 && captures.Values.All(string.IsNullOrWhiteSpace))
+            text = EmptyCaptureLeftoverRegex().Replace(text, "");
+        return text;
+    }
+
+    /// <summary>Clé de gabarit (ex. "Contrat accepté : {name}") d'un texte HUD exact, sans effet de bord.</summary>
+    public static string HudTemplateKeyOf(string hudText) => ExtractHudTemplate(CleanHudNotificationText(hudText)).TemplateKey;
+
+    /// <summary>
+    /// Ce que NovaVox lirait pour la notification <paramref name="exampleText"/>
+    /// avec la correction <paramref name="customText"/> (gabarit à réservoirs
+    /// "{name}"... ou texte libre), sans rien modifier — utilisé par le bouton
+    /// "▶ Écouter" des réglages. Sans exemple, les réservoirs restent tels quels.
+    /// </summary>
+    public static string PreviewHudText(string customText, string? exampleText)
+    {
+        if (string.IsNullOrWhiteSpace(exampleText)) return customText;
+        var (_, captures, _) = ExtractHudTemplate(CleanHudNotificationText(exampleText));
+        return FillTemplate(customText, captures);
     }
 
     /// <summary>

@@ -135,6 +135,43 @@ public class GameLogAnnouncerTests
         Assert.Equal(spoken, result.Text);
     }
 
+    [Fact]
+    public void Build_HudNotification_ExactOverride_WinsOverTemplateForThatNotificationOnly()
+    {
+        var config = NewConfig();
+        config.GameLogHudOverrides["Contrat accepté : {name}"] = "Nouveau contrat : {name}";
+        config.GameLogHudExactOverrides["Contrat accepté : Relay Race"] = "Contrat accepté : course de relais";
+
+        var exact = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Contrat accepté : Relay Race" }, config)!;
+        var other = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Contrat accepté : Livraison" }, config)!;
+
+        Assert.Equal("Contrat accepté : course de relais", exact.Text);
+        Assert.True(exact.UsedExactHudOverride);
+        Assert.Equal("Contrat accepté : {name}", exact.HudTemplateKey);
+        Assert.Equal("Contrat accepté : Relay Race", exact.HudExactText);
+        Assert.Equal("Nouveau contrat : Livraison", other.Text);
+        Assert.False(other.UsedExactHudOverride);
+    }
+
+    [Fact]
+    public void Build_HudNotification_BlankExactOverride_FallsBackToTemplate()
+    {
+        var config = NewConfig();
+        config.GameLogHudOverrides["Contrat accepté : {name}"] = "Nouveau contrat : {name}";
+        config.GameLogHudExactOverrides["Contrat accepté : Relay Race"] = "  ";
+
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Contrat accepté : Relay Race" }, config)!;
+
+        Assert.Equal("Nouveau contrat : Relay Race", result.Text);
+    }
+
+    [Theory]
+    [InlineData("Nouveau contrat : {name}", "Contrat accepté : Relay Race", "Nouveau contrat : Relay Race")]
+    [InlineData("Nouveau contrat : {name}", null, "Nouveau contrat : {name}")]
+    [InlineData("Texte libre", "Contrat accepté : Relay Race", "Texte libre")]
+    public void PreviewHudText_FillsPlaceholdersFromExample(string custom, string? example, string expected) =>
+        Assert.Equal(expected, GameLogAnnouncer.PreviewHudText(custom, example));
+
     [Theory]
     [InlineData("Lomaxxx Demande d'ami: Ajouter aux amis ?", "{name} Demande d'ami: Ajouter aux amis ?")]
     [InlineData("Spakhugar Invité au lobby: Accepter l'invitation ?", "{name} Invité au lobby: Accepter l'invitation ?")]

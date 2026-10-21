@@ -47,6 +47,8 @@ public sealed class AiConfig
     public Dictionary<string, string> GameLogPhrases { get; set; } = new();
     public Dictionary<string, string> GameLogHudOverrides { get; set; } = new();
     public HashSet<string> GameLogHudOverridesHidden { get; set; } = new();
+    /// <summary>Corrections pour UNE notification précise (texte exact du jeu, ex. "Contrat accepté : Livraison à Lorville") — prioritaires sur le gabarit commun de GameLogHudOverrides. Dictionnaire séparé : jamais regroupé par MergeLegacyNameTemplateOverrides.</summary>
+    public Dictionary<string, string> GameLogHudExactOverrides { get; set; } = new();
     public Dictionary<string, string> GameLogDestinationAliases { get; set; } = new();
     public bool GeminiEnabled { get; set; } = true;
     /// <summary>Recherche de contexte sur le wiki Star Citizen (starcitizen.tools) avant de répondre — pertinent seulement pour ce jeu, décoché automatiquement par le sélecteur "Mode de jeu" (en-tête) sur "Autre jeu".</summary>
@@ -168,6 +170,7 @@ public sealed class AiConfigStore
             // qu'aucun autre réglage n'a par ailleurs déclenché une sauvegarde.
             hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
             config.GameLogHudOverridesHidden = ToStringList(data["game_log_hud_overrides_hidden"] as JsonArray).ToHashSet();
+            config.GameLogHudExactOverrides = ToStringDict(data["game_log_hud_exact_overrides"] as JsonObject);
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
             // Nettoie les alias de destinations qui ne faisaient que dupliquer un
             // lieu déjà dans le catalogue intégré ou résoluble par l'algorithme
@@ -271,6 +274,7 @@ public sealed class AiConfigStore
             ["game_log_phrases"] = FromStringDict(config.GameLogPhrases),
             ["game_log_hud_overrides"] = FromStringDict(config.GameLogHudOverrides),
             ["game_log_hud_overrides_hidden"] = FromStringList(config.GameLogHudOverridesHidden.ToList()),
+            ["game_log_hud_exact_overrides"] = FromStringDict(config.GameLogHudExactOverrides),
             ["game_log_destination_aliases"] = FromStringDict(config.GameLogDestinationAliases),
             ["gemini_enabled"] = config.GeminiEnabled,
             ["gemini_wiki_enabled"] = config.GeminiWikiEnabled,
