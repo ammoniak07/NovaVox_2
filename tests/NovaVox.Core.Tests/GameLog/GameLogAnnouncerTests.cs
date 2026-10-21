@@ -135,6 +135,80 @@ public class GameLogAnnouncerTests
         Assert.Equal(spoken, result.Text);
     }
 
+    [Theory]
+    [InlineData("UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À Levski", "UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À {lieu}")]
+    [InlineData("2 Ordres de travail de la raffinerie ont été achevés à HUR-L2 Faithful Dream Station", "{nombre} Ordres de travail de la raffinerie ont été achevés à {lieu}")]
+    [InlineData("File d'attente : 1 Temps d'attente estimé : 100.000000", "File d'attente : {place} Temps d'attente estimé : {attente}")]
+    [InlineData("BLESSURE MINEURE DÉTECTÉE - BRAS GAUCHE - TRAITEMENT DE NIVEAU 3 REQUIS", "BLESSURE {gravite} DÉTECTÉE - {partie} - TRAITEMENT DE NIVEAU {niveau} REQUIS")]
+    [InlineData("Crime commis : Blessures corporelles graves contre Spaceh", "Crime commis : {crime} contre {name}")]
+    [InlineData("Amende 40000 UEC", "Amende {montant} UEC")]
+    [InlineData("Contrat disponible : Offre de location de la Constellation", "CONTRAT DISPONIBLE : {name}")]
+    [InlineData("Objectif échoué : Défendre la station", "Objectif échoué : {name}")]
+    [InlineData("Contrat retiré :  Livraison", "Contrat retiré : {name}")]
+    [InlineData("Récompense mise à jour : 25 000 aUEC", "Récompense mise à jour : {name}")]
+    [InlineData("Récompense de niveau 2 du palier personnel RSI Disc. Vous avez été récompensé : livrée Ursa Starwalker", "{titre} Vous avez été récompensé : {recompense}")]
+    [InlineData("RSI Disc. Transport Tier 1 Reward You've been awarded: Zeus Keelback Livery", "{titre} Vous avez été récompensé : {recompense}")]
+    public void Build_HudNotification_NewTemplates(string raw, string templateKey) =>
+        Assert.Equal(templateKey, GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = raw }, NewConfig())!.HudTemplateKey);
+
+    [Fact]
+    public void Build_HudNotification_GatewayQueue_DropsDecimals()
+    {
+        var config = NewConfig();
+        config.GameLogHudOverrides["File d'attente : {place} Temps d'attente estimé : {attente}"] = "Place {place}, environ {attente} secondes";
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "File d'attente : 3 Temps d'attente estimé : 45.000000" }, config)!;
+        Assert.Equal("Place 3, environ 45 secondes", result.Text);
+    }
+
+    [Fact]
+    public void Build_HudNotification_ActionTokensAreNotSpoken()
+    {
+        var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "Ciblez le vaisseau avec ~action(spaceship_targeting|v_target) puis amarrez." }, NewConfig())!;
+        Assert.Equal("Ciblez le vaisseau avec puis amarrez.", result.Text);
+    }
+
+    [Fact]
+    public void Build_HudNotification_ResolvesRawLocalizationKeys()
+    {
+        GameLogAnnouncer.RegisterLiveHudKeys(new Dictionary<string, string>
+        {
+            ["Badge_ORS_T1_Title"] = "Récompenses d'Orison - Niveau 1",
+            ["Badge_ORS_T1_Desc"] = "Vous avez obtenu : le pistolet S-38 SecondWind",
+        });
+        try
+        {
+            var result = GameLogAnnouncer.Build(new GameLogEvent { Type = GameLogEventTypes.HudNotification, Text = "@Badge_ORS_T1_Title @Badge_ORS_T1_Desc" }, NewConfig())!;
+            Assert.Equal("{titre} Vous avez été récompensé : {recompense}", result.HudTemplateKey);
+            Assert.Equal("Récompenses d'Orison - Niveau 1 Vous avez été récompensé : le pistolet S-38 SecondWind", result.Text);
+        }
+        finally
+        {
+            GameLogAnnouncer.RegisterLiveHudKeys(new Dictionary<string, string>());
+        }
+    }
+
+    [Fact]
+    public void MergeLegacy_KeepsSpecificCorrectionsAsExactAndGenericOnesAsTemplate()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À HUR-L2 Faithful Dream Station"] = "Raffinage terminé a HUR-L2",
+            ["File d'attente : 1 Temps d'attente estimé : 100.000000"] = "Vous rentrez dans la File d'attente, veillez patienter",
+            ["UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À Levski"] = "UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À Levski",
+        };
+        var exact = new Dictionary<string, string>();
+        var hidden = new HashSet<string> { "File d'attente : 1 Temps d'attente estimé : 100.000000" };
+
+        Assert.True(GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides, exact, hidden));
+
+        Assert.Equal("Vous rentrez dans la File d'attente, veillez patienter", overrides["File d'attente : {place} Temps d'attente estimé : {attente}"]);
+        Assert.Equal("UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À {lieu}", overrides["UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À {lieu}"]);
+        Assert.Equal("Raffinage terminé a HUR-L2", exact["UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À HUR-L2 Faithful Dream Station"]);
+        Assert.Single(exact);
+        Assert.Contains("File d'attente : {place} Temps d'attente estimé : {attente}", hidden);
+        Assert.DoesNotContain("File d'attente : 1 Temps d'attente estimé : 100.000000", hidden);
+    }
+
     [Fact]
     public void Build_HudNotification_ExactOverride_WinsOverTemplateForThatNotificationOnly()
     {

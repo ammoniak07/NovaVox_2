@@ -2534,6 +2534,8 @@ public partial class MainWindow : Window
         // Même fichier : noms de toutes les destinations du jeu (stations,
         // bases minières, avant-postes...) dans la langue installée.
         GameLogDestinations.RegisterLiveLocationNames(GameLogLocalization.ReadKeyedValues(globalIniPath, GameLogDestinations.IsLiveLocationKey));
+        // Notifications que le jeu envoie parfois non traduites ("@Badge_ORS_T1_Title").
+        GameLogAnnouncer.RegisterLiveHudKeys(GameLogLocalization.ReadKeyedValues(globalIniPath, GameLogAnnouncer.IsLiveHudKey));
         AppendLog($"🌐 global.ini chargé : {GameLogDestinations.LiveLocationNameCount} noms de lieux ({globalIniPath}).",
             GameLogDestinations.LiveLocationNameCount > 0 ? "success" : "warning");
     }

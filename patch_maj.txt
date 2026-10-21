@@ -5,6 +5,10 @@ v0.1.6
 - Destinations : "rr p3 leo" est reconnu comme Orbituary (et "rr p6 leo" comme Ruine Station), identifiants utilisés par le jeu pour les stations LEO de Pyro.
 - Corrections de lecture des notifications : nouveau bouton "🎯 Seulement celle-ci" sur chaque modèle (ex. "Contrat accepté : {name}"), qui crée une correction pour la dernière notification vue uniquement (un contrat, un objectif ou un joueur précis), rangée juste sous son modèle. Les autres notifications du même type gardent la correction commune.
 - Corrections de lecture des notifications : chaque ligne affiche la dernière notification vue pour ce modèle, et un bouton "▶ Écouter" lit le texte corrigé avec la voix actuelle (avec le vrai nom à la place de {name}) avant d'enregistrer.
+- Notifications : nouveaux modèles avec la partie qui change entre accolades, pour une seule correction par type au lieu d'une ligne par variante : raffinerie terminée ({lieu}, {nombre}), file d'attente ({place}, {attente} en secondes, sans les ".000000"), blessure détectée ({gravite}, {partie}, {niveau}), crime commis ({crime}, {name}), amende ({montant}), récompenses de palier RSI Disc. / Orison ({titre}, {recompense}), ainsi que "Objectif échoué", "Contrat retiré" et "Récompense mise à jour".
+- Notifications : "Contrat disponible" écrit en minuscules par le jeu utilise maintenant la même correction que "CONTRAT DISPONIBLE" (idem pour les autres contrats et objectifs).
+- Notifications : les récompenses envoyées par le jeu sous forme de code ("@Badge_ORS_T1_Title...") sont traduites avec le global.ini installé, et les codes de touche "~action(...)" ne sont plus lus à voix haute.
+- Corrections existantes conservées au passage : une correction qui cite un lieu ou un nom précis (ex. "Raffinage terminé a HUR-L2") devient une correction 🎯 pour cette notification seulement, et une correction générale (ex. file d'attente) s'applique désormais à toutes les variantes. Les lignes cachées restent cachées.
 
 v0.1.5
 ------

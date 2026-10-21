@@ -168,9 +168,10 @@ public sealed class AiConfigStore
             // canonique. Persisté tout de suite (pas seulement en mémoire) :
             // sinon ai_config.json sur disque garde les anciennes entrées tant
             // qu'aucun autre réglage n'a par ailleurs déclenché une sauvegarde.
-            hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(config.GameLogHudOverrides);
             config.GameLogHudOverridesHidden = ToStringList(data["game_log_hud_overrides_hidden"] as JsonArray).ToHashSet();
             config.GameLogHudExactOverrides = ToStringDict(data["game_log_hud_exact_overrides"] as JsonObject);
+            hudOverridesMigrated = GameLogAnnouncer.MergeLegacyNameTemplateOverrides(
+                config.GameLogHudOverrides, config.GameLogHudExactOverrides, config.GameLogHudOverridesHidden);
             config.GameLogDestinationAliases = ToStringDict(data["game_log_destination_aliases"] as JsonObject);
             // Nettoie les alias de destinations qui ne faisaient que dupliquer un
             // lieu déjà dans le catalogue intégré ou résoluble par l'algorithme

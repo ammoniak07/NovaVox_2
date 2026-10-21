@@ -127,25 +127,25 @@ public static partial class GameLogAnnouncer
     // change à chaque nouvelle mission, jamais le préfixe. Sans regrouper
     // par préfixe, chaque mission crée une correction HUD séparée pour
     // toujours (voir HudTemplates ci-dessous).
-    [GeneratedRegex(@"^(?:Nouvel objectif|New Objective)\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Nouvel objectif|New Objective)\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex NewObjectiveRegex();
 
-    [GeneratedRegex(@"^(?:Objectif terminé|Objective Complete)\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Objectif terminé|Objective Complete)\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex ObjectiveCompletedRegex();
 
-    [GeneratedRegex(@"^(?:Objectif retiré|Objective Withdrawn)\s*:\s*(?<name>.+)$")]
+    [GeneratedRegex(@"^(?:Objectif retiré|Objective Withdrawn)\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex ObjectiveRemovedRegex();
 
-    [GeneratedRegex(@"^(?:CONTRAT PARTAGÉ|Contract Shared)\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT PARTAGÉ|Contract Shared)\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
     private static partial Regex ContractSharedRegex();
 
-    [GeneratedRegex(@"^(?:Contrat accepté|Contract Accepted)\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:Contrat accepté|Contract Accepted)\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
     private static partial Regex ContractAcceptedRegex();
 
-    [GeneratedRegex(@"^(?:CONTRAT TERMINÉ|Contract Complete)\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT TERMINÉ|Contract Complete)\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
     private static partial Regex ContractCompletedRegex();
 
-    [GeneratedRegex(@"^(?:CONTRAT ÉCHOUÉ|Contract Failed)\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT ÉCHOUÉ|Contract Failed)\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
     private static partial Regex ContractFailedRegex();
 
     [GeneratedRegex(@"^Joined hangar queue\. Your place: (?<place>\d+)\. Max\. estimated wait: (?<wait>[\d.]+) s\.$")]
@@ -165,7 +165,7 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^Leaving Restricted Area$")]
     private static partial Regex EnglishLeavingRestrictedAreaRegex();
 
-    [GeneratedRegex(@"^(?:CONTRAT DISPONIBLE|Contract Available)\s*:?\s*(?<name>.*)$")]
+    [GeneratedRegex(@"^(?:CONTRAT DISPONIBLE|Contract Available)\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
     private static partial Regex ContractAvailableRegex();
 
     [GeneratedRegex(@"^(?:ENTRÉE DU JOURNAL AJOUTÉE|Journal Entry Added)\s*:\s*(?<name>.+)$")]
@@ -242,6 +242,53 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^(?:Vous avez envoyé|(?:Transfer Sent\s*:?\s*)?You sent) (?<name>.+?)\s*:\s*(?<montant>[\d,]+) aUEC\.?(?:\s.*)?$")]
     private static partial Regex AuecSentRegex();
 
+    // Notifications relevées dans les corrections d'un utilisateur (21/10/2026)
+    // et dans le global.ini français : le lieu, le nombre, la partie du corps
+    // ou la récompense changent à chaque fois, donc un gabarit plutôt qu'une
+    // ligne par variante.
+    [GeneratedRegex(@"^(?:Objectif échoué|Objective Failed)\s*:\s*(?<name>.+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex ObjectiveFailedRegex();
+
+    [GeneratedRegex(@"^Contrat retiré\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
+    private static partial Regex ContractWithdrawnRegex();
+
+    [GeneratedRegex(@"^Récompense mise à jour\s*:?\s*(?<name>.*)$", RegexOptions.IgnoreCase)]
+    private static partial Regex RewardUpdatedRegex();
+
+    [GeneratedRegex(@"^UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À (?<lieu>.+?)\.?$", RegexOptions.IgnoreCase)]
+    private static partial Regex RefineryJobCompleteRegex();
+
+    [GeneratedRegex(@"^(?<nombre>\d+) Ordres de travail de la raffinerie ont été achevés à (?<lieu>.+?)\.?$", RegexOptions.IgnoreCase)]
+    private static partial Regex RefineryJobsCompleteRegex();
+
+    /// <summary>"File d'attente : 1 Temps d'attente estimé : 100.000000" — l'attente est gardée en secondes entières (sans les ".000000" lus à voix haute).</summary>
+    [GeneratedRegex(@"^File d'attente\s*:\s*(?<place>\d+)\s+Temps d'attente estimé\s*:\s*(?<attente>\d+)(?:\.\d+)?$", RegexOptions.IgnoreCase)]
+    private static partial Regex GatewayQueueRegex();
+
+    [GeneratedRegex(@"^BLESSURE (?<gravite>MINEURE|MODÉRÉE|GRAVE) DÉTECTÉE - (?<partie>.+?) - TRAITEMENT DE NIVEAU (?<niveau>\d) REQUIS$", RegexOptions.IgnoreCase)]
+    private static partial Regex InjuryDetectedRegex();
+
+    [GeneratedRegex(@"^Crime commis\s*:\s*(?<crime>.+?) contre (?<name>\S+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex CrimeCommittedAgainstRegex();
+
+    [GeneratedRegex(@"^Crime commis\s*:\s*(?<crime>.+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex CrimeCommittedRegex();
+
+    [GeneratedRegex(@"^Amende (?<montant>[\d,. ]+) UEC$", RegexOptions.IgnoreCase)]
+    private static partial Regex FinePaidRegex();
+
+    /// <summary>Récompense de palier (RSI Disc., Orison...) : titre puis "Vous avez été récompensé : ..." — titre et récompense changent à chaque palier.</summary>
+    [GeneratedRegex(@"^(?<titre>.+?)\s+(?:Vous avez été récompensé|Vous avez obtenu|Vous avez reçu|You've been awarded)\s*:\s*(?<recompense>.+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex TierRewardRegex();
+
+    /// <summary>Instruction de touche "~action(groupe|action)" laissée telle quelle par le jeu — jamais lue à voix haute.</summary>
+    [GeneratedRegex(@"\s*~action\([^)]*\)")]
+    private static partial Regex ActionTokenRegex();
+
+    /// <summary>Clé de traduction non résolue par le jeu ("@Badge_ORS_T1_Title").</summary>
+    [GeneratedRegex(@"@(?<key>[A-Za-z][A-Za-z0-9_]*)")]
+    private static partial Regex LocalizationKeyRegex();
+
     /// <summary>
     /// Motifs de texte HUD connus où une ou plusieurs parties variables (nom
     /// de joueur/pilote/ami/vaisseau, ou nom de mission/objectif) changent
@@ -266,11 +313,22 @@ public static partial class GameLogAnnouncer
         (NewObjectiveRegex(), _ => "Nouvel objectif : {name}", AnnouncementCategories.Objectives),
         (ObjectiveCompletedRegex(), _ => "Objectif terminé : {name}", AnnouncementCategories.Objectives),
         (ObjectiveRemovedRegex(), _ => "Objectif retiré : {name}", AnnouncementCategories.Objectives),
+        (ObjectiveFailedRegex(), _ => "Objectif échoué : {name}", AnnouncementCategories.Objectives),
         (ContractSharedRegex(), _ => "CONTRAT PARTAGÉ : {name}", AnnouncementCategories.Contracts),
         (ContractAcceptedRegex(), _ => "Contrat accepté : {name}", AnnouncementCategories.Contracts),
         (ContractCompletedRegex(), _ => "CONTRAT TERMINÉ : {name}", AnnouncementCategories.Contracts),
         (ContractFailedRegex(), _ => "CONTRAT ÉCHOUÉ : {name}", AnnouncementCategories.Contracts),
         (ContractAvailableRegex(), _ => "CONTRAT DISPONIBLE : {name}", AnnouncementCategories.Contracts),
+        (ContractWithdrawnRegex(), _ => "Contrat retiré : {name}", AnnouncementCategories.Contracts),
+        (RewardUpdatedRegex(), _ => "Récompense mise à jour : {name}", AnnouncementCategories.Contracts),
+        (RefineryJobCompleteRegex(), _ => "UN ORDRE DE TRAVAIL DE RAFFINERIE A ÉTÉ COMPLÉTÉ À {lieu}", AnnouncementCategories.OtherHud),
+        (RefineryJobsCompleteRegex(), _ => "{nombre} Ordres de travail de la raffinerie ont été achevés à {lieu}", AnnouncementCategories.OtherHud),
+        (GatewayQueueRegex(), _ => "File d'attente : {place} Temps d'attente estimé : {attente}", AnnouncementCategories.Hangar),
+        (InjuryDetectedRegex(), _ => "BLESSURE {gravite} DÉTECTÉE - {partie} - TRAITEMENT DE NIVEAU {niveau} REQUIS", AnnouncementCategories.OtherHud),
+        (CrimeCommittedAgainstRegex(), _ => "Crime commis : {crime} contre {name}", AnnouncementCategories.Crimes),
+        (CrimeCommittedRegex(), _ => "Crime commis : {crime}", AnnouncementCategories.Crimes),
+        (FinePaidRegex(), _ => "Amende {montant} UEC", AnnouncementCategories.Crimes),
+        (TierRewardRegex(), _ => "{titre} Vous avez été récompensé : {recompense}", AnnouncementCategories.OtherHud),
         (HangarQueueJoinedRegex(), _ => "Joined hangar queue. Your place: {place}. Max. estimated wait: {wait} s.", AnnouncementCategories.Hangar),
         (EnglishArmisticeEnteredRegex(), _ => "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT", AnnouncementCategories.Zones),
         (EnglishArmisticeLeftRegex(), _ => "VOUS QUITTEZ LA ZONE D'ARMISTICE - PRUDENCE EST MÈRE DE SÛRETÉ", AnnouncementCategories.Zones),
@@ -295,12 +353,32 @@ public static partial class GameLogAnnouncer
         (AuecSentRegex(), _ => "Vous avez envoyé {name}: {montant} aUEC", AnnouncementCategories.Transfers),
     };
 
+    private static Dictionary<string, string> LiveHudKeys = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Clés du global.ini que le jeu envoie parfois non traduites ("@Badge_ORS_T1_Title") — voir IsLiveHudKey.</summary>
+    public static bool IsLiveHudKey(string key) => key.Contains("Badge", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Textes du global.ini local (clé → texte) utilisés pour remplacer une clé "@xxx" restée brute dans une notification HUD.</summary>
+    public static void RegisterLiveHudKeys(IReadOnlyDictionary<string, string> values)
+    {
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (k, v) in values)
+        {
+            var key = k.EndsWith(",P", StringComparison.Ordinal) ? k[..^2] : k;
+            var text = v.Replace("\\n", " ").Trim();
+            if (text.Length > 0) dict[key] = text;
+        }
+        LiveHudKeys = dict;
+    }
+
     /// <summary>Port de _clean_hud_notification_text.</summary>
     public static string CleanHudNotificationText(string? text)
     {
         text = (text ?? "").Trim();
         if (text.Length == 0) return "";
         text = EmphasisTagRegex().Replace(text, "");
+        if (LiveHudKeys.Count > 0)
+            text = LocalizationKeyRegex().Replace(text, m => LiveHudKeys.TryGetValue(m.Groups["key"].Value, out var v) ? v : m.Value);
         text = TrailingColonRegex().Replace(text, "");
         text = InternalNewlineRegex().Replace(text, " ");
         return MultiSpaceRegex().Replace(text, " ").Trim();
@@ -397,6 +475,7 @@ public static partial class GameLogAnnouncer
         var spokenText = usedExact
             ? config.GameLogHudExactOverrides[rawText]
             : FillTemplate(config.GameLogHudOverrides.GetValueOrDefault(templateKey, templateKey), captures);
+        spokenText = MultiSpaceRegex().Replace(ActionTokenRegex().Replace(spokenText, ""), " ").Trim();
 
         const string key = "hud_notification";
         var text = GameLogPhraseCatalog.Format(key, config.GameLogPhrases, new Dictionary<string, string> { ["text"] = spokenText });
@@ -659,16 +738,21 @@ public static partial class GameLogAnnouncer
     /// anciennes entrées tant qu'aucun autre réglage n'a déclenché de
     /// sauvegarde.
     /// </summary>
-    public static bool MergeLegacyNameTemplateOverrides(Dictionary<string, string> overrides)
+    public static bool MergeLegacyNameTemplateOverrides(
+        Dictionary<string, string> overrides,
+        Dictionary<string, string>? exactOverrides = null,
+        HashSet<string>? hidden = null)
     {
         var changed = false;
         foreach (var rawKey in overrides.Keys.ToList())
         {
-            var (templateKey, _, _) = ExtractHudTemplate(CleanHudNotificationText(rawKey));
+            var cleanedRaw = CleanHudNotificationText(rawKey);
+            var (templateKey, captures, _) = ExtractHudTemplate(cleanedRaw);
             if (templateKey == rawKey) continue;
 
             var rawValue = overrides[rawKey];
             var currentValue = overrides.GetValueOrDefault(templateKey, templateKey);
+            var rawRank = RankMergeCandidate(rawValue, templateKey, rawKey, captures);
             // Ne remplace la valeur en place que par une STRICTEMENT meilleure
             // (voir RankMergeCandidate) — sinon, sur une entrée déjà présente
             // avec une meilleure valeur, rawValue perdrait pour de bonnes
@@ -676,10 +760,24 @@ public static partial class GameLogAnnouncer
             // "premier candidat rencontré" : on l'insère donc quand même une
             // fois, au pire avec la forme par défaut (jamais avec une valeur
             // pire que le défaut).
-            if (RankMergeCandidate(rawValue, templateKey) > RankMergeCandidate(currentValue, templateKey))
+            if (rawRank > RankMergeCandidate(currentValue, templateKey, templateKey, new Dictionary<string, string>()))
                 overrides[templateKey] = rawValue;
             else if (!overrides.ContainsKey(templateKey))
                 overrides[templateKey] = currentValue;
+
+            // Une correction faite pour UNE rencontre précise (elle cite le
+            // lieu, le nom...) n'est plus perdue : elle devient une correction
+            // de cette notification précise (AiConfig.GameLogHudExactOverrides).
+            var keptAsExact = false;
+            if (rawRank == 0 && exactOverrides is not null && IsCustomized(rawValue, rawKey, cleanedRaw) && cleanedRaw != templateKey)
+                keptAsExact = exactOverrides.TryAdd(cleanedRaw, rawValue);
+
+            if (hidden is not null && hidden.Contains(rawKey))
+            {
+                hidden.Add(templateKey);
+                if (keptAsExact) hidden.Add(cleanedRaw);
+                if (rawKey != cleanedRaw || !keptAsExact) hidden.Remove(rawKey);
+            }
 
             overrides.Remove(rawKey);
             changed = true;
@@ -687,25 +785,34 @@ public static partial class GameLogAnnouncer
         return changed;
     }
 
+    private static bool IsCustomized(string value, string rawKey, string cleanedRaw) =>
+        value != rawKey && value != cleanedRaw && CleanHudNotificationText(value) != cleanedRaw;
+
     /// <summary>
     /// Départage plusieurs valeurs héritées candidates à devenir LA
     /// personnalisation commune d'une même clé canonique (voir
     /// MergeLegacyNameTemplateOverrides) : 2 = personnalisée ET réutilisable
-    /// pour toute rencontre future (contient TOUS les réservoirs "{xxx}" de
-    /// templateKey — un gabarit à plusieurs réservoirs, voir
-    /// PlayerJoinedShipChannelViaGroupRegex, doit tous les retrouver pour
-    /// être sûr, pas juste un seul) ; 1 = pas encore personnalisée (valeur =
-    /// clé, le repli sûr par défaut) ; 0 = personnalisée mais figée sur UNE
-    /// seule rencontre passée (un vaisseau, un joueur...) — le pire cas,
-    /// puisque la garder telle quelle annoncerait alors la même chose à
-    /// tort pour toutes les autres rencontres, jamais préférée à la valeur
-    /// par défaut.
+    /// pour toute rencontre future — elle contient TOUS les réservoirs
+    /// "{xxx}" de templateKey, ou bien elle ne cite aucun des noms propres à
+    /// la rencontre d'origine (ex. "Vous rentrez dans la file d'attente,
+    /// veuillez patienter") ; 1 = pas encore personnalisée (valeur = clé, le
+    /// repli sûr par défaut) ; 0 = figée sur UNE seule rencontre passée (un
+    /// vaisseau, un lieu, un joueur...) ou texte brut d'origine — jamais
+    /// préférée à la valeur par défaut, puisqu'elle annoncerait à tort la
+    /// même chose pour toutes les autres rencontres.
     /// </summary>
-    private static int RankMergeCandidate(string value, string templateKey)
+    private static int RankMergeCandidate(string value, string templateKey, string rawKey, IReadOnlyDictionary<string, string> captures)
     {
         if (value == templateKey) return 1;
         var placeholders = PlaceholderRegex().Matches(templateKey).Select(m => m.Value).Distinct().ToList();
-        return placeholders.Count > 0 && placeholders.All(value.Contains) ? 2 : 0;
+        if (placeholders.Count > 0 && placeholders.All(value.Contains)) return 2;
+        if (!IsCustomized(value, rawKey, CleanHudNotificationText(rawKey))) return 0;
+        var captureWords = captures.Values
+            .SelectMany(v => MultiSpaceRegex().Split(v))
+            .Where(w => w.Length >= 3 || w.Any(char.IsDigit))
+            .ToList();
+        if (captures.Count == 0 && placeholders.Count > 0) return 0;
+        return captureWords.Any(w => value.Contains(w, StringComparison.OrdinalIgnoreCase)) ? 0 : 2;
     }
 
     /// <summary>
