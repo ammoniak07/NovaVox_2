@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.7
 ------
+- Notifications : "{name} Quantum dans votre direction." (un membre du groupe lance un saut quantique vers toi) est maintenant un seul modèle avec le pseudo en {name}, au lieu d'une nouvelle ligne pour chaque joueur. Les lignes déjà créées ("Ammeur Quantum...", "Minadow Quantum...") sont regroupées automatiquement au démarrage.
 
 v0.1.6
 ------

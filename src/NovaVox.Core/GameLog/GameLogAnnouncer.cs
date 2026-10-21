@@ -281,6 +281,10 @@ public static partial class GameLogAnnouncer
     [GeneratedRegex(@"^(?<titre>.+?)\s+(?:Vous avez été récompensé|Vous avez obtenu|Vous avez reçu|You've been awarded)\s*:\s*(?<recompense>.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex TierRewardRegex();
 
+    /// <summary>Un membre du groupe lance un saut quantique vers le joueur (global.ini : notification_party_member_started_QT_to_you).</summary>
+    [GeneratedRegex(@"^(?<name>.+?) Quantum dans votre direction\.?$", RegexOptions.IgnoreCase)]
+    private static partial Regex PartyMemberQuantumToYouRegex();
+
     /// <summary>Instruction de touche "~action(groupe|action)" laissée telle quelle par le jeu — jamais lue à voix haute.</summary>
     [GeneratedRegex(@"\s*~action\([^)]*\)")]
     private static partial Regex ActionTokenRegex();
@@ -328,6 +332,7 @@ public static partial class GameLogAnnouncer
         (CrimeCommittedAgainstRegex(), _ => "Crime commis : {crime} contre {name}", AnnouncementCategories.Crimes),
         (CrimeCommittedRegex(), _ => "Crime commis : {crime}", AnnouncementCategories.Crimes),
         (FinePaidRegex(), _ => "Amende {montant} UEC", AnnouncementCategories.Crimes),
+        (PartyMemberQuantumToYouRegex(), _ => "{name} Quantum dans votre direction.", AnnouncementCategories.Group),
         (TierRewardRegex(), _ => "{titre} Vous avez été récompensé : {recompense}", AnnouncementCategories.OtherHud),
         (HangarQueueJoinedRegex(), _ => "Joined hangar queue. Your place: {place}. Max. estimated wait: {wait} s.", AnnouncementCategories.Hangar),
         (EnglishArmisticeEnteredRegex(), _ => "VOUS ENTREZ EN ZONE D'ARMISTICE - COMBAT INTERDIT", AnnouncementCategories.Zones),

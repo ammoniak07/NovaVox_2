@@ -142,6 +142,8 @@ public class GameLogAnnouncerTests
     [InlineData("BLESSURE MINEURE DÉTECTÉE - BRAS GAUCHE - TRAITEMENT DE NIVEAU 3 REQUIS", "BLESSURE {gravite} DÉTECTÉE - {partie} - TRAITEMENT DE NIVEAU {niveau} REQUIS")]
     [InlineData("Crime commis : Blessures corporelles graves contre Spaceh", "Crime commis : {crime} contre {name}")]
     [InlineData("Amende 40000 UEC", "Amende {montant} UEC")]
+    [InlineData("Ammeur Quantum dans votre direction.", "{name} Quantum dans votre direction.")]
+    [InlineData("Minadow Quantum dans votre direction.", "{name} Quantum dans votre direction.")]
     [InlineData("Contrat disponible : Offre de location de la Constellation", "CONTRAT DISPONIBLE : {name}")]
     [InlineData("Objectif échoué : Défendre la station", "Objectif échoué : {name}")]
     [InlineData("Contrat retiré :  Livraison", "Contrat retiré : {name}")]
@@ -185,6 +187,23 @@ public class GameLogAnnouncerTests
         {
             GameLogAnnouncer.RegisterLiveHudKeys(new Dictionary<string, string>());
         }
+    }
+
+    [Fact]
+    public void MergeLegacy_PartyQuantumLines_MergeIntoOneTemplate()
+    {
+        var overrides = new Dictionary<string, string>
+        {
+            ["Ammeur Quantum dans votre direction."] = "Ammeur Quantum dans votre direction.",
+            ["Minadow Quantum dans votre direction."] = "Minadow Quantum dans votre direction.",
+        };
+        var exact = new Dictionary<string, string>();
+
+        GameLogAnnouncer.MergeLegacyNameTemplateOverrides(overrides, exact, new HashSet<string>());
+
+        Assert.Single(overrides);
+        Assert.Equal("{name} Quantum dans votre direction.", overrides["{name} Quantum dans votre direction."]);
+        Assert.Empty(exact);
     }
 
     [Fact]
