@@ -453,6 +453,56 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void AiConfig_GeminiApiKey_SavedInSecretsFileOnly()
+    {
+        var store = new AiConfigStore(_dir);
+        store.Save(new AiConfig { GeminiApiKey = "cle-test-123" });
+
+        Assert.DoesNotContain("cle-test-123", File.ReadAllText(Path.Combine(_dir, "ai_config.json")));
+        Assert.Contains("cle-test-123", File.ReadAllText(Path.Combine(_dir, AiConfigStore.SecretsFileName)));
+        Assert.Equal("cle-test-123", new AiConfigStore(_dir).Load().GeminiApiKey);
+    }
+
+    [Fact]
+    public void AiConfig_LegacyGeminiApiKey_MovedOutOfAiConfig()
+    {
+        File.WriteAllText(Path.Combine(_dir, "ai_config.json"), """{"gemini_api_key": "ancienne-cle"}""");
+
+        var loaded = new AiConfigStore(_dir).Load();
+
+        Assert.Equal("ancienne-cle", loaded.GeminiApiKey);
+        Assert.DoesNotContain("ancienne-cle", File.ReadAllText(Path.Combine(_dir, "ai_config.json")));
+        Assert.Contains("ancienne-cle", File.ReadAllText(Path.Combine(_dir, AiConfigStore.SecretsFileName)));
+    }
+
+    [Fact]
+    public void AiConfig_ImportedOldExportKey_DoesNotReplaceCurrentKey()
+    {
+        new AiConfigStore(_dir).Save(new AiConfig { GeminiApiKey = "ma-cle" });
+        File.WriteAllText(Path.Combine(_dir, "ai_config.json"), """{"gemini_api_key": "cle-d-un-autre"}""");
+
+        Assert.Equal("ma-cle", new AiConfigStore(_dir).Load().GeminiApiKey);
+        Assert.DoesNotContain("cle-d-un-autre", File.ReadAllText(Path.Combine(_dir, "ai_config.json")));
+    }
+
+    [Fact]
+    public void ConfigArchive_Export_DoesNotContainGeminiApiKey()
+    {
+        new AiConfigStore(_dir).Save(new AiConfig { GeminiApiKey = "cle-secrete" });
+        var zipPath = Path.Combine(_dir, "export.zip");
+
+        ConfigArchive.Export(_dir, zipPath, allProfiles: true);
+
+        using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        Assert.DoesNotContain(zip.Entries, e => e.FullName == AiConfigStore.SecretsFileName);
+        foreach (var entry in zip.Entries)
+        {
+            using var reader = new StreamReader(entry.Open());
+            Assert.DoesNotContain("cle-secrete", reader.ReadToEnd());
+        }
+    }
+
+    [Fact]
     public void AiConfig_GameLogHudExactOverridesRoundTripWithoutTemplateMerge()
     {
         var store = new AiConfigStore(_dir);

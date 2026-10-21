@@ -110,10 +110,32 @@ public sealed class AiConfig
 public sealed class AiConfigStore
 {
     private readonly string _path;
+    private readonly string _secretsPath;
+
+    /// <summary>
+    /// Fichier à part pour la clé API Gemini, à côté de ai_config.json mais
+    /// JAMAIS inclus dans l'export de configuration (voir ConfigArchive) :
+    /// partager son export pour aider quelqu'un ne donne plus sa clé.
+    /// </summary>
+    public const string SecretsFileName = "secrets.json";
 
     public AiConfigStore(string baseDir)
     {
         _path = Path.Combine(baseDir, "ai_config.json");
+        _secretsPath = Path.Combine(baseDir, SecretsFileName);
+    }
+
+    private string? LoadSecretApiKey()
+    {
+        try
+        {
+            if (!File.Exists(_secretsPath)) return null;
+            return ParseFile(_secretsPath) is JsonObject secrets ? GetString(secrets["gemini_api_key"]).Trim() : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public AiConfig Load(
@@ -122,7 +144,10 @@ public sealed class AiConfigStore
         IReadOnlyCollection<string>? knownResponseLengths = null)
     {
         var config = new AiConfig();
+        var secretApiKey = LoadSecretApiKey();
+        config.GeminiApiKey = secretApiKey ?? "";
         if (!File.Exists(_path)) return config;
+        var apiKeyMigrated = false;
         var hudOverridesMigrated = false;
         var destinationAliasesMigrated = false;
         var schemasMigrated = false;
@@ -186,7 +211,12 @@ public sealed class AiConfigStore
             var destinationAliasesCollapsed = GameLogDestinations.CollapseInstanceSuffixedAliases(config.GameLogDestinationAliases);
             destinationAliasesMigrated = destinationAliasesPruned || destinationAliasesCollapsed;
 
-            config.GeminiApiKey = GetString(data["gemini_api_key"]).Trim();
+            // Clé dans secrets.json (jamais exportée). Une ancienne clé encore
+            // présente dans ai_config.json (version précédente, ou ancien
+            // export importé) y est déplacée puis retirée de ai_config.json.
+            var legacyApiKey = GetString(data["gemini_api_key"]).Trim();
+            config.GeminiApiKey = !string.IsNullOrEmpty(secretApiKey) ? secretApiKey : legacyApiKey;
+            apiKeyMigrated = data.ContainsKey("gemini_api_key");
             var model = GetString(data["gemini_model"]).Trim();
             if (model.Length == 0) model = AiConfig.DefaultGeminiModel;
             if (knownGeminiModels is not null && !knownGeminiModels.Contains(model))
@@ -244,9 +274,9 @@ public sealed class AiConfigStore
         }
         catch
         {
-            return new AiConfig();
+            return new AiConfig { GeminiApiKey = secretApiKey ?? "" };
         }
-        if (hudOverridesMigrated || destinationAliasesMigrated || schemasMigrated) Save(config);
+        if (hudOverridesMigrated || destinationAliasesMigrated || schemasMigrated || apiKeyMigrated) Save(config);
         return config;
     }
 
@@ -279,7 +309,6 @@ public sealed class AiConfigStore
             ["game_log_destination_aliases"] = FromStringDict(config.GameLogDestinationAliases),
             ["gemini_enabled"] = config.GeminiEnabled,
             ["gemini_wiki_enabled"] = config.GeminiWikiEnabled,
-            ["gemini_api_key"] = config.GeminiApiKey,
             ["gemini_model"] = config.GeminiModel,
             ["gemini_name"] = config.GeminiName,
             ["gemini_response_length"] = config.GeminiResponseLength,
@@ -302,6 +331,7 @@ public sealed class AiConfigStore
             ["connected_group_members"] = FromStringList(config.ConnectedGroupMembers.ToList()),
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
+        File.WriteAllText(_secretsPath, new JsonObject { ["gemini_api_key"] = config.GeminiApiKey }.ToJsonString(WriteOptions));
     }
 
     private static Dictionary<string, string> ToStringDict(JsonObject? obj)

@@ -9,6 +9,8 @@ v0.1.6
 - Notifications : "Contrat disponible" écrit en minuscules par le jeu utilise maintenant la même correction que "CONTRAT DISPONIBLE" (idem pour les autres contrats et objectifs).
 - Notifications : les récompenses envoyées par le jeu sous forme de code ("@Badge_ORS_T1_Title...") sont traduites avec le global.ini installé, et les codes de touche "~action(...)" ne sont plus lus à voix haute.
 - Corrections existantes conservées au passage : une correction qui cite un lieu ou un nom précis (ex. "Raffinage terminé a HUR-L2") devient une correction 🎯 pour cette notification seulement, et une correction générale (ex. file d'attente) s'applique désormais à toutes les variantes. Les lignes cachées restent cachées.
+- Sécurité : la clé API Gemini est maintenant rangée dans un fichier à part (secrets.json, à côté de ai_config.json), qui n'est jamais inclus dans l'export de la configuration. Partager son export pour aider quelqu'un ne donne plus sa clé. La clé déjà enregistrée est déplacée automatiquement au premier démarrage, et importer l'export d'un autre joueur ne remplace jamais sa propre clé.
+- Sécurité : le lien de téléchargement d'une mise à jour n'est ouvert que s'il pointe en https vers le site officiel ou GitHub. Tout autre lien (autre site, fichier sur le PC) est refusé.
 
 v0.1.5
 ------

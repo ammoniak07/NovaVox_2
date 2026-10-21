@@ -67,7 +67,11 @@ public static class UpdateChecker
 
     public static void OpenUpdateUrl(string url)
     {
-        if (string.IsNullOrWhiteSpace(url)) return;
+        if (!UpdateManifest.IsTrustedDownloadUrl(url))
+        {
+            AppLog.Append(NovaVoxPaths.BaseDirectory, $"[MàJ] Lien de mise à jour refusé (ni https, ni site officiel / GitHub) : {url}", "warning");
+            return;
+        }
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 }
