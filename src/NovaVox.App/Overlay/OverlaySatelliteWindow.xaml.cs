@@ -51,6 +51,12 @@ public partial class OverlaySatelliteWindow : Window
         };
     }
 
+    /// <summary>Repasse au-dessus du jeu (voir TopmostKeeper).</summary>
+    public void ReassertTopmost()
+    {
+        if (IsVisible) TopmostKeeper.Reassert(_hwnd);
+    }
+
     /// <summary>
     /// Mémorise toujours la valeur demandée (_desiredClickThrough), même
     /// avant que le HWND n'existe — appliquée immédiatement si possible,

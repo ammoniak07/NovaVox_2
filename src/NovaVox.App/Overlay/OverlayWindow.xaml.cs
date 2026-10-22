@@ -32,6 +32,11 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _clockTimer;
     private bool _editMode;
     private IntPtr _hwnd;
+    // Crochet "fenêtre active changée" (Alt+Tab) : remet l'overlay au-dessus
+    // du jeu. Le délégué est gardé en champ pour ne pas être libéré par le
+    // ramasse-miettes tant que Windows peut l'appeler.
+    private IntPtr _foregroundHook;
+    private TopmostKeeper.WinEventDelegate? _foregroundCallback;
     private Dictionary<string, bool> _visibleRows = new();
     // Évite que le rechargement programmatique des cases à cocher (IsChecked
     // remis à jour depuis _visibleRows dans RefreshRowVisualsForEditMode) ne
@@ -126,12 +131,20 @@ public partial class OverlayWindow : Window
         {
             _hwnd = new WindowInteropHelper(this).Handle;
             SetEditMode(false); // clic-traversant par défaut (mode "verrouillé")
+            _foregroundCallback = (_, _, _, _, _, _, _) => OnForegroundWindowChanged();
+            _foregroundHook = TopmostKeeper.HookForegroundChanges(_foregroundCallback);
         };
         MouseLeftButtonDown += OnMouseLeftButtonDown;
         Closing += OnClosing;
 
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _clockTimer.Tick += (_, _) => UpdateClock();
+        _clockTimer.Tick += (_, _) =>
+        {
+            UpdateClock();
+            // Filet de sécurité si le jeu repasse devant sans changement de
+            // fenêtre active (bascule plein écran, chargement...).
+            ReassertTopmost();
+        };
         _clockTimer.Start();
         UpdateClock();
     }
@@ -154,6 +167,35 @@ public partial class OverlayWindow : Window
     {
         base.Hide();
         foreach (var satellite in _satellites.Values) satellite.Hide();
+    }
+
+    /// <summary>
+    /// Remet l'overlay et ses satellites au-dessus du jeu, sans prendre le
+    /// focus. Ignoré pendant le mode édition (glisser-déposer en cours) et
+    /// quand l'overlay est masqué.
+    /// </summary>
+    private void ReassertTopmost()
+    {
+        if (!IsVisible || _editMode) return;
+        TopmostKeeper.Reassert(_hwnd);
+        foreach (var satellite in _satellites.Values) satellite.ReassertTopmost();
+    }
+
+    /// <summary>
+    /// Alt+Tab vers le jeu : on remet l'overlay devant tout de suite, puis
+    /// une seconde fois un peu après, le temps que le jeu ait fini de
+    /// repasser au premier plan.
+    /// </summary>
+    private void OnForegroundWindowChanged()
+    {
+        ReassertTopmost();
+        var later = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        later.Tick += (_, _) =>
+        {
+            later.Stop();
+            ReassertTopmost();
+        };
+        later.Start();
     }
 
     public void LoadFromConfig()
@@ -1227,6 +1269,8 @@ public partial class OverlayWindow : Window
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         _clockTimer.Stop();
+        TopmostKeeper.Unhook(_foregroundHook);
+        _foregroundHook = IntPtr.Zero;
         try
         {
             var satelliteWindows = _satellites

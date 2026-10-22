@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.1.7
 ------
+- Overlay : il se remet automatiquement au premier plan quand tu reviens dans le jeu après un Alt+Tab (et vérifie chaque seconde qu'il est toujours devant), sans prendre le focus du jeu. Plus besoin de désactiver/réactiver l'overlay quand il restait caché derrière Star Citizen.
 - Notifications : "{name} Quantum dans votre direction." (un membre du groupe lance un saut quantique vers toi) est maintenant un seul modèle avec le pseudo en {name}, au lieu d'une nouvelle ligne pour chaque joueur. Les lignes déjà créées ("Ammeur Quantum...", "Minadow Quantum...") sont regroupées automatiquement au démarrage.
 
 v0.1.6
