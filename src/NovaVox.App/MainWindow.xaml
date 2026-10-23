@@ -1385,6 +1385,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="SchemasSearchBox" Padding="8,6" TextChanged="SchemasSearchBox_TextChanged" />
                         <TextBlock x:Name="SchemasSearchPlaceholder" Text="🔍 Rechercher un schéma..."
@@ -1392,6 +1393,8 @@
                                    Foreground="{DynamicResource MutedBrush}" FontSize="12" />
                         <ComboBox x:Name="SchemaCategoryCombo" Grid.Column="1" Width="190" Margin="8,0,0,0"
                                   ToolTip="Filtrer par catégorie" SelectionChanged="SchemaCategoryCombo_SelectionChanged" />
+                        <ComboBox x:Name="SchemaSubcategoryCombo" Grid.Column="2" Width="150" Margin="8,0,0,0" Visibility="Collapsed"
+                                  ToolTip="Filtrer par partie du corps" SelectionChanged="SchemaSubcategoryCombo_SelectionChanged" />
                     </Grid>
 
                     <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto">
@@ -1433,7 +1436,7 @@
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                                     <Border HorizontalAlignment="Left" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
                                                             CornerRadius="3" Padding="5,0" Margin="0,3,0,0">
-                                                        <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentBrush}" FontSize="10" />
+                                                        <TextBlock Text="{Binding CategoryLabel, Mode=OneWay}" Foreground="{DynamicResource AccentBrush}" FontSize="10" />
                                                     </Border>
                                                     <!-- Fabricant/type/temps de fabrication, uniquement si ce nom est reconnu dans SchemaDatabase (voir SchemaRowVm.Create). -->
                                                     <TextBlock Text="{Binding Subtitle}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVis}}"

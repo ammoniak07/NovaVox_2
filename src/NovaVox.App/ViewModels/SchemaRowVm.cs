@@ -18,6 +18,12 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
 
     public required string Name { get; init; }
     public required string Category { get; init; }
+
+    /// <summary>Partie du corps pour une armure ou un vêtement (Casque, Torse, Bras...), sinon null — voir SchemaCategories.SubcategoryOf.</summary>
+    public string? Subcategory { get; init; }
+
+    /// <summary>Texte du badge : "Armure · Casque", ou juste la catégorie.</summary>
+    public string CategoryLabel => Subcategory is null ? Category : $"{Category} · {Subcategory}";
     public string? Subtitle { get; init; }
     public string? Stats { get; init; }
     public string? Description { get; init; }
@@ -44,6 +50,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
             Name = name,
             IsNew = isNew,
             Category = SchemaCategories.Of(info?.Type),
+            Subcategory = SchemaCategories.SubcategoryOf(info?.Type),
             Subtitle = BuildSubtitle(info),
             Stats = info?.Stats is { Count: > 0 } stats ? string.Join(" · ", stats.Select(SchemaFrenchLabels.Stat)) : null,
             Description = info?.Description,

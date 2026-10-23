@@ -2706,16 +2706,45 @@ public partial class MainWindow : Window
     /// </summary>
     private const string AllSchemaCategoriesLabel = "Toutes catégories";
 
-    private void SchemaCategoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshSchemasSearchVisibility();
+    private const string AllSchemaSubcategoriesLabel = "Toutes les parties";
+
+    /// <summary>
+    /// Le filtre "partie du corps" n'apparaît que pour une catégorie qui en a
+    /// (Armure, Vêtement), et ne propose que les parties réellement présentes
+    /// dans la liste des schémas reçus.
+    /// </summary>
+    private void SchemaCategoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var category = SchemaCategoryCombo.SelectedItem as string;
+        if (category is not null && SchemaCategories.SubcategoriesByCategory.TryGetValue(category, out var parts))
+        {
+            var present = _schemaRows.Where(r => r.Category == category).Select(r => r.Subcategory).ToHashSet();
+            SchemaSubcategoryCombo.ItemsSource = parts.Where(p => present.Contains(p)).Prepend(AllSchemaSubcategoriesLabel).ToList();
+            SchemaSubcategoryCombo.SelectedIndex = 0;
+            SchemaSubcategoryCombo.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            SchemaSubcategoryCombo.Visibility = Visibility.Collapsed;
+            SchemaSubcategoryCombo.ItemsSource = null;
+        }
+        RefreshSchemasSearchVisibility();
+    }
+
+    private void SchemaSubcategoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => RefreshSchemasSearchVisibility();
 
     private void RefreshSchemasSearchVisibility()
     {
         var query = NormalizeForSearch(SchemasSearchBox.Text.Trim());
         var category = SchemaCategoryCombo.SelectedItem is string selected && selected != AllSchemaCategoriesLabel ? selected : null;
+        var subcategory = category is not null && SchemaSubcategoryCombo.Visibility == Visibility.Visible
+            && SchemaSubcategoryCombo.SelectedItem is string part && part != AllSchemaSubcategoriesLabel ? part : null;
         foreach (var row in _schemaRows)
             row.RowVisible = (category is null || row.Category == category)
+                && (subcategory is null || row.Subcategory == subcategory)
                 && (query.Length == 0
                     || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
+                    || NormalizeForSearch(row.CategoryLabel).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Stats).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Description).Contains(query, StringComparison.Ordinal));
