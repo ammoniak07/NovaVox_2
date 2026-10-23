@@ -200,7 +200,7 @@ public partial class OrbWindow : Window
             target = _micLevel * 0.6;
         }
         // Attaque rapide, relâchement plus doux : la bulle "pulse" sur les syllabes.
-        var rate = target > _level ? 8.0 : 3.0;
+        var rate = target > _level ? 5.0 : 2.0;
         _level += (target - _level) * (1 - Math.Exp(-dt * rate));
         _thinkingAmount += ((_thinking && !_speaking ? 1.0 : 0.0) - _thinkingAmount) * (1 - Math.Exp(-dt * 3));
 
@@ -222,12 +222,13 @@ public partial class OrbWindow : Window
         var rx = size * 0.46;
         var ry = size * 0.5;
 
-        // Mouvements lents : respiration douce au repos, ondulations un peu
-        // plus marquées quand la voix monte, tourbillon lent pendant la réflexion.
-        var breathing = 0.015 * Math.Sin(t * 0.6);
+        // Au repos : la bulle bouge déjà bien (respiration, ondulations). Quand
+        // elle parle ou réfléchit, elle s'anime un peu plus mais sans accélérer
+        // brusquement : les réactions restent lentes et souples.
+        var breathing = 0.025 * Math.Sin(t * 0.8);
         var scale = 1 + breathing + _level * 0.05;
-        var wobble = 0.02 + _level * 0.07 + _thinkingAmount * 0.035;
-        var speed = 0.35 + _level * 0.9 + _thinkingAmount * 0.5;
+        var wobble = 0.045 + _level * 0.05 + _thinkingAmount * 0.03;
+        var speed = 0.5 + _level * 0.3 + _thinkingAmount * 0.2;
         var tilt = 4 * Math.Sin(t * 0.13) * Math.PI / 180;
         var cosTilt = Math.Cos(tilt);
         var sinTilt = Math.Sin(tilt);
@@ -238,9 +239,9 @@ public partial class OrbWindow : Window
             var angle = 2 * Math.PI * i / PointCount;
             // Grandes déformations lentes (triangle arrondi, cloche, galet...)
             // qui passent de l'une à l'autre en quelques dizaines de secondes.
-            var shape = 0.065 * Math.Sin(2 * angle + t * 0.11 + _phases[0])
-                + 0.045 * Math.Sin(3 * angle - t * 0.08 + _phases[1])
-                + 0.02 * Math.Sin(4 * angle + t * 0.06 + _phases[2]);
+            var shape = 0.065 * Math.Sin(2 * angle + t * 0.2 + _phases[0])
+                + 0.045 * Math.Sin(3 * angle - t * 0.15 + _phases[1])
+                + 0.02 * Math.Sin(4 * angle + t * 0.1 + _phases[2]);
             var deform = wobble * (
                 0.55 * Math.Sin(2 * angle + t * 0.9 * speed + _phases[0])
                 + 0.30 * Math.Sin(3 * angle - t * 1.4 * speed + _phases[1])
