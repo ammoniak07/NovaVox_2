@@ -20,7 +20,12 @@ public sealed class OrbConfig
     /// <summary>Couleur pendant que Gemini prépare sa réponse (violet).</summary>
     public const string DefaultThinkingColor = "#a855f7";
 
+    public const int DefaultOpacity = 100;
+    public const int MinOpacity = 10;
+
     public bool Enabled { get; set; }
+    /// <summary>Opacité de la bulle en % (10 = presque transparente, 100 = pleine).</summary>
+    public int Opacity { get; set; } = DefaultOpacity;
     public int? X { get; set; }
     public int? Y { get; set; }
     public double Size { get; set; } = DefaultSize;
@@ -57,6 +62,7 @@ public sealed class OrbConfigStore
             config.SpeakingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["speaking_color"]), OrbConfig.DefaultSpeakingColor);
             config.ThinkingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["thinking_color"]), OrbConfig.DefaultThinkingColor);
             config.ShowCaption = GetBool(data["show_caption"], true);
+            config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
         }
         catch
         {
@@ -77,6 +83,7 @@ public sealed class OrbConfigStore
             ["speaking_color"] = config.SpeakingColor,
             ["thinking_color"] = config.ThinkingColor,
             ["show_caption"] = config.ShowCaption,
+            ["opacity"] = config.Opacity,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));
     }

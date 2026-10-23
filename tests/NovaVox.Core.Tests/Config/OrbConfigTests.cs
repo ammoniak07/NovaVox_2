@@ -29,7 +29,7 @@ public class OrbConfigTests : IDisposable
     public void SaveThenLoad_RoundTrips()
     {
         var store = new OrbConfigStore(_dir);
-        store.Save(new OrbConfig { Enabled = true, X = 120, Y = -40, Size = 220, IdleColor = "#22c55e", ShowCaption = false });
+        store.Save(new OrbConfig { Enabled = true, X = 120, Y = -40, Size = 220, IdleColor = "#22c55e", ShowCaption = false, Opacity = 45 });
 
         var loaded = store.Load();
         Assert.True(loaded.Enabled);
@@ -38,6 +38,14 @@ public class OrbConfigTests : IDisposable
         Assert.Equal(220, loaded.Size);
         Assert.Equal("#22c55e", loaded.IdleColor);
         Assert.False(loaded.ShowCaption);
+        Assert.Equal(45, loaded.Opacity);
+    }
+
+    [Fact]
+    public void Load_OpacityBelowMinimum_IsClamped()
+    {
+        File.WriteAllText(Path.Combine(_dir, OrbConfigStore.FileName), """{"opacity": 0}""");
+        Assert.Equal(OrbConfig.MinOpacity, new OrbConfigStore(_dir).Load().Opacity);
     }
 
     [Fact]

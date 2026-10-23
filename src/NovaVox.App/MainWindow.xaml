@@ -755,6 +755,12 @@
                                     <TextBlock x:Name="OrbSizeValueText" Text="160px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Opacité :" VerticalAlignment="Center" />
+                                    <Slider x:Name="OrbOpacitySlider" Minimum="10" Maximum="100" SmallChange="5" LargeChange="10"
+                                            Width="140" Margin="6,0" ValueChanged="OrbOpacitySlider_ValueChanged" />
+                                    <TextBlock x:Name="OrbOpacityValueText" Text="100 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                     <TextBlock Text="Couleur au repos :" VerticalAlignment="Center" />
                                     <Button x:Name="OrbIdleColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
                                             Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"

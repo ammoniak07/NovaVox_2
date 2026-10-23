@@ -90,6 +90,8 @@ public partial class OrbWindow : Window
         Width = size + 2 * margin;
         Height = size * 1.2 + 2 * margin + CaptionHeight;
         GlowBlur.Radius = Math.Max(8, size * 0.22);
+        // Transparence : la bulle et son halo seulement, le texte reste lisible.
+        OrbCanvas.Opacity = Math.Clamp(config.Opacity, OrbConfig.MinOpacity, 100) / 100.0;
         CaptionText.FontSize = Math.Clamp(size * 0.085, 11, 20);
 
         var work = SystemParameters.WorkArea;
@@ -196,7 +198,7 @@ public partial class OrbWindow : Window
             target = _micLevel * 0.6;
         }
         // Attaque rapide, relâchement plus doux : la bulle "pulse" sur les syllabes.
-        var rate = target > _level ? 18.0 : 6.0;
+        var rate = target > _level ? 8.0 : 3.0;
         _level += (target - _level) * (1 - Math.Exp(-dt * rate));
         _thinkingAmount += ((_thinking && !_speaking ? 1.0 : 0.0) - _thinkingAmount) * (1 - Math.Exp(-dt * 3));
 
@@ -213,26 +215,39 @@ public partial class OrbWindow : Window
         var size = Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
         var margin = size * GlowMarginRatio;
         var center = new Point(Width / 2, margin + size * 0.6);
-        var rx = size * 0.42;
-        var ry = size * 0.55;
+        // Ovale allongé (plus haut que large), comme une goutte posée.
+        var rx = size * 0.38;
+        var ry = size * 0.58;
 
-        // Respiration au repos, ondulations plus fortes quand la voix monte,
-        // tourbillon lent pendant la réflexion.
-        var breathing = 0.02 * Math.Sin(t * 1.3);
-        var scale = 1 + breathing + _level * 0.08;
-        var wobble = 0.03 + _level * 0.11 + _thinkingAmount * 0.05;
-        var speed = 1.0 + _level * 2.5 + _thinkingAmount * 1.5;
+        // Mouvements lents : respiration douce au repos, ondulations un peu
+        // plus marquées quand la voix monte, tourbillon lent pendant la réflexion.
+        var breathing = 0.018 * Math.Sin(t * 0.6);
+        var scale = 1 + breathing + _level * 0.06;
+        var wobble = 0.025 + _level * 0.08 + _thinkingAmount * 0.04;
+        var speed = 0.35 + _level * 0.9 + _thinkingAmount * 0.5;
+
+        // Légèrement penchée, avec un balancement très lent.
+        var tilt = (-14 + 3 * Math.Sin(t * 0.15)) * Math.PI / 180;
+        var cosTilt = Math.Cos(tilt);
+        var sinTilt = Math.Sin(tilt);
 
         var points = new Point[PointCount];
         for (var i = 0; i < PointCount; i++)
         {
             var angle = 2 * Math.PI * i / PointCount;
+            // Forme de base irrégulière (pas un ovale parfait) : bas plus
+            // large qu'en haut, quelques bosses qui dérivent très lentement.
+            var shape = 0.07 * Math.Sin(angle)
+                + 0.05 * Math.Sin(2 * angle + t * 0.05 + _phases[0])
+                + 0.03 * Math.Sin(3 * angle - t * 0.04 + _phases[1]);
             var deform = wobble * (
                 0.55 * Math.Sin(2 * angle + t * 0.9 * speed + _phases[0])
                 + 0.30 * Math.Sin(3 * angle - t * 1.4 * speed + _phases[1])
                 + 0.15 * Math.Sin(5 * angle + t * 2.1 * speed + _phases[2]));
-            var r = (1 + deform) * scale;
-            points[i] = new Point(center.X + rx * r * Math.Cos(angle), center.Y + ry * r * Math.Sin(angle));
+            var r = (1 + shape + deform) * scale;
+            var x = rx * r * Math.Cos(angle);
+            var y = ry * r * Math.Sin(angle);
+            points[i] = new Point(center.X + x * cosTilt - y * sinTilt, center.Y + x * sinTilt + y * cosTilt);
         }
 
         // Courbe fermée lisse passant par tous les points (Catmull-Rom -> Bézier).
