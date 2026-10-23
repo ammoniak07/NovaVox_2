@@ -19,7 +19,7 @@ namespace NovaVox.App.Overlay;
 /// </summary>
 public partial class OrbWindow : Window
 {
-    private const int PointCount = 12;
+    private const int PointCount = 16;
     /// <summary>Marge autour de la bulle pour laisser de la place au halo flouté.</summary>
     private const double GlowMarginRatio = 0.35;
     private const double CaptionHeight = 28;
@@ -47,6 +47,26 @@ public partial class OrbWindow : Window
     private Color _idleColor, _speakingColor, _thinkingColor, _listeningColor;
     /// <summary>Dernier instant où la voix du joueur a été entendue (garde la couleur "écoute" un court moment entre deux mots).</summary>
     private double _lastHeardSeconds = double.NegativeInfinity;
+
+    // --- Vie de la bulle (voir StepLife) ---------------------------------
+    // Chaque point du bord est une masse sur un ressort, reliée à ses voisins :
+    // la bulle rebondit et une bosse se propage autour d'elle comme une gelée.
+    private readonly double[] _offset = new double[PointCount];
+    private readonly double[] _velocity = new double[PointCount];
+    /// <summary>Écrasé/étiré (+ = étirée en hauteur), ressort rebondissant.</summary>
+    private double _squash, _squashVelocity;
+    /// <summary>Respiration : phase qui avance, plus un soupir ponctuel amorti.</summary>
+    private double _breathPhase, _sigh, _sighVelocity;
+    private double _nextSighAt = 10, _nextTwitchAt = 3;
+    private double _slowLevel, _lastKickAt;
+    private double _lastActivityAt;
+    /// <summary>0 = éveillée, 1 = endormie (aucune activité depuis longtemps).</summary>
+    private double _sleepiness;
+    /// <summary>0..1 : elle écoute le joueur (retient sa respiration, se tient droite).</summary>
+    private double _attention;
+    private double _innerAngle;
+    private bool _wasHearing;
+    private bool _asleep;
 
     /// <summary>Fin d'un glisser-déposer en mode déplacement : nouvelle position (Left, Top) à enregistrer.</summary>
     public event EventHandler<Point>? PositionChanged;
@@ -211,11 +231,13 @@ public partial class OrbWindow : Window
         // Priorité des couleurs : parle > réfléchit > t'entend > repos.
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
+        StepLife(t, dt, target, hearing);
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : _idleColor;
         _color = Lerp(_color, targetColor, 1 - Math.Exp(-dt * 5));
         ApplyColors(_color);
 
         var blob = BuildBlob(t);
+        UpdateInnerGlow(blob, dt);
         BodyPath.Data = GlowPath.Data = ShadePath.Data = RimPath.Data = blob;
         // Lueur du bord : uniquement à l'intérieur de la bulle, côté le plus
         // lumineux qui tourne lentement, plus vive quand la voix monte.
@@ -223,7 +245,10 @@ public partial class OrbWindow : Window
         var rimAngle = t * 0.25;
         RimBrush.StartPoint = new Point(0.5 + 0.5 * Math.Cos(rimAngle), 0.5 + 0.5 * Math.Sin(rimAngle));
         RimBrush.EndPoint = new Point(0.5 - 0.5 * Math.Cos(rimAngle), 0.5 - 0.5 * Math.Sin(rimAngle));
-        RimPath.Opacity = Math.Clamp(0.5 + 0.1 * Math.Sin(t * 0.9) + 0.35 * _level + 0.15 * _thinkingAmount, 0, 1);
+        RimPath.Opacity = Math.Clamp(0.5 + 0.1 * Math.Sin(t * 0.9) + 0.35 * _level + 0.15 * _thinkingAmount - 0.25 * _sleepiness, 0, 1);
+        // Endormie, elle pâlit un peu (en plus de l'opacité choisie dans les réglages).
+        GlowPath.Opacity = 0.55 * (1 - 0.45 * _sleepiness) + 0.15 * _level;
+        OrbCanvas.Opacity = Math.Clamp(_config.Opacity, OrbConfig.MinOpacity, 100) / 100.0 * (1 - 0.25 * _sleepiness);
         UpdateCaption();
     }
 
@@ -236,13 +261,14 @@ public partial class OrbWindow : Window
         var rx = size * 0.46;
         var ry = size * 0.5;
 
-        // Au repos : la bulle bouge déjà bien (respiration, ondulations). Quand
-        // elle parle, les déformations deviennent nettement plus grandes mais
-        // PLUS LENTES qu'au repos : de grandes vagues souples au rythme de la voix.
-        var breathing = 0.025 * Math.Sin(t * 0.8);
-        var scale = 1 + breathing + _level * 0.06;
-        var wobble = 0.06 + _level * 0.17 + _thinkingAmount * 0.04;
-        var speed = 0.5 - _level * 0.15 + _thinkingAmount * 0.2;
+        // Respiration (plus lente endormie, retenue quand elle t'écoute) +
+        // soupir ponctuel ; légère hausse quand la voix monte ; elle se tient
+        // un peu plus droite quand elle écoute.
+        var breathing = 0.025 * (1 - 0.6 * _attention) * Math.Sin(_breathPhase) + _sigh;
+        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness);
+        var stretch = _squash + 0.035 * _attention;
+        var scaleY = scale * (1 + stretch);
+        var scaleX = scale * (1 - stretch * 0.7);
         var tilt = 4 * Math.Sin(t * 0.13) * Math.PI / 180;
         var cosTilt = Math.Cos(tilt);
         var sinTilt = Math.Sin(tilt);
@@ -251,22 +277,12 @@ public partial class OrbWindow : Window
         for (var i = 0; i < PointCount; i++)
         {
             var angle = 2 * Math.PI * i / PointCount;
-            // Grandes déformations lentes (triangle arrondi, cloche, galet...)
-            // qui passent de l'une à l'autre en quelques dizaines de secondes.
-            var shape = (1 + _level * 0.6) * (
-                0.11 * Math.Sin(2 * angle + t * 0.2 + _phases[0])
-                + 0.075 * Math.Sin(3 * angle - t * 0.15 + _phases[1])
-                + 0.03 * Math.Sin(4 * angle + t * 0.1 + _phases[2]));
-            var deform = wobble * (
-                0.55 * Math.Sin(2 * angle + t * 0.9 * speed + _phases[0])
-                + 0.30 * Math.Sin(3 * angle - t * 1.4 * speed + _phases[1])
-                + 0.15 * Math.Sin(5 * angle + t * 2.1 * speed + _phases[2]));
-            var r = (1 + shape + deform) * scale;
+            var r = 1 + _offset[i];
             // Superellipse (exposant 2,25) : côtés plus plats qu'un cercle, coins bien arrondis.
             var c = Math.Cos(angle);
             var sn = Math.Sin(angle);
-            var x = rx * r * Math.Sign(c) * Math.Pow(Math.Abs(c), 2 / 2.25);
-            var y = ry * r * Math.Sign(sn) * Math.Pow(Math.Abs(sn), 2 / 2.25);
+            var x = rx * scaleX * r * Math.Sign(c) * Math.Pow(Math.Abs(c), 2 / 2.25);
+            var y = ry * scaleY * r * Math.Sign(sn) * Math.Pow(Math.Abs(sn), 2 / 2.25);
             points[i] = new Point(center.X + x * cosTilt - y * sinTilt, center.Y + x * sinTilt + y * cosTilt);
         }
 
@@ -309,6 +325,133 @@ public partial class OrbWindow : Window
     }
 
     /// <summary>
+    /// Forme "voulue" de la bulle à l'instant t pour le point d'angle donné :
+    /// grandes formes lentes (galet, triangle arrondi, cloche) et ondulations.
+    /// Les ressorts de StepLife la suivent avec du retard et du rebond.
+    /// </summary>
+    private double TargetOffset(double angle, double t)
+    {
+        var wobble = (0.06 + _level * 0.17 + _thinkingAmount * 0.04) * (1 - 0.5 * _attention) * (1 - 0.4 * _sleepiness);
+        var speed = (0.5 - _level * 0.15 + _thinkingAmount * 0.2) * (1 - 0.5 * _sleepiness);
+        var shape = (1 + _level * 0.6) * (
+            0.11 * Math.Sin(2 * angle + t * 0.2 + _phases[0])
+            + 0.075 * Math.Sin(3 * angle - t * 0.15 + _phases[1])
+            + 0.03 * Math.Sin(4 * angle + t * 0.1 + _phases[2]));
+        var deform = wobble * (
+            0.55 * Math.Sin(2 * angle + t * 0.9 * speed + _phases[0])
+            + 0.30 * Math.Sin(3 * angle - t * 1.4 * speed + _phases[1])
+            + 0.15 * Math.Sin(5 * angle + t * 2.1 * speed + _phases[2]));
+        return shape + deform;
+    }
+
+    /// <summary>
+    /// Fait "vivre" la bulle à chaque image : ressorts du bord (gelée),
+    /// pichenettes sur les syllabes, effet écrasé-étiré, frémissements et
+    /// soupirs au repos, attention quand le joueur parle, endormissement
+    /// après une longue inactivité et petit rebond au réveil.
+    /// </summary>
+    private void StepLife(double t, double dt, double target, bool hearing)
+    {
+        var active = _speaking || _thinking || hearing;
+        if (active)
+        {
+            // Réveil : un seul petit sursaut si elle dormait.
+            if (_asleep)
+            {
+                _asleep = false;
+                _squashVelocity += 0.9;
+                Kick(_random.NextDouble() * Math.PI * 2, 0.18, 1.2);
+            }
+            _lastActivityAt = t;
+        }
+        var sleepTarget = t - _lastActivityAt > 90 ? 1.0 : 0.0;
+        _sleepiness += (sleepTarget - _sleepiness) * (1 - Math.Exp(-dt * (sleepTarget > _sleepiness ? 0.3 : 4.0)));
+        if (_sleepiness > 0.8) _asleep = true;
+        _attention += ((hearing && !_speaking ? 1.0 : 0.0) - _attention) * (1 - Math.Exp(-dt * 4));
+
+        // Attaque d'une syllabe (le niveau monte nettement au-dessus de sa
+        // moyenne récente) : pichenette à un endroit au hasard + rebond.
+        _slowLevel += (target - _slowLevel) * (1 - Math.Exp(-dt * 3));
+        if (target - _slowLevel > 0.18 && t - _lastKickAt > 0.14)
+        {
+            var strength = (_speaking ? 0.12 : 0.06) + (_speaking ? 0.2 : 0.08) * target;
+            Kick(_random.NextDouble() * Math.PI * 2, strength, 0.9);
+            _squashVelocity += (_random.NextDouble() < 0.5 ? 1 : -1) * (_speaking ? 0.5 : 0.25) * target;
+            _lastKickAt = t;
+        }
+        if (hearing && !_wasHearing) _squashVelocity += 0.35; // elle "tend l'oreille"
+        _wasHearing = hearing;
+
+        // Au repos : petits frémissements aléatoires et soupirs de temps en temps.
+        if (!_speaking && t > _nextTwitchAt)
+        {
+            Kick(_random.NextDouble() * Math.PI * 2, 0.035 + 0.03 * _random.NextDouble(), 0.7);
+            _nextTwitchAt = t + (2.5 + _random.NextDouble() * 3.5) * (1 + 2 * _sleepiness);
+        }
+        if (!active && t > _nextSighAt)
+        {
+            _sighVelocity += 0.12;
+            _nextSighAt = t + 8 + _random.NextDouble() * 8;
+        }
+        _breathPhase += dt * 0.8 * (1 - 0.45 * _sleepiness) * (1 - 0.6 * _attention);
+
+        // Intégration des ressorts par petits pas (stable même si une image tarde).
+        var steps = Math.Max(1, (int)Math.Ceiling(dt / (1.0 / 120)));
+        var h = dt / steps;
+        var targets = new double[PointCount];
+        for (var i = 0; i < PointCount; i++) targets[i] = TargetOffset(2 * Math.PI * i / PointCount, t);
+        for (var s = 0; s < steps; s++)
+        {
+            for (var i = 0; i < PointCount; i++)
+            {
+                var left = _offset[(i - 1 + PointCount) % PointCount];
+                var right = _offset[(i + 1) % PointCount];
+                var acc = 28 * (targets[i] - _offset[i]) - 5.5 * _velocity[i] + 30 * (left + right - 2 * _offset[i]);
+                _velocity[i] += acc * h;
+            }
+            for (var i = 0; i < PointCount; i++)
+                _offset[i] = Math.Clamp(_offset[i] + _velocity[i] * h, -0.35, 0.45);
+
+            // Écrasé-étiré : ressort vif et peu amorti, donc quelques rebonds.
+            _squashVelocity += (-60 * _squash - 6 * _squashVelocity) * h;
+            _squash = Math.Clamp(_squash + _squashVelocity * h, -0.18, 0.18);
+            // Soupir : ressort lent, une longue inspiration qui retombe.
+            _sighVelocity += (-4 * _sigh - 2.5 * _sighVelocity) * h;
+            _sigh = Math.Clamp(_sigh + _sighVelocity * h, -0.06, 0.08);
+        }
+    }
+
+    /// <summary>Pousse le bord vers l'extérieur autour de <paramref name="angle"/> (bosse qui se propage ensuite).</summary>
+    private void Kick(double angle, double strength, double width)
+    {
+        for (var i = 0; i < PointCount; i++)
+        {
+            var a = 2 * Math.PI * i / PointCount;
+            var d = Math.Abs(((a - angle + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+            _velocity[i] += strength * 5 * Math.Exp(-(d / width) * (d / width));
+        }
+    }
+
+    /// <summary>Lumière intérieure : tourne lentement, plus vite et plus forte quand elle réfléchit ou parle.</summary>
+    private void UpdateInnerGlow(Geometry blob, double dt)
+    {
+        var b = blob.Bounds;
+        _innerAngle += dt * (0.25 + 1.2 * _thinkingAmount + 0.4 * _level) * (1 - 0.6 * _sleepiness);
+        var diameter = Math.Min(b.Width, b.Height) * 0.55;
+        InnerGlow.Width = InnerGlow.Height = diameter;
+        InnerBlur.Radius = Math.Max(4, diameter * 0.15);
+        var cx = b.Left + b.Width / 2 + Math.Cos(_innerAngle) * b.Width * 0.18;
+        var cy = b.Top + b.Height / 2 + Math.Sin(_innerAngle) * b.Height * 0.18;
+        Canvas.SetLeft(InnerGlow, cx - diameter / 2);
+        Canvas.SetTop(InnerGlow, cy - diameter / 2);
+        // Découpée à la forme de la bulle (coordonnées locales de l'ellipse).
+        var clip = blob.Clone();
+        clip.Transform = new TranslateTransform(-(cx - diameter / 2), -(cy - diameter / 2));
+        InnerGlow.Clip = clip;
+        InnerGlow.Opacity = Math.Clamp(0.3 + 0.35 * _thinkingAmount + 0.25 * _level - 0.15 * _sleepiness, 0, 1);
+    }
+
+    /// <summary>
     /// Toutes les nuances viennent de la couleur courante : reflet crème,
     /// côté chaud en haut à gauche, côté rosé en bas à droite, liseré
     /// rose-rouge et halo plus chaud — comme la goutte de référence en
@@ -331,6 +474,8 @@ public partial class OrbWindow : Window
         RimStopSoft.Color = WithAlpha(rim, 0x30);
         RimStopEnd.Color = WithAlpha(rim, 0xa0);
         FloorStop.Color = WithAlpha(Lerp(main, cream, 0.4), 0x90);
+        InnerStopCenter.Color = WithAlpha(Lerp(main, cream, 0.65), 0xc0);
+        InnerStopEdge.Color = WithAlpha(Lerp(main, cream, 0.65), 0x00);
     }
 
     private static Color WithAlpha(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);
