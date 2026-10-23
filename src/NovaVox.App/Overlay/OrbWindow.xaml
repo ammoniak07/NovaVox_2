@@ -13,26 +13,64 @@
         Width="280" Height="300">
     <Grid>
         <Canvas x:Name="OrbCanvas" IsHitTestVisible="True" Background="#01000000">
-            <!-- Halo : même forme que la bulle, floutée derrière elle. -->
-            <Path x:Name="GlowPath" Opacity="0.7">
+            <!-- Halo chaud : même forme que la bulle, très floutée derrière elle. -->
+            <Path x:Name="GlowPath" Opacity="0.55">
                 <Path.Fill>
-                    <SolidColorBrush x:Name="GlowBrush" Color="#38bdf8" />
+                    <SolidColorBrush x:Name="GlowBrush" Color="#ffcf70" />
                 </Path.Fill>
                 <Path.Effect>
-                    <BlurEffect x:Name="GlowBlur" Radius="36" KernelType="Gaussian" RenderingBias="Performance" />
+                    <BlurEffect x:Name="GlowBlur" Radius="48" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
-            <!-- Corps : dégradé radial avec un reflet clair en haut, comme une goutte lumineuse. -->
+            <!-- Trait de lumière sous la bulle, comme un reflet sur une surface. -->
+            <Rectangle x:Name="FloorLine" Height="2" RadiusX="1" RadiusY="1">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                        <GradientStop Offset="0" Color="#00000000" />
+                        <GradientStop x:Name="FloorStop" Offset="0.5" Color="#80ffcf70" />
+                        <GradientStop Offset="1" Color="#00000000" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <!-- Corps : dégradé radial (clair en haut à gauche, plus sombre vers le bord). -->
             <Path x:Name="BodyPath">
                 <Path.Fill>
-                    <RadialGradientBrush x:Name="BodyBrush" GradientOrigin="0.42,0.28" Center="0.5,0.45" RadiusX="0.72" RadiusY="0.72">
-                        <GradientStop x:Name="StopHighlight" Offset="0" Color="#fff6c8" />
-                        <GradientStop x:Name="StopLight" Offset="0.3" Color="#7dd3fc" />
-                        <GradientStop x:Name="StopMain" Offset="0.75" Color="#38bdf8" />
-                        <GradientStop x:Name="StopEdge" Offset="1" Color="#0c4a6e" />
+                    <RadialGradientBrush x:Name="BodyBrush" GradientOrigin="0.35,0.3" Center="0.45,0.42" RadiusX="0.75" RadiusY="0.75">
+                        <GradientStop x:Name="StopHighlight" Offset="0" Color="#ffe9a8" />
+                        <GradientStop x:Name="StopLight" Offset="0.35" Color="#f6b866" />
+                        <GradientStop x:Name="StopMain" Offset="0.8" Color="#f0985a" />
+                        <GradientStop x:Name="StopEdge" Offset="1" Color="#d27070" />
                     </RadialGradientBrush>
                 </Path.Fill>
             </Path>
+            <!-- Nuance : chaud en haut à gauche, rosé en bas à droite. -->
+            <Path x:Name="ShadePath">
+                <Path.Fill>
+                    <LinearGradientBrush StartPoint="0.1,0.05" EndPoint="0.95,0.95">
+                        <GradientStop x:Name="ShadeWarm" Offset="0" Color="#80ffd27a" />
+                        <GradientStop Offset="0.5" Color="#00000000" />
+                        <GradientStop x:Name="ShadeCool" Offset="1" Color="#90c0607a" />
+                    </LinearGradientBrush>
+                </Path.Fill>
+            </Path>
+            <!-- Liseré lumineux rose-rouge sur le bord. -->
+            <Path x:Name="RimPath" StrokeThickness="4" Opacity="0.9">
+                <Path.Stroke>
+                    <SolidColorBrush x:Name="RimBrush" Color="#ff5a6a" />
+                </Path.Stroke>
+                <Path.Effect>
+                    <BlurEffect x:Name="RimBlur" Radius="3" KernelType="Gaussian" RenderingBias="Performance" />
+                </Path.Effect>
+            </Path>
+            <!-- Petit reflet brillant en haut à gauche. -->
+            <Ellipse x:Name="Highlight" Width="30" Height="22">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Offset="0" Color="#e6fffbe0" />
+                        <GradientStop Offset="1" Color="#00fffbe0" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
             <!-- Repère visible uniquement en mode "Déplacer la bulle". -->
             <Ellipse x:Name="MoveHint" Stroke="#dbe4ee" StrokeThickness="1.5" StrokeDashArray="4 3" Visibility="Collapsed" />
         </Canvas>

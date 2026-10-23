@@ -16,7 +16,11 @@ public sealed class OrbConfig
     /// <summary>Couleur au repos (bleu-cyan).</summary>
     public const string DefaultIdleColor = "#38bdf8";
     /// <summary>Couleur quand NovaVox parle (orange-rouge).</summary>
-    public const string DefaultSpeakingColor = "#ff5a1f";
+    public const string DefaultSpeakingColor = "#f39252";
+    /// <summary>Ancienne couleur par défaut (trop vive) : remplacée par la nouvelle au chargement.</summary>
+    private const string OldDefaultSpeakingColor = "#ff5a1f";
+    internal static string MigrateSpeakingColor(string color) =>
+        string.Equals(color, OldDefaultSpeakingColor, StringComparison.OrdinalIgnoreCase) ? DefaultSpeakingColor : color;
     /// <summary>Couleur pendant que Gemini prépare sa réponse (violet).</summary>
     public const string DefaultThinkingColor = "#a855f7";
 
@@ -59,7 +63,7 @@ public sealed class OrbConfigStore
             config.Y = GetDouble(data["y"]) is { } y ? (int)Math.Round(y) : null;
             config.Size = Math.Clamp(GetDouble(data["size"]) ?? OrbConfig.DefaultSize, OrbConfig.MinSize, OrbConfig.MaxSize);
             config.IdleColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["idle_color"]), OrbConfig.DefaultIdleColor);
-            config.SpeakingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["speaking_color"]), OrbConfig.DefaultSpeakingColor);
+            config.SpeakingColor = OrbConfig.MigrateSpeakingColor(OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["speaking_color"]), OrbConfig.DefaultSpeakingColor));
             config.ThinkingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["thinking_color"]), OrbConfig.DefaultThinkingColor);
             config.ShowCaption = GetBool(data["show_caption"], true);
             config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
