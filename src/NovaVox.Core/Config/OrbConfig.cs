@@ -23,6 +23,8 @@ public sealed class OrbConfig
         string.Equals(color, OldDefaultSpeakingColor, StringComparison.OrdinalIgnoreCase) ? DefaultSpeakingColor : color;
     /// <summary>Couleur pendant que Gemini prépare sa réponse (violet).</summary>
     public const string DefaultThinkingColor = "#a855f7";
+    /// <summary>Couleur quand la bulle entend le joueur parler au micro (vert).</summary>
+    public const string DefaultListeningColor = "#34d399";
 
     public const int DefaultOpacity = 100;
     public const int MinOpacity = 10;
@@ -36,6 +38,7 @@ public sealed class OrbConfig
     public string IdleColor { get; set; } = DefaultIdleColor;
     public string SpeakingColor { get; set; } = DefaultSpeakingColor;
     public string ThinkingColor { get; set; } = DefaultThinkingColor;
+    public string ListeningColor { get; set; } = DefaultListeningColor;
     /// <summary>Affiche "Je réfléchis…" sous la bulle pendant une question à Gemini.</summary>
     public bool ShowCaption { get; set; } = true;
 }
@@ -65,6 +68,7 @@ public sealed class OrbConfigStore
             config.IdleColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["idle_color"]), OrbConfig.DefaultIdleColor);
             config.SpeakingColor = OrbConfig.MigrateSpeakingColor(OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["speaking_color"]), OrbConfig.DefaultSpeakingColor));
             config.ThinkingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["thinking_color"]), OrbConfig.DefaultThinkingColor);
+            config.ListeningColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["listening_color"]), OrbConfig.DefaultListeningColor);
             config.ShowCaption = GetBool(data["show_caption"], true);
             config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
         }
@@ -86,6 +90,7 @@ public sealed class OrbConfigStore
             ["idle_color"] = config.IdleColor,
             ["speaking_color"] = config.SpeakingColor,
             ["thinking_color"] = config.ThinkingColor,
+            ["listening_color"] = config.ListeningColor,
             ["show_caption"] = config.ShowCaption,
             ["opacity"] = config.Opacity,
         };

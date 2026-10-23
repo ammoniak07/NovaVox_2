@@ -3724,6 +3724,10 @@ public partial class MainWindow : Window
         OrbIdleColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.IdleColor)!);
         OrbSpeakingColorBox.Text = orb.SpeakingColor;
         OrbSpeakingColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.SpeakingColor)!);
+        OrbThinkingColorBox.Text = orb.ThinkingColor;
+        OrbThinkingColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.ThinkingColor)!);
+        OrbListeningColorBox.Text = orb.ListeningColor;
+        OrbListeningColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.ListeningColor)!);
         OrbCaptionCheckbox.IsChecked = orb.ShowCaption;
     }
 
@@ -3789,27 +3793,46 @@ public partial class MainWindow : Window
     private void OrbSpeakingColorSwatch_Click(object sender, RoutedEventArgs e) =>
         OpenColorPicker("orbSpeaking", OrbSpeakingColorSwatch, _state.Orb.SpeakingColor);
 
+    private void OrbThinkingColorSwatch_Click(object sender, RoutedEventArgs e) =>
+        OpenColorPicker("orbThinking", OrbThinkingColorSwatch, _state.Orb.ThinkingColor);
+
+    private void OrbListeningColorSwatch_Click(object sender, RoutedEventArgs e) =>
+        OpenColorPicker("orbListening", OrbListeningColorSwatch, _state.Orb.ListeningColor);
+
     private void OrbColorBox_LostFocus(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
         SetOrbColor("orbIdle", OverlayConfigStore.ValidateHexColor(OrbIdleColorBox.Text.Trim(), _state.Orb.IdleColor));
         SetOrbColor("orbSpeaking", OverlayConfigStore.ValidateHexColor(OrbSpeakingColorBox.Text.Trim(), _state.Orb.SpeakingColor));
+        SetOrbColor("orbThinking", OverlayConfigStore.ValidateHexColor(OrbThinkingColorBox.Text.Trim(), _state.Orb.ThinkingColor));
+        SetOrbColor("orbListening", OverlayConfigStore.ValidateHexColor(OrbListeningColorBox.Text.Trim(), _state.Orb.ListeningColor));
     }
 
     private void SetOrbColor(string target, string hex)
     {
         var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)!);
-        if (target == "orbIdle")
+        switch (target)
         {
-            _state.Orb.IdleColor = hex;
-            OrbIdleColorBox.Text = hex;
-            OrbIdleColorSwatch.Background = brush;
-        }
-        else
-        {
-            _state.Orb.SpeakingColor = hex;
-            OrbSpeakingColorBox.Text = hex;
-            OrbSpeakingColorSwatch.Background = brush;
+            case "orbIdle":
+                _state.Orb.IdleColor = hex;
+                OrbIdleColorBox.Text = hex;
+                OrbIdleColorSwatch.Background = brush;
+                break;
+            case "orbSpeaking":
+                _state.Orb.SpeakingColor = hex;
+                OrbSpeakingColorBox.Text = hex;
+                OrbSpeakingColorSwatch.Background = brush;
+                break;
+            case "orbThinking":
+                _state.Orb.ThinkingColor = hex;
+                OrbThinkingColorBox.Text = hex;
+                OrbThinkingColorSwatch.Background = brush;
+                break;
+            case "orbListening":
+                _state.Orb.ListeningColor = hex;
+                OrbListeningColorBox.Text = hex;
+                OrbListeningColorSwatch.Background = brush;
+                break;
         }
         SaveAndApplyOrb();
     }
@@ -3951,6 +3974,8 @@ public partial class MainWindow : Window
             "text" => _state.Overlay.TextColor,
             "orbIdle" => _state.Orb.IdleColor,
             "orbSpeaking" => _state.Orb.SpeakingColor,
+            "orbThinking" => _state.Orb.ThinkingColor,
+            "orbListening" => _state.Orb.ListeningColor,
             "shiprow" => _colorPickerTargetRow?.Color ?? ShipCheatSheetPointRowVm.DefaultColor,
             _ => ShipCheatSheetPointRowVm.DefaultColor,
         };
@@ -3999,6 +4024,8 @@ public partial class MainWindow : Window
                 break;
             case "orbIdle":
             case "orbSpeaking":
+            case "orbThinking":
+            case "orbListening":
                 SetOrbColor(_colorPickerTarget, hex);
                 break;
             case "shiprow":

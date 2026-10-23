@@ -44,7 +44,9 @@ public partial class OrbWindow : Window
     private double _level;
     private double _thinkingAmount;
     private Color _color;
-    private Color _idleColor, _speakingColor, _thinkingColor;
+    private Color _idleColor, _speakingColor, _thinkingColor, _listeningColor;
+    /// <summary>Dernier instant où la voix du joueur a été entendue (garde la couleur "écoute" un court moment entre deux mots).</summary>
+    private double _lastHeardSeconds = double.NegativeInfinity;
 
     /// <summary>Fin d'un glisser-déposer en mode déplacement : nouvelle position (Left, Top) à enregistrer.</summary>
     public event EventHandler<Point>? PositionChanged;
@@ -56,6 +58,7 @@ public partial class OrbWindow : Window
         _color = _idleColor = ParseColor(_config.IdleColor);
         _speakingColor = ParseColor(_config.SpeakingColor);
         _thinkingColor = ParseColor(_config.ThinkingColor);
+        _listeningColor = ParseColor(_config.ListeningColor);
 
         SourceInitialized += (_, _) =>
         {
@@ -85,6 +88,7 @@ public partial class OrbWindow : Window
         _idleColor = ParseColor(config.IdleColor);
         _speakingColor = ParseColor(config.SpeakingColor);
         _thinkingColor = ParseColor(config.ThinkingColor);
+        _listeningColor = ParseColor(config.ListeningColor);
         var size = Math.Clamp(config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
         var margin = size * GlowMarginRatio;
         Width = size + 2 * margin;
@@ -204,7 +208,10 @@ public partial class OrbWindow : Window
         _level += (target - _level) * (1 - Math.Exp(-dt * rate));
         _thinkingAmount += ((_thinking && !_speaking ? 1.0 : 0.0) - _thinkingAmount) * (1 - Math.Exp(-dt * 3));
 
-        var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : _idleColor;
+        // Priorité des couleurs : parle > réfléchit > t'entend > repos.
+        if (_micLevel > 0.05) _lastHeardSeconds = t;
+        var hearing = t - _lastHeardSeconds < 0.8;
+        var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : _idleColor;
         _color = Lerp(_color, targetColor, 1 - Math.Exp(-dt * 5));
         ApplyColors(_color);
 
