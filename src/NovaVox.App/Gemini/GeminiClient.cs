@@ -59,7 +59,17 @@ public sealed class GeminiClient
         _history.Add(new GeminiMessage("user", question));
         UserMessageAdded?.Invoke(this, question);
 
-        var reply = await BuildReplyAsync(question).ConfigureAwait(false);
+        // Bulle animée : état "Je réfléchis…" le temps de la requête.
+        NovaVox.App.Speech.SpeechActivity.BeginThinking();
+        (string Text, bool IsError) reply;
+        try
+        {
+            reply = await BuildReplyAsync(question).ConfigureAwait(false);
+        }
+        finally
+        {
+            NovaVox.App.Speech.SpeechActivity.EndThinking();
+        }
 
         _history.Add(new GeminiMessage("assistant", reply.Text));
         var trimmed = GeminiRequestBuilder.TrimHistory(_history);

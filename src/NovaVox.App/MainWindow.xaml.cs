@@ -121,6 +121,9 @@ public partial class MainWindow : Window
     public bool IsQuitting { get; set; }
 
     private OverlayWindow? _overlayWindow;
+    private OrbWindow? _orbWindow;
+    private bool _orbMoveMode;
+    private bool _orbMicActive;
 
     public MainWindow()
     {
@@ -207,6 +210,7 @@ public partial class MainWindow : Window
         InitializeProfiles();
         BuildVirtualKeyboard();
         InitializeOverlay();
+        InitializeOrb();
         LoadSettingsIntoControls();
         ApplyUiTranslations();
         InitializeVoiceOrchestrator();
@@ -1363,6 +1367,7 @@ public partial class MainWindow : Window
         _micLevelMonitor.Dispose();
         _gameLogWatcher?.Dispose();
         _overlayWindow?.Close();
+        _orbWindow?.Close();
     }
 
     // ------------------------------------------------------------ Réglages
@@ -1425,6 +1430,7 @@ public partial class MainWindow : Window
 
             var overlay = _state.Overlay;
             OverlayEnabledCheckbox.IsChecked = overlay.Enabled;
+            LoadOrbSettings();
             OverlayBgColorBox.Text = overlay.BgColor;
             OverlayBgColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(overlay.BgColor)!);
             OverlayBgOpacitySlider.Value = overlay.BgOpacity;
@@ -2155,8 +2161,19 @@ public partial class MainWindow : Window
             if (listening) _micLevelMonitor.Stop();
             else StartMicLevelMonitorIfIdle();
         });
-        _voiceOrchestrator.MicLevelChanged += (_, rms) => Dispatcher.BeginInvoke(() => UpdateMicLevelMeter(rms));
-        _voiceOrchestrator.MicActiveChanged += (_, active) => Dispatcher.BeginInvoke(() => _overlayWindow?.SetMicActive(active));
+        _voiceOrchestrator.MicLevelChanged += (_, rms) => Dispatcher.BeginInvoke(() =>
+        {
+            UpdateMicLevelMeter(rms);
+            // Bulle : ne réagit qu'à la voix au-dessus du seuil de sensibilité, pas au bruit de fond.
+            var gate = Math.Max(0, MicGateSlider.Value);
+            _orbWindow?.SetMicLevel(_orbMicActive ? Math.Clamp((rms - gate) / (double)Math.Max(1, MicGateMax - gate), 0, 1) : 0);
+        });
+        _voiceOrchestrator.MicActiveChanged += (_, active) => Dispatcher.BeginInvoke(() =>
+        {
+            _overlayWindow?.SetMicActive(active);
+            _orbMicActive = active;
+            if (!active) _orbWindow?.SetMicLevel(0);
+        });
         _voiceOrchestrator.CommandExecuted += (_, keys) => Dispatcher.BeginInvoke(() => StatusText.Text = $"Commande : {keys}");
         _voiceOrchestrator.CommandTriggered += (_, e) => Dispatcher.BeginInvoke(() =>
         {
@@ -3680,6 +3697,111 @@ public partial class MainWindow : Window
         }
     }
 
+    // ------------------------------------------------------- Bulle animée
+
+    private void InitializeOrb()
+    {
+        _orbWindow = new OrbWindow();
+        _orbWindow.ApplyConfig(_state.Orb);
+        _orbWindow.PositionChanged += (_, pos) =>
+        {
+            _state.Orb.X = (int)Math.Round(pos.X);
+            _state.Orb.Y = (int)Math.Round(pos.Y);
+            _state.SaveOrb();
+        };
+        if (_state.Orb.Enabled) _orbWindow.Show();
+    }
+
+    private void LoadOrbSettings()
+    {
+        var orb = _state.Orb;
+        OrbEnabledCheckbox.IsChecked = orb.Enabled;
+        OrbSizeSlider.Value = orb.Size;
+        OrbSizeValueText.Text = $"{orb.Size:0}px";
+        OrbIdleColorBox.Text = orb.IdleColor;
+        OrbIdleColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.IdleColor)!);
+        OrbSpeakingColorBox.Text = orb.SpeakingColor;
+        OrbSpeakingColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.SpeakingColor)!);
+        OrbCaptionCheckbox.IsChecked = orb.ShowCaption;
+    }
+
+    private void SaveAndApplyOrb()
+    {
+        _state.SaveOrb();
+        _orbWindow?.ApplyConfig(_state.Orb);
+    }
+
+    private void OrbEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.Enabled = OrbEnabledCheckbox.IsChecked ?? false;
+        SaveAndApplyOrb();
+        if (_orbWindow is null) return;
+        if (_state.Orb.Enabled) _orbWindow.Show();
+        else
+        {
+            if (_orbMoveMode) ToggleOrbMoveButton_Click(this, new RoutedEventArgs());
+            _orbWindow.Hide();
+        }
+    }
+
+    private void ToggleOrbMoveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_orbWindow is null) return;
+        _orbMoveMode = !_orbMoveMode;
+        if (_orbMoveMode && !_orbWindow.IsVisible) _orbWindow.Show();
+        else if (!_orbMoveMode && !_state.Orb.Enabled) _orbWindow.Hide();
+        _orbWindow.SetMoveMode(_orbMoveMode);
+        ToggleOrbMoveButton.Content = _orbMoveMode ? "Verrouiller la bulle" : "Déplacer la bulle";
+    }
+
+    private void OrbSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OrbSizeValueText is null) return;
+        OrbSizeValueText.Text = $"{OrbSizeSlider.Value:0}px";
+        if (_loadingSettings || _state is null) return;
+        _state.Orb.Size = Math.Round(OrbSizeSlider.Value);
+        SaveAndApplyOrb();
+    }
+
+    private void OrbCaptionCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowCaption = OrbCaptionCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbIdleColorSwatch_Click(object sender, RoutedEventArgs e) =>
+        OpenColorPicker("orbIdle", OrbIdleColorSwatch, _state.Orb.IdleColor);
+
+    private void OrbSpeakingColorSwatch_Click(object sender, RoutedEventArgs e) =>
+        OpenColorPicker("orbSpeaking", OrbSpeakingColorSwatch, _state.Orb.SpeakingColor);
+
+    private void OrbColorBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        SetOrbColor("orbIdle", OverlayConfigStore.ValidateHexColor(OrbIdleColorBox.Text.Trim(), _state.Orb.IdleColor));
+        SetOrbColor("orbSpeaking", OverlayConfigStore.ValidateHexColor(OrbSpeakingColorBox.Text.Trim(), _state.Orb.SpeakingColor));
+    }
+
+    private void SetOrbColor(string target, string hex)
+    {
+        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)!);
+        if (target == "orbIdle")
+        {
+            _state.Orb.IdleColor = hex;
+            OrbIdleColorBox.Text = hex;
+            OrbIdleColorSwatch.Background = brush;
+        }
+        else
+        {
+            _state.Orb.SpeakingColor = hex;
+            OrbSpeakingColorBox.Text = hex;
+            OrbSpeakingColorSwatch.Background = brush;
+        }
+        SaveAndApplyOrb();
+    }
+
     private void OverlayEnabledCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
@@ -3815,6 +3937,8 @@ public partial class MainWindow : Window
         {
             "bg" => _state.Overlay.BgColor,
             "text" => _state.Overlay.TextColor,
+            "orbIdle" => _state.Orb.IdleColor,
+            "orbSpeaking" => _state.Orb.SpeakingColor,
             "shiprow" => _colorPickerTargetRow?.Color ?? ShipCheatSheetPointRowVm.DefaultColor,
             _ => ShipCheatSheetPointRowVm.DefaultColor,
         };
@@ -3860,6 +3984,10 @@ public partial class MainWindow : Window
                 OverlayTextColorBox.Text = hex;
                 OverlayTextColorSwatch.Background = new SolidColorBrush(color);
                 OverlayAppearance_Changed(this, new RoutedEventArgs());
+                break;
+            case "orbIdle":
+            case "orbSpeaking":
+                SetOrbColor(_colorPickerTarget, hex);
                 break;
             case "shiprow":
                 if (_colorPickerTargetRow is not null)

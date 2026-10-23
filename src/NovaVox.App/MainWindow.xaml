@@ -741,6 +741,35 @@
                                             Width="140" Margin="6,0" ValueChanged="OverlayBaseWidth_Changed" />
                                     <TextBlock x:Name="OverlayBaseWidthValueText" Text="330px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                 </StackPanel>
+
+                                <!-- Deuxième overlay : bulle animée (voir Overlay/OrbWindow). -->
+                                <TextBlock Text="Bulle animée" FontWeight="Bold" Margin="0,20,0,4" />
+                                <TextBlock Text="Une goutte lumineuse, séparée de l'overlay, qui s'anime au rythme de la voix : orange-rouge quand NovaVox parle, violette pendant que Gemini réfléchit, et de la couleur choisie ci-dessous au repos (elle frémit aussi quand tu parles au micro)."
+                                           Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <CheckBox x:Name="OrbEnabledCheckbox" Content="Afficher la bulle animée" Checked="OrbEnabledCheckbox_Changed" Unchecked="OrbEnabledCheckbox_Changed" />
+                                <Button x:Name="ToggleOrbMoveButton" Content="Déplacer la bulle" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOrbMoveButton_Click" />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="Taille :" VerticalAlignment="Center" />
+                                    <Slider x:Name="OrbSizeSlider" Minimum="60" Maximum="400" SmallChange="10" LargeChange="40"
+                                            Width="140" Margin="6,0" ValueChanged="OrbSizeSlider_ValueChanged" />
+                                    <TextBlock x:Name="OrbSizeValueText" Text="160px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Couleur au repos :" VerticalAlignment="Center" />
+                                    <Button x:Name="OrbIdleColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                            Click="OrbIdleColorSwatch_Click" />
+                                    <TextBox x:Name="OrbIdleColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Couleur quand elle parle :" VerticalAlignment="Center" />
+                                    <Button x:Name="OrbSpeakingColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                            Click="OrbSpeakingColorSwatch_Click" />
+                                    <TextBox x:Name="OrbSpeakingColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                </StackPanel>
+                                <CheckBox x:Name="OrbCaptionCheckbox" Content="Afficher « Je réfléchis… » pendant une question à Gemini" Margin="0,8,0,0"
+                                          Checked="OrbCaptionCheckbox_Changed" Unchecked="OrbCaptionCheckbox_Changed" />
                             </StackPanel>
                         </TabItem>
 

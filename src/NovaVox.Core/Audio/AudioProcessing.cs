@@ -49,3 +49,40 @@ public static class AudioProcessing
         return (long)Math.Sqrt(sumSquares / sampleCount);
     }
 }
+
+/// <summary>
+/// Enveloppe sonore d'un clip PCM 16 bits : un niveau entre 0 et 1 par
+/// tranche de <c>frameMs</c> millisecondes, pour animer la bulle au rythme
+/// de la voix pendant la lecture (voir OrbWindow).
+/// </summary>
+public static class AudioEnvelope
+{
+    public static float[] Compute(byte[] pcm16, int sampleRate, int channels, int frameMs = 30)
+    {
+        if (pcm16.Length < 2 || sampleRate <= 0 || channels <= 0 || frameMs <= 0) return Array.Empty<float>();
+        var samplesPerFrame = Math.Max(1, sampleRate * channels * frameMs / 1000);
+        var totalSamples = pcm16.Length / 2;
+        var frameCount = (totalSamples + samplesPerFrame - 1) / samplesPerFrame;
+        var levels = new float[frameCount];
+        var peak = 0.0;
+        for (var f = 0; f < frameCount; f++)
+        {
+            var start = f * samplesPerFrame;
+            var end = Math.Min(totalSamples, start + samplesPerFrame);
+            double sum = 0;
+            for (var i = start; i < end; i++)
+            {
+                short s = (short)(pcm16[i * 2] | (pcm16[i * 2 + 1] << 8));
+                sum += (double)s * s;
+            }
+            var rms = Math.Sqrt(sum / Math.Max(1, end - start));
+            levels[f] = (float)rms;
+            if (rms > peak) peak = rms;
+        }
+        // Normalisé sur le pic du clip : une voix basse ou forte anime la
+        // bulle autant ; un clip silencieux reste à 0.
+        if (peak < 1) return new float[frameCount];
+        for (var f = 0; f < frameCount; f++) levels[f] = (float)Math.Clamp(levels[f] / peak, 0, 1);
+        return levels;
+    }
+}

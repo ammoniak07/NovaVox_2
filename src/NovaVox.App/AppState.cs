@@ -21,11 +21,13 @@ public sealed class AppState
     public AudioConfigStore AudioConfigStore { get; }
     public AiConfigStore AiConfigStore { get; }
     public OverlayConfigStore OverlayConfigStore { get; }
+    public OrbConfigStore OrbConfigStore { get; }
     public GameModeConfigStore GameModeConfigStore { get; }
 
     public AudioConfig Audio { get; private set; }
     public AiConfig Ai { get; private set; }
     public OverlayConfig Overlay { get; private set; }
+    public OrbConfig Orb { get; private set; }
     public GameModeConfig GameMode { get; private set; }
 
     public ObservableCollection<VoiceCommandRow> Commands { get; } = new();
@@ -37,6 +39,7 @@ public sealed class AppState
         AudioConfigStore = new AudioConfigStore(baseDir);
         AiConfigStore = new AiConfigStore(baseDir);
         OverlayConfigStore = new OverlayConfigStore(baseDir);
+        OrbConfigStore = new OrbConfigStore(baseDir);
         GameModeConfigStore = new GameModeConfigStore(baseDir);
 
         CommandStore.ActiveProfileId = CommandStore.LoadActiveProfileId() ?? CommandStore.EnsureProfilesMigrated();
@@ -45,6 +48,7 @@ public sealed class AppState
             knownGeminiModels: GeminiModels.AvailableModels.Select(m => m.Id).ToList(),
             knownPiperVoices: PiperVoiceCatalog.Voices.Select(v => v.Id).ToList());
         Overlay = OverlayConfigStore.Load();
+        Orb = OrbConfigStore.Load();
         // Les fichiers ci-dessus sont déjà "en direct" pour le mode courant
         // (sauvegardés tels quels à chaque changement, voir SwitchGameMode) :
         // rien à réappliquer au démarrage, GameMode sert seulement à savoir
@@ -80,6 +84,8 @@ public sealed class AppState
     public void SaveAudio() => AudioConfigStore.Save(Audio);
 
     public void SaveAi() => AiConfigStore.Save(Ai);
+
+    public void SaveOrb() => OrbConfigStore.Save(Orb);
 
     public void SaveOverlay()
     {

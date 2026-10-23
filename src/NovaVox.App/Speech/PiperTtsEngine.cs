@@ -203,6 +203,9 @@ public sealed class PiperTtsEngine : IDisposable
     /// périphérique par défaut plutôt que de rendre toute lecture vocale
     /// silencieuse pour le reste de la session.
     /// </summary>
+    /// <summary>Pas de l'enveloppe sonore transmise à la bulle animée (voir SpeechActivity).</summary>
+    private const int EnvelopeFrameMs = 30;
+
     private void PlayWavFile(string wavPath)
     {
         byte[] rawBytes;
@@ -259,6 +262,7 @@ public sealed class PiperTtsEngine : IDisposable
     {
         Diagnostic?.Invoke(this, $"Lecture ({label}) : format={format}, délai max={timeout.TotalSeconds:F1}s.");
         ManualResetEventSlim? stopRequested = null;
+        var speakingRaised = false;
         try
         {
             using var sourceStream = new RawSourceWaveStream(rawBytes, 0, rawBytes.Length, format);
@@ -272,6 +276,9 @@ public sealed class PiperTtsEngine : IDisposable
             output.PlaybackStopped += (_, _) => playbackFinished.Set();
             var stopwatch = Stopwatch.StartNew();
             output.Play();
+            if (format.BitsPerSample == 16)
+                SpeechActivity.RaiseSpeakingStarted(AudioEnvelope.Compute(rawBytes, format.SampleRate, format.Channels, EnvelopeFrameMs), EnvelopeFrameMs);
+            speakingRaised = true;
 
             var signaled = WaitHandle.WaitAny(new[] { playbackFinished.WaitHandle, stopRequested.WaitHandle }, timeout);
             stopwatch.Stop();
@@ -300,6 +307,7 @@ public sealed class PiperTtsEngine : IDisposable
         }
         finally
         {
+            if (speakingRaised) SpeechActivity.RaiseSpeakingStopped();
             lock (_stopLock)
             {
                 if (stopRequested is not null && _currentPlaybackStop == stopRequested) _currentPlaybackStop = null;
