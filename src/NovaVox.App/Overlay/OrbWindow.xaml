@@ -53,13 +53,20 @@
                     </LinearGradientBrush>
                 </Path.Fill>
             </Path>
-            <!-- Liseré lumineux rose-rouge sur le bord. -->
-            <Path x:Name="RimPath" StrokeThickness="4" Opacity="0.9">
+            <!-- Lueur intérieure du bord : trait épais très flouté, découpé à la
+                 forme de la bulle (on n'en voit que la moitié intérieure, qui se
+                 fond vers le centre). Plus intense d'un côté, et ce côté tourne
+                 lentement ; l'intensité suit aussi la voix. -->
+            <Path x:Name="RimPath" StrokeThickness="12" Opacity="0.7">
                 <Path.Stroke>
-                    <SolidColorBrush x:Name="RimBrush" Color="#ff5a6a" />
+                    <LinearGradientBrush x:Name="RimBrush" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop x:Name="RimStopStrong" Offset="0" Color="#ffff5a6a" />
+                        <GradientStop x:Name="RimStopSoft" Offset="0.55" Color="#30ff5a6a" />
+                        <GradientStop x:Name="RimStopEnd" Offset="1" Color="#a0ff5a6a" />
+                    </LinearGradientBrush>
                 </Path.Stroke>
                 <Path.Effect>
-                    <BlurEffect x:Name="RimBlur" Radius="3" KernelType="Gaussian" RenderingBias="Performance" />
+                    <BlurEffect x:Name="RimBlur" Radius="8" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
             <!-- Petit reflet brillant en haut à gauche. -->

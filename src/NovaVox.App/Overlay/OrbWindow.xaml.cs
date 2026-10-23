@@ -94,8 +94,8 @@ public partial class OrbWindow : Window
         Width = size + 2 * margin;
         Height = size * 1.2 + 2 * margin + CaptionHeight;
         GlowBlur.Radius = Math.Max(10, size * 0.3);
-        RimPath.StrokeThickness = Math.Max(2, size * 0.028);
-        RimBlur.Radius = Math.Max(1.5, size * 0.012);
+        RimPath.StrokeThickness = Math.Max(6, size * 0.075);
+        RimBlur.Radius = Math.Max(4, size * 0.04);
         // Transparence : la bulle et son halo seulement, le texte reste lisible.
         OrbCanvas.Opacity = Math.Clamp(config.Opacity, OrbConfig.MinOpacity, 100) / 100.0;
         CaptionText.FontSize = Math.Clamp(size * 0.085, 11, 20);
@@ -217,6 +217,13 @@ public partial class OrbWindow : Window
 
         var blob = BuildBlob(t);
         BodyPath.Data = GlowPath.Data = ShadePath.Data = RimPath.Data = blob;
+        // Lueur du bord : uniquement à l'intérieur de la bulle, côté le plus
+        // lumineux qui tourne lentement, plus vive quand la voix monte.
+        RimPath.Clip = blob;
+        var rimAngle = t * 0.25;
+        RimBrush.StartPoint = new Point(0.5 + 0.5 * Math.Cos(rimAngle), 0.5 + 0.5 * Math.Sin(rimAngle));
+        RimBrush.EndPoint = new Point(0.5 - 0.5 * Math.Cos(rimAngle), 0.5 - 0.5 * Math.Sin(rimAngle));
+        RimPath.Opacity = Math.Clamp(0.5 + 0.1 * Math.Sin(t * 0.9) + 0.35 * _level + 0.15 * _thinkingAmount, 0, 1);
         UpdateCaption();
     }
 
@@ -320,7 +327,9 @@ public partial class OrbWindow : Window
         StopEdge.Color = Lerp(main, cool, 0.6);
         ShadeWarm.Color = WithAlpha(Lerp(main, Color.FromRgb(0xff, 0xd8, 0x80), 0.55), 0x70);
         ShadeCool.Color = WithAlpha(cool, 0x90);
-        RimBrush.Color = rim;
+        RimStopStrong.Color = WithAlpha(rim, 0xff);
+        RimStopSoft.Color = WithAlpha(rim, 0x30);
+        RimStopEnd.Color = WithAlpha(rim, 0xa0);
         FloorStop.Color = WithAlpha(Lerp(main, cream, 0.4), 0x90);
     }
 
