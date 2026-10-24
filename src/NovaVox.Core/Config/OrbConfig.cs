@@ -45,6 +45,16 @@ public sealed class OrbConfig
     public bool ShowMouth { get; set; }
     /// <summary>(Test) Oreilles qui sortent quand la bulle entend le joueur parler.</summary>
     public bool ShowEars { get; set; }
+    /// <summary>Noyau lumineux au centre (la "présence" de Nova) : pulse, regarde autour d'elle, cligne.</summary>
+    public bool ShowCore { get; set; } = true;
+    /// <summary>Onde sonore dans la bulle, animée par la voix de Nova.</summary>
+    public bool ShowVoiceWave { get; set; } = true;
+    /// <summary>Ondes type sonar autour de la bulle quand elle entend le joueur.</summary>
+    public bool ShowListenRings { get; set; } = true;
+    /// <summary>Réseau de particules et satellites en orbite pendant qu'elle réfléchit.</summary>
+    public bool ShowThinkingFx { get; set; } = true;
+    /// <summary>Reflet lumineux quand une commande est exécutée, glitch holographique en cas d'erreur.</summary>
+    public bool ShowReactions { get; set; } = true;
 }
 
 public sealed class OrbConfigStore
@@ -76,6 +86,11 @@ public sealed class OrbConfigStore
             config.ShowCaption = GetBool(data["show_caption"], true);
             config.ShowMouth = GetBool(data["show_mouth"]);
             config.ShowEars = GetBool(data["show_ears"]);
+            config.ShowCore = GetBool(data["show_core"], true);
+            config.ShowVoiceWave = GetBool(data["show_voice_wave"], true);
+            config.ShowListenRings = GetBool(data["show_listen_rings"], true);
+            config.ShowThinkingFx = GetBool(data["show_thinking_fx"], true);
+            config.ShowReactions = GetBool(data["show_reactions"], true);
             config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
         }
         catch
@@ -100,6 +115,11 @@ public sealed class OrbConfigStore
             ["show_caption"] = config.ShowCaption,
             ["show_mouth"] = config.ShowMouth,
             ["show_ears"] = config.ShowEars,
+            ["show_core"] = config.ShowCore,
+            ["show_voice_wave"] = config.ShowVoiceWave,
+            ["show_listen_rings"] = config.ShowListenRings,
+            ["show_thinking_fx"] = config.ShowThinkingFx,
+            ["show_reactions"] = config.ShowReactions,
             ["opacity"] = config.Opacity,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));

@@ -17,6 +17,11 @@ public static class SpeechActivity
     /// <summary>true pendant qu'une question est envoyée à Gemini, false une fois la réponse (ou l'erreur) reçue.</summary>
     public static event EventHandler<bool>? ThinkingChanged;
 
+    /// <summary>Réaction ponctuelle de la bulle : commande exécutée, ou erreur.</summary>
+    public static event EventHandler<OrbReaction>? Reaction;
+
+    internal static void RaiseReaction(OrbReaction reaction) => Reaction?.Invoke(null, reaction);
+
     private static int _thinkingCount;
 
     internal static void RaiseSpeakingStarted(float[] envelope, int frameMs) =>
@@ -40,5 +45,7 @@ public static class SpeechActivity
         }
     }
 }
+
+public enum OrbReaction { Success, Error }
 
 public sealed record SpeakingStartedEventArgs(float[] Envelope, int FrameMs);

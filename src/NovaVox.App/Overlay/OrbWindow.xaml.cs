@@ -99,11 +99,13 @@ public partial class OrbWindow : Window
         SpeechActivity.SpeakingStarted += OnSpeakingStarted;
         SpeechActivity.SpeakingStopped += OnSpeakingStopped;
         SpeechActivity.ThinkingChanged += OnThinkingChanged;
+        SpeechActivity.Reaction += OnReaction;
         Closed += (_, _) =>
         {
             SpeechActivity.SpeakingStarted -= OnSpeakingStarted;
             SpeechActivity.SpeakingStopped -= OnSpeakingStopped;
             SpeechActivity.ThinkingChanged -= OnThinkingChanged;
+            SpeechActivity.Reaction -= OnReaction;
             _rendering = false;
             CompositionTarget.Rendering -= OnRendering;
         };
@@ -252,6 +254,8 @@ public partial class OrbWindow : Window
         _speakingAmount += ((_speaking ? 1.0 : 0.0) - _speakingAmount) * (1 - Math.Exp(-dt * 4));
         var shade = _speakingAmount * (0.2 * Math.Sin(t * 1.9 + _phases[1]) + 0.12 * Math.Sin(t * 3.1 + _phases[2]) + 0.35 * (_level - 0.45));
         var shown = shade >= 0 ? Lerp(_color, Colors.White, Math.Min(0.4, shade)) : Lerp(_color, Colors.Black, Math.Min(0.45, -shade));
+        // Erreur : bref flash rouge (glitch holographique).
+        shown = Lerp(shown, GlitchColor, 0.6 * GlitchAmount(t));
         _shownColor = shown;
         ApplyColors(shown);
 
@@ -259,6 +263,7 @@ public partial class OrbWindow : Window
         UpdateSpots(blob, dt, _shownColor);
         UpdateMouth(blob, dt, t, _speaking ? target : 0);
         UpdateEars(blob, dt, t, hearing);
+        UpdateAiEffects(blob, dt, t, _speaking ? target : 0, hearing);
         BodyPath.Data = GlowPath.Data = ShadePath.Data = RimPath.Data = blob;
         // Lueur du bord : uniquement à l'intérieur de la bulle, côté le plus
         // lumineux qui tourne lentement, plus vive quand la voix monte.

@@ -22,6 +22,16 @@
                     <BlurEffect x:Name="GlowBlur" Radius="48" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
+            <!-- Ondes d'écoute (sonar) : contours de la bulle qui grandissent et
+                 s'effacent quand elle t'entend. Créés dans le code. -->
+            <Canvas x:Name="RingLayer" IsHitTestVisible="False">
+                <Canvas.Effect>
+                    <BlurEffect x:Name="RingBlur" Radius="2" KernelType="Gaussian" RenderingBias="Performance" />
+                </Canvas.Effect>
+            </Canvas>
+            <!-- Glitch holographique (erreur) : copies rouge et cyan décalées derrière la bulle. -->
+            <Path x:Name="GlitchRed" Opacity="0" Fill="#c0ff2050" />
+            <Path x:Name="GlitchCyan" Opacity="0" Fill="#c020e0ff" />
             <!-- (Test) Oreilles humaines sur les côtés : pavillon, creux intérieur
                  plus foncé, pli en relief. Dessinées derrière le corps : seule la
                  partie qui dépasse de la bulle est visible. -->
@@ -122,6 +132,70 @@
                     <BlurEffect x:Name="RimBlur" Radius="8" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
+            <!-- Réflexion : réseau de particules reliées qui tournent dans la bulle. -->
+            <Canvas x:Name="NeuralClip" Opacity="0" IsHitTestVisible="False">
+                <Path x:Name="NeuralLines" StrokeThickness="1">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="NeuralBrush" Color="#70ffffff" />
+                    </Path.Stroke>
+                </Path>
+                <Canvas x:Name="NeuralDots" />
+            </Canvas>
+            <!-- Noyau lumineux : la présence de Nova (halo doux + cœur brillant). -->
+            <Canvas x:Name="CoreGroup" Opacity="0" IsHitTestVisible="False">
+                <Canvas.RenderTransform>
+                    <ScaleTransform x:Name="CoreScale" />
+                </Canvas.RenderTransform>
+                <Ellipse x:Name="CoreHalo">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop x:Name="CoreHaloCenter" Offset="0" Color="#c0ffffff" />
+                            <GradientStop x:Name="CoreHaloMid" Offset="0.45" Color="#50ffffff" />
+                            <GradientStop x:Name="CoreHaloEdge" Offset="1" Color="#00ffffff" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse x:Name="CoreDot">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush GradientOrigin="0.4,0.35">
+                            <GradientStop Offset="0" Color="#ffffffff" />
+                            <GradientStop x:Name="CoreDotMid" Offset="0.55" Color="#fff0faff" />
+                            <GradientStop x:Name="CoreDotEdge" Offset="1" Color="#00ffffff" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+            </Canvas>
+            <!-- Onde de voix : deux ondes lumineuses (et leur halo) qui traversent la bulle. -->
+            <Canvas x:Name="WaveGroup" Opacity="0" IsHitTestVisible="False">
+                <Path x:Name="WaveGlow" StrokeThickness="6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Opacity="0.6">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="WaveGlowBrush" Color="#ffffffff" />
+                    </Path.Stroke>
+                    <Path.Effect>
+                        <BlurEffect x:Name="WaveGlowBlur" Radius="6" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Path.Effect>
+                </Path>
+                <Path x:Name="WavePath2" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Opacity="0.5">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="WaveBrush2" Color="#ffffffff" />
+                    </Path.Stroke>
+                </Path>
+                <Path x:Name="WavePath" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="WaveBrush" Color="#ffffffff" />
+                    </Path.Stroke>
+                </Path>
+            </Canvas>
+            <!-- Commande exécutée : bande de lumière qui balaie la bulle. -->
+            <Path x:Name="ShimmerPath" Opacity="0" IsHitTestVisible="False">
+                <Path.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop x:Name="ShimmerStop0" Offset="0" Color="#00ffffff" />
+                        <GradientStop x:Name="ShimmerStop1" Offset="0.1" Color="#d0ffffff" />
+                        <GradientStop x:Name="ShimmerStop2" Offset="0.2" Color="#00ffffff" />
+                    </LinearGradientBrush>
+                </Path.Fill>
+            </Path>
             <!-- (Test) Bouche : intérieur sombre avec ombre en haut, langue rosée au
                  fond quand elle s'ouvre, lèvres douces et lumineuses autour. -->
             <Canvas x:Name="MouthGroup" Opacity="0">
@@ -160,6 +234,8 @@
                     </RadialGradientBrush>
                 </Ellipse.Fill>
             </Ellipse>
+            <!-- Réflexion : petits satellites en orbite autour de la bulle. -->
+            <Canvas x:Name="SatelliteLayer" Opacity="0" IsHitTestVisible="False" />
             <!-- Repère visible uniquement en mode "Déplacer la bulle". -->
             <Ellipse x:Name="MoveHint" Stroke="#dbe4ee" StrokeThickness="1.5" StrokeDashArray="4 3" Visibility="Collapsed" />
         </Canvas>

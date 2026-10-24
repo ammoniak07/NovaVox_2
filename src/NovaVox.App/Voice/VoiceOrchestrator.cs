@@ -267,12 +267,17 @@ public sealed class VoiceOrchestrator : IDisposable
         CommandExecuted?.Invoke(this, keysLabel);
         CommandTriggered?.Invoke(this, (cmd.Phrase, keysLabel));
         RaiseLog($"Commande : « {cmd.Phrase} » → {keysLabel}", "success");
+        SpeechActivity.RaiseReaction(OrbReaction.Success);
         Task.Run(() => _commandExecutor.Run(cmd));
         // Port de "if self.confirm_commands_voice: self._speak(cmd['phrase'])" (_execute_command, app.py).
         if (_state.Ai.ConfirmCommands) _tts.Speak(cmd.Phrase);
     }
 
-    private void RaiseLog(string message, string kind = "info") => Log?.Invoke(this, (message, kind));
+    private void RaiseLog(string message, string kind = "info")
+    {
+        if (kind == "error") SpeechActivity.RaiseReaction(OrbReaction.Error);
+        Log?.Invoke(this, (message, kind));
+    }
 
     public void Dispose()
     {

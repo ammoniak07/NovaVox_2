@@ -3917,6 +3917,11 @@ public partial class MainWindow : Window
         OrbCaptionCheckbox.IsChecked = orb.ShowCaption;
         OrbMouthCheckbox.IsChecked = orb.ShowMouth;
         OrbEarsCheckbox.IsChecked = orb.ShowEars;
+        OrbCoreCheckbox.IsChecked = orb.ShowCore;
+        OrbWaveCheckbox.IsChecked = orb.ShowVoiceWave;
+        OrbRingsCheckbox.IsChecked = orb.ShowListenRings;
+        OrbThinkingCheckbox.IsChecked = orb.ShowThinkingFx;
+        OrbReactionsCheckbox.IsChecked = orb.ShowReactions;
     }
 
     private void SaveAndApplyOrb()
@@ -3965,6 +3970,41 @@ public partial class MainWindow : Window
         OrbOpacityValueText.Text = $"{value} %";
         if (_loadingSettings) return;
         _state.Orb.Opacity = value;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbCoreCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowCore = OrbCoreCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbWaveCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowVoiceWave = OrbWaveCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbRingsCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowListenRings = OrbRingsCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbThinkingCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowThinkingFx = OrbThinkingCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbReactionsCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowReactions = OrbReactionsCheckbox.IsChecked ?? true;
         SaveAndApplyOrb();
     }
 
