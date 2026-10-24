@@ -68,6 +68,9 @@ public partial class OrbWindow : Window
     private bool _wasHearing;
     private bool _asleep;
     private double _speakingAmount;
+    private bool _listeningActive;
+    /// <summary>Couleur au repos quand l'écoute n'est pas lancée.</summary>
+    private static readonly Color InactiveColor = Color.FromRgb(0x8a, 0x92, 0x9e);
 
     /// <summary>Fin d'un glisser-déposer en mode déplacement : nouvelle position (Left, Top) à enregistrer.</summary>
     public event EventHandler<Point>? PositionChanged;
@@ -132,6 +135,9 @@ public partial class OrbWindow : Window
         Top = onScreen ? top : work.Bottom - Height - 30;
         UpdateCaption();
     }
+
+    /// <summary>Écoute lancée ou non : la bulle est grise au repos tant que l'écoute est arrêtée.</summary>
+    public void SetListeningActive(bool active) => _listeningActive = active;
 
     /// <summary>Niveau du micro (0..1) pendant que le joueur parle : la bulle frémit à sa voix.</summary>
     public void SetMicLevel(double level) => _micLevel = Math.Clamp(level, 0, 1);
@@ -233,7 +239,9 @@ public partial class OrbWindow : Window
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
         StepLife(t, dt, target, hearing);
-        var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : _idleColor;
+        // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
+        var restColor = _listeningActive ? _idleColor : InactiveColor;
+        var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : restColor;
         _color = Lerp(_color, targetColor, 1 - Math.Exp(-dt * 5));
         // En parlant : la couleur choisie varie, tantôt plus foncée, tantôt
         // plus claire, au fil des syllabes (comme une lumière qui pulse).

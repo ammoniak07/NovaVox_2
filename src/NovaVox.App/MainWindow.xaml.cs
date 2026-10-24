@@ -2155,6 +2155,7 @@ public partial class MainWindow : Window
             ListenToggleButton.Content = UiLocalization.T(_state.Ai.UiLanguage, listening ? "engage.stop" : "engage.start");
             SetListenIndicator(listening); // met aussi à jour StatusLabelText/StatusText (voir RefreshListenStatusText)
             _overlayWindow?.SetListening(listening);
+            _orbWindow?.SetListeningActive(listening);
             // L'écoute complète et le mètre de niveau léger ne doivent jamais
             // capter le micro en même temps : l'une alimente le mètre pendant
             // que l'autre est à l'arrêt (voir StartMicLevelMonitorIfIdle).
@@ -3703,6 +3704,7 @@ public partial class MainWindow : Window
     {
         _orbWindow = new OrbWindow();
         _orbWindow.ApplyConfig(_state.Orb);
+        _orbWindow.SetListeningActive(false); // écoute pas encore lancée au démarrage
         _orbWindow.PositionChanged += (_, pos) =>
         {
             _state.Orb.X = (int)Math.Round(pos.X);
