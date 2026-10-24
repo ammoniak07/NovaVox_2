@@ -66,6 +66,7 @@ public partial class OrbWindow : Window
     /// <summary>0..1 : elle écoute le joueur (retient sa respiration, se tient droite).</summary>
     private double _attention;
     private Color _shownColor = Colors.Gray;
+    private double _mouthOpen, _mouthVisible;
     private bool _wasHearing;
     private bool _asleep;
     private double _speakingAmount;
@@ -254,6 +255,7 @@ public partial class OrbWindow : Window
 
         var blob = BuildBlob(t);
         UpdateSpots(blob, dt, _shownColor);
+        UpdateMouth(blob, dt, t, _speaking ? target : 0);
         BodyPath.Data = GlowPath.Data = ShadePath.Data = RimPath.Data = blob;
         // Lueur du bord : uniquement à l'intérieur de la bulle, côté le plus
         // lumineux qui tourne lentement, plus vive quand la voix monte.
@@ -443,6 +445,48 @@ public partial class OrbWindow : Window
             var d = Math.Abs(((a - angle + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
             _velocity[i] += strength * 5 * Math.Exp(-(d / width) * (d / width));
         }
+    }
+
+    /// <summary>
+    /// (Test) Bouche dans le bas de la bulle : suit l'enveloppe de la voix
+    /// sans lissage lent (ouverture syllabe par syllabe), alterne entre une
+    /// forme large ("a") et ronde ("o"), apparaît quand elle parle et
+    /// disparaît en douceur ensuite.
+    /// </summary>
+    private void UpdateMouth(Geometry blob, double dt, double t, double voice)
+    {
+        var wanted = _config.ShowMouth && _speaking ? 1.0 : 0.0;
+        _mouthVisible += (wanted - _mouthVisible) * (1 - Math.Exp(-dt * 6));
+        _mouthOpen += (voice - _mouthOpen) * (1 - Math.Exp(-dt * (voice > _mouthOpen ? 30 : 14)));
+        MouthPath.Opacity = _mouthVisible;
+        if (_mouthVisible < 0.01) return;
+
+        var b = blob.Bounds;
+        var roundness = 0.5 + 0.5 * Math.Sin(t * 6.3 + 1.7 * Math.Sin(t * 2.3));
+        var open = Math.Clamp(_mouthOpen, 0, 1);
+        var halfWidth = b.Width * (0.17 - 0.06 * roundness * open);
+        var halfHeight = b.Height * (0.012 + 0.13 * open * (0.75 + 0.25 * roundness));
+        var cx = b.Left + b.Width / 2;
+        var cy = b.Top + b.Height * 0.66;
+
+        // Lèvre du haut un peu moins bombée que celle du bas, coins arrondis.
+        var geometry = new StreamGeometry();
+        using (var ctx = geometry.Open())
+        {
+            var left = new Point(cx - halfWidth, cy);
+            var right = new Point(cx + halfWidth, cy);
+            ctx.BeginFigure(left, isFilled: true, isClosed: true);
+            ctx.BezierTo(new Point(cx - halfWidth * 0.6, cy - halfHeight * 0.9), new Point(cx + halfWidth * 0.6, cy - halfHeight * 0.9), right, isStroked: false, isSmoothJoin: true);
+            ctx.BezierTo(new Point(cx + halfWidth * 0.7, cy + halfHeight * 1.35), new Point(cx - halfWidth * 0.7, cy + halfHeight * 1.35), left, isStroked: false, isSmoothJoin: true);
+        }
+        geometry.Freeze();
+        MouthPath.Data = geometry;
+        MouthBlur.Radius = Math.Max(1, b.Width * 0.008);
+
+        var inner = Lerp(_shownColor, Colors.Black, 0.82);
+        var outer = Lerp(_shownColor, Colors.Black, 0.55);
+        MouthStopInner.Color = WithAlpha(inner, 0xe6);
+        MouthStopOuter.Color = WithAlpha(outer, 0xc0);
     }
 
     /// <summary>Une tache de couleur intérieure : trajectoire lente (courbe de Lissajous) et pulsation propres.</summary>

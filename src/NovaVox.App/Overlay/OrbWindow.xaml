@@ -69,6 +69,18 @@
                     <BlurEffect x:Name="RimBlur" Radius="8" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
+            <!-- (Test) Bouche : s'ouvre et se ferme au rythme de la voix. -->
+            <Path x:Name="MouthPath" Opacity="0">
+                <Path.Fill>
+                    <RadialGradientBrush GradientOrigin="0.5,0.35" Center="0.5,0.5" RadiusX="0.6" RadiusY="0.7">
+                        <GradientStop x:Name="MouthStopInner" Offset="0" Color="#e0200810" />
+                        <GradientStop x:Name="MouthStopOuter" Offset="1" Color="#b0401020" />
+                    </RadialGradientBrush>
+                </Path.Fill>
+                <Path.Effect>
+                    <BlurEffect x:Name="MouthBlur" Radius="1.5" KernelType="Gaussian" RenderingBias="Performance" />
+                </Path.Effect>
+            </Path>
             <!-- Petit reflet brillant en haut à gauche. -->
             <Ellipse x:Name="Highlight" Width="30" Height="22">
                 <Ellipse.Fill>

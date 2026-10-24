@@ -41,6 +41,8 @@ public sealed class OrbConfig
     public string ListeningColor { get; set; } = DefaultListeningColor;
     /// <summary>Affiche "Je réfléchis…" sous la bulle pendant une question à Gemini.</summary>
     public bool ShowCaption { get; set; } = true;
+    /// <summary>(Test) Bouche qui s'ouvre et se ferme au rythme de la voix quand NovaVox parle.</summary>
+    public bool ShowMouth { get; set; }
 }
 
 public sealed class OrbConfigStore
@@ -70,6 +72,7 @@ public sealed class OrbConfigStore
             config.ThinkingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["thinking_color"]), OrbConfig.DefaultThinkingColor);
             config.ListeningColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["listening_color"]), OrbConfig.DefaultListeningColor);
             config.ShowCaption = GetBool(data["show_caption"], true);
+            config.ShowMouth = GetBool(data["show_mouth"]);
             config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
         }
         catch
@@ -92,6 +95,7 @@ public sealed class OrbConfigStore
             ["thinking_color"] = config.ThinkingColor,
             ["listening_color"] = config.ListeningColor,
             ["show_caption"] = config.ShowCaption,
+            ["show_mouth"] = config.ShowMouth,
             ["opacity"] = config.Opacity,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));

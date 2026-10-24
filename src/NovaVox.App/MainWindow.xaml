@@ -788,6 +788,9 @@
                                             Click="OrbListeningColorSwatch_Click" />
                                     <TextBox x:Name="OrbListeningColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
                                 </StackPanel>
+                                <CheckBox x:Name="OrbMouthCheckbox" Content="Bouche qui parle (test)" Margin="0,8,0,0"
+                                          ToolTip="Une bouche s'ouvre et se ferme au rythme de la voix quand NovaVox parle"
+                                          Checked="OrbMouthCheckbox_Changed" Unchecked="OrbMouthCheckbox_Changed" />
                                 <CheckBox x:Name="OrbCaptionCheckbox" Content="Afficher « Je réfléchis… » pendant une question à Gemini" Margin="0,8,0,0"
                                           Checked="OrbCaptionCheckbox_Changed" Unchecked="OrbCaptionCheckbox_Changed" />
                             </StackPanel>
