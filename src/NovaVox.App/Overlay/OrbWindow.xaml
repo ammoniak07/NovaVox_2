@@ -22,6 +22,42 @@
                     <BlurEffect x:Name="GlowBlur" Radius="48" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
+            <!-- (Test) Oreilles : dessinées derrière le corps, seule la partie qui
+                 dépasse de la bulle est visible ; intérieur rosé. -->
+            <Canvas x:Name="EarGroup" Opacity="0">
+                <Path x:Name="EarLeft">
+                    <Path.Fill>
+                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                            <GradientStop x:Name="EarLeftTop" Offset="0" Color="#fff6b866" />
+                            <GradientStop x:Name="EarLeftBottom" Offset="1" Color="#fff0985a" />
+                        </LinearGradientBrush>
+                    </Path.Fill>
+                </Path>
+                <Path x:Name="EarRight">
+                    <Path.Fill>
+                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                            <GradientStop x:Name="EarRightTop" Offset="0" Color="#fff6b866" />
+                            <GradientStop x:Name="EarRightBottom" Offset="1" Color="#fff0985a" />
+                        </LinearGradientBrush>
+                    </Path.Fill>
+                </Path>
+                <Path x:Name="EarLeftInner">
+                    <Path.Fill>
+                        <SolidColorBrush x:Name="EarLeftInnerBrush" Color="#c0e87a8c" />
+                    </Path.Fill>
+                    <Path.Effect>
+                        <BlurEffect x:Name="EarLeftInnerBlur" Radius="2" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Path.Effect>
+                </Path>
+                <Path x:Name="EarRightInner">
+                    <Path.Fill>
+                        <SolidColorBrush x:Name="EarRightInnerBrush" Color="#c0e87a8c" />
+                    </Path.Fill>
+                    <Path.Effect>
+                        <BlurEffect x:Name="EarRightInnerBlur" Radius="2" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Path.Effect>
+                </Path>
+            </Canvas>
             <!-- Corps : dégradé radial (clair en haut à gauche, plus sombre vers le bord). -->
             <Path x:Name="BodyPath">
                 <Path.Fill>

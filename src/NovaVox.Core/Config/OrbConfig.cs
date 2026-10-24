@@ -43,6 +43,8 @@ public sealed class OrbConfig
     public bool ShowCaption { get; set; } = true;
     /// <summary>(Test) Bouche qui s'ouvre et se ferme au rythme de la voix quand NovaVox parle.</summary>
     public bool ShowMouth { get; set; }
+    /// <summary>(Test) Oreilles qui sortent quand la bulle entend le joueur parler.</summary>
+    public bool ShowEars { get; set; }
 }
 
 public sealed class OrbConfigStore
@@ -73,6 +75,7 @@ public sealed class OrbConfigStore
             config.ListeningColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["listening_color"]), OrbConfig.DefaultListeningColor);
             config.ShowCaption = GetBool(data["show_caption"], true);
             config.ShowMouth = GetBool(data["show_mouth"]);
+            config.ShowEars = GetBool(data["show_ears"]);
             config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
         }
         catch
@@ -96,6 +99,7 @@ public sealed class OrbConfigStore
             ["listening_color"] = config.ListeningColor,
             ["show_caption"] = config.ShowCaption,
             ["show_mouth"] = config.ShowMouth,
+            ["show_ears"] = config.ShowEars,
             ["opacity"] = config.Opacity,
         };
         File.WriteAllText(_path, data.ToJsonString(WriteOptions));

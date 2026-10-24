@@ -67,6 +67,8 @@ public partial class OrbWindow : Window
     private double _attention;
     private Color _shownColor = Colors.Gray;
     private double _mouthOpen, _mouthVisible;
+    /// <summary>Oreilles : sortie (0..1) et frémissement de chaque oreille (ressorts).</summary>
+    private double _earsOut, _earTwitchLeft, _earTwitchLeftVel, _earTwitchRight, _earTwitchRightVel, _nextEarFlickAt;
     private bool _wasHearing;
     private bool _asleep;
     private double _speakingAmount;
@@ -256,6 +258,7 @@ public partial class OrbWindow : Window
         var blob = BuildBlob(t);
         UpdateSpots(blob, dt, _shownColor);
         UpdateMouth(blob, dt, t, _speaking ? target : 0);
+        UpdateEars(blob, dt, t, hearing);
         BodyPath.Data = GlowPath.Data = ShadePath.Data = RimPath.Data = blob;
         // Lueur du bord : uniquement à l'intérieur de la bulle, côté le plus
         // lumineux qui tourne lentement, plus vive quand la voix monte.
@@ -392,6 +395,7 @@ public partial class OrbWindow : Window
             var strength = (_speaking ? 0.2 : 0.06) + (_speaking ? 0.38 : 0.08) * target;
             Kick(_random.NextDouble() * Math.PI * 2, strength, 0.9);
             _squashVelocity += (_random.NextDouble() < 0.5 ? 1 : -1) * (_speaking ? 1.1 : 0.25) * target;
+            if (!_speaking) TwitchEars(0.6 + target);
             _lastKickAt = t;
         }
         if (hearing && !_wasHearing) _squashVelocity += 0.35; // elle "tend l'oreille"
@@ -506,6 +510,93 @@ public partial class OrbWindow : Window
         TongueStopLight.Color = Lerp(Lerp(c, pink, 0.6), Colors.White, 0.15);
         TongueStopDark.Color = Lerp(Lerp(c, pink, 0.5), Colors.Black, 0.35);
         LipBrush.Color = Lerp(c, Colors.White, 0.45);
+    }
+
+    /// <summary>Petit coup sur les oreilles (une syllabe entendue) : chacune frémit un peu différemment.</summary>
+    private void TwitchEars(double strength)
+    {
+        _earTwitchLeftVel += (_random.NextDouble() - 0.3) * 3.0 * strength;
+        _earTwitchRightVel += (_random.NextDouble() - 0.3) * 3.0 * strength;
+    }
+
+    /// <summary>
+    /// (Test) Oreilles : sortent du haut de la bulle quand elle t'entend
+    /// (ressort qui dépasse un peu puis se stabilise), se dressent, frémissent
+    /// sur tes syllabes et de temps en temps toutes seules, puis rentrent
+    /// doucement quand tu te tais ou qu'elle se met à parler.
+    /// </summary>
+    private void UpdateEars(Geometry blob, double dt, double t, bool hearing)
+    {
+        var wanted = _config.ShowEars && hearing && !_speaking ? 1.0 : 0.0;
+        _earsOut += (wanted - _earsOut) * (1 - Math.Exp(-dt * (wanted > _earsOut ? 7 : 2.5)));
+        EarGroup.Opacity = Math.Clamp(_earsOut * 3, 0, 1);
+
+        // Frémissements : ressorts vifs, plus un petit mouvement spontané de temps en temps.
+        if (_earsOut > 0.5 && t > _nextEarFlickAt)
+        {
+            if (_random.NextDouble() < 0.5) _earTwitchLeftVel += 2.2; else _earTwitchRightVel += 2.2;
+            _nextEarFlickAt = t + 1.2 + _random.NextDouble() * 2.5;
+        }
+        var steps = Math.Max(1, (int)Math.Ceiling(dt / (1.0 / 120)));
+        var h = dt / steps;
+        for (var i = 0; i < steps; i++)
+        {
+            _earTwitchLeftVel += (-90 * _earTwitchLeft - 7 * _earTwitchLeftVel) * h;
+            _earTwitchLeft = Math.Clamp(_earTwitchLeft + _earTwitchLeftVel * h, -0.5, 0.5);
+            _earTwitchRightVel += (-90 * _earTwitchRight - 7 * _earTwitchRightVel) * h;
+            _earTwitchRight = Math.Clamp(_earTwitchRight + _earTwitchRightVel * h, -0.5, 0.5);
+        }
+        if (_earsOut < 0.01) return;
+
+        var b = blob.Bounds;
+        var size = Math.Min(b.Width, b.Height);
+        // Sortie avec un léger dépassement (effet ressort) pendant qu'elles poussent.
+        var grow = _earsOut < 1 ? _earsOut * (1 + 0.25 * Math.Sin(_earsOut * Math.PI)) : 1;
+        var length = size * 0.34 * grow;
+        var width = size * 0.27;
+        var sway = 0.06 * Math.Sin(t * 1.3);
+
+        DrawEar(EarLeft, EarLeftInner, b, -1, length, width, -0.45 + sway + _earTwitchLeft, size);
+        DrawEar(EarRight, EarRightInner, b, 1, length, width, 0.45 + sway - _earTwitchRight, size);
+
+        var c = _shownColor;
+        var cream = Color.FromRgb(0xff, 0xf0, 0xb8);
+        EarLeftTop.Color = EarRightTop.Color = Lerp(c, cream, 0.3);
+        EarLeftBottom.Color = EarRightBottom.Color = c;
+        var inner = WithAlpha(Lerp(Lerp(c, Color.FromRgb(0xe8, 0x7a, 0x8c), 0.55), Colors.White, 0.1), 0xc8);
+        EarLeftInnerBrush.Color = EarRightInnerBrush.Color = inner;
+        EarLeftInnerBlur.Radius = EarRightInnerBlur.Radius = Math.Max(1.5, size * 0.015);
+    }
+
+    /// <summary>
+    /// Une oreille en forme de goutte arrondie, plantée dans le haut de la
+    /// bulle et orientée de <paramref name="angle"/> radians par rapport à la
+    /// verticale (négatif = penchée vers la gauche).
+    /// </summary>
+    private static void DrawEar(System.Windows.Shapes.Path outer, System.Windows.Shapes.Path inner, Rect b, int side, double length, double width, double angle, double size)
+    {
+        var baseCenter = new Point(b.Left + b.Width / 2 + side * b.Width * 0.28, b.Top + b.Height * 0.2);
+        Point Rot(double x, double y) => new(baseCenter.X + x * Math.Cos(angle) - y * Math.Sin(angle), baseCenter.Y + x * Math.Sin(angle) + y * Math.Cos(angle));
+
+        Geometry Ear(double earLength, double scale, double lift)
+        {
+            // Repère local : base sur l'axe x (enfoncée dans la bulle), bout arrondi vers le haut.
+            var w = width * scale / 2;
+            var baseY = size * 0.12 - lift;
+            var tip = -earLength * (0.55 + 0.45 * scale) * 1.05 - lift * 0.2;
+            var geometry = new StreamGeometry();
+            using (var ctx = geometry.Open())
+            {
+                ctx.BeginFigure(Rot(-w, baseY), isFilled: true, isClosed: true);
+                ctx.BezierTo(Rot(-w * 1.35, tip * 0.52), Rot(-w * 1.05, tip), Rot(0, tip), isStroked: false, isSmoothJoin: true);
+                ctx.BezierTo(Rot(w * 1.05, tip), Rot(w * 1.35, tip * 0.52), Rot(w, baseY), isStroked: false, isSmoothJoin: true);
+            }
+            geometry.Freeze();
+            return geometry;
+        }
+        outer.Data = Ear(length, 1.0, 0);
+        // Intérieur rosé remonté vers le bout pour qu'il dépasse bien de la bulle.
+        inner.Data = Ear(length * 0.75, 0.55, size * 0.13);
     }
 
     /// <summary>Une tache de couleur intérieure : trajectoire lente (courbe de Lissajous) et pulsation propres.</summary>

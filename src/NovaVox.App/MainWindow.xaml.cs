@@ -3732,6 +3732,7 @@ public partial class MainWindow : Window
         OrbListeningColorSwatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(orb.ListeningColor)!);
         OrbCaptionCheckbox.IsChecked = orb.ShowCaption;
         OrbMouthCheckbox.IsChecked = orb.ShowMouth;
+        OrbEarsCheckbox.IsChecked = orb.ShowEars;
     }
 
     private void SaveAndApplyOrb()
@@ -3780,6 +3781,13 @@ public partial class MainWindow : Window
         OrbOpacityValueText.Text = $"{value} %";
         if (_loadingSettings) return;
         _state.Orb.Opacity = value;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbEarsCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ShowEars = OrbEarsCheckbox.IsChecked ?? false;
         SaveAndApplyOrb();
     }
 
