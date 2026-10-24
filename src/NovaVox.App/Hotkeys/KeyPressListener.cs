@@ -19,6 +19,7 @@ public sealed class KeyPressListener : IDisposable
     private const int WmSysKeyDown = 0x0104;
     private const int WmSysKeyUp = 0x0105;
     private const uint LlkhfInjected = 0x10;
+    private const uint LlkhfExtended = 0x01;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct KbdLlHookStruct
@@ -97,7 +98,7 @@ public sealed class KeyPressListener : IDisposable
                          && _down.Add(data.VkCode)
                          && !NovaVoxHasFocus())
                 {
-                    KeyPressed?.Invoke(this, new KeyPressedEventArgs((int)data.VkCode,
+                    KeyPressed?.Invoke(this, new KeyPressedEventArgs((int)data.VkCode, (int)data.ScanCode, (data.Flags & LlkhfExtended) != 0,
                         Ctrl: KeyboardState.IsKeyDown(0x11),
                         Shift: KeyboardState.IsKeyDown(0x10),
                         Alt: KeyboardState.IsKeyDown(0xA4) || data.VkCode == 0xA4,
@@ -123,7 +124,7 @@ public sealed class KeyPressListener : IDisposable
     public void Dispose() => Stop();
 }
 
-public sealed record KeyPressedEventArgs(int VirtualKey, bool Ctrl, bool Shift, bool Alt, bool AltGr);
+public sealed record KeyPressedEventArgs(int VirtualKey, int ScanCode, bool Extended, bool Ctrl, bool Shift, bool Alt, bool AltGr);
 
 /// <summary>Correspondance entre une touche pressée et le champ "touches" d'une commande ("alt+n", "f5", "ctrl+shift+m"...).</summary>
 public static class CommandKeyMatcher
@@ -137,7 +138,14 @@ public static class CommandKeyMatcher
         var parts = keys.Split('+').Select(p => p.Trim().ToLowerInvariant()).Where(p => p.Length > 0).ToList();
         var main = parts.Where(p => !Modifiers.Contains(p)).ToList();
         if (main.Count != 1) return false;
-        if (!VirtualKeys.Map.TryGetValue(main[0], out var vk) || vk != press.VirtualKey) return false;
+        // Les noms de touches NovaVox sont des POSITIONS physiques (comme KeyScanCodes) :
+        // comparer le code de balayage, pas le code virtuel qui suit la disposition
+        // (sur AZERTY, la position "q" donne VK_A).
+        if (NovaVox.App.Input.KeyScanCodes.Map.TryGetValue(main[0], out var sc))
+        {
+            if (sc.Code != press.ScanCode || sc.Extended != press.Extended) return false;
+        }
+        else if (!VirtualKeys.Map.TryGetValue(main[0], out var vk) || vk != press.VirtualKey) return false;
         return parts.Contains("ctrl") == press.Ctrl
             && parts.Contains("shift") == press.Shift
             && parts.Contains("alt") == press.Alt

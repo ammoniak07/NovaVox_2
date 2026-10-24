@@ -74,9 +74,23 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
         set { _speakJoystickCapturing = value; Raise(); Raise(nameof(SpeakJoystickLabel)); }
     }
 
+    private string _gameJoystickHint = "";
+    /// <summary>Bouton(s) de joystick trouvés dans les assignations du jeu pour la même action ("js1 bouton 5") — calculé, jamais persisté.</summary>
+    public string GameJoystickHint
+    {
+        get => _gameJoystickHint;
+        set { if (_gameJoystickHint == (value ?? "")) return; _gameJoystickHint = value ?? ""; Raise(); Raise(nameof(SpeakJoystickLabel)); Raise(nameof(SpeakJoystickTooltip)); }
+    }
+
     public string SpeakJoystickLabel =>
         SpeakJoystickCapturing ? "🕹 appuie…"
-        : NovaVox.Core.Hotkeys.JoystickHotkeyCodec.Decode(SpeakJoystickButton) is { Button: { } button } ? $"🕹 {button}" : "🕹 +";
+        : NovaVox.Core.Hotkeys.JoystickHotkeyCodec.Decode(SpeakJoystickButton) is { Button: { } button } ? $"🕹 {button}"
+        : GameJoystickHint.Length > 0 ? $"🕹 {GameJoystickHint} (jeu)"
+        : "🕹 +";
+
+    public string SpeakJoystickTooltip =>
+        "Bouton de joystick qui déclenche aussi la lecture (clic : choisir le bouton, clic droit : le retirer)."
+        + (GameJoystickHint.Length > 0 ? $"\nTrouvé automatiquement dans les assignations de Star Citizen : {GameJoystickHint}." : "");
 
     public ObservableCollection<string> Synonyms { get; } = new();
 

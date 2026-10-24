@@ -3743,36 +3743,92 @@ public partial class MainWindow : Window
     }
 
     private DispatcherTimer? _joystickReadTimer;
-    private readonly Dictionary<VoiceCommandRow, bool> _joystickReadPrevious = new();
+    private readonly Dictionary<(VoiceCommandRow Row, Guid Device, int Button), bool> _joystickReadPrevious = new();
     private IReadOnlyList<(string Name, string Guid, Guid InstanceGuid)> _joystickReadDevices = Array.Empty<(string, string, Guid)>();
     private DateTime _joystickReadDevicesAt = DateTime.MinValue;
 
-    /// <summary>Front montant (relâché -> appuyé) d'un bouton de joystick associé à une commande "Lire" : Nova lit la commande.</summary>
+    // Assignations de Star Citizen (actionmaps.xml), relues quand le fichier change.
+    private StarCitizenBindings? _gameBindings;
+    private string? _gameBindingsPath;
+    private DateTime _gameBindingsWriteTime;
+    private DateTime _gameBindingsCheckedAt = DateTime.MinValue;
+
+    /// <summary>Relit actionmaps.xml s'il a changé (vérifié toutes les 5 s au plus).</summary>
+    private void RefreshGameBindings()
+    {
+        if ((DateTime.UtcNow - _gameBindingsCheckedAt).TotalSeconds < 5) return;
+        _gameBindingsCheckedAt = DateTime.UtcNow;
+        try
+        {
+            var customPath = _state.Ai.GameLogCustomPath;
+            var logPath = string.IsNullOrWhiteSpace(customPath) ? GameLogPaths.FindGameLogPath() : customPath;
+            var path = StarCitizenBindings.FindActionMapsPath(logPath);
+            if (path is null)
+            {
+                if (_gameBindingsPath is not null) AppendLog("Assignations Star Citizen : actionmaps.xml introuvable.", "diagnostic");
+                _gameBindings = null;
+                _gameBindingsPath = null;
+                return;
+            }
+            var writeTime = File.GetLastWriteTimeUtc(path);
+            if (path == _gameBindingsPath && writeTime == _gameBindingsWriteTime) return;
+            _gameBindings = StarCitizenBindings.Load(path);
+            _gameBindingsPath = path;
+            _gameBindingsWriteTime = writeTime;
+            AppendLog($"Assignations Star Citizen lues ({_gameBindings.ActionCount} actions avec clavier + joystick) : {path}", "diagnostic");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Assignations Star Citizen : lecture impossible ({ex.Message}).", "diagnostic");
+        }
+    }
+
+    private IReadOnlyList<GameJoystickButton> GameButtonsFor(VoiceCommandRow row) =>
+        _gameBindings?.FindJoystickButtonsForKeys(row.Keys) ?? Array.Empty<GameJoystickButton>();
+
+    /// <summary>
+    /// Front montant (relâché -> appuyé) d'un bouton de joystick associé à une commande "Lire" : Nova lit la commande.
+    /// Boutons pris en compte : celui choisi à la main (🕹) et ceux assignés dans le jeu à la même action que la touche clavier.
+    /// </summary>
     private void PollJoystickReadButtons()
     {
-        var joysticks = _voiceOrchestrator?.Joysticks;
-        if (joysticks is null) return;
-        var rows = _state.Commands.Where(r => !r.IsTitle && r.SpeakOnKeyPress && !string.IsNullOrEmpty(r.SpeakJoystickButton)).ToList();
+        var rows = _state.Commands.Where(r => !r.IsTitle && r.SpeakOnKeyPress).ToList();
         if (rows.Count == 0) return;
 
-        // Liste des manettes rafraîchie toutes les 3 s seulement (énumération coûteuse).
+        // Liste des manettes et assignations rafraîchies toutes les 3 s seulement (opérations coûteuses).
+        var joysticks = _voiceOrchestrator?.Joysticks;
         if ((DateTime.UtcNow - _joystickReadDevicesAt).TotalSeconds > 3)
         {
-            try { _joystickReadDevices = joysticks.GetJoysticks(); } catch { _joystickReadDevices = Array.Empty<(string, string, Guid)>(); }
             _joystickReadDevicesAt = DateTime.UtcNow;
+            try { _joystickReadDevices = joysticks?.GetJoysticks() ?? Array.Empty<(string, string, Guid)>(); }
+            catch { _joystickReadDevices = Array.Empty<(string, string, Guid)>(); }
+            RefreshGameBindings();
+            foreach (var row in rows)
+                row.GameJoystickHint = string.Join(", ", GameButtonsFor(row).Select(b => $"js{b.Instance} bouton {b.Button + 1}"));
         }
-        if (_joystickReadDevices.Count == 0) return;
+        if (joysticks is null || _joystickReadDevices.Count == 0) return;
+        var connected = _joystickReadDevices.Select(j => (j.Name, j.Guid)).ToList();
 
         foreach (var row in rows)
         {
-            var info = NovaVox.Core.Hotkeys.JoystickHotkeyCodec.Decode(row.SpeakJoystickButton);
-            if (info?.Button is not { } button) continue;
-            var index = NovaVox.Core.Hotkeys.JoystickHotkeyCodec.MatchJoystickIndex(info, _joystickReadDevices.Select(j => (j.Name, j.Guid)).ToList());
-            if (index is null) continue;
-            var held = joysticks.IsButtonHeld(_joystickReadDevices[index.Value].InstanceGuid, button) ?? false;
-            var wasHeld = _joystickReadPrevious.TryGetValue(row, out var prev) && prev;
-            _joystickReadPrevious[row] = held;
-            if (held && !wasHeld && !string.IsNullOrWhiteSpace(row.Phrase)) ReadCommandAloud(row);
+            if (string.IsNullOrWhiteSpace(row.Phrase)) continue;
+            var targets = new List<JoystickHotkey>();
+            if (JoystickHotkeyCodec.Decode(row.SpeakJoystickButton) is { Button: not null } manual) targets.Add(manual);
+            foreach (var b in GameButtonsFor(row)) targets.Add(new JoystickHotkey(b.ProductName, b.ProductGuid, b.Button));
+
+            var pressed = false;
+            foreach (var target in targets)
+            {
+                var index = JoystickHotkeyCodec.MatchJoystickIndex(target, connected);
+                if (index is null) continue;
+                var device = _joystickReadDevices[index.Value].InstanceGuid;
+                var key = (row, device, target.Button!.Value);
+                var held = joysticks.IsButtonHeld(device, key.Item3) ?? false;
+                var wasHeld = _joystickReadPrevious.TryGetValue(key, out var prev) && prev;
+                _joystickReadPrevious[key] = held;
+                if (held && !wasHeld) pressed = true;
+            }
+            if (pressed) ReadCommandAloud(row);
         }
     }
 
