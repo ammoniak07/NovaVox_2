@@ -22,16 +22,6 @@
                     <BlurEffect x:Name="GlowBlur" Radius="48" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
-            <!-- Trait de lumière sous la bulle, comme un reflet sur une surface. -->
-            <Rectangle x:Name="FloorLine" Height="2" RadiusX="1" RadiusY="1">
-                <Rectangle.Fill>
-                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                        <GradientStop Offset="0" Color="#00000000" />
-                        <GradientStop x:Name="FloorStop" Offset="0.5" Color="#80ffcf70" />
-                        <GradientStop Offset="1" Color="#00000000" />
-                    </LinearGradientBrush>
-                </Rectangle.Fill>
-            </Rectangle>
             <!-- Corps : dégradé radial (clair en haut à gauche, plus sombre vers le bord). -->
             <Path x:Name="BodyPath">
                 <Path.Fill>

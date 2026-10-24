@@ -21,7 +21,7 @@ public partial class OrbWindow : Window
 {
     private const int PointCount = 16;
     /// <summary>Marge autour de la bulle pour laisser de la place au halo flouté.</summary>
-    private const double GlowMarginRatio = 0.35;
+    private const double GlowMarginRatio = 0.55;
     private const double CaptionHeight = 28;
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
@@ -67,6 +67,7 @@ public partial class OrbWindow : Window
     private double _innerAngle;
     private bool _wasHearing;
     private bool _asleep;
+    private double _speakingAmount;
 
     /// <summary>Fin d'un glisser-déposer en mode déplacement : nouvelle position (Left, Top) à enregistrer.</summary>
     public event EventHandler<Point>? PositionChanged;
@@ -234,7 +235,12 @@ public partial class OrbWindow : Window
         StepLife(t, dt, target, hearing);
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : _idleColor;
         _color = Lerp(_color, targetColor, 1 - Math.Exp(-dt * 5));
-        ApplyColors(_color);
+        // En parlant : la couleur choisie varie, tantôt plus foncée, tantôt
+        // plus claire, au fil des syllabes (comme une lumière qui pulse).
+        _speakingAmount += ((_speaking ? 1.0 : 0.0) - _speakingAmount) * (1 - Math.Exp(-dt * 4));
+        var shade = _speakingAmount * (0.2 * Math.Sin(t * 1.9 + _phases[1]) + 0.12 * Math.Sin(t * 3.1 + _phases[2]) + 0.35 * (_level - 0.45));
+        var shown = shade >= 0 ? Lerp(_color, Colors.White, Math.Min(0.4, shade)) : Lerp(_color, Colors.Black, Math.Min(0.45, -shade));
+        ApplyColors(shown);
 
         var blob = BuildBlob(t);
         UpdateInnerGlow(blob, dt);
@@ -266,7 +272,7 @@ public partial class OrbWindow : Window
         // un peu plus droite quand elle écoute.
         var breathing = 0.025 * (1 - 0.6 * _attention) * Math.Sin(_breathPhase) + _sigh;
         var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness);
-        var stretch = _squash + 0.035 * _attention;
+        var stretch = _squash + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
         var scaleY = scale * (1 + stretch);
         var scaleX = scale * (1 - stretch * 0.7);
         var tilt = 4 * Math.Sin(t * 0.13) * Math.PI / 180;
@@ -305,14 +311,11 @@ public partial class OrbWindow : Window
         geometry.Freeze();
 
         var bounds = geometry.Bounds;
-        // Reflet brillant en haut à gauche, trait de lumière sous la bulle.
+        // Reflet brillant en haut à gauche.
         Highlight.Width = bounds.Width * 0.17;
         Highlight.Height = bounds.Height * 0.12;
         Canvas.SetLeft(Highlight, bounds.Left + bounds.Width * 0.27);
         Canvas.SetTop(Highlight, bounds.Top + bounds.Height * 0.22);
-        FloorLine.Width = size * 0.75;
-        Canvas.SetLeft(FloorLine, center.X - FloorLine.Width / 2);
-        Canvas.SetTop(FloorLine, center.Y + ry * 1.12 + size * 0.08);
 
         if (_moveMode)
         {
@@ -331,9 +334,9 @@ public partial class OrbWindow : Window
     /// </summary>
     private double TargetOffset(double angle, double t)
     {
-        var wobble = (0.06 + _level * 0.17 + _thinkingAmount * 0.04) * (1 - 0.5 * _attention) * (1 - 0.4 * _sleepiness);
+        var wobble = (0.06 + _level * 0.26 + _thinkingAmount * 0.04) * (1 - 0.5 * _attention) * (1 - 0.4 * _sleepiness);
         var speed = (0.5 - _level * 0.15 + _thinkingAmount * 0.2) * (1 - 0.5 * _sleepiness);
-        var shape = (1 + _level * 0.6) * (
+        var shape = (1 + _level * 1.3) * (
             0.11 * Math.Sin(2 * angle + t * 0.2 + _phases[0])
             + 0.075 * Math.Sin(3 * angle - t * 0.15 + _phases[1])
             + 0.03 * Math.Sin(4 * angle + t * 0.1 + _phases[2]));
@@ -374,9 +377,9 @@ public partial class OrbWindow : Window
         _slowLevel += (target - _slowLevel) * (1 - Math.Exp(-dt * 3));
         if (target - _slowLevel > 0.18 && t - _lastKickAt > 0.14)
         {
-            var strength = (_speaking ? 0.12 : 0.06) + (_speaking ? 0.2 : 0.08) * target;
+            var strength = (_speaking ? 0.2 : 0.06) + (_speaking ? 0.38 : 0.08) * target;
             Kick(_random.NextDouble() * Math.PI * 2, strength, 0.9);
-            _squashVelocity += (_random.NextDouble() < 0.5 ? 1 : -1) * (_speaking ? 0.5 : 0.25) * target;
+            _squashVelocity += (_random.NextDouble() < 0.5 ? 1 : -1) * (_speaking ? 1.1 : 0.25) * target;
             _lastKickAt = t;
         }
         if (hearing && !_wasHearing) _squashVelocity += 0.35; // elle "tend l'oreille"
@@ -410,11 +413,11 @@ public partial class OrbWindow : Window
                 _velocity[i] += acc * h;
             }
             for (var i = 0; i < PointCount; i++)
-                _offset[i] = Math.Clamp(_offset[i] + _velocity[i] * h, -0.35, 0.45);
+                _offset[i] = Math.Clamp(_offset[i] + _velocity[i] * h, -0.4, 0.6);
 
             // Écrasé-étiré : ressort vif et peu amorti, donc quelques rebonds.
             _squashVelocity += (-60 * _squash - 6 * _squashVelocity) * h;
-            _squash = Math.Clamp(_squash + _squashVelocity * h, -0.18, 0.18);
+            _squash = Math.Clamp(_squash + _squashVelocity * h, -0.3, 0.3);
             // Soupir : ressort lent, une longue inspiration qui retombe.
             _sighVelocity += (-4 * _sigh - 2.5 * _sighVelocity) * h;
             _sigh = Math.Clamp(_sigh + _sighVelocity * h, -0.06, 0.08);
@@ -473,7 +476,6 @@ public partial class OrbWindow : Window
         RimStopStrong.Color = WithAlpha(rim, 0xff);
         RimStopSoft.Color = WithAlpha(rim, 0x30);
         RimStopEnd.Color = WithAlpha(rim, 0xa0);
-        FloorStop.Color = WithAlpha(Lerp(main, cream, 0.4), 0x90);
         InnerStopCenter.Color = WithAlpha(Lerp(main, cream, 0.65), 0xc0);
         InnerStopEdge.Color = WithAlpha(Lerp(main, cream, 0.65), 0x00);
     }
