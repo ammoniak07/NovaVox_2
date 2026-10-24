@@ -702,6 +702,7 @@
                              OpenShipCheatSheet_Click — comme Gemini/Game.log, pas un onglet
                              de Réglages. -->
                         <TabItem x:Name="OverlaySettingsTab" Header="🖥 Overlay">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="10">
                                 <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
                                 <CheckBox x:Name="OverlayEnabledCheckbox" Content="Activer l'overlay" Checked="OverlayEnabledCheckbox_Changed" Unchecked="OverlayEnabledCheckbox_Changed" />
@@ -819,6 +820,7 @@
                                 <CheckBox x:Name="OrbCaptionCheckbox" Content="Afficher « Je réfléchis… » pendant une question à Gemini" Margin="0,8,0,0"
                                           Checked="OrbCaptionCheckbox_Changed" Unchecked="OrbCaptionCheckbox_Changed" />
                             </StackPanel>
+                            </ScrollViewer>
                         </TabItem>
 
                         <TabItem Header="⬡ NovaVox">
