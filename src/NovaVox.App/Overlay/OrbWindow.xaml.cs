@@ -451,42 +451,61 @@ public partial class OrbWindow : Window
     /// (Test) Bouche dans le bas de la bulle : suit l'enveloppe de la voix
     /// sans lissage lent (ouverture syllabe par syllabe), alterne entre une
     /// forme large ("a") et ronde ("o"), apparaît quand elle parle et
-    /// disparaît en douceur ensuite.
+    /// disparaît en douceur ensuite. Intérieur sombre plus profond en haut,
+    /// langue rosée visible quand elle s'ouvre grand, lèvres douces et
+    /// légèrement lumineuses, coins un peu relevés (sourire) quand elle se ferme.
     /// </summary>
     private void UpdateMouth(Geometry blob, double dt, double t, double voice)
     {
         var wanted = _config.ShowMouth && _speaking ? 1.0 : 0.0;
         _mouthVisible += (wanted - _mouthVisible) * (1 - Math.Exp(-dt * 6));
         _mouthOpen += (voice - _mouthOpen) * (1 - Math.Exp(-dt * (voice > _mouthOpen ? 30 : 14)));
-        MouthPath.Opacity = _mouthVisible;
+        MouthGroup.Opacity = _mouthVisible;
         if (_mouthVisible < 0.01) return;
 
         var b = blob.Bounds;
         var roundness = 0.5 + 0.5 * Math.Sin(t * 6.3 + 1.7 * Math.Sin(t * 2.3));
         var open = Math.Clamp(_mouthOpen, 0, 1);
         var halfWidth = b.Width * (0.17 - 0.06 * roundness * open);
-        var halfHeight = b.Height * (0.012 + 0.13 * open * (0.75 + 0.25 * roundness));
+        var halfHeight = b.Height * (0.014 + 0.13 * open * (0.75 + 0.25 * roundness));
         var cx = b.Left + b.Width / 2;
         var cy = b.Top + b.Height * 0.66;
+        // Sourire : coins relevés, surtout bouche presque fermée.
+        var smile = b.Height * (0.018 - 0.01 * open);
 
-        // Lèvre du haut un peu moins bombée que celle du bas, coins arrondis.
-        var geometry = new StreamGeometry();
-        using (var ctx = geometry.Open())
+        var mouth = new StreamGeometry();
+        using (var ctx = mouth.Open())
         {
-            var left = new Point(cx - halfWidth, cy);
-            var right = new Point(cx + halfWidth, cy);
+            var left = new Point(cx - halfWidth, cy - smile);
+            var right = new Point(cx + halfWidth, cy - smile);
             ctx.BeginFigure(left, isFilled: true, isClosed: true);
-            ctx.BezierTo(new Point(cx - halfWidth * 0.6, cy - halfHeight * 0.9), new Point(cx + halfWidth * 0.6, cy - halfHeight * 0.9), right, isStroked: false, isSmoothJoin: true);
-            ctx.BezierTo(new Point(cx + halfWidth * 0.7, cy + halfHeight * 1.35), new Point(cx - halfWidth * 0.7, cy + halfHeight * 1.35), left, isStroked: false, isSmoothJoin: true);
+            ctx.BezierTo(new Point(cx - halfWidth * 0.55, cy - halfHeight * 0.85 - smile * 0.2),
+                         new Point(cx + halfWidth * 0.55, cy - halfHeight * 0.85 - smile * 0.2), right, isStroked: true, isSmoothJoin: true);
+            ctx.BezierTo(new Point(cx + halfWidth * 0.75, cy + halfHeight * 1.4),
+                         new Point(cx - halfWidth * 0.75, cy + halfHeight * 1.4), left, isStroked: true, isSmoothJoin: true);
         }
-        geometry.Freeze();
-        MouthPath.Data = geometry;
-        MouthBlur.Radius = Math.Max(1, b.Width * 0.008);
+        mouth.Freeze();
+        MouthPath.Data = mouth;
+        LipPath.Data = mouth;
+        LipPath.StrokeThickness = Math.Max(1.5, b.Width * 0.014);
+        LipBlur.Radius = Math.Max(1.2, b.Width * 0.012);
+        LipPath.Opacity = 0.45 + 0.25 * open;
 
-        var inner = Lerp(_shownColor, Colors.Black, 0.82);
-        var outer = Lerp(_shownColor, Colors.Black, 0.55);
-        MouthStopInner.Color = WithAlpha(inner, 0xe6);
-        MouthStopOuter.Color = WithAlpha(outer, 0xc0);
+        // Langue : arrondie au fond de la bouche, découpée par la bouche.
+        var tongue = new EllipseGeometry(new Point(cx, cy + halfHeight * 0.95), halfWidth * 0.6, Math.Max(1, halfHeight * 0.7));
+        tongue.Freeze();
+        TonguePath.Data = tongue;
+        TonguePath.Clip = mouth;
+        TonguePath.Opacity = Math.Clamp((open - 0.2) / 0.4, 0, 1);
+
+        var c = _shownColor;
+        MouthStopTop.Color = WithAlpha(Lerp(c, Colors.Black, 0.9), 0xf2);
+        MouthStopMid.Color = WithAlpha(Lerp(c, Colors.Black, 0.8), 0xe8);
+        MouthStopBottom.Color = WithAlpha(Lerp(c, Colors.Black, 0.62), 0xe0);
+        var pink = Color.FromRgb(0xe8, 0x7a, 0x8c);
+        TongueStopLight.Color = Lerp(Lerp(c, pink, 0.6), Colors.White, 0.15);
+        TongueStopDark.Color = Lerp(Lerp(c, pink, 0.5), Colors.Black, 0.35);
+        LipBrush.Color = Lerp(c, Colors.White, 0.45);
     }
 
     /// <summary>Une tache de couleur intérieure : trajectoire lente (courbe de Lissajous) et pulsation propres.</summary>

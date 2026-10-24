@@ -69,18 +69,35 @@
                     <BlurEffect x:Name="RimBlur" Radius="8" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
-            <!-- (Test) Bouche : s'ouvre et se ferme au rythme de la voix. -->
-            <Path x:Name="MouthPath" Opacity="0">
-                <Path.Fill>
-                    <RadialGradientBrush GradientOrigin="0.5,0.35" Center="0.5,0.5" RadiusX="0.6" RadiusY="0.7">
-                        <GradientStop x:Name="MouthStopInner" Offset="0" Color="#e0200810" />
-                        <GradientStop x:Name="MouthStopOuter" Offset="1" Color="#b0401020" />
-                    </RadialGradientBrush>
-                </Path.Fill>
-                <Path.Effect>
-                    <BlurEffect x:Name="MouthBlur" Radius="1.5" KernelType="Gaussian" RenderingBias="Performance" />
-                </Path.Effect>
-            </Path>
+            <!-- (Test) Bouche : intérieur sombre avec ombre en haut, langue rosée au
+                 fond quand elle s'ouvre, lèvres douces et lumineuses autour. -->
+            <Canvas x:Name="MouthGroup" Opacity="0">
+                <Path x:Name="MouthPath">
+                    <Path.Fill>
+                        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                            <GradientStop x:Name="MouthStopTop" Offset="0" Color="#f0100408" />
+                            <GradientStop x:Name="MouthStopMid" Offset="0.55" Color="#e0200810" />
+                            <GradientStop x:Name="MouthStopBottom" Offset="1" Color="#d0401020" />
+                        </LinearGradientBrush>
+                    </Path.Fill>
+                </Path>
+                <Path x:Name="TonguePath" Opacity="0">
+                    <Path.Fill>
+                        <RadialGradientBrush GradientOrigin="0.5,0.3" Center="0.5,0.45" RadiusX="0.55" RadiusY="0.6">
+                            <GradientStop x:Name="TongueStopLight" Offset="0" Color="#ffe08a9a" />
+                            <GradientStop x:Name="TongueStopDark" Offset="1" Color="#ffa04a5a" />
+                        </RadialGradientBrush>
+                    </Path.Fill>
+                </Path>
+                <Path x:Name="LipPath" StrokeThickness="3" Opacity="0.7">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="LipBrush" Color="#ffffd0b0" />
+                    </Path.Stroke>
+                    <Path.Effect>
+                        <BlurEffect x:Name="LipBlur" Radius="2.5" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Path.Effect>
+                </Path>
+            </Canvas>
             <!-- Petit reflet brillant en haut à gauche. -->
             <Ellipse x:Name="Highlight" Width="30" Height="22">
                 <Ellipse.Fill>
