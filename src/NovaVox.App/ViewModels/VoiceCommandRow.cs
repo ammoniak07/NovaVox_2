@@ -58,6 +58,26 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     /// <summary>Case "Lire" : Nova lit la phrase quand le joueur appuie lui-même sur la touche de la commande.</summary>
     public bool SpeakOnKeyPress { get => _speakOnKeyPress; set { _speakOnKeyPress = value; Raise(); } }
 
+    private string _speakJoystickButton = "";
+    /// <summary>Bouton de joystick qui déclenche aussi la lecture (en plus de la touche clavier), encodé par JoystickHotkeyCodec — vide si aucun.</summary>
+    public string SpeakJoystickButton
+    {
+        get => _speakJoystickButton;
+        set { _speakJoystickButton = value ?? ""; Raise(); Raise(nameof(SpeakJoystickLabel)); }
+    }
+
+    private bool _speakJoystickCapturing;
+    /// <summary>Détection du bouton en cours (affichage seulement, jamais persisté).</summary>
+    public bool SpeakJoystickCapturing
+    {
+        get => _speakJoystickCapturing;
+        set { _speakJoystickCapturing = value; Raise(); Raise(nameof(SpeakJoystickLabel)); }
+    }
+
+    public string SpeakJoystickLabel =>
+        SpeakJoystickCapturing ? "🕹 appuie…"
+        : NovaVox.Core.Hotkeys.JoystickHotkeyCodec.Decode(SpeakJoystickButton) is { Button: { } button } ? $"🕹 {button}" : "🕹 +";
+
     public ObservableCollection<string> Synonyms { get; } = new();
 
     /// <summary>Suite de touches jouées après l'action principale (jusqu'à CommandStore.MaxCommandExtraSteps) — voir AddExtraStep_Click/OpenKeyboardForExtraStep (MainWindow.xaml.cs).</summary>
@@ -112,6 +132,7 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
             RepeatDelay = cmd.RepeatDelay,
             IsCollapsed = cmd.Collapsed,
             SpeakOnKeyPress = cmd.SpeakOnKeyPress,
+            SpeakJoystickButton = cmd.SpeakJoystickButton,
         };
         foreach (var s in cmd.Synonyms) row.Synonyms.Add(s);
         foreach (var step in cmd.ExtraSteps) row.ExtraSteps.Add(step);
@@ -130,5 +151,6 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
         ExtraSteps = ExtraSteps.ToList(),
         Collapsed = IsCollapsed,
         SpeakOnKeyPress = SpeakOnKeyPress,
+        SpeakJoystickButton = SpeakJoystickButton,
     };
 }

@@ -151,12 +151,13 @@ public class CommandStoreTests : IDisposable
         var store = new CommandStore(_dir);
         store.SaveCommands(new List<VoiceCommand>
         {
-            new() { Phrase = "docking", Keys = "n", SpeakOnKeyPress = true },
+            new() { Phrase = "docking", Keys = "n", SpeakOnKeyPress = true, SpeakJoystickButton = "joy:VPC Stick|abc|5" },
             new() { Phrase = "phares", Keys = "l" },
         });
 
         var reloaded = new CommandStore(_dir).LoadCommands();
         Assert.True(reloaded.Single(c => c.Phrase == "docking").SpeakOnKeyPress);
+        Assert.Equal("joy:VPC Stick|abc|5", reloaded.Single(c => c.Phrase == "docking").SpeakJoystickButton);
         Assert.False(reloaded.Single(c => c.Phrase == "phares").SpeakOnKeyPress);
     }
 }

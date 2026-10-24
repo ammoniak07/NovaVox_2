@@ -39,6 +39,9 @@ public sealed class VoiceOrchestrator : IDisposable
     /// acquis par cette instance (créé au constructeur, indépendamment de
     /// l'écoute), pour ne pas ouvrir une seconde acquisition DirectInput.
     /// </summary>
+    /// <summary>Manettes DirectInput (null si indisponible) — partagé avec l'option "Lire" des commandes.</summary>
+    public JoystickManager? Joysticks => _joystickManager;
+
     public Task<CaptureResult> CaptureJoystickButtonAsync(CancellationToken cancellationToken) =>
         _joystickManager is null
             ? Task.FromResult(new CaptureResult(false, Reason: CaptureFailureReason.NoDevice))

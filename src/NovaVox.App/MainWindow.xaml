@@ -319,6 +319,10 @@
                                                     <StackPanel Grid.Column="4" Orientation="Horizontal">
                                                         <CheckBox Content="Lire" IsChecked="{Binding SpeakOnKeyPress, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,8,0"
                                                                   ToolTip="Si coché : quand tu appuies toi-même sur la touche de cette commande, Nova lit la phrase" />
+                                                        <Button Content="{Binding SpeakJoystickLabel}" Height="34" Margin="0,0,8,0" Padding="6,0"
+                                                                Visibility="{Binding SpeakOnKeyPress, Converter={StaticResource BoolToVis}}"
+                                                                Click="SpeakJoystickButton_Click" MouseRightButtonUp="SpeakJoystickButton_RightClick"
+                                                                ToolTip="Bouton de joystick qui déclenche aussi la lecture (clic : choisir le bouton, clic droit : le retirer)" />
                                                         <Button Width="34" Height="34" Padding="0" FontSize="15" Click="SpeakCommand_Click" ToolTip="Écouter la phrase" Content="▶️" />
                                                         <Button Content="+ syn" Height="34" Margin="6,0,0,0" Click="AddSynonym_Click" ToolTip="Ajouter un synonyme" />
                                                         <Button Content="{Binding ExtraStepsCountLabel}" Visibility="{Binding HasExtraSteps, Converter={StaticResource BoolToVis}}"

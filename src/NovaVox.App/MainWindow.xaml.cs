@@ -1374,6 +1374,7 @@ public partial class MainWindow : Window
         _overlayWindow?.Close();
         _orbWindow?.Close();
         _keyPressListener.Dispose();
+        _joystickReadTimer?.Stop();
     }
 
     // ------------------------------------------------------------ Réglages
@@ -3720,16 +3721,109 @@ public partial class MainWindow : Window
         _keyPressListener.KeyPressed += (_, press) =>
         {
             var row = _state.Commands.FirstOrDefault(r => !r.IsTitle && r.SpeakOnKeyPress && !string.IsNullOrWhiteSpace(r.Phrase) && CommandKeyMatcher.Matches(r.Keys, press));
-            if (row is null) return;
-            // Même commande martelée : on ne relit pas en boucle.
-            if (ReferenceEquals(row, _lastKeyReadRow) && (DateTime.UtcNow - _lastKeyReadAt).TotalSeconds < 1.5) return;
-            _lastKeyReadRow = row;
-            _lastKeyReadAt = DateTime.UtcNow;
-            EnsureTestTts();
-            _testTts!.Speak(row.Phrase);
+            if (row is not null) ReadCommandAloud(row);
         };
         if (!_keyPressListener.Start())
             AppendLog("Lecture des touches : impossible d'écouter le clavier (option « Lire » des commandes inactive).", "warning");
+
+        // Boutons de joystick associés à la lecture : vérifiés ~25 fois par seconde.
+        _joystickReadTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
+        _joystickReadTimer.Tick += (_, _) => PollJoystickReadButtons();
+        _joystickReadTimer.Start();
+    }
+
+    /// <summary>Nova lit la phrase de la commande (même commande martelée : pas de relecture en boucle).</summary>
+    private void ReadCommandAloud(VoiceCommandRow row)
+    {
+        if (ReferenceEquals(row, _lastKeyReadRow) && (DateTime.UtcNow - _lastKeyReadAt).TotalSeconds < 1.5) return;
+        _lastKeyReadRow = row;
+        _lastKeyReadAt = DateTime.UtcNow;
+        EnsureTestTts();
+        _testTts!.Speak(row.Phrase);
+    }
+
+    private DispatcherTimer? _joystickReadTimer;
+    private readonly Dictionary<VoiceCommandRow, bool> _joystickReadPrevious = new();
+    private IReadOnlyList<(string Name, string Guid, Guid InstanceGuid)> _joystickReadDevices = Array.Empty<(string, string, Guid)>();
+    private DateTime _joystickReadDevicesAt = DateTime.MinValue;
+
+    /// <summary>Front montant (relâché -> appuyé) d'un bouton de joystick associé à une commande "Lire" : Nova lit la commande.</summary>
+    private void PollJoystickReadButtons()
+    {
+        var joysticks = _voiceOrchestrator?.Joysticks;
+        if (joysticks is null) return;
+        var rows = _state.Commands.Where(r => !r.IsTitle && r.SpeakOnKeyPress && !string.IsNullOrEmpty(r.SpeakJoystickButton)).ToList();
+        if (rows.Count == 0) return;
+
+        // Liste des manettes rafraîchie toutes les 3 s seulement (énumération coûteuse).
+        if ((DateTime.UtcNow - _joystickReadDevicesAt).TotalSeconds > 3)
+        {
+            try { _joystickReadDevices = joysticks.GetJoysticks(); } catch { _joystickReadDevices = Array.Empty<(string, string, Guid)>(); }
+            _joystickReadDevicesAt = DateTime.UtcNow;
+        }
+        if (_joystickReadDevices.Count == 0) return;
+
+        foreach (var row in rows)
+        {
+            var info = NovaVox.Core.Hotkeys.JoystickHotkeyCodec.Decode(row.SpeakJoystickButton);
+            if (info?.Button is not { } button) continue;
+            var index = NovaVox.Core.Hotkeys.JoystickHotkeyCodec.MatchJoystickIndex(info, _joystickReadDevices.Select(j => (j.Name, j.Guid)).ToList());
+            if (index is null) continue;
+            var held = joysticks.IsButtonHeld(_joystickReadDevices[index.Value].InstanceGuid, button) ?? false;
+            var wasHeld = _joystickReadPrevious.TryGetValue(row, out var prev) && prev;
+            _joystickReadPrevious[row] = held;
+            if (held && !wasHeld && !string.IsNullOrWhiteSpace(row.Phrase)) ReadCommandAloud(row);
+        }
+    }
+
+    private async void SpeakJoystickButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null || _voiceOrchestrator is null) return;
+        if (row.SpeakJoystickCapturing)
+        {
+            _speakJoystickCaptureCts?.Cancel();
+            return;
+        }
+        _speakJoystickCaptureCts?.Cancel();
+        _speakJoystickCaptureCts = new CancellationTokenSource();
+        row.SpeakJoystickCapturing = true;
+        AppendLog($"Appuie sur le bouton du joystick qui doit faire lire « {row.Phrase} » (15 secondes, ou clique à nouveau pour annuler)...", "info");
+        try
+        {
+            CaptureResult result;
+            try { result = await _voiceOrchestrator.CaptureJoystickButtonAsync(_speakJoystickCaptureCts.Token); }
+            catch (OperationCanceledException) { result = new CaptureResult(false, Reason: CaptureFailureReason.Cancelled); }
+
+            if (result.Ok && result.JoystickHotkey is not null)
+            {
+                row.SpeakJoystickButton = result.JoystickHotkey;
+                AppendLog($"Lecture de « {row.Phrase} » associée au bouton {row.SpeakJoystickLabel.Replace("🕹 ", "")} du joystick.", "success");
+            }
+            else
+            {
+                AppendLog(result.Reason switch
+                {
+                    CaptureFailureReason.NoDevice => "Aucun joystick/manette détecté.",
+                    CaptureFailureReason.Timeout => "Aucun bouton détecté (15 secondes écoulées).",
+                    _ => "Détection annulée.",
+                }, result.Reason == CaptureFailureReason.Cancelled ? "info" : "warning");
+            }
+        }
+        finally
+        {
+            row.SpeakJoystickCapturing = false;
+        }
+    }
+
+    private CancellationTokenSource? _speakJoystickCaptureCts;
+
+    private void SpeakJoystickButton_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        var row = RowFromSender(sender);
+        if (row is null) return;
+        row.SpeakJoystickButton = "";
+        e.Handled = true;
     }
 
     // ------------------------------------------------------- Bulle animée

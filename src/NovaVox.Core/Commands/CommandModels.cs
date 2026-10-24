@@ -27,6 +27,8 @@ public sealed class VoiceCommand
     public List<ExtraStep> ExtraSteps { get; set; } = new();
     /// <summary>Nova lit la phrase de la commande quand le joueur appuie lui-même sur sa touche (pas quand NovaVox la déclenche).</summary>
     public bool SpeakOnKeyPress { get; set; }
+    /// <summary>Bouton de joystick (JoystickHotkeyCodec) qui déclenche aussi la lecture "Lire", en plus de la touche clavier — vide si aucun.</summary>
+    public string SpeakJoystickButton { get; set; } = "";
     /// <summary>Titre replié dans l'interface (masque les commandes du groupe) — uniquement significatif pour un titre, ignoré pour une commande.</summary>
     public bool Collapsed { get; set; }
 

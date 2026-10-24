@@ -21,7 +21,16 @@ public sealed class JoystickManager : IDisposable
     }
 
     /// <summary>Manettes actuellement branchées : (nom, GUID produit stable — identité du modèle, pas de l'instance de branchement).</summary>
+    // Lue à la fois par la surveillance push-to-talk (fil d'arrière-plan) et
+    // par l'option "Lire" des commandes (fil de l'interface).
+    private readonly object _sync = new();
+
     public IReadOnlyList<(string Name, string Guid, Guid InstanceGuid)> GetJoysticks()
+    {
+        lock (_sync) return GetJoysticksUnlocked();
+    }
+
+    private IReadOnlyList<(string Name, string Guid, Guid InstanceGuid)> GetJoysticksUnlocked()
     {
         var result = new List<(string, string, Guid)>();
         foreach (var device in _directInput.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly))
@@ -49,6 +58,11 @@ public sealed class JoystickManager : IDisposable
 
     /// <summary>True/False si l'état du bouton est déterminable, null sinon (manette débranchée, bouton hors limites, erreur).</summary>
     public bool? IsButtonHeld(Guid instanceGuid, int buttonIndex)
+    {
+        lock (_sync) return IsButtonHeldUnlocked(instanceGuid, buttonIndex);
+    }
+
+    private bool? IsButtonHeldUnlocked(Guid instanceGuid, int buttonIndex)
     {
         var device = AcquireDevice(instanceGuid);
         if (device is null) return null;
