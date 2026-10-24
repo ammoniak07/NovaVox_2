@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using NovaVox.App.Speech;
 using NovaVox.Core.Config;
 
@@ -64,7 +65,7 @@ public partial class OrbWindow : Window
     private double _sleepiness;
     /// <summary>0..1 : elle écoute le joueur (retient sa respiration, se tient droite).</summary>
     private double _attention;
-    private double _innerAngle;
+    private Color _shownColor = Colors.Gray;
     private bool _wasHearing;
     private bool _asleep;
     private double _speakingAmount;
@@ -248,10 +249,11 @@ public partial class OrbWindow : Window
         _speakingAmount += ((_speaking ? 1.0 : 0.0) - _speakingAmount) * (1 - Math.Exp(-dt * 4));
         var shade = _speakingAmount * (0.2 * Math.Sin(t * 1.9 + _phases[1]) + 0.12 * Math.Sin(t * 3.1 + _phases[2]) + 0.35 * (_level - 0.45));
         var shown = shade >= 0 ? Lerp(_color, Colors.White, Math.Min(0.4, shade)) : Lerp(_color, Colors.Black, Math.Min(0.45, -shade));
+        _shownColor = shown;
         ApplyColors(shown);
 
         var blob = BuildBlob(t);
-        UpdateInnerGlow(blob, dt);
+        UpdateSpots(blob, dt, _shownColor);
         BodyPath.Data = GlowPath.Data = ShadePath.Data = RimPath.Data = blob;
         // Lueur du bord : uniquement à l'intérieur de la bulle, côté le plus
         // lumineux qui tourne lentement, plus vive quand la voix monte.
@@ -443,23 +445,76 @@ public partial class OrbWindow : Window
         }
     }
 
-    /// <summary>Lumière intérieure : tourne lentement, plus vite et plus forte quand elle réfléchit ou parle.</summary>
-    private void UpdateInnerGlow(Geometry blob, double dt)
+    /// <summary>Une tache de couleur intérieure : trajectoire lente (courbe de Lissajous) et pulsation propres.</summary>
+    private sealed class ColorSpot
     {
+        public required Ellipse Shape { get; init; }
+        public required GradientStop Center { get; init; }
+        public required GradientStop Edge { get; init; }
+        public required bool Dark { get; init; }
+        public double FreqX, FreqY, PhaseX, PhaseY, SizeFactor, PulsePhase;
+    }
+
+    private readonly List<ColorSpot> _spots = new();
+    private double _spotTime;
+
+    /// <summary>3 taches claires et 3 foncées, positions et rythmes tirés au hasard.</summary>
+    private void CreateSpots()
+    {
+        for (var i = 0; i < 6; i++)
+        {
+            var center = new GradientStop(Colors.White, 0);
+            var edge = new GradientStop(Colors.Transparent, 1);
+            var brush = new RadialGradientBrush(new GradientStopCollection { center, edge });
+            var ellipse = new Ellipse { Fill = brush, IsHitTestVisible = false };
+            SpotLayer.Children.Add(ellipse);
+            _spots.Add(new ColorSpot
+            {
+                Shape = ellipse,
+                Center = center,
+                Edge = edge,
+                Dark = i % 2 == 1,
+                FreqX = 0.13 + _random.NextDouble() * 0.17,
+                FreqY = 0.11 + _random.NextDouble() * 0.17,
+                PhaseX = _random.NextDouble() * Math.PI * 2,
+                PhaseY = _random.NextDouble() * Math.PI * 2,
+                SizeFactor = 0.45 + _random.NextDouble() * 0.3,
+                PulsePhase = _random.NextDouble() * Math.PI * 2,
+            });
+        }
+    }
+
+    /// <summary>
+    /// Fait dériver les taches à l'intérieur de la bulle : plus vite quand
+    /// elle parle ou réfléchit, plus lentement quand elle dort. Chaque tache
+    /// grossit et s'estompe à son propre rythme, d'où un mélange de clairs et
+    /// de foncés qui change sans cesse.
+    /// </summary>
+    private void UpdateSpots(Geometry blob, double dt, Color main)
+    {
+        if (_spots.Count == 0) CreateSpots();
         var b = blob.Bounds;
-        _innerAngle += dt * (0.25 + 1.2 * _thinkingAmount + 0.4 * _level) * (1 - 0.6 * _sleepiness);
-        var diameter = Math.Min(b.Width, b.Height) * 0.55;
-        InnerGlow.Width = InnerGlow.Height = diameter;
-        InnerBlur.Radius = Math.Max(4, diameter * 0.15);
-        var cx = b.Left + b.Width / 2 + Math.Cos(_innerAngle) * b.Width * 0.18;
-        var cy = b.Top + b.Height / 2 + Math.Sin(_innerAngle) * b.Height * 0.18;
-        Canvas.SetLeft(InnerGlow, cx - diameter / 2);
-        Canvas.SetTop(InnerGlow, cy - diameter / 2);
-        // Découpée à la forme de la bulle (coordonnées locales de l'ellipse).
-        var clip = blob.Clone();
-        clip.Transform = new TranslateTransform(-(cx - diameter / 2), -(cy - diameter / 2));
-        InnerGlow.Clip = clip;
-        InnerGlow.Opacity = Math.Clamp(0.3 + 0.35 * _thinkingAmount + 0.25 * _level - 0.15 * _sleepiness, 0, 1);
+        SpotLayer.Width = Width;
+        SpotLayer.Height = Height;
+        SpotClip.Clip = blob;
+        SpotBlur.Radius = Math.Max(6, Math.Min(b.Width, b.Height) * 0.14);
+        _spotTime += dt * (1 + 1.4 * _level + 1.6 * _thinkingAmount) * (1 - 0.6 * _sleepiness);
+
+        var light = Lerp(main, Colors.White, 0.72);
+        var dark = Lerp(ShiftHueToward(main, 260, 28, saturation: 0.8, value: 0.5), Colors.Black, 0.45);
+        foreach (var spot in _spots)
+        {
+            var diameter = Math.Min(b.Width, b.Height) * spot.SizeFactor * (1 + 0.15 * Math.Sin(_spotTime * 0.7 + spot.PulsePhase));
+            spot.Shape.Width = spot.Shape.Height = diameter;
+            var cx = b.Left + b.Width / 2 + Math.Sin(_spotTime * spot.FreqX + spot.PhaseX) * b.Width * 0.32;
+            var cy = b.Top + b.Height / 2 + Math.Cos(_spotTime * spot.FreqY + spot.PhaseY) * b.Height * 0.32;
+            Canvas.SetLeft(spot.Shape, cx - diameter / 2);
+            Canvas.SetTop(spot.Shape, cy - diameter / 2);
+            var color = spot.Dark ? dark : light;
+            var alpha = (byte)Math.Clamp(255 * (0.7 + 0.3 * Math.Sin(_spotTime * 0.5 + spot.PulsePhase)), 0, 255);
+            spot.Center.Color = WithAlpha(color, alpha);
+            spot.Edge.Color = WithAlpha(color, 0);
+        }
     }
 
     /// <summary>
@@ -484,8 +539,6 @@ public partial class OrbWindow : Window
         RimStopStrong.Color = WithAlpha(rim, 0xff);
         RimStopSoft.Color = WithAlpha(rim, 0x30);
         RimStopEnd.Color = WithAlpha(rim, 0xa0);
-        InnerStopCenter.Color = WithAlpha(Lerp(main, cream, 0.65), 0xc0);
-        InnerStopEdge.Color = WithAlpha(Lerp(main, cream, 0.65), 0x00);
     }
 
     private static Color WithAlpha(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);

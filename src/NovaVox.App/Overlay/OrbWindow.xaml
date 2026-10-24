@@ -43,19 +43,16 @@
                     </LinearGradientBrush>
                 </Path.Fill>
             </Path>
-            <!-- Lumière intérieure qui tourne lentement dans la bulle (plus vite et
-                 plus forte quand elle réfléchit) : impression de vie à l'intérieur. -->
-            <Ellipse x:Name="InnerGlow" Width="80" Height="80" Opacity="0.35">
-                <Ellipse.Fill>
-                    <RadialGradientBrush>
-                        <GradientStop x:Name="InnerStopCenter" Offset="0" Color="#c0fff0b8" />
-                        <GradientStop x:Name="InnerStopEdge" Offset="1" Color="#00fff0b8" />
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-                <Ellipse.Effect>
-                    <BlurEffect x:Name="InnerBlur" Radius="10" KernelType="Gaussian" RenderingBias="Performance" />
-                </Ellipse.Effect>
-            </Ellipse>
+            <!-- Taches de couleur intérieures (plus claires et plus foncées que la
+                 couleur choisie) qui dérivent et se mélangent comme un liquide.
+                 Floutées ensemble, puis découpées à la forme de la bulle. -->
+            <Canvas x:Name="SpotClip">
+                <Canvas x:Name="SpotLayer">
+                    <Canvas.Effect>
+                        <BlurEffect x:Name="SpotBlur" Radius="20" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Canvas.Effect>
+                </Canvas>
+            </Canvas>
             <!-- Lueur intérieure du bord : trait épais très flouté, découpé à la
                  forme de la bulle (on n'en voit que la moitié intérieure, qui se
                  fond vers le centre). Plus intense d'un côté, et ce côté tourne
