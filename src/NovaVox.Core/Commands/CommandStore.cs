@@ -103,6 +103,7 @@ public sealed class CommandStore
                 RepeatCount = ClampInt(item["repeat_count"], fallback: 1, min: 1, max: 50),
                 RepeatDelay = ClampDouble(item["repeat_delay"], fallback: 0.1, min: 0.0, max: 10.0),
                 ExtraSteps = NormalizeExtraSteps(item["extra_steps"] as JsonArray),
+                SpeakOnKeyPress = GetBool(item["speak_on_key"]),
             };
             normalized.Add(cmd);
         }
@@ -145,6 +146,7 @@ public sealed class CommandStore
                 ["hold"] = cmd.Hold,
                 ["repeat_count"] = cmd.RepeatCount,
                 ["repeat_delay"] = cmd.RepeatDelay,
+                ["speak_on_key"] = cmd.SpeakOnKeyPress,
                 ["synonyms"] = new JsonArray(cmd.Synonyms.Select(s => (JsonNode)JsonValue.Create(s)).ToArray()),
                 ["extra_steps"] = new JsonArray(cmd.ExtraSteps.Select(s => (JsonNode)new JsonObject
                 {

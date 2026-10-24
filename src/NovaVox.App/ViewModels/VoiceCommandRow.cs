@@ -54,6 +54,10 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
     private double _repeatDelay = 0.1;
     public double RepeatDelay { get => _repeatDelay; set { _repeatDelay = value; Raise(); } }
 
+    private bool _speakOnKeyPress;
+    /// <summary>Case "Lire" : Nova lit la phrase quand le joueur appuie lui-même sur la touche de la commande.</summary>
+    public bool SpeakOnKeyPress { get => _speakOnKeyPress; set { _speakOnKeyPress = value; Raise(); } }
+
     public ObservableCollection<string> Synonyms { get; } = new();
 
     /// <summary>Suite de touches jouées après l'action principale (jusqu'à CommandStore.MaxCommandExtraSteps) — voir AddExtraStep_Click/OpenKeyboardForExtraStep (MainWindow.xaml.cs).</summary>
@@ -107,6 +111,7 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
             RepeatCount = cmd.RepeatCount,
             RepeatDelay = cmd.RepeatDelay,
             IsCollapsed = cmd.Collapsed,
+            SpeakOnKeyPress = cmd.SpeakOnKeyPress,
         };
         foreach (var s in cmd.Synonyms) row.Synonyms.Add(s);
         foreach (var step in cmd.ExtraSteps) row.ExtraSteps.Add(step);
@@ -124,5 +129,6 @@ public sealed class VoiceCommandRow : INotifyPropertyChanged
         Synonyms = Synonyms.ToList(),
         ExtraSteps = ExtraSteps.ToList(),
         Collapsed = IsCollapsed,
+        SpeakOnKeyPress = SpeakOnKeyPress,
     };
 }

@@ -25,6 +25,8 @@ public sealed class VoiceCommand
     public int RepeatCount { get; set; } = 1;
     public double RepeatDelay { get; set; } = 0.1;
     public List<ExtraStep> ExtraSteps { get; set; } = new();
+    /// <summary>Nova lit la phrase de la commande quand le joueur appuie lui-même sur sa touche (pas quand NovaVox la déclenche).</summary>
+    public bool SpeakOnKeyPress { get; set; }
     /// <summary>Titre replié dans l'interface (masque les commandes du groupe) — uniquement significatif pour un titre, ignoré pour une commande.</summary>
     public bool Collapsed { get; set; }
 

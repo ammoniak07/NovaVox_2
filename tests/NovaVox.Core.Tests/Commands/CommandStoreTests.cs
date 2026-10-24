@@ -144,4 +144,19 @@ public class CommandStoreTests : IDisposable
         var profile = new ProfileInfo { Id = "p1", Name = "Ammo", Count = 3 };
         Assert.Equal("Ammo", profile.ToString());
     }
+
+    [Fact]
+    public void SpeakOnKeyPress_RoundTrips()
+    {
+        var store = new CommandStore(_dir);
+        store.SaveCommands(new List<VoiceCommand>
+        {
+            new() { Phrase = "docking", Keys = "n", SpeakOnKeyPress = true },
+            new() { Phrase = "phares", Keys = "l" },
+        });
+
+        var reloaded = new CommandStore(_dir).LoadCommands();
+        Assert.True(reloaded.Single(c => c.Phrase == "docking").SpeakOnKeyPress);
+        Assert.False(reloaded.Single(c => c.Phrase == "phares").SpeakOnKeyPress);
+    }
 }

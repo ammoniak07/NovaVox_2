@@ -122,6 +122,10 @@ public partial class MainWindow : Window
 
     private OverlayWindow? _overlayWindow;
     private OrbWindow? _orbWindow;
+    /// <summary>Option "Lire" des commandes : touches physiques du joueur (voir KeyPressListener).</summary>
+    private readonly KeyPressListener _keyPressListener = new();
+    private DateTime _lastKeyReadAt = DateTime.MinValue;
+    private VoiceCommandRow? _lastKeyReadRow;
     private bool _orbMoveMode;
     private bool _orbMicActive;
 
@@ -211,6 +215,7 @@ public partial class MainWindow : Window
         BuildVirtualKeyboard();
         InitializeOverlay();
         InitializeOrb();
+        InitializeKeyPressReading();
         LoadSettingsIntoControls();
         ApplyUiTranslations();
         InitializeVoiceOrchestrator();
@@ -1368,6 +1373,7 @@ public partial class MainWindow : Window
         _gameLogWatcher?.Dispose();
         _overlayWindow?.Close();
         _orbWindow?.Close();
+        _keyPressListener.Dispose();
     }
 
     // ------------------------------------------------------------ Réglages
@@ -2558,9 +2564,18 @@ public partial class MainWindow : Window
             GameLogDestinations.LiveLocationNameCount > 0 ? "success" : "warning");
     }
 
+    internal static IEnumerable<string> OrderSchemasNewestFirst(IEnumerable<string> received, ICollection<string> unseen)
+    {
+        var newestFirst = received.Reverse().ToList();
+        return newestFirst.Where(unseen.Contains).Concat(newestFirst.Where(n => !unseen.Contains(n)));
+    }
+
     private void InitializeSchemas()
     {
-        foreach (var name in _state.Ai.SchemasReceived)
+        // Les plus récents en haut : SchemasReceived est dans l'ordre de
+        // réception (plus ancien d'abord), donc on le parcourt à l'envers, et
+        // les schémas pas encore vus ("nouveau") passent avant tous les autres.
+        foreach (var name in OrderSchemasNewestFirst(_state.Ai.SchemasReceived, _state.Ai.SchemasUnseen))
             _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage, _state.Ai.SchemasUnseen.Contains(name)));
         SchemasList.ItemsSource = _schemaRows;
         SchemaCategoryCombo.ItemsSource = SchemaCategories.All.Prepend(AllSchemaCategoriesLabel).ToList();
@@ -3696,6 +3711,25 @@ public partial class MainWindow : Window
             _overlayWindow.Show();
             AppendLog($"Overlay : fenêtre affichée (position {_overlayWindow.Left},{_overlayWindow.Top}). Si le jeu tourne en plein écran EXCLUSIF (pas « fenêtré sans bordure »), aucune fenêtre topmost ne peut s'afficher par-dessus, quel que soit ce que fait NovaVox.", "diagnostic");
         }
+    }
+
+    // --------------------------------------------- Lecture des touches pressées
+
+    private void InitializeKeyPressReading()
+    {
+        _keyPressListener.KeyPressed += (_, press) =>
+        {
+            var row = _state.Commands.FirstOrDefault(r => !r.IsTitle && r.SpeakOnKeyPress && !string.IsNullOrWhiteSpace(r.Phrase) && CommandKeyMatcher.Matches(r.Keys, press));
+            if (row is null) return;
+            // Même commande martelée : on ne relit pas en boucle.
+            if (ReferenceEquals(row, _lastKeyReadRow) && (DateTime.UtcNow - _lastKeyReadAt).TotalSeconds < 1.5) return;
+            _lastKeyReadRow = row;
+            _lastKeyReadAt = DateTime.UtcNow;
+            EnsureTestTts();
+            _testTts!.Speak(row.Phrase);
+        };
+        if (!_keyPressListener.Start())
+            AppendLog("Lecture des touches : impossible d'écouter le clavier (option « Lire » des commandes inactive).", "warning");
     }
 
     // ------------------------------------------------------- Bulle animée
