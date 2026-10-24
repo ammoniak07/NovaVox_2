@@ -520,7 +520,7 @@ public partial class OrbWindow : Window
     }
 
     /// <summary>
-    /// (Test) Oreilles : sortent du haut de la bulle quand elle t'entend
+    /// (Test) Oreilles humaines : sortent des côtés de la bulle quand elle t'entend
     /// (ressort qui dépasse un peu puis se stabilise), se dressent, frémissent
     /// sur tes syllabes et de temps en temps toutes seules, puis rentrent
     /// doucement quand tu te tais ou qu'elle se met à parler.
@@ -550,53 +550,78 @@ public partial class OrbWindow : Window
 
         var b = blob.Bounds;
         var size = Math.Min(b.Width, b.Height);
-        // Sortie avec un léger dépassement (effet ressort) pendant qu'elles poussent.
+        // Elles sortent sur le côté avec un léger dépassement (effet ressort).
         var grow = _earsOut < 1 ? _earsOut * (1 + 0.25 * Math.Sin(_earsOut * Math.PI)) : 1;
-        var length = size * 0.34 * grow;
-        var width = size * 0.27;
-        var sway = 0.06 * Math.Sin(t * 1.3);
+        var earWidth = size * 0.22;
+        var earHeight = size * 0.38;
+        var sway = 0.04 * Math.Sin(t * 1.3);
+        var attachY = b.Top + b.Height * 0.45;
 
-        DrawEar(EarLeft, EarLeftInner, b, -1, length, width, -0.45 + sway + _earTwitchLeft, size);
-        DrawEar(EarRight, EarRightInner, b, 1, length, width, 0.45 + sway - _earTwitchRight, size);
+        DrawEar(EarLeft, EarLeftInner, EarLeftFold, new Point(b.Left + b.Width * 0.03, attachY), -1, earWidth, earHeight, 0.05 + sway + _earTwitchLeft * 0.5, grow);
+        DrawEar(EarRight, EarRightInner, EarRightFold, new Point(b.Right - b.Width * 0.03, attachY), 1, earWidth, earHeight, 0.05 - sway + _earTwitchRight * 0.5, grow);
 
         var c = _shownColor;
         var cream = Color.FromRgb(0xff, 0xf0, 0xb8);
-        EarLeftTop.Color = EarRightTop.Color = Lerp(c, cream, 0.3);
-        EarLeftBottom.Color = EarRightBottom.Color = c;
-        var inner = WithAlpha(Lerp(Lerp(c, Color.FromRgb(0xe8, 0x7a, 0x8c), 0.55), Colors.White, 0.1), 0xc8);
+        EarLeftTop.Color = EarRightTop.Color = Lerp(c, cream, 0.18);
+        EarLeftBottom.Color = EarRightBottom.Color = Lerp(c, Colors.Black, 0.05);
+        var inner = WithAlpha(Lerp(Lerp(c, Color.FromRgb(0xd0, 0x60, 0x70), 0.25), Colors.Black, 0.25), 0xdc);
         EarLeftInnerBrush.Color = EarRightInnerBrush.Color = inner;
-        EarLeftInnerBlur.Radius = EarRightInnerBlur.Radius = Math.Max(1.5, size * 0.015);
+        EarLeftFoldBrush.Color = EarRightFoldBrush.Color = WithAlpha(Lerp(c, Colors.White, 0.35), 0xc8);
+        EarLeftInnerBlur.Radius = EarRightInnerBlur.Radius = Math.Max(1.2, size * 0.012);
+        EarLeftFoldBlur.Radius = EarRightFoldBlur.Radius = Math.Max(1, size * 0.01);
+        EarLeftFold.StrokeThickness = EarRightFold.StrokeThickness = Math.Max(1.5, size * 0.025);
     }
 
     /// <summary>
-    /// Une oreille en forme de goutte arrondie, plantée dans le haut de la
-    /// bulle et orientée de <paramref name="angle"/> radians par rapport à la
-    /// verticale (négatif = penchée vers la gauche).
+    /// Une oreille humaine en forme de C, accrochée au bord de la bulle en
+    /// <paramref name="attach"/>, côté gauche (-1) ou droit (+1) : pavillon
+    /// arrondi en haut, lobe en bas, creux intérieur et pli (anthélix).
+    /// <paramref name="grow"/> la fait sortir de la bulle, <paramref name="rotation"/>
+    /// l'incline (frémissements).
     /// </summary>
-    private static void DrawEar(System.Windows.Shapes.Path outer, System.Windows.Shapes.Path inner, Rect b, int side, double length, double width, double angle, double size)
+    private static void DrawEar(System.Windows.Shapes.Path outer, System.Windows.Shapes.Path inner, System.Windows.Shapes.Path fold,
+        Point attach, int side, double w, double h, double rotation, double grow)
     {
-        var baseCenter = new Point(b.Left + b.Width / 2 + side * b.Width * 0.28, b.Top + b.Height * 0.2);
-        Point Rot(double x, double y) => new(baseCenter.X + x * Math.Cos(angle) - y * Math.Sin(angle), baseCenter.Y + x * Math.Sin(angle) + y * Math.Cos(angle));
-
-        Geometry Ear(double earLength, double scale, double lift)
+        var angle = rotation * side;
+        Point T(double x, double y)
         {
-            // Repère local : base sur l'axe x (enfoncée dans la bulle), bout arrondi vers le haut.
-            var w = width * scale / 2;
-            var baseY = size * 0.12 - lift;
-            var tip = -earLength * (0.55 + 0.45 * scale) * 1.05 - lift * 0.2;
+            x *= grow * side;
+            return new Point(attach.X + x * Math.Cos(angle) - y * Math.Sin(angle), attach.Y + x * Math.Sin(angle) + y * Math.Cos(angle));
+        }
+
+        Geometry Shape(double[][] segments, bool closed)
+        {
             var geometry = new StreamGeometry();
             using (var ctx = geometry.Open())
             {
-                ctx.BeginFigure(Rot(-w, baseY), isFilled: true, isClosed: true);
-                ctx.BezierTo(Rot(-w * 1.35, tip * 0.52), Rot(-w * 1.05, tip), Rot(0, tip), isStroked: false, isSmoothJoin: true);
-                ctx.BezierTo(Rot(w * 1.05, tip), Rot(w * 1.35, tip * 0.52), Rot(w, baseY), isStroked: false, isSmoothJoin: true);
+                ctx.BeginFigure(T(segments[0][0], segments[0][1]), isFilled: closed, isClosed: closed);
+                foreach (var seg in segments.Skip(1))
+                    ctx.BezierTo(T(seg[0], seg[1]), T(seg[2], seg[3]), T(seg[4], seg[5]), isStroked: !closed, isSmoothJoin: true);
             }
             geometry.Freeze();
             return geometry;
         }
-        outer.Data = Ear(length, 1.0, 0);
-        // Intérieur rosé remonté vers le bout pour qu'il dépasse bien de la bulle.
-        inner.Data = Ear(length * 0.75, 0.55, size * 0.13);
+
+        // Points en fractions de largeur (w) / hauteur (h), x vers l'extérieur.
+        outer.Data = Shape(new[]
+        {
+            new[] { 0, -0.42 * h },
+            new[] { 0.35 * w, -0.62 * h, 1.0 * w, -0.6 * h, 1.0 * w, -0.15 * h },
+            new[] { 1.0 * w, 0.15 * h, 0.75 * w, 0.25 * h, 0.6 * w, 0.38 * h },
+            new[] { 0.45 * w, 0.52 * h, 0.15 * w, 0.55 * h, 0, 0.38 * h },
+        }, closed: true);
+        inner.Data = Shape(new[]
+        {
+            new[] { 0.2 * w, -0.28 * h },
+            new[] { 0.42 * w, -0.42 * h, 0.8 * w, -0.4 * h, 0.78 * w, -0.1 * h },
+            new[] { 0.76 * w, 0.1 * h, 0.55 * w, 0.16 * h, 0.45 * w, 0.24 * h },
+            new[] { 0.35 * w, 0.3 * h, 0.2 * w, 0.22 * h, 0.2 * w, 0.05 * h },
+        }, closed: true);
+        fold.Data = Shape(new[]
+        {
+            new[] { 0.32 * w, -0.3 * h },
+            new[] { 0.6 * w, -0.34 * h, 0.66 * w, -0.08 * h, 0.5 * w, 0.12 * h },
+        }, closed: false);
     }
 
     /// <summary>Une tache de couleur intérieure : trajectoire lente (courbe de Lissajous) et pulsation propres.</summary>

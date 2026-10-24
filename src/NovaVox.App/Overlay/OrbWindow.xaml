@@ -22,8 +22,9 @@
                     <BlurEffect x:Name="GlowBlur" Radius="48" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
-            <!-- (Test) Oreilles : dessinées derrière le corps, seule la partie qui
-                 dépasse de la bulle est visible ; intérieur rosé. -->
+            <!-- (Test) Oreilles humaines sur les côtés : pavillon, creux intérieur
+                 plus foncé, pli en relief. Dessinées derrière le corps : seule la
+                 partie qui dépasse de la bulle est visible. -->
             <Canvas x:Name="EarGroup" Opacity="0">
                 <Path x:Name="EarLeft">
                     <Path.Fill>
@@ -43,7 +44,7 @@
                 </Path>
                 <Path x:Name="EarLeftInner">
                     <Path.Fill>
-                        <SolidColorBrush x:Name="EarLeftInnerBrush" Color="#c0e87a8c" />
+                        <SolidColorBrush x:Name="EarLeftInnerBrush" Color="#c0a04a5a" />
                     </Path.Fill>
                     <Path.Effect>
                         <BlurEffect x:Name="EarLeftInnerBlur" Radius="2" KernelType="Gaussian" RenderingBias="Performance" />
@@ -51,10 +52,26 @@
                 </Path>
                 <Path x:Name="EarRightInner">
                     <Path.Fill>
-                        <SolidColorBrush x:Name="EarRightInnerBrush" Color="#c0e87a8c" />
+                        <SolidColorBrush x:Name="EarRightInnerBrush" Color="#c0a04a5a" />
                     </Path.Fill>
                     <Path.Effect>
                         <BlurEffect x:Name="EarRightInnerBlur" Radius="2" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Path.Effect>
+                </Path>
+                <Path x:Name="EarLeftFold" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="EarLeftFoldBrush" Color="#c8ffffff" />
+                    </Path.Stroke>
+                    <Path.Effect>
+                        <BlurEffect x:Name="EarLeftFoldBlur" Radius="1.5" KernelType="Gaussian" RenderingBias="Performance" />
+                    </Path.Effect>
+                </Path>
+                <Path x:Name="EarRightFold" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                    <Path.Stroke>
+                        <SolidColorBrush x:Name="EarRightFoldBrush" Color="#c8ffffff" />
+                    </Path.Stroke>
+                    <Path.Effect>
+                        <BlurEffect x:Name="EarRightFoldBlur" Radius="1.5" KernelType="Gaussian" RenderingBias="Performance" />
                     </Path.Effect>
                 </Path>
             </Canvas>
