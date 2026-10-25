@@ -53,7 +53,7 @@ public partial class OrbWindow
         if (!DepthOn) return default;
         var screen = ScreenBox();
         var zones = ForbiddenBoxes(screen);
-        var box = OrbBoxAt(topLeft);
+        var box = VisualBoxAt(topLeft);
         var factor = FarDistance / Math.Max(NearDistance * 0.5, _depth); // > 1 : plus près, donc plus loin du centre
         for (var blend = 1.0; blend > 1e-9; blend -= 0.25)
         {
@@ -65,14 +65,44 @@ public partial class OrbWindow
         return default;
     }
 
-    /// <summary>Place la fenêtre : position de base + flottement + perspective (lissée pour éviter les à-coups).</summary>
+    /// <summary>
+    /// Place la fenêtre : position de base + flottement + perspective (lissée
+    /// pour éviter les à-coups), puis butée ferme sur les bords : la bulle
+    /// entière (avec ses déformations) ne sort jamais de l'écran, même quand
+    /// elle grossit en s'approchant près d'un bord. Sauf quand elle doit
+    /// justement sortir ou entrer (départ, retour, tour par les bords).
+    /// </summary>
     private void PlaceWindow(Point topLeft)
     {
         var wanted = PerspectiveOffset(topLeft);
         _projectionOffset += (wanted - _projectionOffset) * (1 - Math.Exp(-_lastDt * 8));
         var x = topLeft.X + _projectionOffset.X;
         var y = topLeft.Y + _bobOffset + _projectionOffset.Y;
+        if (!_entering && !_exiting && _wrapPhase == 0 && !_moveMode)
+        {
+            var screen = ScreenBox();
+            var body = VisualBoxAt(new Point(x, y));
+            if (body.Width <= screen.Width) x += body.X < screen.X ? screen.X - body.X : body.Right > screen.Right ? screen.Right - body.Right : 0;
+            if (body.Height <= screen.Height) y += body.Y < screen.Y ? screen.Y - body.Y : body.Bottom > screen.Bottom ? screen.Bottom - body.Bottom : 0;
+        }
         if (Math.Abs(Left - x) > 0.01) Left = x;
         if (Math.Abs(Top - y) > 0.01) Top = y;
+    }
+
+    /// <summary>
+    /// Rectangle de la bulle telle qu'on la voit, déformations comprises
+    /// (plus large que OrbBoxAt, qui sert aux trajets) : sert à la garder
+    /// entière dans l'écran. Le halo flou, lui, peut dépasser.
+    /// </summary>
+    private Box VisualBoxAt(Point topLeft)
+    {
+        var size = OrbSize;
+        var scale = _passScale * _depthScale * (1 + 0.1 * _level);
+        var cx = Width / 2;
+        var cy = size * GlowMarginRatio + size * 0.6;
+        var stretch = 1 + _motionStretch.Length;
+        var halfWidth = size * 0.66 * scale * stretch;
+        var halfHeight = size * 0.72 * scale * stretch;
+        return new Box(topLeft.X + cx - halfWidth, topLeft.Y + cy - halfHeight, 2 * halfWidth, 2 * halfHeight);
     }
 }
