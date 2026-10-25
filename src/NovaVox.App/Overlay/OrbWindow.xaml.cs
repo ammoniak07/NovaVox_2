@@ -250,8 +250,8 @@ public partial class OrbWindow : Window
         // Rétrécit doucement dès qu'elle est au repos (bleue, grise ou endormie), après un
         // court délai pour ne pas "pomper" entre deux mots ; regrandit vite dès qu'elle
         // t'entend, parle ou réfléchit.
-        var restTarget = _speaking || _thinking || hearing || t - _lastActivityAt < 1.5 ? 0.0 : 1.0;
-        _rest += (restTarget - _rest) * (1 - Math.Exp(-dt * (restTarget > _rest ? 1.2 : 5)));
+        var restTarget = _speaking || _thinking || hearing || t - _lastActivityAt < 0.6 ? 0.0 : 1.0;
+        _rest += (restTarget - _rest) * (1 - Math.Exp(-dt * (restTarget > _rest ? 4.5 : 6)));
         // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
         var restColor = _listeningActive ? _idleColor : InactiveColor;
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : restColor;
