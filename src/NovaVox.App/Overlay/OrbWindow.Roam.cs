@@ -211,7 +211,7 @@ public partial class OrbWindow
         {
             var toTarget = target - _roamPos;
             var distance = toTarget.Length;
-            if (distance < 2)
+            if (distance < Math.Max(2, _roamVelocity.Length * 0.02))
             {
                 // Atterrissage : petit rebond dans le sens où elle arrivait.
                 var landing = Math.Min(1, _roamVelocity.Length / 150);
@@ -223,16 +223,20 @@ public partial class OrbWindow
             else
             {
                 direction = toTarget / distance;
-                var maxSpeed = 70 * _tripSpeed * speedFactor;
+                // Vitesse non linéaire : 100 % = 70, 300 % ≈ 360, 500 % ≈ 780, 1000 % ≈ 2200 unités/s.
+                var maxSpeed = 70 * Math.Pow(_tripSpeed, 1.5) * speedFactor;
                 if (inZone) maxSpeed = Math.Max(maxSpeed, ZoneCrossingSpeed);
-                var forward = Math.Min(maxSpeed, distance * (inZone ? 4 : 0.9) + 4 * speedFactor);
+                // Freinage à l'approche proportionnel à sa vitesse : rapide, elle freine tard et fort.
+                var braking = Math.Max(60, maxSpeed * 1.2);
+                var forward = Math.Min(maxSpeed, Math.Sqrt(2 * braking * distance) + 4 * speedFactor);
                 // Elle ondule au lieu d'aller tout droit (sauf dans une zone, qu'elle file traverser).
                 var perpendicular = new Vector(-direction.Y, direction.X);
-                var wobble = inZone ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 * maxSpeed * Math.Min(1, distance / (size * 2));
+                var wobble = inZone ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 / Math.Sqrt(Math.Max(1, _tripSpeed)) * maxSpeed * Math.Min(1, distance / (size * 2));
                 desired = direction * forward + perpendicular * wobble;
             }
         }
-        _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * (inZone ? 10 : 1.5)));
+        // Plus le trajet est rapide, plus elle accélère et freine sec.
+        _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * (inZone ? 10 : 1.5 + 0.6 * Math.Max(0, _tripSpeed - 1))));
         var next = _roamPos + _roamVelocity * dt;
 
         // Un trajet "libre" ne doit pas frôler une zone à cause de l'ondulation : on garde l'avance seule.
