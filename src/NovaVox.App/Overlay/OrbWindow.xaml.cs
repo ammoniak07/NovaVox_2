@@ -72,6 +72,10 @@ public partial class OrbWindow : Window
     private bool _wasHearing;
     private bool _asleep;
     private double _speakingAmount;
+    /// <summary>Conversation en cours (avec un maintien de quelques secondes après la dernière activité).</summary>
+    private bool _engaged;
+    private double _engagedUntil = double.NegativeInfinity;
+    private const double EngagedHoldSeconds = 3.0;
     /// <summary>0 = taille normale, 1 = taille au repos (écoute arrêtée ou endormie).</summary>
     private double _rest;
     private bool _listeningActive;
@@ -263,13 +267,18 @@ public partial class OrbWindow : Window
         // Priorité des couleurs : parle > réfléchit > t'entend > repos.
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
+        // Conversation en cours : elle t'entend, réfléchit ou parle — et elle le reste quelques
+        // secondes, pour couvrir les blancs entre tes mots et entre ta phrase et sa réponse
+        // (préparation de la voix). Sans ça, elle reculait/repartait puis revenait : hésitation.
+        if (_speaking || _thinking || hearing) _engagedUntil = t + EngagedHoldSeconds;
+        _engaged = t < _engagedUntil;
         StepLife(t, dt, target, hearing);
         UpdateDepth(dt, hearing);
         UpdateRoamAndVisibility(t, dt, hearing);
         // Rétrécit doucement dès qu'elle est au repos (bleue, grise ou endormie), après un
         // court délai pour ne pas "pomper" entre deux mots ; regrandit vite dès qu'elle
         // t'entend, parle ou réfléchit.
-        var restTarget = _speaking || _thinking || hearing || t - _lastActivityAt < 0.6 ? 0.0 : 1.0;
+        var restTarget = _engaged || t - _lastActivityAt < 0.6 ? 0.0 : 1.0;
         _rest += (restTarget - _rest) * (1 - Math.Exp(-dt * (restTarget > _rest ? 4.5 : 6)));
         // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
         var restColor = _listeningActive ? _idleColor : InactiveColor;

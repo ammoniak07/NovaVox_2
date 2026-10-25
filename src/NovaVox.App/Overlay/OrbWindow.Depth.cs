@@ -33,8 +33,8 @@ public partial class OrbWindow
     {
         _lastDt = dt;
         double target;
-        if (!DepthOn || _speaking || hearing) target = NearDistance;
-        else if (_thinking) target = NearDistance + (FarDistance - NearDistance) * 0.3;
+        // Pendant toute la conversation (blancs compris), elle reste près de toi.
+        if (!DepthOn || _engaged) target = NearDistance;
         else target = IsRoaming ? _tripDepth : FarDistance;
         // Elle vient vite vers toi, et repart en douceur.
         var rate = target < _depth ? 2.5 : 0.8;

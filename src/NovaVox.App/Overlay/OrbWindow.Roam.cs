@@ -221,8 +221,9 @@ public partial class OrbWindow
             _departAt = t;
         }
 
-        // Elle s'arrête pour t'écouter ou réfléchir, ralentit quand elle parle — jamais dans une zone.
-        var speedFactor = _speaking ? 0.4 : hearing || _thinking ? 0 : 1;
+        // Elle reste en place pendant toute la conversation (ou file si elle est dans une zone).
+        // Pendant une conversation (blancs compris), elle reste en place face à toi.
+        var speedFactor = _engaged ? 0 : 1;
         if (inZone) speedFactor = 1;
 
         // Pendant un changement de côté par les bords, elle ne s'arrête pas à moitié hors de l'écran.
