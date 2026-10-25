@@ -41,6 +41,13 @@ public sealed record OrbZone(double X, double Y, double Width, double Height)
 }
 
 /// <summary>
+/// Changement de côté de la bulle : destination, coins éventuels d'un passage
+/// le long du haut ou du bas de l'écran (à parcourir dans l'ordre, en taille
+/// réduite <see cref="Scale"/>), ou sortie/entrée par les bords pour faire le tour.
+/// </summary>
+public sealed record OrbSideChange(Box Target, IReadOnlyList<Box> Waypoints, double Scale, Box? Exit, Box? Entry);
+
+/// <summary>
 /// Choix des déplacements de la bulle baladeuse : elle doit rester entière
 /// dans l'écran et ne jamais s'arrêter dans une zone interdite. Elle peut en
 /// traverser une, mais très vite, pour ne pas gêner le joueur ; un trajet
@@ -135,14 +142,15 @@ public static class OrbRoaming
     /// <summary>
     /// Changement de côté sans jamais entrer dans une zone : une place loin
     /// d'ici (parmi les plus éloignées). Si le chemin direct est libre, elle
-    /// y va directement (Exit/Entry null). Sinon elle "fait le tour" par les
-    /// côtés de l'écran : pour aller à droite, elle sort par le bord gauche
-    /// (Exit, hors écran, même hauteur qu'elle) et rentre par le bord droit
-    /// (Entry, hors écran, à la hauteur de la destination) — et inversement.
-    /// Les deux morceaux de trajet visibles doivent être libres. Null si
-    /// aucune place lointaine n'est atteignable ainsi.
+    /// y va directement. Sinon, au choix parmi ce qui est possible :
+    /// - passer au-dessus ou en dessous des zones, le long du haut ou du bas
+    ///   de l'écran, en rétrécissant si le passage est étroit (Waypoints =
+    ///   les deux coins du passage, Scale = taille réduite le temps du trajet) ;
+    /// - faire le tour par les côtés : pour aller à droite, sortir par le bord
+    ///   gauche (Exit) et rentrer par le bord droit (Entry), et inversement.
+    /// Null si aucune place lointaine n'est atteignable ainsi.
     /// </summary>
-    public static (Box Target, Box? Exit, Box? Entry)? PickSideChange(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, double margin, int attempts = 120)
+    public static OrbSideChange? PickSideChange(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, double margin, double minScale = 0.3, int attempts = 120)
     {
         var candidates = new List<(Box Box, double Distance)>();
         for (var i = 0; i < attempts; i++)
@@ -160,14 +168,68 @@ public static class OrbRoaming
             .OrderBy(_ => random.Next()).ToList();
         foreach (var (target, _) in farthest)
         {
-            if (IsPathClear(current, target, screen, forbidden)) return (target, null, null);
+            if (IsPathClear(current, target, screen, forbidden)) return new OrbSideChange(target, Array.Empty<Box>(), 1, null, null);
+
+            // Options possibles, avec un poids : passer dessus/dessous est plus naturel que faire le tour.
+            var options = new List<(OrbSideChange Plan, int Weight)>();
+            foreach (var top in new[] { true, false })
+                if (TryCorridor(current, target, screen, forbidden, top, minScale) is { } corridor) options.Add((corridor, 2));
+
             var goingRight = target.CenterX > current.CenterX;
             var exit = current.MovedTo(goingRight ? screen.X - current.Width - margin : screen.Right + margin, current.Y);
             var entry = target.MovedTo(goingRight ? screen.Right + margin : screen.X - target.Width - margin, target.Y);
             if (!CrossesZones(current, exit, forbidden) && !CrossesZones(entry, target, forbidden))
-                return (target, exit, entry);
+                options.Add((new OrbSideChange(target, Array.Empty<Box>(), 1, exit, entry), 1));
+
+            if (options.Count == 0) continue;
+            var roll = random.Next(options.Sum(o => o.Weight));
+            foreach (var (plan, weight) in options)
+            {
+                if (roll < weight) return plan;
+                roll -= weight;
+            }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Passage le long du haut (ou du bas) de l'écran : monter (descendre)
+    /// jusqu'au bord, longer le bord, puis rejoindre la destination — avec la
+    /// plus grande taille (de 100 % à <paramref name="minScale"/>) qui passe
+    /// sans toucher de zone ni sortir de l'écran.
+    /// </summary>
+    private static OrbSideChange? TryCorridor(Box current, Box target, Box screen, IReadOnlyList<Box> forbidden, bool top, double minScale)
+    {
+        for (var scale = 1.0; scale >= minScale - 1e-9; scale -= 0.05)
+        {
+            var w = current.Width * scale;
+            var h = current.Height * scale;
+            var y = top ? screen.Y + h / 2 + 4 : screen.Bottom - h / 2 - 4;
+            var c0 = (current.CenterX, current.CenterY);
+            var c1 = (current.CenterX, y);
+            var c2 = (target.CenterX, y);
+            var c3 = (target.CenterX, target.CenterY);
+            if (!SegmentClear(c0, c1, w, h, screen, forbidden) || !SegmentClear(c1, c2, w, h, screen, forbidden) || !SegmentClear(c2, c3, w, h, screen, forbidden))
+                continue;
+            var corner1 = current.MovedTo(c1.Item1 - current.Width / 2, c1.Item2 - current.Height / 2);
+            var corner2 = current.MovedTo(c2.Item1 - current.Width / 2, c2.Item2 - current.Height / 2);
+            return new OrbSideChange(target, new[] { corner1, corner2 }, Math.Round(scale, 2), null, null);
+        }
+        return null;
+    }
+
+    /// <summary>Une bulle de taille <paramref name="w"/>×<paramref name="h"/> peut-elle aller en ligne droite de centre en centre, dans l'écran et hors des zones ?</summary>
+    private static bool SegmentClear((double X, double Y) from, (double X, double Y) to, double w, double h, Box screen, IReadOnlyList<Box> forbidden)
+    {
+        var distance = Math.Sqrt((to.X - from.X) * (to.X - from.X) + (to.Y - from.Y) * (to.Y - from.Y));
+        var steps = Math.Max(2, (int)Math.Ceiling(distance / Math.Max(4, Math.Min(w, h) / 4)));
+        for (var i = 0; i <= steps; i++)
+        {
+            var k = (double)i / steps;
+            var box = new Box(from.X + (to.X - from.X) * k - w / 2, from.Y + (to.Y - from.Y) * k - h / 2, w, h);
+            if (!IsAllowed(box, screen, forbidden)) return false;
+        }
+        return true;
     }
 
     /// <summary>

@@ -39,6 +39,21 @@ public partial class OrbWindow
     /// <summary>Changement de côté par les bords : 0 = non, 1 = sort par un bord, 2 = rentre par l'autre.</summary>
     private int _wrapPhase;
     private Point _wrapEntry, _wrapFinal;
+    /// <summary>Points suivants d'un passage le long du haut/bas de l'écran (le dernier = destination).</summary>
+    private readonly Queue<Point> _routeWaypoints = new();
+    /// <summary>Taille pendant un passage étroit (1 = normale), et sa valeur affichée qui y tend en douceur.</summary>
+    private double _passScaleTarget = 1, _passScale = 1;
+
+    private bool InPassage => _routeWaypoints.Count > 0 || _passScaleTarget < 1;
+
+    /// <summary>Décale la position pour que la bulle (à sa taille actuelle) reste entière dans l'écran.</summary>
+    private Point KeepInside(Point topLeft, Box screen)
+    {
+        var box = OrbBoxAt(topLeft);
+        var dx = box.X < screen.X ? screen.X - box.X : box.Right > screen.Right ? screen.Right - box.Right : 0;
+        var dy = box.Y < screen.Y ? screen.Y - box.Y : box.Bottom > screen.Bottom ? screen.Bottom - box.Bottom : 0;
+        return new Point(topLeft.X + dx, topLeft.Y + dy);
+    }
     // Flottement sur place (décalage vertical affiché, pas la position "réelle").
     private double _bobPhase, _bobOffset;
     /// <summary>Étirement dans le sens du mouvement (direction et intensité), utilisé par BuildBlob.</summary>
@@ -80,8 +95,8 @@ public partial class OrbWindow
         var size = OrbSize;
         var cx = Width / 2;
         var cy = size * GlowMarginRatio + size * 0.6;
-        var halfWidth = size * 0.55;
-        var halfHeight = size * 0.62;
+        var halfWidth = size * 0.55 * _passScale;
+        var halfHeight = size * 0.62 * _passScale;
         return new Box(topLeft.X + cx - halfWidth, topLeft.Y + cy - halfHeight, 2 * halfWidth, 2 * halfHeight);
     }
 
@@ -116,6 +131,8 @@ public partial class OrbWindow
 
     private void UpdateRoamAndVisibility(double t, double dt, bool hearing)
     {
+        if (!IsRoaming && _routeWaypoints.Count == 0) _passScaleTarget = 1;
+        _passScale += (_passScaleTarget - _passScale) * (1 - Math.Exp(-dt * 10)); // rétrécit pendant la prise d'élan
         // --- Départ au repos (elle quitte l'écran) / retour en trombe ------
         var restHide = _config.HideAtRest && !_moveMode && !_entering && t - _lastActivityAt >= HideAfterSeconds;
         if (restHide && !_wasFullyHidden && !_exiting) StartExit(t);
@@ -214,6 +231,16 @@ public partial class OrbWindow
                         _wrapFinal = new Point(_roamPos.X + side.Target.X - here.X, _roamPos.Y + side.Target.Y - here.Y);
                         chosen = exit;
                     }
+                    else if (side.Waypoints.Count > 0)
+                    {
+                        // Passage le long du haut ou du bas de l'écran, en rétrécissant si besoin.
+                        _routeWaypoints.Clear();
+                        foreach (var corner in side.Waypoints.Skip(1))
+                            _routeWaypoints.Enqueue(new Point(_roamPos.X + corner.X - here.X, _roamPos.Y + corner.Y - here.Y));
+                        _routeWaypoints.Enqueue(new Point(_roamPos.X + side.Target.X - here.X, _roamPos.Y + side.Target.Y - here.Y));
+                        chosen = side.Waypoints[0];
+                        _passScaleTarget = side.Scale;
+                    }
                 }
             }
             // Petit déplacement de son côté : uniquement par un chemin libre.
@@ -257,9 +284,18 @@ public partial class OrbWindow
                 toTarget = target - _roamPos;
                 distance = toTarget.Length;
             }
-            if (_wrapPhase != 1 && distance < Math.Max(2, _roamVelocity.Length * 0.02))
+            // Coin d'un passage : elle enchaîne vers le point suivant sans se poser.
+            if (_routeWaypoints.Count > 0 && distance < Math.Max(8, _roamVelocity.Length * 0.12))
+            {
+                target = _routeWaypoints.Dequeue();
+                _roamTarget = target;
+                toTarget = target - _roamPos;
+                distance = toTarget.Length;
+            }
+            if (_wrapPhase != 1 && _routeWaypoints.Count == 0 && distance < Math.Max(2, _roamVelocity.Length * 0.02))
             {
                 _wrapPhase = 0;
+                _passScaleTarget = 1;
                 // Atterrissage : petit rebond dans le sens où elle arrivait.
                 var landing = Math.Min(1, _roamVelocity.Length / 150);
                 _squashVelocity -= 0.6 * landing;
@@ -276,10 +312,12 @@ public partial class OrbWindow
                 // Freinage à l'approche proportionnel à sa vitesse : rapide, elle freine tard et fort.
                 var braking = Math.Max(60, maxSpeed * 1.2);
                 // En sortant par un bord, elle ne freine pas : elle file hors de l'écran.
-                var forward = _wrapPhase == 1 ? maxSpeed : Math.Min(maxSpeed, Math.Sqrt(2 * braking * distance) + 4 * speedFactor);
+                // Vers un coin de passage, elle ralentit juste assez pour tourner sans se poser.
+                var cornerSpeed = _routeWaypoints.Count > 0 ? 0.35 * maxSpeed : 4 * speedFactor;
+                var forward = _wrapPhase == 1 ? maxSpeed : Math.Min(maxSpeed, Math.Sqrt(2 * braking * distance) + cornerSpeed);
                 // Elle ondule au lieu d'aller tout droit (sauf dans une zone, qu'elle file traverser).
                 var perpendicular = new Vector(-direction.Y, direction.X);
-                var wobble = inZone || _wrapPhase != 0 ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 / Math.Sqrt(Math.Max(1, _tripSpeed)) * maxSpeed * Math.Min(1, distance / (size * 2));
+                var wobble = inZone || _wrapPhase != 0 || InPassage ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 / Math.Sqrt(Math.Max(1, _tripSpeed)) * maxSpeed * Math.Min(1, distance / (size * 2));
                 desired = direction * forward + perpendicular * wobble;
             }
         }
@@ -293,8 +331,10 @@ public partial class OrbWindow
             _roamVelocity = direction * Math.Max(0, Vector.Multiply(_roamVelocity, direction));
             next = _roamPos + _roamVelocity * dt;
         }
+        // Dans un passage le long d'un bord : elle reste collée dans l'écran au lieu de s'arrêter.
+        if (InPassage && _wrapPhase == 0) next = KeepInside(next, screen);
         // Toujours entière dans l'écran (sauf quand elle passe par un bord pour changer de côté).
-        if (_wrapPhase == 0 && !screen.Contains(OrbBoxAt(next)) && screen.Contains(here))
+        else if (_wrapPhase == 0 && !screen.Contains(OrbBoxAt(next)) && screen.Contains(here))
         {
             _roamVelocity = default;
             _roamTarget = null;
@@ -329,6 +369,8 @@ public partial class OrbWindow
         _entering = false;
         _roamTarget = null;
         _wrapPhase = 0;
+        _routeWaypoints.Clear();
+        _passScaleTarget = 1;
         _exitDepartAt = t + 0.3;
         // Prise d'élan : elle se tasse et recule un peu à l'opposé.
         _squashVelocity -= 0.8;
@@ -389,6 +431,8 @@ public partial class OrbWindow
         _roamVelocity = direction * 2800;
         _roamTarget = null;
         _wrapPhase = 0;
+        _routeWaypoints.Clear();
+        _passScaleTarget = 1;
         _entryTarget = destination;
         _entering = true;
         _entryImpactDone = false;

@@ -92,8 +92,11 @@ public class OrbRoamingTests
         {
             var plan = OrbRoaming.PickSideChange(current, Screen, new[] { wall }, random, minDistance: 300, margin: 50);
             Assert.NotNull(plan);
-            var (target, exit, entry) = plan!.Value;
+            var target = plan!.Target;
+            var exit = plan.Exit;
+            var entry = plan.Entry;
             Assert.True(OrbRoaming.IsAllowed(target, Screen, new[] { wall }));
+            Assert.Empty(plan.Waypoints); // mur sur toute la hauteur : impossible de passer dessus/dessous
             if (target.X > 1060)
             {
                 Assert.NotNull(exit);
@@ -110,8 +113,33 @@ public class OrbRoamingTests
     {
         var plan = OrbRoaming.PickSideChange(new Box(100, 100, 200, 200), Screen, Array.Empty<Box>(), new Random(2), minDistance: 300, margin: 50);
         Assert.NotNull(plan);
-        Assert.Null(plan!.Value.Exit);
-        Assert.Null(plan.Value.Entry);
+        Assert.Null(plan!.Exit);
+        Assert.Null(plan.Entry);
+        Assert.Empty(plan.Waypoints);
+    }
+
+    [Fact]
+    public void PickSideChange_PassesAboveOrBelowShrinkingIfNeeded()
+    {
+        // Zone au centre avec 150 px libres en haut et en bas : trop étroit pour une bulle de 200 px,
+        // elle passe en rétrécissant, ou fait le tour par les côtés.
+        var zone = new Box(760, 150, 400, 780);
+        var current = new Box(200, 440, 200, 200);
+        var random = new Random(11);
+        var corridors = 0;
+        for (var i = 0; i < 30; i++)
+        {
+            var plan = OrbRoaming.PickSideChange(current, Screen, new[] { zone }, random, minDistance: 1000, margin: 50);
+            Assert.NotNull(plan);
+            if (plan!.Waypoints.Count == 0) continue;
+            corridors++;
+            Assert.Equal(2, plan.Waypoints.Count);
+            Assert.True(plan.Scale < 0.75 && plan.Scale >= 0.3);
+            // Les coins sont le long du haut ou du bas de l'écran.
+            var cy = plan.Waypoints[0].CenterY;
+            Assert.True(cy < 150 || cy > 930);
+        }
+        Assert.True(corridors > 10);
     }
 
     [Fact]

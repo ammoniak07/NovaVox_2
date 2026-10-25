@@ -310,7 +310,7 @@ public partial class OrbWindow : Window
         var breathing = 0.025 * (1 - 0.6 * _attention) * Math.Sin(_breathPhase) + _sigh;
         var restScale = 1 - (1 - Math.Clamp(_config.RestSize, OrbConfig.MinRestSize, 100) / 100.0) * _rest;
         // Apparition/disparition : elle grandit en apparaissant et rapetisse en disparaissant.
-        var appearScale = 0.55 + 0.45 * _appear;
+        var appearScale = (0.55 + 0.45 * _appear) * _passScale; // _passScale : rétrécie dans un passage étroit
         var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale * appearScale;
         var stretch = _squash + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
         var scaleY = scale * (1 + stretch);
