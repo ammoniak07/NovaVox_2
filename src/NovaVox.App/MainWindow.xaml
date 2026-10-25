@@ -812,6 +812,9 @@
                                 <CheckBox x:Name="OrbRingsCheckbox" Content="Ondes d'écoute" Margin="0,6,0,0"
                                           ToolTip="Des ondes type sonar partent de la bulle quand elle t'entend, plus fortes quand tu parles fort"
                                           Checked="OrbRingsCheckbox_Changed" Unchecked="OrbRingsCheckbox_Changed" />
+                                <CheckBox x:Name="OrbRingsInsideCheckbox" Content="Ondes d'écoute à l'intérieur de la bulle (test)" Margin="20,4,0,0"
+                                          ToolTip="Coché : les ondes partent du noyau vers le bord, dans la bulle. Décoché : elles partent de la bulle vers l'extérieur"
+                                          Checked="OrbRingsInsideCheckbox_Changed" Unchecked="OrbRingsInsideCheckbox_Changed" />
                                 <CheckBox x:Name="OrbThinkingCheckbox" Content="Réseau en réflexion" Margin="0,6,0,0"
                                           ToolTip="Particules reliées et satellites en orbite pendant qu'elle réfléchit"
                                           Checked="OrbThinkingCheckbox_Changed" Unchecked="OrbThinkingCheckbox_Changed" />

@@ -57,6 +57,8 @@ public sealed class OrbConfig
     public bool ShowVoiceWave { get; set; } = true;
     /// <summary>Ondes type sonar autour de la bulle quand elle entend le joueur.</summary>
     public bool ShowListenRings { get; set; } = true;
+    /// <summary>(Test) Ondes d'écoute à l'intérieur de la bulle (du noyau vers le bord) au lieu de l'extérieur.</summary>
+    public bool ListenRingsInside { get; set; } = true;
     /// <summary>Réseau de particules et satellites en orbite pendant qu'elle réfléchit.</summary>
     public bool ShowThinkingFx { get; set; } = true;
     /// <summary>Reflet lumineux quand une commande est exécutée, glitch holographique en cas d'erreur.</summary>
@@ -96,6 +98,7 @@ public sealed class OrbConfigStore
             config.ShowCore = GetBool(data["show_core"], true);
             config.ShowVoiceWave = GetBool(data["show_voice_wave"], true);
             config.ShowListenRings = GetBool(data["show_listen_rings"], true);
+            config.ListenRingsInside = GetBool(data["listen_rings_inside"], true);
             config.ShowThinkingFx = GetBool(data["show_thinking_fx"], true);
             config.ShowReactions = GetBool(data["show_reactions"], true);
             config.Opacity = Math.Clamp(OverlayConfigStore.ValidateOpacityPercent(data["opacity"], OrbConfig.DefaultOpacity), OrbConfig.MinOpacity, 100);
@@ -126,6 +129,7 @@ public sealed class OrbConfigStore
             ["show_core"] = config.ShowCore,
             ["show_voice_wave"] = config.ShowVoiceWave,
             ["show_listen_rings"] = config.ShowListenRings,
+            ["listen_rings_inside"] = config.ListenRingsInside,
             ["show_thinking_fx"] = config.ShowThinkingFx,
             ["show_reactions"] = config.ShowReactions,
             ["opacity"] = config.Opacity,

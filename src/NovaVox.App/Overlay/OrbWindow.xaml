@@ -132,6 +132,12 @@
                     <BlurEffect x:Name="RimBlur" Radius="8" KernelType="Gaussian" RenderingBias="Performance" />
                 </Path.Effect>
             </Path>
+            <!-- (Test) Ondes d'écoute à l'intérieur : même anneaux, du noyau vers le bord, découpés à la bulle. -->
+            <Canvas x:Name="InnerRingLayer" IsHitTestVisible="False">
+                <Canvas.Effect>
+                    <BlurEffect x:Name="InnerRingBlur" Radius="2" KernelType="Gaussian" RenderingBias="Performance" />
+                </Canvas.Effect>
+            </Canvas>
             <!-- Réflexion : réseau de particules reliées qui tournent dans la bulle. -->
             <Canvas x:Name="NeuralClip" Opacity="0" IsHitTestVisible="False">
                 <Path x:Name="NeuralLines" StrokeThickness="1">

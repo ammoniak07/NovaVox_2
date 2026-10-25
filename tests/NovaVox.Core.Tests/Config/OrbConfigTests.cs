@@ -30,7 +30,7 @@ public class OrbConfigTests : IDisposable
     public void SaveThenLoad_RoundTrips()
     {
         var store = new OrbConfigStore(_dir);
-        store.Save(new OrbConfig { Enabled = true, X = 120, Y = -40, Size = 220, IdleColor = "#22c55e", ShowCaption = false, Opacity = 45, RestSize = 50, ThinkingColor = "#123456", ListeningColor = "#abcdef", ShowMouth = true, ShowEars = true, ShowCore = false, ShowVoiceWave = false, ShowListenRings = false, ShowThinkingFx = false, ShowReactions = false });
+        store.Save(new OrbConfig { Enabled = true, X = 120, Y = -40, Size = 220, IdleColor = "#22c55e", ShowCaption = false, Opacity = 45, RestSize = 50, ThinkingColor = "#123456", ListeningColor = "#abcdef", ShowMouth = true, ShowEars = true, ShowCore = false, ShowVoiceWave = false, ShowListenRings = false, ListenRingsInside = false, ShowThinkingFx = false, ShowReactions = false });
 
         var loaded = store.Load();
         Assert.True(loaded.Enabled);
@@ -48,6 +48,7 @@ public class OrbConfigTests : IDisposable
         Assert.False(loaded.ShowCore);
         Assert.False(loaded.ShowVoiceWave);
         Assert.False(loaded.ShowListenRings);
+        Assert.False(loaded.ListenRingsInside);
         Assert.False(loaded.ShowThinkingFx);
         Assert.False(loaded.ShowReactions);
     }

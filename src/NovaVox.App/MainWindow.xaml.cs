@@ -3922,6 +3922,7 @@ public partial class MainWindow : Window
         OrbCoreCheckbox.IsChecked = orb.ShowCore;
         OrbWaveCheckbox.IsChecked = orb.ShowVoiceWave;
         OrbRingsCheckbox.IsChecked = orb.ShowListenRings;
+        OrbRingsInsideCheckbox.IsChecked = orb.ListenRingsInside;
         OrbThinkingCheckbox.IsChecked = orb.ShowThinkingFx;
         OrbReactionsCheckbox.IsChecked = orb.ShowReactions;
     }
@@ -3996,6 +3997,13 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Orb.ShowVoiceWave = OrbWaveCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbRingsInsideCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.ListenRingsInside = OrbRingsInsideCheckbox.IsChecked ?? true;
         SaveAndApplyOrb();
     }
 

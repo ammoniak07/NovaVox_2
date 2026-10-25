@@ -234,7 +234,16 @@ public partial class OrbWindow
                 _rings.Add(new Ring { Shape = path, Brush = brush, Scale = scale });
             }
         }
-        RingBlur.Radius = Math.Max(1, size * 0.012);
+        RingBlur.Radius = InnerRingBlur.Radius = Math.Max(1, size * 0.012);
+        var inside = _config.ListenRingsInside;
+        var layer = inside ? InnerRingLayer : RingLayer;
+        if (inside) InnerRingLayer.Clip = blob;
+        foreach (var ring in _rings)
+        {
+            if (ReferenceEquals(ring.Shape.Parent, layer)) continue;
+            (ring.Shape.Parent as Panel)?.Children.Remove(ring.Shape);
+            layer.Children.Add(ring.Shape);
+        }
 
         if (_config.ShowListenRings && hearing && !_speaking && _micLevel > 0.04 && t >= _nextRingAt)
         {
@@ -244,7 +253,7 @@ public partial class OrbWindow
             _nextRingAt = t + 0.5 - 0.25 * _micLevel;
         }
 
-        var color = Lerp(_shownColor, Colors.White, 0.35);
+        var color = Lerp(_shownColor, Colors.White, inside ? 0.6 : 0.35);
         foreach (var ring in _rings)
         {
             if (ring.Age < 0) continue;
@@ -257,13 +266,15 @@ public partial class OrbWindow
                 continue;
             }
             var eased = 1 - (1 - p) * (1 - p);
-            var scale = 1.02 + 0.48 * eased;
+            // Extérieur : du bord vers le dehors. Intérieur : du noyau vers le bord.
+            var scale = inside ? 0.12 + 0.88 * eased : 1.02 + 0.48 * eased;
             ring.Shape.Data = blob;
             ring.Scale.CenterX = center.X;
             ring.Scale.CenterY = center.Y;
             ring.Scale.ScaleX = ring.Scale.ScaleY = scale;
             ring.Shape.StrokeThickness = Math.Max(1, size * 0.022 * (1 - 0.6 * p)) / scale;
-            ring.Shape.Opacity = ring.Strength * Math.Pow(1 - p, 1.5);
+            var fadeIn = inside ? Math.Min(1, p / 0.12) : 1;
+            ring.Shape.Opacity = ring.Strength * fadeIn * Math.Pow(1 - p, inside ? 1.1 : 1.5);
             ring.Brush.Color = color;
         }
     }
