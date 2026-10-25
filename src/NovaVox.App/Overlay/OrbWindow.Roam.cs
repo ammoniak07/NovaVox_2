@@ -40,6 +40,20 @@ public partial class OrbWindow
     private int _wrapPhase;
     /// <summary>Depuis quand elle ne trouve aucune place où aller (infini = pas coincée).</summary>
     private double _stuckSince = double.PositiveInfinity;
+    /// <summary>Meilleure distance atteinte vers le point visé, et quand (détection d'un trajet bloqué).</summary>
+    private double _progressBest = double.PositiveInfinity, _progressAt;
+
+    /// <summary>Abandonne le trajet en cours (bloqué) : elle se pose et en choisira un autre.</summary>
+    private void AbandonTrip(double t)
+    {
+        _roamTarget = null;
+        _wrapPhase = 0;
+        _routeWaypoints.Clear();
+        _passScaleTarget = 1;
+        _roamVelocity = default;
+        _dwellUntil = t + 1;
+        _progressBest = double.PositiveInfinity;
+    }
     private Point _wrapEntry, _wrapFinal;
     /// <summary>Points suivants d'un passage le long du haut/bas de l'écran (le dernier = destination).</summary>
     private readonly Queue<Point> _routeWaypoints = new();
@@ -221,6 +235,8 @@ public partial class OrbWindow
             _tripCrosses = true;
             _tripSpeed = 1;
             _departAt = t;
+            _progressBest = double.PositiveInfinity;
+            _progressAt = t;
         }
 
         // Elle reste en place pendant toute la conversation (ou file si elle est dans une zone).
@@ -283,7 +299,11 @@ public partial class OrbWindow
                 var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
                 var high = Math.Clamp(_config.RoamSpeedMax, low, OrbConfig.MaxRoamSpeed);
                 _tripSpeed = (low + _random.NextDouble() * (high - low)) / 100.0;
-                PickTripDepth();
+                // Nouvelle profondeur seulement pour un trajet simple : dans un passage ou un tour par
+                // les bords, elle garde sa taille actuelle (sinon, plus grosse, elle ne passerait plus).
+                if (!InPassage && _wrapPhase == 0) PickTripDepth();
+                _progressBest = double.PositiveInfinity;
+                _progressAt = t;
                 _wobblePhase = _random.NextDouble() * Math.PI * 2;
                 _wobbleFrequency = 0.4 + _random.NextDouble() * 0.6;
                 // Prise d'élan : elle se tasse et recule un peu avant de partir.
@@ -313,6 +333,8 @@ public partial class OrbWindow
                 target = _wrapFinal;
                 toTarget = target - _roamPos;
                 distance = toTarget.Length;
+                _progressBest = distance;
+                _progressAt = t;
             }
             // Coin d'un passage : elle enchaîne vers le point suivant sans se poser.
             if (_routeWaypoints.Count > 0 && distance < Math.Max(8, _roamVelocity.Length * 0.12))
@@ -321,8 +343,25 @@ public partial class OrbWindow
                 _roamTarget = target;
                 toTarget = target - _roamPos;
                 distance = toTarget.Length;
+                _progressBest = distance;
+                _progressAt = t;
             }
-            if (_wrapPhase != 1 && _routeWaypoints.Count == 0 && distance < Math.Max(2, _roamVelocity.Length * 0.02))
+            // Sécurité : si elle ne se rapproche plus de son point depuis 3 s (bloquée contre un bord,
+            // une zone...), elle abandonne ce trajet et en choisira un autre.
+            // (À l'arrêt pendant une conversation, le compteur ne tourne pas.)
+            if (distance < _progressBest - 2 || speedFactor <= 0)
+            {
+                _progressBest = distance;
+                _progressAt = t;
+            }
+            else if (speedFactor > 0 && t - _progressAt > 3)
+            {
+                AbandonTrip(t);
+                target = _roamPos;
+                toTarget = default;
+                distance = 0;
+            }
+            if (_roamTarget is not null && _wrapPhase != 1 && _routeWaypoints.Count == 0 && distance < Math.Max(2, _roamVelocity.Length * 0.02))
             {
                 _wrapPhase = 0;
                 _passScaleTarget = 1;
