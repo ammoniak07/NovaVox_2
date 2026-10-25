@@ -82,6 +82,39 @@ public class OrbRoamingTests
     }
 
     [Fact]
+    public void PickSideChange_GoesAroundThroughTheOppositeEdges()
+    {
+        // Mur central sur toute la hauteur : pour passer à droite, elle sort à gauche et rentre par la droite.
+        var wall = new Box(860, 0, 200, 1080);
+        var current = new Box(300, 440, 200, 200);
+        var random = new Random(5);
+        for (var i = 0; i < 20; i++)
+        {
+            var plan = OrbRoaming.PickSideChange(current, Screen, new[] { wall }, random, minDistance: 300, margin: 50);
+            Assert.NotNull(plan);
+            var (target, exit, entry) = plan!.Value;
+            Assert.True(OrbRoaming.IsAllowed(target, Screen, new[] { wall }));
+            if (target.X > 1060)
+            {
+                Assert.NotNull(exit);
+                Assert.True(exit!.Value.Right <= 0);
+                Assert.Equal(current.Y, exit.Value.Y, 3);
+                Assert.True(entry!.Value.X >= 1920);
+                Assert.Equal(target.Y, entry.Value.Y, 3);
+            }
+        }
+    }
+
+    [Fact]
+    public void PickSideChange_DirectWhenNothingInTheWay()
+    {
+        var plan = OrbRoaming.PickSideChange(new Box(100, 100, 200, 200), Screen, Array.Empty<Box>(), new Random(2), minDistance: 300, margin: 50);
+        Assert.NotNull(plan);
+        Assert.Null(plan!.Value.Exit);
+        Assert.Null(plan.Value.Entry);
+    }
+
+    [Fact]
     public void PickTarget_NullWhenNoRoom()
     {
         var everything = new Box(0, 0, 1920, 1080);

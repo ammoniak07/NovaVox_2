@@ -33,9 +33,12 @@ public partial class OrbWindow
     private double _departAt, _tripSpeed = 1, _wobblePhase, _wobbleFrequency = 0.7;
     private bool _tripCrosses;
     private double _nextExploreAt = 120 + Random.Shared.NextDouble() * 360;
-    private double _lastCrossingAt = double.NegativeInfinity;
-    /// <summary>Délai minimal entre deux traversées de zone (sauf pour sortir d'une zone posée sur elle).</summary>
-    private const double MinSecondsBetweenCrossings = 120;
+    private double _lastSideChangeAt = double.NegativeInfinity;
+    /// <summary>Délai minimal entre deux changements de côté de l'écran.</summary>
+    private const double MinSecondsBetweenSideChanges = 120;
+    /// <summary>Changement de côté par les bords : 0 = non, 1 = sort par un bord, 2 = rentre par l'autre.</summary>
+    private int _wrapPhase;
+    private Point _wrapEntry, _wrapFinal;
     // Flottement sur place (décalage vertical affiché, pas la position "réelle").
     private double _bobPhase, _bobOffset;
     /// <summary>Étirement dans le sens du mouvement (direction et intensité), utilisé par BuildBlob.</summary>
@@ -187,24 +190,39 @@ public partial class OrbWindow
         var speedFactor = _speaking ? 0.4 : hearing || _thinking ? 0 : 1;
         if (inZone) speedFactor = 1;
 
+        // Pendant un changement de côté par les bords, elle ne s'arrête pas à moitié hors de l'écran.
+        if (_wrapPhase != 0) speedFactor = 1;
+
         if (_roamTarget is null && speedFactor > 0 && t > _dwellUntil)
         {
-            // Grande traversée vers une place lointaine (quitte à traverser une zone) en moyenne
-            // toutes les 5 minutes ; jamais moins de 2 minutes après la précédente traversée.
-            var allowCrossing = t - _lastCrossingAt >= MinSecondsBetweenCrossings;
-            var explore = allowCrossing && t >= _nextExploreAt;
-            if (explore) _nextExploreAt = t + MinSecondsBetweenCrossings + _random.NextDouble() * 360;
-            var pick = OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5, explore: explore, allowCrossing: allowCrossing);
-            if (pick is null) _dwellUntil = t + 3;
+            Box? chosen = null;
+            // Changement de côté (en moyenne toutes les 5 minutes, jamais moins de 2 minutes après le
+            // précédent) : sans jamais entrer dans une zone. Si une zone barre le chemin, elle fait le
+            // tour : elle sort par le bord opposé à sa destination et rentre par l'autre bord.
+            if (t >= _nextExploreAt && t - _lastSideChangeAt >= MinSecondsBetweenSideChanges)
+            {
+                _nextExploreAt = t + MinSecondsBetweenSideChanges + _random.NextDouble() * 360;
+                var plan = OrbRoaming.PickSideChange(here, screen, zones, _random, minDistance: Math.Max(size * 1.5, screen.Width * 0.4), margin: size * 0.7);
+                if (plan is { } side)
+                {
+                    _lastSideChangeAt = t;
+                    chosen = side.Target;
+                    if (side.Exit is { } exit && side.Entry is { } entry)
+                    {
+                        _wrapPhase = 1;
+                        _wrapEntry = new Point(_roamPos.X + entry.X - here.X, _roamPos.Y + entry.Y - here.Y);
+                        _wrapFinal = new Point(_roamPos.X + side.Target.X - here.X, _roamPos.Y + side.Target.Y - here.Y);
+                        chosen = exit;
+                    }
+                }
+            }
+            // Petit déplacement de son côté : uniquement par un chemin libre.
+            chosen ??= OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5, allowCrossing: false)?.Target;
+            if (chosen is null) _dwellUntil = t + 3;
             else
             {
-                _roamTarget = new Point(_roamPos.X + pick.Value.Target.X - here.X, _roamPos.Y + pick.Value.Target.Y - here.Y);
-                _tripCrosses = pick.Value.CrossesZone;
-                if (_tripCrosses)
-                {
-                    _lastCrossingAt = t;
-                    _nextExploreAt = Math.Max(_nextExploreAt, t + MinSecondsBetweenCrossings + _random.NextDouble() * 360);
-                }
+                _roamTarget = new Point(_roamPos.X + chosen.Value.X - here.X, _roamPos.Y + chosen.Value.Y - here.Y);
+                _tripCrosses = false;
                 // Chaque trajet a son allure ; parfois une petite course rapide.
                 var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
                 var high = Math.Clamp(_config.RoamSpeedMax, low, OrbConfig.MaxRoamSpeed);
@@ -225,8 +243,23 @@ public partial class OrbWindow
         {
             var toTarget = target - _roamPos;
             var distance = toTarget.Length;
-            if (distance < Math.Max(2, _roamVelocity.Length * 0.02))
+            if (_wrapPhase == 1 && !VisibleArea(screen).Intersects(here))
             {
+                // Sortie complète par un bord : elle réapparaît de l'autre côté de l'écran, lancée vers sa place.
+                _bobOffset = 0;
+                MoveWindowTo(_wrapEntry);
+                _wrapPhase = 2;
+                _roamTarget = _wrapFinal;
+                var toFinal = _wrapFinal - _roamPos;
+                if (toFinal.Length > 0) _roamVelocity = toFinal / toFinal.Length * _roamVelocity.Length;
+                here = OrbBoxAt(_roamPos);
+                target = _wrapFinal;
+                toTarget = target - _roamPos;
+                distance = toTarget.Length;
+            }
+            if (_wrapPhase != 1 && distance < Math.Max(2, _roamVelocity.Length * 0.02))
+            {
+                _wrapPhase = 0;
                 // Atterrissage : petit rebond dans le sens où elle arrivait.
                 var landing = Math.Min(1, _roamVelocity.Length / 150);
                 _squashVelocity -= 0.6 * landing;
@@ -234,7 +267,7 @@ public partial class OrbWindow
                 _roamTarget = null;
                 _dwellUntil = t + 3 + _random.NextDouble() * 7;
             }
-            else
+            else if (distance > 1e-6)
             {
                 direction = toTarget / distance;
                 // Vitesse non linéaire : 100 % = 70, 300 % ≈ 700, 500 % ≈ 2060, 1000 % ≈ 8800 unités/s.
@@ -242,10 +275,11 @@ public partial class OrbWindow
                 if (inZone) maxSpeed = Math.Max(maxSpeed, ZoneCrossingSpeed);
                 // Freinage à l'approche proportionnel à sa vitesse : rapide, elle freine tard et fort.
                 var braking = Math.Max(60, maxSpeed * 1.2);
-                var forward = Math.Min(maxSpeed, Math.Sqrt(2 * braking * distance) + 4 * speedFactor);
+                // En sortant par un bord, elle ne freine pas : elle file hors de l'écran.
+                var forward = _wrapPhase == 1 ? maxSpeed : Math.Min(maxSpeed, Math.Sqrt(2 * braking * distance) + 4 * speedFactor);
                 // Elle ondule au lieu d'aller tout droit (sauf dans une zone, qu'elle file traverser).
                 var perpendicular = new Vector(-direction.Y, direction.X);
-                var wobble = inZone ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 / Math.Sqrt(Math.Max(1, _tripSpeed)) * maxSpeed * Math.Min(1, distance / (size * 2));
+                var wobble = inZone || _wrapPhase != 0 ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 / Math.Sqrt(Math.Max(1, _tripSpeed)) * maxSpeed * Math.Min(1, distance / (size * 2));
                 desired = direction * forward + perpendicular * wobble;
             }
         }
@@ -253,14 +287,14 @@ public partial class OrbWindow
         _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * (inZone ? 30 : 1.5 + 0.6 * Math.Max(0, _tripSpeed - 1))));
         var next = _roamPos + _roamVelocity * dt;
 
-        // Un trajet "libre" ne doit pas frôler une zone à cause de l'ondulation : on garde l'avance seule.
+        // Un trajet ne doit pas frôler une zone à cause de l'ondulation : on garde l'avance seule.
         if (!_tripCrosses && !inZone && direction != default && TouchesZone(OrbBoxAt(next), zones))
         {
             _roamVelocity = direction * Math.Max(0, Vector.Multiply(_roamVelocity, direction));
             next = _roamPos + _roamVelocity * dt;
         }
-        // Toujours entière dans l'écran.
-        if (!screen.Contains(OrbBoxAt(next)) && screen.Contains(here))
+        // Toujours entière dans l'écran (sauf quand elle passe par un bord pour changer de côté).
+        if (_wrapPhase == 0 && !screen.Contains(OrbBoxAt(next)) && screen.Contains(here))
         {
             _roamVelocity = default;
             _roamTarget = null;
@@ -294,6 +328,7 @@ public partial class OrbWindow
         _exiting = true;
         _entering = false;
         _roamTarget = null;
+        _wrapPhase = 0;
         _exitDepartAt = t + 0.3;
         // Prise d'élan : elle se tasse et recule un peu à l'opposé.
         _squashVelocity -= 0.8;
@@ -353,6 +388,7 @@ public partial class OrbWindow
         if (direction.Length > 0) direction.Normalize();
         _roamVelocity = direction * 2800;
         _roamTarget = null;
+        _wrapPhase = 0;
         _entryTarget = destination;
         _entering = true;
         _entryImpactDone = false;
@@ -419,6 +455,13 @@ public partial class OrbWindow
     }
 
     private static bool TouchesZone(Box box, List<Box> zones) => zones.Any(z => box.Intersects(z));
+
+    /// <summary>Écran agrandi de la taille du halo : hors de cette zone, la bulle ne se voit plus du tout.</summary>
+    private Box VisibleArea(Box screen)
+    {
+        var glow = OrbSize * 0.6;
+        return new Box(screen.X - glow, screen.Y - glow, screen.Width + 2 * glow, screen.Height + 2 * glow);
+    }
 
     private Box ScreenBox() => new(_screenDips.X, _screenDips.Y, _screenDips.Width, _screenDips.Height);
 

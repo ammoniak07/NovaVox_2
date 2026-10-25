@@ -133,6 +133,44 @@ public static class OrbRoaming
     }
 
     /// <summary>
+    /// Changement de côté sans jamais entrer dans une zone : une place loin
+    /// d'ici (parmi les plus éloignées). Si le chemin direct est libre, elle
+    /// y va directement (Exit/Entry null). Sinon elle "fait le tour" par les
+    /// côtés de l'écran : pour aller à droite, elle sort par le bord gauche
+    /// (Exit, hors écran, même hauteur qu'elle) et rentre par le bord droit
+    /// (Entry, hors écran, à la hauteur de la destination) — et inversement.
+    /// Les deux morceaux de trajet visibles doivent être libres. Null si
+    /// aucune place lointaine n'est atteignable ainsi.
+    /// </summary>
+    public static (Box Target, Box? Exit, Box? Entry)? PickSideChange(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, double margin, int attempts = 120)
+    {
+        var candidates = new List<(Box Box, double Distance)>();
+        for (var i = 0; i < attempts; i++)
+        {
+            var candidate = current.MovedTo(
+                screen.X + random.NextDouble() * (screen.Width - current.Width),
+                screen.Y + random.NextDouble() * (screen.Height - current.Height));
+            if (!IsAllowed(candidate, screen, forbidden)) continue;
+            var dx = candidate.X - current.X;
+            var dy = candidate.Y - current.Y;
+            var distance = Math.Sqrt(dx * dx + dy * dy);
+            if (distance >= minDistance) candidates.Add((candidate, distance));
+        }
+        var farthest = candidates.OrderByDescending(c => c.Distance).Take(Math.Max(1, candidates.Count / 3))
+            .OrderBy(_ => random.Next()).ToList();
+        foreach (var (target, _) in farthest)
+        {
+            if (IsPathClear(current, target, screen, forbidden)) return (target, null, null);
+            var goingRight = target.CenterX > current.CenterX;
+            var exit = current.MovedTo(goingRight ? screen.X - current.Width - margin : screen.Right + margin, current.Y);
+            var entry = target.MovedTo(goingRight ? screen.Right + margin : screen.X - target.Width - margin, target.Y);
+            if (!CrossesZones(current, exit, forbidden) && !CrossesZones(entry, target, forbidden))
+                return (target, exit, entry);
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Grande traversée : une place loin d'ici (parmi le tiers des places
     /// autorisées les plus éloignées, au hasard), même s'il faut traverser
     /// une zone pour y aller — sinon, avec une zone qui coupe l'écran en
