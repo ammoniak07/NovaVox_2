@@ -104,14 +104,31 @@ public partial class OrbWindow
         StartGag(_clock.Elapsed.TotalSeconds);
     }
 
+    /// <summary>Bouton « Tester tous les gags » : tous les gags à la suite, environ 7 s chacun.</summary>
+    public void PlayAllGags()
+    {
+        _gagSteps.Clear();
+        var t = _clock.Elapsed.TotalSeconds;
+        var order = new[] { OrbGag.Fart, OrbGag.Hiccup, OrbGag.Sneeze, OrbGag.Yawn, OrbGag.StarCitizenLine, OrbGag.Snore };
+        var delay = 0.0;
+        foreach (var gag in order)
+        {
+            var g = gag;
+            At(t + delay, () => StartGag(_clock.Elapsed.TotalSeconds, g));
+            delay += g switch { OrbGag.Hiccup => 6, OrbGag.Sneeze => 7, _ => 5.5 };
+        }
+    }
+
     private void At(double time, Action act) => _gagSteps.Add((time, act));
 
     private void Say(string text) => GagSpeech?.Invoke(this, text);
 
-    private void StartGag(double t)
+    private void StartGag(double t, OrbGag? forced = null)
     {
-        var gag = OrbGags.PickGag(_random, asleep: _sleepiness > 0.8, _lastGag);
+        var gag = forced ?? OrbGags.PickGag(_random, asleep: _sleepiness > 0.8, _lastGag);
         _lastGag = gag;
+        _gagInflateTarget = 1;
+        _gagStretchTarget = 0;
         switch (gag)
         {
             case OrbGag.Fart:

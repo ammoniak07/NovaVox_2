@@ -4017,6 +4017,16 @@ public partial class MainWindow : Window
         _orbWindow.PlayGagNow();
     }
 
+    private void OrbGagTestAllButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_orbWindow is null || !_orbWindow.IsVisible)
+        {
+            AppendLog("Affiche d'abord la bulle animée pour tester les gags.", "info");
+            return;
+        }
+        _orbWindow.PlayAllGags();
+    }
+
     private void OrbGagsCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
