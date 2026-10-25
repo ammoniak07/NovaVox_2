@@ -223,8 +223,8 @@ public partial class OrbWindow
             else
             {
                 direction = toTarget / distance;
-                // Vitesse non linéaire : 100 % = 70, 300 % ≈ 360, 500 % ≈ 780, 1000 % ≈ 2200 unités/s.
-                var maxSpeed = 70 * Math.Pow(_tripSpeed, 1.5) * speedFactor;
+                // Vitesse non linéaire : 100 % = 70, 300 % ≈ 510, 500 % ≈ 1270, 1000 % ≈ 4400 unités/s.
+                var maxSpeed = 70 * Math.Pow(_tripSpeed, 1.8) * speedFactor;
                 if (inZone) maxSpeed = Math.Max(maxSpeed, ZoneCrossingSpeed);
                 // Freinage à l'approche proportionnel à sa vitesse : rapide, elle freine tard et fort.
                 var braking = Math.Max(60, maxSpeed * 1.2);
