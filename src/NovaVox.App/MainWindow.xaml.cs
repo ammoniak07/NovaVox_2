@@ -4017,6 +4017,20 @@ public partial class MainWindow : Window
         _orbWindow.PlayGagNow();
     }
 
+    private int _orbTitleClicks;
+    private DateTime _orbTitleLastClick;
+
+    /// <summary>Secret : 5 clics rapides sur le titre « Bulle animée » affichent (ou recachent) la section des gags.</summary>
+    private void OrbTitle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var now = DateTime.UtcNow;
+        _orbTitleClicks = (now - _orbTitleLastClick).TotalSeconds < 1.0 ? _orbTitleClicks + 1 : 1;
+        _orbTitleLastClick = now;
+        if (_orbTitleClicks < 5) return;
+        _orbTitleClicks = 0;
+        OrbHumourPanel.Visibility = OrbHumourPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void OrbGagTestAllButton_Click(object sender, RoutedEventArgs e)
     {
         if (_orbWindow is null || !_orbWindow.IsVisible)

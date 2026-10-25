@@ -750,7 +750,7 @@
                                 </StackPanel>
 
                                 <!-- Deuxième overlay : bulle animée (voir Overlay/OrbWindow). -->
-                                <TextBlock Text="Bulle animée" FontWeight="Bold" Margin="0,20,0,4" />
+                                <TextBlock Text="Bulle animée" FontWeight="Bold" Margin="0,20,0,4" Background="Transparent" MouseLeftButtonUp="OrbTitle_MouseLeftButtonUp" />
                                 <TextBlock Text="Une goutte lumineuse, séparée de l'overlay, qui s'anime au rythme de la voix : une couleur au repos, une quand NovaVox parle, une pendant que Gemini réfléchit et une quand elle t'entend parler au micro — toutes réglables ci-dessous."
                                            Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <CheckBox x:Name="OrbEnabledCheckbox" Content="Afficher la bulle animée" Checked="OrbEnabledCheckbox_Changed" Unchecked="OrbEnabledCheckbox_Changed" />
@@ -838,21 +838,24 @@
                                 <CheckBox x:Name="OrbHideAtRestCheckbox" Content="Disparaît au repos" Margin="0,6,0,0"
                                           ToolTip="La bulle s'efface après quelques secondes sans activité et réapparaît dès qu'elle t'entend, parle ou réfléchit (ailleurs sur l'écran si elle se balade)"
                                           Checked="OrbHideAtRestCheckbox_Changed" Unchecked="OrbHideAtRestCheckbox_Changed" />
-                                <TextBlock Text="Humour :" Margin="0,10,0,0" FontWeight="SemiBold" />
-                                <CheckBox x:Name="OrbGagsCheckbox" Content="Petits gags quand elle s'ennuie (pet discret, hoquet, éternuement…)" Margin="0,6,0,0"
-                                          ToolTip="De temps en temps, seulement au calme (jamais pendant une conversation) : petit pet puis « C'est pas moi », hoquet, éternuement, bâillement, répliques Star Citizen, ronflement quand elle dort"
-                                          Checked="OrbGagsCheckbox_Changed" Unchecked="OrbGagsCheckbox_Changed" />
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                    <TextBlock Text="Fréquence :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OrbGagMinutesSlider" Minimum="3" Maximum="60" SmallChange="1" LargeChange="5"
-                                            Width="140" Margin="6,0" ValueChanged="OrbGagMinutesSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbGagMinutesValueText" Text="toutes les 15 min environ" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                    <Button x:Name="OrbGagTestButton" Content="▶ Tester un gag" Click="OrbGagTestButton_Click"
-                                            ToolTip="Joue un gag au hasard tout de suite (la bulle doit être affichée)" />
-                                    <Button x:Name="OrbGagTestAllButton" Content="▶▶ Tester tous les gags" Margin="8,0,0,0" Click="OrbGagTestAllButton_Click"
-                                            ToolTip="Enchaîne tous les gags à la suite (environ 35 secondes) : pet, hoquet, éternuement, bâillement, réplique Star Citizen, ronflement" />
+                                <!-- Section secrète : affichée en cliquant 5 fois de suite sur le titre « Bulle animée ». -->
+                                <StackPanel x:Name="OrbHumourPanel" Visibility="Collapsed">
+                                    <TextBlock Text="Humour :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                    <CheckBox x:Name="OrbGagsCheckbox" Content="Petits gags quand elle s'ennuie (pet discret, hoquet, éternuement…)" Margin="0,6,0,0"
+                                              ToolTip="De temps en temps, seulement au calme (jamais pendant une conversation) : petit pet puis « C'est pas moi », hoquet, éternuement, bâillement, répliques Star Citizen, ronflement quand elle dort"
+                                              Checked="OrbGagsCheckbox_Changed" Unchecked="OrbGagsCheckbox_Changed" />
+                                    <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                        <TextBlock Text="Fréquence :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OrbGagMinutesSlider" Minimum="3" Maximum="60" SmallChange="1" LargeChange="5"
+                                                Width="140" Margin="6,0" ValueChanged="OrbGagMinutesSlider_ValueChanged" />
+                                        <TextBlock x:Name="OrbGagMinutesValueText" Text="toutes les 15 min environ" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                        <Button x:Name="OrbGagTestButton" Content="▶ Tester un gag" Click="OrbGagTestButton_Click"
+                                                ToolTip="Joue un gag au hasard tout de suite (la bulle doit être affichée)" />
+                                        <Button x:Name="OrbGagTestAllButton" Content="▶▶ Tester tous les gags" Margin="8,0,0,0" Click="OrbGagTestAllButton_Click"
+                                                ToolTip="Enchaîne tous les gags à la suite (environ 35 secondes) : pet, hoquet, éternuement, bâillement, réplique Star Citizen, ronflement" />
+                                    </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="Effets « IA » :" Margin="0,10,0,0" FontWeight="SemiBold" />
                                 <CheckBox x:Name="OrbCoreCheckbox" Content="Noyau lumineux (la présence de Nova)" Margin="0,6,0,0"
