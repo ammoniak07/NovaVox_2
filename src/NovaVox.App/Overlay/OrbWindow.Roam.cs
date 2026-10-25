@@ -67,6 +67,10 @@ public partial class OrbWindow
 
     /// <summary>Délai au repos avant de disparaître (option "Disparaît au repos").</summary>
     private const double HideAfterSeconds = 3;
+    /// <summary>Délai réel avant de partir, tiré au hasard à chaque fin d'activité (elle traîne un peu avant de s'en aller).</summary>
+    private double _hideDelay = HideAfterSeconds, _hideDelayRolledFor = double.NaN;
+    /// <summary>Visites spontanées : prochaine visite (cachée), et fin de la visite en cours.</summary>
+    private double _nextVisitAt = double.PositiveInfinity, _visitUntil = double.NegativeInfinity;
     /// <summary>Vitesse (unités WPF/s) pour traverser une zone interdite : plus rapide que n'importe quel trajet.</summary>
     private const double ZoneCrossingSpeed = 15000;
 
@@ -134,7 +138,19 @@ public partial class OrbWindow
         if (!IsRoaming && _routeWaypoints.Count == 0) _passScaleTarget = 1;
         _passScale += (_passScaleTarget - _passScale) * (1 - Math.Exp(-dt * 10)); // rétrécit pendant la prise d'élan
         // --- Départ au repos (elle quitte l'écran) / retour en trombe ------
-        var restHide = _config.HideAtRest && !_moveMode && !_entering && t - _lastActivityAt >= HideAfterSeconds;
+        // Après une activité, elle continue de vivre un moment (3 à 25 s au hasard) avant de partir.
+        if (!_lastActivityAt.Equals(_hideDelayRolledFor))
+        {
+            _hideDelayRolledFor = _lastActivityAt;
+            _hideDelay = HideAfterSeconds + _random.NextDouble() * 22;
+        }
+        // Cachée depuis un moment : de temps en temps, elle revient d'elle-même faire un tour (10 à 40 s).
+        if (_wasFullyHidden && _config.HideAtRest && t >= _nextVisitAt)
+        {
+            _visitUntil = t + 10 + _random.NextDouble() * 30;
+            _nextVisitAt = double.PositiveInfinity;
+        }
+        var restHide = _config.HideAtRest && !_moveMode && !_entering && t >= _visitUntil && t - _lastActivityAt >= _hideDelay;
         if (restHide && !_wasFullyHidden && !_exiting) StartExit(t);
         if (_exiting && !restHide)
         {
@@ -401,6 +417,8 @@ public partial class OrbWindow
         {
             _exiting = false;
             _wasFullyHidden = true;
+            // Prochaine visite spontanée dans 1 à 4 minutes.
+            _nextVisitAt = t + 60 + _random.NextDouble() * 180;
             _roamVelocity = default;
             _motionStretch = default;
         }
