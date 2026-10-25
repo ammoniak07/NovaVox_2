@@ -112,9 +112,10 @@ public static class OrbRoaming
     /// n'était atteignable sans traversée) : la bulle la passe alors en
     /// trombe. Null si aucune place n'est libre.
     /// </summary>
-    public static (Box Target, bool CrossesZone)? PickTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts = 80)
+    public static (Box Target, bool CrossesZone)? PickTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts = 80, bool explore = false)
     {
         if (screen.Width < current.Width || screen.Height < current.Height) return null;
+        if (explore) return PickFarTarget(current, screen, forbidden, random, minDistance, attempts);
         Box? fallback = null;
         for (var i = 0; i < attempts; i++)
         {
@@ -129,5 +130,31 @@ public static class OrbRoaming
             fallback ??= candidate;
         }
         return fallback is { } f ? (f, true) : null;
+    }
+
+    /// <summary>
+    /// Grande traversée : une place loin d'ici (parmi le tiers des places
+    /// autorisées les plus éloignées, au hasard), même s'il faut traverser
+    /// une zone pour y aller — sinon, avec une zone qui coupe l'écran en
+    /// deux, la bulle resterait toujours du même côté.
+    /// </summary>
+    private static (Box Target, bool CrossesZone)? PickFarTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts)
+    {
+        var candidates = new List<(Box Box, double Distance)>();
+        for (var i = 0; i < attempts; i++)
+        {
+            var candidate = current.MovedTo(
+                screen.X + random.NextDouble() * (screen.Width - current.Width),
+                screen.Y + random.NextDouble() * (screen.Height - current.Height));
+            if (!IsAllowed(candidate, screen, forbidden)) continue;
+            var dx = candidate.X - current.X;
+            var dy = candidate.Y - current.Y;
+            var distance = Math.Sqrt(dx * dx + dy * dy);
+            if (distance >= minDistance) candidates.Add((candidate, distance));
+        }
+        if (candidates.Count == 0) return null;
+        var farthest = candidates.OrderByDescending(c => c.Distance).Take(Math.Max(1, candidates.Count / 3)).ToList();
+        var chosen = farthest[random.Next(farthest.Count)].Box;
+        return (chosen, !IsPathClear(current, chosen, screen, forbidden));
     }
 }

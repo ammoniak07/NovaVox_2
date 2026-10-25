@@ -32,6 +32,7 @@ public partial class OrbWindow
     // Trajet en cours : départ après la prise d'élan, vitesse propre au trajet, ondulation.
     private double _departAt, _tripSpeed = 1, _wobblePhase, _wobbleFrequency = 0.7;
     private bool _tripCrosses;
+    private double _nextExploreAt = 20;
     // Flottement sur place (décalage vertical affiché, pas la position "réelle").
     private double _bobPhase, _bobOffset;
     /// <summary>Étirement dans le sens du mouvement (direction et intensité), utilisé par BuildBlob.</summary>
@@ -185,7 +186,11 @@ public partial class OrbWindow
 
         if (_roamTarget is null && speedFactor > 0 && t > _dwellUntil)
         {
-            var pick = OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5);
+            // De temps en temps (toutes les 20 à 60 s, ou une fois sur quatre), une grande traversée
+            // vers une place lointaine, quitte à traverser une zone : elle ne reste pas d'un seul côté.
+            var explore = t >= _nextExploreAt || _random.NextDouble() < 0.25;
+            if (explore) _nextExploreAt = t + 20 + _random.NextDouble() * 40;
+            var pick = OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5, explore: explore);
             if (pick is null) _dwellUntil = t + 3;
             else
             {

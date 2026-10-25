@@ -52,6 +52,28 @@ public class OrbRoamingTests
     }
 
     [Fact]
+    public void PickTarget_ExploreGoesToTheOtherSideOfAWall()
+    {
+        // Mur au milieu : en exploration, elle va de l'autre côté (loin), en traversant.
+        var wall = new Box(860, 0, 200, 1080);
+        var current = new Box(50, 440, 200, 200);
+        var random = new Random(7);
+        var otherSide = 0;
+        for (var i = 0; i < 40; i++)
+        {
+            var pick = OrbRoaming.PickTarget(current, Screen, new[] { wall }, random, minDistance: 300, explore: true);
+            Assert.NotNull(pick);
+            Assert.True(OrbRoaming.IsAllowed(pick!.Value.Target, Screen, new[] { wall }));
+            if (pick.Value.Target.X > 1060)
+            {
+                otherSide++;
+                Assert.True(pick.Value.CrossesZone);
+            }
+        }
+        Assert.True(otherSide > 30);
+    }
+
+    [Fact]
     public void PickTarget_NullWhenNoRoom()
     {
         var everything = new Box(0, 0, 1920, 1080);
