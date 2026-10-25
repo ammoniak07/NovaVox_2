@@ -750,7 +750,7 @@
                                 </StackPanel>
 
                                 <!-- Deuxième overlay : bulle animée (voir Overlay/OrbWindow). -->
-                                <TextBlock Text="Bulle animée" FontWeight="Bold" Margin="0,20,0,4" Background="Transparent" PreviewMouseLeftButtonDown="OrbTitle_MouseLeftButtonUp" />
+                                <TextBlock Text="Bulle animée" FontWeight="Bold" Margin="0,20,0,4" Background="Transparent" MouseLeftButtonUp="OrbTitle_MouseLeftButtonUp" />
                                 <TextBlock Text="Une goutte lumineuse, séparée de l'overlay, qui s'anime au rythme de la voix : une couleur au repos, une quand NovaVox parle, une pendant que Gemini réfléchit et une quand elle t'entend parler au micro — toutes réglables ci-dessous."
                                            Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <CheckBox x:Name="OrbEnabledCheckbox" Content="Afficher la bulle animée" Checked="OrbEnabledCheckbox_Changed" Unchecked="OrbEnabledCheckbox_Changed" />
