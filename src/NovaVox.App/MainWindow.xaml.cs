@@ -3899,6 +3899,8 @@ public partial class MainWindow : Window
             EnsureTestTts();
             _testTts!.Speak(text);
         };
+        _orbWindow.GagSoundFile += (_, path) => NovaVox.App.Speech.SoundEffectPlayer.PlayFile(path, _state.Audio.TtsVolume, _state.Audio.OutputDevice);
+        EnsureGagSoundsFolder();
         _orbWindow.GagSound += (_, pcm) => NovaVox.App.Speech.SoundEffectPlayer.Play(pcm, NovaVox.Core.Speech.OrbGags.SampleRate, _state.Audio.TtsVolume, _state.Audio.OutputDevice);
         _orbWindow.PositionChanged += (_, pos) =>
         {
@@ -4029,7 +4031,105 @@ public partial class MainWindow : Window
         if (_orbTitleClicks < 5) return;
         _orbTitleClicks = 0;
         OrbHumourPanel.Visibility = OrbHumourPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+        if (OrbHumourPanel.Visibility == Visibility.Visible) RefreshGagSoundsPanel();
     }
+
+    private static string GagSoundsFolder => Path.Combine(NovaVoxPaths.BaseDirectory, OrbGags.CustomSoundsFolderName);
+
+    /// <summary>Crée le dossier sons_gags (avec son mode d'emploi) s'il n'existe pas encore.</summary>
+    private static void EnsureGagSoundsFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(GagSoundsFolder);
+            var readme = Path.Combine(GagSoundsFolder, "LISEZMOI.txt");
+            if (!File.Exists(readme)) File.WriteAllText(readme, OrbGags.CustomSoundsReadme);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Dossier impossible à créer (droits) : les sons fabriqués restent utilisés.
+        }
+    }
+
+    private static readonly (OrbGag Gag, string Label)[] GagTestRows =
+    {
+        (OrbGag.Fart, "Pet"),
+        (OrbGag.Hiccup, "Hoquet"),
+        (OrbGag.Sneeze, "Éternuement"),
+        (OrbGag.Yawn, "Bâillement"),
+        (OrbGag.Snore, "Ronflement"),
+        (OrbGag.StarCitizenLine, "Réplique SC"),
+    };
+
+    /// <summary>Une ligne par blague : nombre de sons perso, bouton pour jouer le gag, bouton pour écouter tous ses sons.</summary>
+    private void RefreshGagSoundsPanel()
+    {
+        OrbGagSoundsPanel.Children.Clear();
+        foreach (var (gag, label) in GagTestRows)
+        {
+            var files = OrbGags.CustomSounds(NovaVoxPaths.BaseDirectory, gag);
+            var source = files.Count > 0 ? $"{files.Count} son{(files.Count > 1 ? "s" : "")} perso"
+                : gag is OrbGag.Fart or OrbGag.Snore ? "son fabriqué"
+                : gag == OrbGag.StarCitizenLine ? "voix de Nova"
+                : "voix de Nova (aucun son perso)";
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+            row.Children.Add(new TextBlock { Text = label, Width = 100, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new TextBlock { Text = source, Width = 190, VerticalAlignment = VerticalAlignment.Center, Foreground = (Brush)FindResource("MutedBrush") });
+            var play = new Button { Content = "▶ Gag", Margin = new Thickness(4, 0, 0, 0), ToolTip = "Joue ce gag sur la bulle" };
+            play.Click += (_, _) =>
+            {
+                if (_orbWindow is null || !_orbWindow.IsVisible) { AppendLog("Affiche d'abord la bulle animée pour tester les gags.", "info"); return; }
+                _orbWindow.PlayGag(gag);
+            };
+            row.Children.Add(play);
+            if (gag != OrbGag.StarCitizenLine)
+            {
+                var listen = new Button { Content = "🔊 Écouter les sons", Margin = new Thickness(6, 0, 0, 0), ToolTip = "Écoute tous les sons de cette blague, l'un après l'autre" };
+                listen.Click += async (_, _) => await ListenGagSoundsAsync(gag, listen);
+                row.Children.Add(listen);
+            }
+            OrbGagSoundsPanel.Children.Add(row);
+        }
+    }
+
+    /// <summary>Écoute tous les sons d'une blague à la suite (ou le son de secours s'il n'y en a pas).</summary>
+    private async Task ListenGagSoundsAsync(OrbGag gag, Button button)
+    {
+        button.IsEnabled = false;
+        try
+        {
+            var volume = _state.Audio.TtsVolume;
+            var device = _state.Audio.OutputDevice;
+            var files = OrbGags.CustomSounds(NovaVoxPaths.BaseDirectory, gag);
+            if (files.Count == 0)
+            {
+                var random = new Random();
+                if (gag == OrbGag.Fart) await NovaVox.App.Speech.SoundEffectPlayer.Play(OrbGags.Fart(random), OrbGags.SampleRate, volume, device);
+                else if (gag == OrbGag.Snore) await NovaVox.App.Speech.SoundEffectPlayer.Play(OrbGags.Snore(random), OrbGags.SampleRate, volume, device);
+                else AppendLog($"Aucun son perso pour cette blague : dépose des fichiers « {OrbGags.CustomSoundPrefix(gag)}1.wav »… dans {GagSoundsFolder}.", "info");
+                return;
+            }
+            foreach (var file in files)
+            {
+                AppendLog($"🔊 {Path.GetFileName(file)}", "info");
+                await NovaVox.App.Speech.SoundEffectPlayer.PlayFile(file, volume, device);
+                await Task.Delay(400);
+            }
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
+    }
+
+    private void OrbGagFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        EnsureGagSoundsFolder();
+        try { Process.Start(new ProcessStartInfo("explorer.exe", $"\"{GagSoundsFolder}\"") { UseShellExecute = true }); }
+        catch (Exception ex) { AppendLog($"Impossible d'ouvrir le dossier des sons ({ex.Message}).", "warning"); }
+    }
+
+    private void OrbGagRefreshButton_Click(object sender, RoutedEventArgs e) => RefreshGagSoundsPanel();
 
     private void OrbGagTestAllButton_Click(object sender, RoutedEventArgs e)
     {

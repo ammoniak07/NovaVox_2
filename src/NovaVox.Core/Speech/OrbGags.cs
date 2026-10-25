@@ -105,5 +105,55 @@ public static class OrbGags
         return samples;
     }
 
+    /// <summary>Dossier (à côté de NovaVox) où le joueur dépose ses propres sons de gags.</summary>
+    public const string CustomSoundsFolderName = "sons_gags";
+
+    public static readonly string[] CustomSoundExtensions = { ".wav", ".mp3" };
+
+    /// <summary>Début du nom des fichiers pour chaque gag (pet1.wav, hoquet2.mp3...) ; null si ce gag n'a pas de son.</summary>
+    public static string? CustomSoundPrefix(OrbGag gag) => gag switch
+    {
+        OrbGag.Fart => "pet",
+        OrbGag.Hiccup => "hoquet",
+        OrbGag.Sneeze => "eternuement",
+        OrbGag.Yawn => "baillement",
+        OrbGag.Snore => "ronflement",
+        _ => null,
+    };
+
+    /// <summary>Sons personnels d'un gag dans le dossier sons_gags (triés par nom), vide s'il n'y en a pas.</summary>
+    public static IReadOnlyList<string> CustomSounds(string baseDirectory, OrbGag gag)
+    {
+        var prefix = CustomSoundPrefix(gag);
+        var folder = Path.Combine(baseDirectory, CustomSoundsFolderName);
+        if (prefix is null || !Directory.Exists(folder)) return Array.Empty<string>();
+        try
+        {
+            return Directory.EnumerateFiles(folder)
+                .Where(f => CustomSoundExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .Where(f => Path.GetFileNameWithoutExtension(f).StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>Texte d'aide déposé dans le dossier sons_gags.</summary>
+    public const string CustomSoundsReadme =
+        "Sons des petits gags de la bulle\r\n" +
+        "================================\r\n\r\n" +
+        "Dépose ici tes propres sons (WAV ou MP3, courts : moins de 2 secondes),\r\n" +
+        "nommés selon le gag. NovaVox en prend un au hasard à chaque gag :\r\n\r\n" +
+        "  pet1.wav, pet2.mp3...           -> le pet discret\r\n" +
+        "  hoquet1.wav...                  -> le hoquet (remplace le « Hic ! » de la voix)\r\n" +
+        "  eternuement1.wav...             -> l'éternuement (remplace le « Atchoum ! »)\r\n" +
+        "  baillement1.wav...              -> le bâillement\r\n" +
+        "  ronflement1.wav...              -> le ronflement\r\n\r\n" +
+        "Sans fichier pour un gag, NovaVox utilise son propre son (ou la voix).\r\n" +
+        "Sons libres de droits : pixabay.com (effets sonores) ou freesound.org (licence CC0).\r\n";
+
     private static short ToPcm(double value) => (short)Math.Round(Math.Clamp(value, -1, 1) * short.MaxValue);
 }

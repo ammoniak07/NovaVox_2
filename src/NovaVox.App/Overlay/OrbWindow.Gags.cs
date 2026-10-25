@@ -23,6 +23,28 @@ public partial class OrbWindow
     /// <summary>Petit son à jouer pour un gag (PCM 16 bits mono, OrbGags.SampleRate).</summary>
     public event EventHandler<short[]>? GagSound;
 
+    /// <summary>Son personnel (fichier du dossier sons_gags) à jouer pour un gag.</summary>
+    public event EventHandler<string>? GagSoundFile;
+
+    /// <summary>Un son personnel au hasard pour ce gag, ou null s'il n'y en a pas.</summary>
+    private string? PickCustomSound(OrbGag gag)
+    {
+        var files = OrbGags.CustomSounds(NovaVox.Core.NovaVoxPaths.BaseDirectory, gag);
+        return files.Count == 0 ? null : files[_random.Next(files.Count)];
+    }
+
+    /// <summary>Joue le son du gag : un fichier personnel s'il y en a, sinon le son fabriqué (s'il existe). Vrai si un fichier a été joué.</summary>
+    private bool PlayGagSound(OrbGag gag, Func<short[]>? fallback)
+    {
+        if (PickCustomSound(gag) is { } file)
+        {
+            GagSoundFile?.Invoke(this, file);
+            return true;
+        }
+        if (fallback is not null) GagSound?.Invoke(this, fallback());
+        return false;
+    }
+
     private sealed class GagParticle
     {
         public required FrameworkElement Element { get; init; }
@@ -104,6 +126,13 @@ public partial class OrbWindow
         StartGag(_clock.Elapsed.TotalSeconds);
     }
 
+    /// <summary>Boutons de test des réglages : un gag précis tout de suite.</summary>
+    public void PlayGag(OrbGag gag)
+    {
+        _gagSteps.Clear();
+        StartGag(_clock.Elapsed.TotalSeconds, gag);
+    }
+
     /// <summary>Bouton « Tester tous les gags » : tous les gags à la suite, environ 7 s chacun.</summary>
     public void PlayAllGags()
     {
@@ -133,7 +162,7 @@ public partial class OrbWindow
         {
             case OrbGag.Fart:
                 // Prout discret, petit nuage, elle rougit, jette un œil de côté… et nie tout.
-                GagSound?.Invoke(this, OrbGags.Fart(_random));
+                PlayGagSound(OrbGag.Fart, () => OrbGags.Fart(_random));
                 _squashVelocity -= 0.6;
                 Kick(Math.PI / 2, 0.12, 1.0);
                 EmitPuffs(7);
@@ -150,18 +179,21 @@ public partial class OrbWindow
                     {
                         _squashVelocity += 1.6;
                         Kick(-Math.PI / 2, 0.15, 1.2);
-                        Say("Hic !");
+                        // Son personnel s'il y en a, sinon la voix de Nova.
+                        if (!PlayGagSound(OrbGag.Hiccup, null)) Say("Hic !");
                     });
                 }
                 At(t + 4.0, () => Say("Pardon."));
                 break;
 
             case OrbGag.Sneeze:
-                Say("Ah… ah…");
+                var sneezeFile = PickCustomSound(OrbGag.Sneeze);
+                if (sneezeFile is null) Say("Ah… ah…");
                 _gagInflateTarget = 1.18;
                 At(t + 1.6, () =>
                 {
-                    Say("Atchoum !");
+                    if (sneezeFile is not null) GagSoundFile?.Invoke(this, sneezeFile);
+                    else Say("Atchoum !");
                     _gagInflateTarget = 1;
                     _shakeUntil = _clock.Elapsed.TotalSeconds + 0.5;
                     _squashVelocity += 1.5;
@@ -172,7 +204,9 @@ public partial class OrbWindow
 
             case OrbGag.Yawn:
                 _gagStretchTarget = 0.22;
-                At(t + 0.9, () => Say(OrbGags.PickLine(_random, OrbGags.YawnLines)));
+                // Avec un vrai bâillement, la phrase vient après.
+                var yawned = PlayGagSound(OrbGag.Yawn, null);
+                At(t + (yawned ? 2.0 : 0.9), () => Say(OrbGags.PickLine(_random, OrbGags.YawnLines)));
                 At(t + 2.2, () => _gagStretchTarget = 0);
                 break;
 
@@ -183,8 +217,8 @@ public partial class OrbWindow
 
             case OrbGag.Snore:
                 // Endormie : ronflements et petits « z » qui s'envolent, sans la réveiller.
-                GagSound?.Invoke(this, OrbGags.Snore(_random));
-                At(t + 2.6, () => GagSound?.Invoke(this, OrbGags.Snore(_random)));
+                PlayGagSound(OrbGag.Snore, () => OrbGags.Snore(_random));
+                At(t + 2.6, () => PlayGagSound(OrbGag.Snore, () => OrbGags.Snore(_random)));
                 for (var i = 0; i < 6; i++) At(t + i * 0.8, () => EmitZ());
                 break;
         }
