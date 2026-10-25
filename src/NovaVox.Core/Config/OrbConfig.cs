@@ -39,7 +39,7 @@ public sealed class OrbConfig
     public int? X { get; set; }
     public int? Y { get; set; }
     public double Size { get; set; } = DefaultSize;
-    /// <summary>Taille au repos en % (30..100) : la bulle rétrécit quand l'écoute est arrêtée ou qu'elle s'endort.</summary>
+    /// <summary>Taille au repos en % (30..100) : la bulle rétrécit quand elle est au repos (ni écoute du joueur, ni parole, ni réflexion).</summary>
     public int RestSize { get; set; } = DefaultRestSize;
     public string IdleColor { get; set; } = DefaultIdleColor;
     public string SpeakingColor { get; set; } = DefaultSpeakingColor;

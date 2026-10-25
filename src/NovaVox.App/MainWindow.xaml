@@ -762,7 +762,7 @@
                                     <TextBlock x:Name="OrbSizeValueText" Text="160px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
-                                            ToolTip="La bulle rétrécit à cette taille quand l'écoute est arrêtée ou qu'elle s'endort (aucune activité depuis 90 s), et reprend sa taille dès qu'elle t'entend, parle ou réfléchit">
+                                            ToolTip="La bulle rétrécit à cette taille quand elle est au repos (couleur de repos, écoute arrêtée ou endormie), et reprend sa taille dès qu'elle t'entend, parle ou réfléchit">
                                     <TextBlock Text="Taille au repos :" VerticalAlignment="Center" />
                                     <Slider x:Name="OrbRestSizeSlider" Minimum="30" Maximum="100" SmallChange="5" LargeChange="10"
                                             Width="140" Margin="6,0" ValueChanged="OrbRestSizeSlider_ValueChanged" />

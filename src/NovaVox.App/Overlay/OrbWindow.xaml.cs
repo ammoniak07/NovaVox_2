@@ -247,8 +247,10 @@ public partial class OrbWindow : Window
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
         StepLife(t, dt, target, hearing);
-        // Rétrécit doucement au repos (écoute arrêtée ou endormie), regrandit vite dès qu'il se passe quelque chose.
-        var restTarget = _speaking || _thinking || hearing ? 0.0 : !_listeningActive ? 1.0 : Math.Clamp((_sleepiness - 0.1) / 0.8, 0, 1);
+        // Rétrécit doucement dès qu'elle est au repos (bleue, grise ou endormie), après un
+        // court délai pour ne pas "pomper" entre deux mots ; regrandit vite dès qu'elle
+        // t'entend, parle ou réfléchit.
+        var restTarget = _speaking || _thinking || hearing || t - _lastActivityAt < 1.5 ? 0.0 : 1.0;
         _rest += (restTarget - _rest) * (1 - Math.Exp(-dt * (restTarget > _rest ? 1.2 : 5)));
         // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
         var restColor = _listeningActive ? _idleColor : InactiveColor;
