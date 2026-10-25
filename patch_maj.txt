@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.1.8
+------
+
 v0.1.7
 ------
 - Commandes : nouvelle case « Lire » sur chaque commande. Cochée, quand tu appuies toi-même sur la touche de la commande (au clavier, en jeu), Nova lit sa phrase à voix haute. Les touches envoyées par NovaVox lors d'une commande vocale ne déclenchent pas la lecture, et appuyer plusieurs fois de suite sur la même touche ne la relit pas en boucle. Pour une commande aussi assignée au joystick dans le jeu, le bouton « 🕹 » à côté de « Lire » permet de choisir le bouton de joystick qui fait aussi lire la commande (clic droit pour le retirer). NovaVox lit aussi les assignations de Star Citizen (actionmaps.xml) : le bouton de joystick assigné dans le jeu à la même action que la touche clavier est trouvé tout seul et affiché « (jeu) » (seules les assignations modifiées dans le jeu sont dans ce fichier, pas celles laissées par défaut). La touche est aussi bien reconnue sur clavier AZERTY.
