@@ -4024,7 +4024,7 @@ public partial class MainWindow : Window
     private void OrbTitle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         var now = DateTime.UtcNow;
-        _orbTitleClicks = (now - _orbTitleLastClick).TotalSeconds < 1.0 ? _orbTitleClicks + 1 : 1;
+        _orbTitleClicks = (now - _orbTitleLastClick).TotalSeconds < 1.5 ? _orbTitleClicks + 1 : 1;
         _orbTitleLastClick = now;
         if (_orbTitleClicks < 5) return;
         _orbTitleClicks = 0;
