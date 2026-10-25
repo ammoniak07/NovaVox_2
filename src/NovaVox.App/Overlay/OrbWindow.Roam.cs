@@ -222,7 +222,6 @@ public partial class OrbWindow
         }
 
         // Elle reste en place pendant toute la conversation (ou file si elle est dans une zone).
-        // Pendant une conversation (blancs compris), elle reste en place face à toi.
         var speedFactor = _engaged ? 0 : 1;
         if (inZone) speedFactor = 1;
 
