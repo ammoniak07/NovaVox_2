@@ -112,7 +112,7 @@ public static class OrbRoaming
     /// n'était atteignable sans traversée) : la bulle la passe alors en
     /// trombe. Null si aucune place n'est libre.
     /// </summary>
-    public static (Box Target, bool CrossesZone)? PickTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts = 80, bool explore = false)
+    public static (Box Target, bool CrossesZone)? PickTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts = 80, bool explore = false, bool allowCrossing = true)
     {
         if (screen.Width < current.Width || screen.Height < current.Height) return null;
         if (explore) return PickFarTarget(current, screen, forbidden, random, minDistance, attempts);
@@ -129,7 +129,7 @@ public static class OrbRoaming
             if (IsPathClear(current, candidate, screen, forbidden)) return (candidate, false);
             fallback ??= candidate;
         }
-        return fallback is { } f ? (f, true) : null;
+        return allowCrossing && fallback is { } f ? (f, true) : null;
     }
 
     /// <summary>

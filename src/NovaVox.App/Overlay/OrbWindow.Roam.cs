@@ -32,7 +32,10 @@ public partial class OrbWindow
     // Trajet en cours : départ après la prise d'élan, vitesse propre au trajet, ondulation.
     private double _departAt, _tripSpeed = 1, _wobblePhase, _wobbleFrequency = 0.7;
     private bool _tripCrosses;
-    private double _nextExploreAt = 20;
+    private double _nextExploreAt = 120 + Random.Shared.NextDouble() * 360;
+    private double _lastCrossingAt = double.NegativeInfinity;
+    /// <summary>Délai minimal entre deux traversées de zone (sauf pour sortir d'une zone posée sur elle).</summary>
+    private const double MinSecondsBetweenCrossings = 120;
     // Flottement sur place (décalage vertical affiché, pas la position "réelle").
     private double _bobPhase, _bobOffset;
     /// <summary>Étirement dans le sens du mouvement (direction et intensité), utilisé par BuildBlob.</summary>
@@ -186,16 +189,22 @@ public partial class OrbWindow
 
         if (_roamTarget is null && speedFactor > 0 && t > _dwellUntil)
         {
-            // De temps en temps (toutes les 20 à 60 s, ou une fois sur quatre), une grande traversée
-            // vers une place lointaine, quitte à traverser une zone : elle ne reste pas d'un seul côté.
-            var explore = t >= _nextExploreAt || _random.NextDouble() < 0.25;
-            if (explore) _nextExploreAt = t + 20 + _random.NextDouble() * 40;
-            var pick = OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5, explore: explore);
+            // Grande traversée vers une place lointaine (quitte à traverser une zone) en moyenne
+            // toutes les 5 minutes ; jamais moins de 2 minutes après la précédente traversée.
+            var allowCrossing = t - _lastCrossingAt >= MinSecondsBetweenCrossings;
+            var explore = allowCrossing && t >= _nextExploreAt;
+            if (explore) _nextExploreAt = t + MinSecondsBetweenCrossings + _random.NextDouble() * 360;
+            var pick = OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5, explore: explore, allowCrossing: allowCrossing);
             if (pick is null) _dwellUntil = t + 3;
             else
             {
                 _roamTarget = new Point(_roamPos.X + pick.Value.Target.X - here.X, _roamPos.Y + pick.Value.Target.Y - here.Y);
                 _tripCrosses = pick.Value.CrossesZone;
+                if (_tripCrosses)
+                {
+                    _lastCrossingAt = t;
+                    _nextExploreAt = Math.Max(_nextExploreAt, t + MinSecondsBetweenCrossings + _random.NextDouble() * 360);
+                }
                 // Chaque trajet a son allure ; parfois une petite course rapide.
                 var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
                 var high = Math.Clamp(_config.RoamSpeedMax, low, OrbConfig.MaxRoamSpeed);

@@ -74,6 +74,14 @@ public class OrbRoamingTests
     }
 
     [Fact]
+    public void PickTarget_NoCrossingWhenNotAllowed()
+    {
+        var wall = new Box(900, 0, 100, 1080);
+        var current = new Box(100, 400, 200, 200);
+        Assert.Null(OrbRoaming.PickTarget(current, Screen, new[] { wall }, new Random(1), minDistance: 900, attempts: 500, allowCrossing: false));
+    }
+
+    [Fact]
     public void PickTarget_NullWhenNoRoom()
     {
         var everything = new Box(0, 0, 1920, 1080);
