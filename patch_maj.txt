@@ -3,7 +3,8 @@ NOVAVOX — Notes de mise à jour
 v0.1.8
 ------
 - Bulle animée : elle est plus petite quand elle est au repos (couleur de repos, écoute arrêtée ou endormie) et reprend sa taille normale dès qu'elle t'entend, parle ou réfléchit. Elle rétrécit vite (environ une demi-seconde, après un court délai pour ne pas faire le yoyo entre deux mots) et regrandit tout de suite. Nouveau réglage « Taille au repos » (30 à 100 % de la taille normale, 60 % par défaut ; 100 % = ne rétrécit jamais).
-- Bulle animée : option de test « Ondes d'écoute à l'intérieur de la bulle » (cochée par défaut) : les ondes partent du noyau vers le bord, à l'intérieur de la bulle, au lieu de partir vers l'extérieur. Décochée, elles repartent à l'extérieur comme avant.
+- Bulle animée : option « Ondes d'écoute à l'intérieur de la bulle » (cochée par défaut) : les ondes partent du noyau vers le bord, à l'intérieur de la bulle, au lieu de partir vers l'extérieur. Décochée, elles repartent à l'extérieur comme avant.
+- Bulle animée : les options « Bouche qui parle », « Oreilles qui écoutent » et « Ondes d'écoute à l'intérieur de la bulle » ne sont plus marquées « (test) » dans les réglages.
 
 v0.1.7
 ------

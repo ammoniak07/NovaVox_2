@@ -812,7 +812,7 @@
                                 <CheckBox x:Name="OrbRingsCheckbox" Content="Ondes d'écoute" Margin="0,6,0,0"
                                           ToolTip="Des ondes type sonar partent de la bulle quand elle t'entend, plus fortes quand tu parles fort"
                                           Checked="OrbRingsCheckbox_Changed" Unchecked="OrbRingsCheckbox_Changed" />
-                                <CheckBox x:Name="OrbRingsInsideCheckbox" Content="Ondes d'écoute à l'intérieur de la bulle (test)" Margin="20,4,0,0"
+                                <CheckBox x:Name="OrbRingsInsideCheckbox" Content="Ondes d'écoute à l'intérieur de la bulle" Margin="20,4,0,0"
                                           ToolTip="Coché : les ondes partent du noyau vers le bord, dans la bulle. Décoché : elles partent de la bulle vers l'extérieur"
                                           Checked="OrbRingsInsideCheckbox_Changed" Unchecked="OrbRingsInsideCheckbox_Changed" />
                                 <CheckBox x:Name="OrbThinkingCheckbox" Content="Réseau en réflexion" Margin="0,6,0,0"
@@ -821,10 +821,10 @@
                                 <CheckBox x:Name="OrbReactionsCheckbox" Content="Réactions (commande, erreur)" Margin="0,6,0,0"
                                           ToolTip="Reflet lumineux quand une commande est exécutée, glitch holographique en cas d'erreur"
                                           Checked="OrbReactionsCheckbox_Changed" Unchecked="OrbReactionsCheckbox_Changed" />
-                                <CheckBox x:Name="OrbMouthCheckbox" Content="Bouche qui parle (test)" Margin="0,8,0,0"
+                                <CheckBox x:Name="OrbMouthCheckbox" Content="Bouche qui parle" Margin="0,8,0,0"
                                           ToolTip="Une bouche s'ouvre et se ferme au rythme de la voix quand NovaVox parle"
                                           Checked="OrbMouthCheckbox_Changed" Unchecked="OrbMouthCheckbox_Changed" />
-                                <CheckBox x:Name="OrbEarsCheckbox" Content="Oreilles qui écoutent (test)" Margin="0,6,0,0"
+                                <CheckBox x:Name="OrbEarsCheckbox" Content="Oreilles qui écoutent" Margin="0,6,0,0"
                                           ToolTip="Deux oreilles sortent des côtés de la bulle quand elle t'entend parler au micro"
                                           Checked="OrbEarsCheckbox_Changed" Unchecked="OrbEarsCheckbox_Changed" />
                                 <CheckBox x:Name="OrbCaptionCheckbox" Content="Afficher « Je réfléchis… » pendant une question à Gemini" Margin="0,8,0,0"
