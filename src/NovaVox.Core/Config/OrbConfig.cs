@@ -30,6 +30,10 @@ public sealed class OrbConfig
     public const int DefaultRestSize = 60;
     public const int MinRestSize = 30;
 
+    public const int DefaultRoamSpeed = 100;
+    public const int MinRoamSpeed = 25;
+    public const int MaxRoamSpeed = 300;
+
     public const int DefaultOpacity = 100;
     public const int MinOpacity = 10;
 
@@ -63,6 +67,14 @@ public sealed class OrbConfig
     public bool ShowThinkingFx { get; set; } = true;
     /// <summary>Reflet lumineux quand une commande est exécutée, glitch holographique en cas d'erreur.</summary>
     public bool ShowReactions { get; set; } = true;
+    /// <summary>La bulle se balade dans l'écran (hors zones interdites) au lieu de rester à sa place.</summary>
+    public bool Roam { get; set; }
+    /// <summary>Vitesse de balade en % (25..300).</summary>
+    public int RoamSpeed { get; set; } = DefaultRoamSpeed;
+    /// <summary>La bulle disparaît au repos et réapparaît dès qu'elle t'entend, parle ou réfléchit.</summary>
+    public bool HideAtRest { get; set; }
+    /// <summary>Cadres de l'écran où la bulle ne va jamais (fractions de l'écran).</summary>
+    public List<OrbZone> ForbiddenZones { get; set; } = new();
 }
 
 public sealed class OrbConfigStore
@@ -95,6 +107,17 @@ public sealed class OrbConfigStore
             config.ShowMouth = GetBool(data["show_mouth"]);
             config.ShowEars = GetBool(data["show_ears"]);
             config.RestSize = Math.Clamp((int)Math.Round(GetDouble(data["rest_size"]) ?? OrbConfig.DefaultRestSize), OrbConfig.MinRestSize, 100);
+            config.Roam = GetBool(data["roam"]);
+            config.RoamSpeed = Math.Clamp((int)Math.Round(GetDouble(data["roam_speed"]) ?? OrbConfig.DefaultRoamSpeed), OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
+            config.HideAtRest = GetBool(data["hide_at_rest"]);
+            if (data["forbidden_zones"] is JsonArray zones)
+            {
+                foreach (var item in zones.OfType<JsonObject>())
+                {
+                    var zone = OrbZone.FromScreen(new Box(GetDouble(item["x"]) ?? 0, GetDouble(item["y"]) ?? 0, GetDouble(item["w"]) ?? 0, GetDouble(item["h"]) ?? 0), new Box(0, 0, 1, 1));
+                    if (zone is not null) config.ForbiddenZones.Add(new OrbZone(Math.Round(zone.X, 4), Math.Round(zone.Y, 4), Math.Round(zone.Width, 4), Math.Round(zone.Height, 4)));
+                }
+            }
             config.ShowCore = GetBool(data["show_core"], true);
             config.ShowVoiceWave = GetBool(data["show_voice_wave"], true);
             config.ShowListenRings = GetBool(data["show_listen_rings"], true);
@@ -126,6 +149,12 @@ public sealed class OrbConfigStore
             ["show_mouth"] = config.ShowMouth,
             ["show_ears"] = config.ShowEars,
             ["rest_size"] = config.RestSize,
+            ["roam"] = config.Roam,
+            ["roam_speed"] = config.RoamSpeed,
+            ["hide_at_rest"] = config.HideAtRest,
+            ["forbidden_zones"] = new JsonArray(config.ForbiddenZones
+                .Select(z => (JsonNode)new JsonObject { ["x"] = Math.Round(z.X, 4), ["y"] = Math.Round(z.Y, 4), ["w"] = Math.Round(z.Width, 4), ["h"] = Math.Round(z.Height, 4) })
+                .ToArray()),
             ["show_core"] = config.ShowCore,
             ["show_voice_wave"] = config.ShowVoiceWave,
             ["show_listen_rings"] = config.ShowListenRings,

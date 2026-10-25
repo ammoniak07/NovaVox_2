@@ -139,8 +139,15 @@ public partial class OrbWindow : Window
         var virtualTop = SystemParameters.VirtualScreenTop;
         var onScreen = left + Width > virtualLeft + 20 && left < virtualLeft + SystemParameters.VirtualScreenWidth - 20
                        && top + Height > virtualTop + 20 && top < virtualTop + SystemParameters.VirtualScreenHeight - 20;
-        Left = onScreen ? left : work.Right - Width - 30;
-        Top = onScreen ? top : work.Bottom - Height - 30;
+        _homeLeft = onScreen ? left : work.Right - Width - 30;
+        _homeTop = onScreen ? top : work.Bottom - Height - 30;
+        _screenCheckedAt = double.NegativeInfinity;
+        // En balade, elle reste où elle est (sa place choisie sert d'ancrage pour l'écran).
+        if (!IsRoaming || !_roamInit)
+        {
+            Left = _homeLeft;
+            Top = _homeTop;
+        }
         UpdateCaption();
     }
 
@@ -164,6 +171,8 @@ public partial class OrbWindow : Window
     {
         if (!_moveMode) return;
         try { DragMove(); } catch (InvalidOperationException) { return; }
+        _homeLeft = Left;
+        _homeTop = Top;
         PositionChanged?.Invoke(this, new Point(Left, Top));
     }
 
@@ -247,6 +256,7 @@ public partial class OrbWindow : Window
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
         StepLife(t, dt, target, hearing);
+        UpdateRoamAndVisibility(t, dt, hearing);
         // Rétrécit doucement dès qu'elle est au repos (bleue, grise ou endormie), après un
         // court délai pour ne pas "pomper" entre deux mots ; regrandit vite dès qu'elle
         // t'entend, parle ou réfléchit.
@@ -299,11 +309,13 @@ public partial class OrbWindow : Window
         // un peu plus droite quand elle écoute.
         var breathing = 0.025 * (1 - 0.6 * _attention) * Math.Sin(_breathPhase) + _sigh;
         var restScale = 1 - (1 - Math.Clamp(_config.RestSize, OrbConfig.MinRestSize, 100) / 100.0) * _rest;
-        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale;
+        // Apparition/disparition : elle grandit en apparaissant et rapetisse en disparaissant.
+        var appearScale = 0.55 + 0.45 * _appear;
+        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale * appearScale;
         var stretch = _squash + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
         var scaleY = scale * (1 + stretch);
         var scaleX = scale * (1 - stretch * 0.7);
-        var tilt = 4 * Math.Sin(t * 0.13) * Math.PI / 180;
+        var tilt = 4 * Math.Sin(t * 0.13) * Math.PI / 180 + _roamTilt;
         var cosTilt = Math.Cos(tilt);
         var sinTilt = Math.Sin(tilt);
 

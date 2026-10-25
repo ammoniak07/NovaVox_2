@@ -11,7 +11,7 @@
         Topmost="True"
         ResizeMode="NoResize"
         Width="280" Height="300">
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Canvas x:Name="OrbCanvas" IsHitTestVisible="True" Background="#01000000">
             <!-- Halo chaud : même forme que la bulle, très floutée derrière elle. -->
             <Path x:Name="GlowPath" Opacity="0.55">

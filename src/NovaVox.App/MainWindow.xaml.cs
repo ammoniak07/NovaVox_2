@@ -3905,6 +3905,11 @@ public partial class MainWindow : Window
         OrbSizeSlider.Value = orb.Size;
         OrbSizeValueText.Text = $"{orb.Size:0}px";
         OrbRestSizeSlider.Value = orb.RestSize;
+        OrbRoamCheckbox.IsChecked = orb.Roam;
+        OrbRoamSpeedSlider.Value = orb.RoamSpeed;
+        OrbRoamSpeedValueText.Text = $"{orb.RoamSpeed} %";
+        OrbHideAtRestCheckbox.IsChecked = orb.HideAtRest;
+        UpdateOrbZonesText();
         OrbRestSizeValueText.Text = $"{orb.RestSize} %";
         OrbOpacitySlider.Value = orb.Opacity;
         OrbOpacityValueText.Text = $"{orb.Opacity} %";
@@ -3964,6 +3969,49 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         _state.Orb.Size = Math.Round(OrbSizeSlider.Value);
         SaveAndApplyOrb();
+    }
+
+    private void OrbRoamCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.Roam = OrbRoamCheckbox.IsChecked ?? false;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbRoamSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OrbRoamSpeedValueText is null) return;
+        var value = (int)Math.Round(OrbRoamSpeedSlider.Value);
+        OrbRoamSpeedValueText.Text = $"{value} %";
+        if (_loadingSettings) return;
+        _state.Orb.RoamSpeed = value;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbHideAtRestCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.HideAtRest = OrbHideAtRestCheckbox.IsChecked ?? false;
+        SaveAndApplyOrb();
+    }
+
+    private void UpdateOrbZonesText()
+    {
+        var count = _state.Orb.ForbiddenZones.Count;
+        OrbZonesCountText.Text = count switch { 0 => "Aucune zone", 1 => "1 zone", _ => $"{count} zones" };
+    }
+
+    /// <summary>Éditeur plein écran des zones interdites, sur l'écran où se trouve la bulle.</summary>
+    private void OrbZonesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_orbWindow is null) return;
+        var editor = new OrbZonesEditorWindow(_orbWindow.CurrentScreen(), _state.Orb.ForbiddenZones, _orbWindow.HomeOrbRect());
+        editor.ShowDialog();
+        if (editor.Result is null) return;
+        _state.Orb.ForbiddenZones = editor.Result;
+        UpdateOrbZonesText();
+        SaveAndApplyOrb();
+        AppendLog($"Bulle : {editor.Result.Count} zone(s) interdite(s) enregistrée(s).", "info");
     }
 
     private void OrbRestSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
