@@ -802,6 +802,16 @@
                                             Click="OrbListeningColorSwatch_Click" />
                                     <TextBox x:Name="OrbListeningColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
                                 </StackPanel>
+                                <TextBlock Text="Profondeur :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                <CheckBox x:Name="OrbDepthCheckbox" Content="Effet de profondeur (elle s'approche pour parler)" Margin="0,6,0,0"
+                                          ToolTip="Tu es au centre de l'écran : au repos, la bulle flotte plus loin (plus petite) ; quand elle parle ou t'entend, elle s'approche à 1 m (sa taille réglée) et s'écarte un peu du centre, comme en 3D. Remplace la « Taille au repos »"
+                                          Checked="OrbDepthCheckbox_Changed" Unchecked="OrbDepthCheckbox_Changed" />
+                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                    <TextBlock Text="Distance au repos :" VerticalAlignment="Center" />
+                                    <Slider x:Name="OrbFarDistanceSlider" Minimum="1.2" Maximum="4" SmallChange="0.1" LargeChange="0.5"
+                                            Width="140" Margin="6,0" ValueChanged="OrbFarDistanceSlider_ValueChanged" />
+                                    <TextBlock x:Name="OrbFarDistanceValueText" Text="2,0 m" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
                                 <TextBlock Text="Déplacements :" Margin="0,10,0,0" FontWeight="SemiBold" />
                                 <CheckBox x:Name="OrbRoamCheckbox" Content="Se balade dans l'écran" Margin="0,6,0,0"
                                           ToolTip="La bulle va de place en place sur l'écran où tu l'as placée, sans jamais entrer dans les zones interdites. Elle s'arrête quand elle t'écoute ou réfléchit et ralentit quand elle parle"

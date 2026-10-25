@@ -161,6 +161,14 @@ public partial class OrbWindow : Window
     public void SetMoveMode(bool enabled)
     {
         _moveMode = enabled;
+        if (enabled)
+        {
+            // À déplacer : à sa vraie place, sans décalage de perspective ni de balade.
+            _projectionOffset = default;
+            _bobOffset = 0;
+            Left = _homeLeft;
+            Top = _homeTop;
+        }
         if (_hwnd != IntPtr.Zero) WindowClickThrough.SetClickThrough(_hwnd, clickThrough: !enabled);
         MoveHint.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         Cursor = enabled ? Cursors.SizeAll : null;
@@ -256,6 +264,7 @@ public partial class OrbWindow : Window
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
         StepLife(t, dt, target, hearing);
+        UpdateDepth(dt, hearing);
         UpdateRoamAndVisibility(t, dt, hearing);
         // Rétrécit doucement dès qu'elle est au repos (bleue, grise ou endormie), après un
         // court délai pour ne pas "pomper" entre deux mots ; regrandit vite dès qu'elle
@@ -308,10 +317,11 @@ public partial class OrbWindow : Window
         // soupir ponctuel ; légère hausse quand la voix monte ; elle se tient
         // un peu plus droite quand elle écoute.
         var breathing = 0.025 * (1 - 0.6 * _attention) * Math.Sin(_breathPhase) + _sigh;
-        var restScale = 1 - (1 - Math.Clamp(_config.RestSize, OrbConfig.MinRestSize, 100) / 100.0) * _rest;
+        // Avec l'effet de profondeur, c'est la distance qui la fait paraître plus petite au repos.
+        var restScale = _config.DepthEffect ? 1 : 1 - (1 - Math.Clamp(_config.RestSize, OrbConfig.MinRestSize, 100) / 100.0) * _rest;
         // Apparition/disparition : elle grandit en apparaissant et rapetisse en disparaissant.
         var appearScale = (0.55 + 0.45 * _appear) * _passScale; // _passScale : rétrécie dans un passage étroit
-        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale * appearScale;
+        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale * appearScale * _depthScale;
         var stretch = _squash + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
         var scaleY = scale * (1 + stretch);
         var scaleX = scale * (1 - stretch * 0.7);

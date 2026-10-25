@@ -3910,6 +3910,9 @@ public partial class MainWindow : Window
         OrbSizeValueText.Text = $"{orb.Size:0}px";
         OrbRestSizeSlider.Value = orb.RestSize;
         OrbRoamCheckbox.IsChecked = orb.Roam;
+        OrbDepthCheckbox.IsChecked = orb.DepthEffect;
+        OrbFarDistanceSlider.Value = orb.FarDistance;
+        OrbFarDistanceValueText.Text = $"{orb.FarDistance:0.0} m";
         OrbRoamSpeedMinSlider.Value = orb.RoamSpeedMin;
         OrbRoamSpeedMaxSlider.Value = orb.RoamSpeedMax;
         OrbRoamSpeedMinValueText.Text = $"{orb.RoamSpeedMin} %";
@@ -3974,6 +3977,23 @@ public partial class MainWindow : Window
         OrbSizeValueText.Text = $"{OrbSizeSlider.Value:0}px";
         if (_loadingSettings) return;
         _state.Orb.Size = Math.Round(OrbSizeSlider.Value);
+        SaveAndApplyOrb();
+    }
+
+    private void OrbDepthCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.DepthEffect = OrbDepthCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbFarDistanceSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OrbFarDistanceValueText is null) return;
+        var value = Math.Round(OrbFarDistanceSlider.Value, 1);
+        OrbFarDistanceValueText.Text = $"{value:0.0} m";
+        if (_loadingSettings) return;
+        _state.Orb.FarDistance = value;
         SaveAndApplyOrb();
     }
 

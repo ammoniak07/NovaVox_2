@@ -95,8 +95,8 @@ public partial class OrbWindow
         var size = OrbSize;
         var cx = Width / 2;
         var cy = size * GlowMarginRatio + size * 0.6;
-        var halfWidth = size * 0.55 * _passScale;
-        var halfHeight = size * 0.62 * _passScale;
+        var halfWidth = size * 0.55 * _passScale * _depthScale;
+        var halfHeight = size * 0.62 * _passScale * _depthScale;
         return new Box(topLeft.X + cx - halfWidth, topLeft.Y + cy - halfHeight, 2 * halfWidth, 2 * halfHeight);
     }
 
@@ -173,6 +173,8 @@ public partial class OrbWindow
                 Left = _homeLeft;
                 Top = _homeTop;
             }
+            // À sa place : seule la perspective (profondeur) la déplace. Pas pendant un glisser-déposer.
+            if (!_moveMode) MoveWindowTo(new Point(_homeLeft, _homeTop));
             _roamVelocity = default;
             _roamTilt *= Math.Exp(-dt * 3);
             UpdateMotionStretch(dt);
@@ -181,7 +183,7 @@ public partial class OrbWindow
         if (!_roamInit)
         {
             _roamInit = true;
-            _roamPos = new Point(Left, Top);
+            _roamPos = new Point(Left - _projectionOffset.X, Top - _projectionOffset.Y - _bobOffset);
             _roamVelocity = default;
             _roamTarget = null;
             _dwellUntil = t + 1;
@@ -254,6 +256,7 @@ public partial class OrbWindow
                 var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
                 var high = Math.Clamp(_config.RoamSpeedMax, low, OrbConfig.MaxRoamSpeed);
                 _tripSpeed = (low + _random.NextDouble() * (high - low)) / 100.0;
+                PickTripDepth();
                 _wobblePhase = _random.NextDouble() * Math.PI * 2;
                 _wobbleFrequency = 0.4 + _random.NextDouble() * 0.6;
                 // Prise d'élan : elle se tasse et recule un peu avant de partir.
@@ -359,7 +362,7 @@ public partial class OrbWindow
     {
         RefreshScreen(t);
         var screen = ScreenBox();
-        var here = OrbBoxAt(_roamPos = new Point(Left, Top - _bobOffset));
+        var here = OrbBoxAt(_roamPos = new Point(Left - _projectionOffset.X, Top - _projectionOffset.Y - _bobOffset));
         var outside = OrbRoaming.EntryStart(here, screen, ForbiddenBoxes(screen), margin: OrbSize * 0.7);
         var away = new Vector(outside.X - here.X, outside.Y - here.Y);
         if (away.Length > 0) away.Normalize();
@@ -493,9 +496,7 @@ public partial class OrbWindow
     private void MoveWindowTo(Point topLeft)
     {
         _roamPos = topLeft;
-        var y = topLeft.Y + _bobOffset;
-        if (Math.Abs(Left - topLeft.X) > 0.01) Left = topLeft.X;
-        if (Math.Abs(Top - y) > 0.01) Top = y;
+        PlaceWindow(topLeft);
     }
 
     private static bool TouchesZone(Box box, List<Box> zones) => zones.Any(z => box.Intersects(z));
