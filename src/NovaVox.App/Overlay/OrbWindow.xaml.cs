@@ -300,10 +300,13 @@ public partial class OrbWindow : Window
         var shown = shade >= 0 ? Lerp(_color, Colors.White, Math.Min(0.4, shade)) : Lerp(_color, Colors.Black, Math.Min(0.45, -shade));
         // Erreur : bref flash rouge (glitch holographique).
         shown = Lerp(shown, GlitchColor, 0.6 * GlitchAmount(t));
+        // Gag : elle rougit un instant.
+        shown = Lerp(shown, BlushColor, 0.45 * _blush);
         _shownColor = shown;
         ApplyColors(shown);
 
         var blob = BuildBlob(t);
+        UpdateGags(t, dt, blob.Bounds);
         UpdateSpots(blob, dt, _shownColor);
         UpdateMouth(blob, dt, t, _speaking ? target : 0);
         UpdateEars(blob, dt, t, hearing);
@@ -339,8 +342,8 @@ public partial class OrbWindow : Window
         var restScale = _config.DepthEffect ? 1 : 1 - (1 - Math.Clamp(_config.RestSize, OrbConfig.MinRestSize, 100) / 100.0) * _rest;
         // Apparition/disparition : elle grandit en apparaissant et rapetisse en disparaissant.
         var appearScale = (0.55 + 0.45 * _appear) * _passScale; // _passScale : rétrécie dans un passage étroit
-        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale * appearScale * _depthScale;
-        var stretch = _squash + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
+        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale * appearScale * _depthScale * _gagInflate;
+        var stretch = _squash + _gagStretch + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
         var scaleY = scale * (1 + stretch);
         var scaleX = scale * (1 - stretch * 0.7);
         var tilt = 4 * Math.Sin(t * 0.13) * Math.PI / 180 + _roamTilt;

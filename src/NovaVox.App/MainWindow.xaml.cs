@@ -3893,6 +3893,13 @@ public partial class MainWindow : Window
         _orbWindow.ExtraForbiddenAreas = () => _overlayWindow is { IsVisible: true } overlay
             ? new[] { new Rect(overlay.Left, overlay.Top, overlay.ActualWidth, overlay.ActualHeight) }
             : Array.Empty<Rect>();
+        // Gags de la bulle : voix de Nova et petits sons, avec les réglages de la voix.
+        _orbWindow.GagSpeech += (_, text) =>
+        {
+            EnsureTestTts();
+            _testTts!.Speak(text);
+        };
+        _orbWindow.GagSound += (_, pcm) => NovaVox.App.Speech.SoundEffectPlayer.Play(pcm, NovaVox.Core.Speech.OrbGags.SampleRate, _state.Audio.TtsVolume, _state.Audio.OutputDevice);
         _orbWindow.PositionChanged += (_, pos) =>
         {
             _state.Orb.X = (int)Math.Round(pos.X);
@@ -3910,6 +3917,9 @@ public partial class MainWindow : Window
         OrbSizeValueText.Text = $"{orb.Size:0}px";
         OrbRestSizeSlider.Value = orb.RestSize;
         OrbRoamCheckbox.IsChecked = orb.Roam;
+        OrbGagsCheckbox.IsChecked = orb.Gags;
+        OrbGagMinutesSlider.Value = orb.GagMinutes;
+        OrbGagMinutesValueText.Text = $"toutes les {orb.GagMinutes} min environ";
         OrbDepthCheckbox.IsChecked = orb.DepthEffect;
         OrbFarDistanceSlider.Value = orb.FarDistance;
         OrbFarDistanceValueText.Text = $"{orb.FarDistance:0.0} m";
@@ -3994,6 +4004,33 @@ public partial class MainWindow : Window
         OrbFarDistanceValueText.Text = $"{value:0.0} m";
         if (_loadingSettings) return;
         _state.Orb.FarDistance = value;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbGagTestButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_orbWindow is null || !_orbWindow.IsVisible)
+        {
+            AppendLog("Affiche d'abord la bulle animée pour tester un gag.", "info");
+            return;
+        }
+        _orbWindow.PlayGagNow();
+    }
+
+    private void OrbGagsCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.Gags = OrbGagsCheckbox.IsChecked ?? true;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbGagMinutesSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OrbGagMinutesValueText is null) return;
+        var value = (int)Math.Round(OrbGagMinutesSlider.Value);
+        OrbGagMinutesValueText.Text = $"toutes les {value} min environ";
+        if (_loadingSettings) return;
+        _state.Orb.GagMinutes = value;
         SaveAndApplyOrb();
     }
 

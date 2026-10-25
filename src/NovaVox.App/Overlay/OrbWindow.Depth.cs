@@ -97,7 +97,7 @@ public partial class OrbWindow
     private Box VisualBoxAt(Point topLeft)
     {
         var size = OrbSize;
-        var scale = _passScale * _depthScale * (1 + 0.1 * _level);
+        var scale = _passScale * _depthScale * _gagInflate * (1 + 0.1 * _level + _gagStretch);
         var cx = Width / 2;
         var cy = size * GlowMarginRatio + size * 0.6;
         var stretch = 1 + _motionStretch.Length;

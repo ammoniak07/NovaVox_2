@@ -32,6 +32,8 @@
             <!-- Glitch holographique (erreur) : copies rouge et cyan décalées derrière la bulle. -->
             <Path x:Name="GlitchRed" Opacity="0" Fill="#c0ff2050" />
             <Path x:Name="GlitchCyan" Opacity="0" Fill="#c020e0ff" />
+            <!-- Gags : particules derrière la bulle (petit nuage). -->
+            <Canvas x:Name="GagBackLayer" IsHitTestVisible="False" />
             <!-- (Test) Oreilles humaines sur les côtés : pavillon, creux intérieur
                  plus foncé, pli en relief. Dessinées derrière le corps : seule la
                  partie qui dépasse de la bulle est visible. -->
@@ -242,6 +244,8 @@
             </Ellipse>
             <!-- Réflexion : petits satellites en orbite autour de la bulle. -->
             <Canvas x:Name="SatelliteLayer" Opacity="0" IsHitTestVisible="False" />
+            <!-- Gags : particules devant la bulle (étincelles, « z »). -->
+            <Canvas x:Name="GagFrontLayer" IsHitTestVisible="False" />
             <!-- Repère visible uniquement en mode "Déplacer la bulle". -->
             <Ellipse x:Name="MoveHint" Stroke="#dbe4ee" StrokeThickness="1.5" StrokeDashArray="4 3" Visibility="Collapsed" />
         </Canvas>

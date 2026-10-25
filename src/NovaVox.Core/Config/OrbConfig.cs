@@ -41,6 +41,11 @@ public sealed class OrbConfig
     public const double MinFarDistance = 1.2;
     public const double MaxFarDistance = 4.0;
 
+    /// <summary>Intervalle moyen entre deux gags, en minutes.</summary>
+    public const int DefaultGagMinutes = 15;
+    public const int MinGagMinutes = 3;
+    public const int MaxGagMinutes = 60;
+
     public const int DefaultOpacity = 100;
     public const int MinOpacity = 10;
 
@@ -86,6 +91,10 @@ public sealed class OrbConfig
     public List<OrbZone> ForbiddenZones { get; set; } = new();
     /// <summary>Effet de profondeur : loin (petite) au repos, s'approche (grandit) quand elle parle ou t'entend.</summary>
     public bool DepthEffect { get; set; } = true;
+    /// <summary>Petits gags de temps en temps quand elle s'ennuie (pet discret, hoquet, éternuement, bâillement, répliques).</summary>
+    public bool Gags { get; set; } = true;
+    /// <summary>Intervalle moyen entre deux gags, en minutes (3..60).</summary>
+    public int GagMinutes { get; set; } = DefaultGagMinutes;
     /// <summary>Distance au repos en mètres (1,2..4) pour l'effet de profondeur.</summary>
     public double FarDistance { get; set; } = DefaultFarDistance;
 }
@@ -129,6 +138,8 @@ public sealed class OrbConfigStore
             config.RoamSpeedMax = Math.Clamp((int)Math.Round(speedMax), config.RoamSpeedMin, OrbConfig.MaxRoamSpeed);
             config.HideAtRest = GetBool(data["hide_at_rest"]);
             config.DepthEffect = GetBool(data["depth_effect"], true);
+            config.Gags = GetBool(data["gags"], true);
+            config.GagMinutes = Math.Clamp((int)Math.Round(GetDouble(data["gag_minutes"]) ?? OrbConfig.DefaultGagMinutes), OrbConfig.MinGagMinutes, OrbConfig.MaxGagMinutes);
             config.FarDistance = Math.Round(Math.Clamp(GetDouble(data["far_distance"]) ?? OrbConfig.DefaultFarDistance, OrbConfig.MinFarDistance, OrbConfig.MaxFarDistance), 1);
             if (data["forbidden_zones"] is JsonArray zones)
             {
@@ -174,6 +185,8 @@ public sealed class OrbConfigStore
             ["roam_speed_max"] = config.RoamSpeedMax,
             ["hide_at_rest"] = config.HideAtRest,
             ["depth_effect"] = config.DepthEffect,
+            ["gags"] = config.Gags,
+            ["gag_minutes"] = config.GagMinutes,
             ["far_distance"] = config.FarDistance,
             ["forbidden_zones"] = new JsonArray(config.ForbiddenZones
                 .Select(z => (JsonNode)new JsonObject { ["x"] = Math.Round(z.X, 4), ["y"] = Math.Round(z.Y, 4), ["w"] = Math.Round(z.Width, 4), ["h"] = Math.Round(z.Height, 4) })

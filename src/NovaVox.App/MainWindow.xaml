@@ -838,6 +838,18 @@
                                 <CheckBox x:Name="OrbHideAtRestCheckbox" Content="Disparaît au repos" Margin="0,6,0,0"
                                           ToolTip="La bulle s'efface après quelques secondes sans activité et réapparaît dès qu'elle t'entend, parle ou réfléchit (ailleurs sur l'écran si elle se balade)"
                                           Checked="OrbHideAtRestCheckbox_Changed" Unchecked="OrbHideAtRestCheckbox_Changed" />
+                                <TextBlock Text="Humour :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                <CheckBox x:Name="OrbGagsCheckbox" Content="Petits gags quand elle s'ennuie (pet discret, hoquet, éternuement…)" Margin="0,6,0,0"
+                                          ToolTip="De temps en temps, seulement au calme (jamais pendant une conversation) : petit pet puis « C'est pas moi », hoquet, éternuement, bâillement, répliques Star Citizen, ronflement quand elle dort"
+                                          Checked="OrbGagsCheckbox_Changed" Unchecked="OrbGagsCheckbox_Changed" />
+                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                    <TextBlock Text="Fréquence :" VerticalAlignment="Center" />
+                                    <Slider x:Name="OrbGagMinutesSlider" Minimum="3" Maximum="60" SmallChange="1" LargeChange="5"
+                                            Width="140" Margin="6,0" ValueChanged="OrbGagMinutesSlider_ValueChanged" />
+                                    <TextBlock x:Name="OrbGagMinutesValueText" Text="toutes les 15 min environ" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
+                                <Button x:Name="OrbGagTestButton" Content="▶ Tester un gag" Margin="20,6,0,0" HorizontalAlignment="Left" Click="OrbGagTestButton_Click"
+                                        ToolTip="Joue un gag au hasard tout de suite (la bulle doit être affichée)" />
                                 <TextBlock Text="Effets « IA » :" Margin="0,10,0,0" FontWeight="SemiBold" />
                                 <CheckBox x:Name="OrbCoreCheckbox" Content="Noyau lumineux (la présence de Nova)" Margin="0,6,0,0"
                                           ToolTip="Un cœur d'énergie au centre : il pulse, s'intensifie quand Nova parle, regarde autour de lui et cligne"
