@@ -1,4 +1,7 @@
+using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Nodes;
 using NovaVox.Core.Config;
@@ -25,7 +28,70 @@ public sealed class GeminiReplyEventArgs : EventArgs
 /// </summary>
 public sealed class GeminiClient
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(65) };
+    /// <summary>
+    /// Connexion réseau robuste : IPv4 essayée en premier, 5 s maximum par
+    /// adresse, puis les suivantes (IPv6). Sans ça, sur une connexion où
+    /// l'IPv6 est cassée, .NET pouvait rester bloqué sur une adresse IPv6
+    /// jusqu'au délai total (60 s) alors que le navigateur, lui, bascule
+    /// tout de suite sur IPv4.
+    /// </summary>
+    private static readonly HttpClient Http = new(new SocketsHttpHandler
+    {
+        ConnectCallback = ConnectPreferIPv4Async,
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+    })
+    { Timeout = TimeSpan.FromSeconds(65) };
+
+    /// <summary>Dernier résultat de connexion (adresses essayées, durée) — ajouté aux messages d'erreur pour le diagnostic.</summary>
+    private static volatile string _lastConnectInfo = "aucune tentative";
+
+    private static async ValueTask<Stream> ConnectPreferIPv4Async(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+    {
+        var host = context.DnsEndPoint.Host;
+        var port = context.DnsEndPoint.Port;
+        var clock = Stopwatch.StartNew();
+        IPAddress[] addresses;
+        try
+        {
+            addresses = await Dns.GetHostAddressesAsync(host, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _lastConnectInfo = $"résolution DNS de {host} impossible ({e.Message})";
+            throw;
+        }
+        var attempts = new List<string>();
+        Exception? lastError = null;
+        foreach (var address in addresses.OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1))
+        {
+            var family = address.AddressFamily == AddressFamily.InterNetwork ? "IPv4" : "IPv6";
+            var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+            var attemptClock = Stopwatch.StartNew();
+            try
+            {
+                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                attempt.CancelAfter(TimeSpan.FromSeconds(5));
+                await socket.ConnectAsync(new IPEndPoint(address, port), attempt.Token).ConfigureAwait(false);
+                attempts.Add($"{family} {address} OK en {attemptClock.ElapsedMilliseconds} ms");
+                _lastConnectInfo = string.Join(" ; ", attempts);
+                return new NetworkStream(socket, ownsSocket: true);
+            }
+            catch (Exception e) when ((e is SocketException || e is OperationCanceledException) && !cancellationToken.IsCancellationRequested)
+            {
+                socket.Dispose();
+                lastError = e;
+                attempts.Add($"{family} {address} échec ({(e is OperationCanceledException ? "pas de réponse en 5 s" : e.Message)})");
+                _lastConnectInfo = string.Join(" ; ", attempts);
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+        }
+        _lastConnectInfo = attempts.Count == 0 ? $"aucune adresse pour {host}" : string.Join(" ; ", attempts) + $" (total {clock.ElapsedMilliseconds} ms)";
+        throw lastError ?? new SocketException((int)SocketError.HostNotFound);
+    }
 
     private readonly List<GeminiMessage> _history = new();
 
@@ -148,11 +214,11 @@ public sealed class GeminiClient
         }
         catch (TaskCanceledException)
         {
-            return ("[Erreur] Gemini n'a pas répondu en moins de 60 secondes. Réessaie.", true);
+            return ($"[Erreur] Gemini n'a pas répondu en moins de 60 secondes. Réessaie. (Connexion : {_lastConnectInfo})", true);
         }
         catch (HttpRequestException e)
         {
-            return ($"[Erreur] Impossible de contacter Gemini ({e.Message}). Vérifie ta connexion internet.", true);
+            return ($"[Erreur] Impossible de contacter Gemini ({e.Message}). Vérifie ta connexion internet. (Connexion : {_lastConnectInfo})", true);
         }
         catch (Exception e)
         {
@@ -245,7 +311,7 @@ public sealed class GeminiClient
         }
         catch (Exception e)
         {
-            RaiseLog($"[Info] Wiki SC : recherche de contexte ignorée pendant {step} ({e.Message}).", "info");
+            RaiseLog($"[Info] Wiki SC : recherche de contexte ignorée pendant {step} ({e.Message}). Connexion : {_lastConnectInfo}", "info");
             return "";
         }
 
