@@ -42,9 +42,9 @@ public sealed record OrbZone(double X, double Y, double Width, double Height)
 
 /// <summary>
 /// Choix des déplacements de la bulle baladeuse : elle doit rester entière
-/// dans l'écran, ne jamais toucher une zone interdite, et si possible y
-/// aller en ligne droite sans traverser de zone (sinon : elle disparaît et
-/// réapparaît à destination).
+/// dans l'écran et ne jamais s'arrêter dans une zone interdite. Elle peut en
+/// traverser une, mais très vite, pour ne pas gêner le joueur ; un trajet
+/// sans traversée est préféré quand il existe.
 /// </summary>
 public static class OrbRoaming
 {
@@ -70,13 +70,49 @@ public static class OrbRoaming
         return true;
     }
 
+    /// <summary>Le trajet en ligne droite traverse-t-il une zone (sans exiger de rester dans l'écran) ?</summary>
+    public static bool CrossesZones(Box from, Box to, IReadOnlyList<Box> forbidden)
+    {
+        var distance = Math.Sqrt((to.X - from.X) * (to.X - from.X) + (to.Y - from.Y) * (to.Y - from.Y));
+        var steps = Math.Max(2, (int)Math.Ceiling(distance / Math.Max(4, Math.Min(from.Width, from.Height) / 4)));
+        for (var i = 0; i <= steps; i++)
+        {
+            var k = (double)i / steps;
+            var box = from.MovedTo(from.X + (to.X - from.X) * k, from.Y + (to.Y - from.Y) * k);
+            foreach (var zone in forbidden)
+                if (box.Intersects(zone)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Point de départ hors de l'écran pour une entrée en trombe vers
+    /// <paramref name="target"/> : par le bord le plus proche dont le trajet
+    /// (perpendiculaire au bord) ne traverse aucune zone interdite ; à défaut,
+    /// le bord le plus proche (la bulle traversera alors la zone très vite).
+    /// <paramref name="margin"/> : distance en plus au-delà du bord (pour que
+    /// le halo soit lui aussi hors de l'écran).
+    /// </summary>
+    public static Box EntryStart(Box target, Box screen, IReadOnlyList<Box> forbidden, double margin)
+    {
+        var candidates = new[]
+        {
+            target.MovedTo(screen.X - target.Width - margin, target.Y),
+            target.MovedTo(screen.Right + margin, target.Y),
+            target.MovedTo(target.X, screen.Y - target.Height - margin),
+            target.MovedTo(target.X, screen.Bottom + margin),
+        }.OrderBy(c => Math.Abs(c.X - target.X) + Math.Abs(c.Y - target.Y)).ToList();
+        return candidates.FirstOrDefault(c => !CrossesZones(c, target, forbidden), candidates[0]);
+    }
+
     /// <summary>
     /// Prochaine destination : une place autorisée tirée au hasard, assez
     /// loin pour que le déplacement se voie (au moins <paramref name="minDistance"/>).
-    /// Teleport = true si aucune n'est atteignable en ligne droite (il faut
-    /// disparaître puis réapparaître). Null si aucune place n'est libre.
+    /// CrossesZone = true si le trajet traverse une zone (aucune place libre
+    /// n'était atteignable sans traversée) : la bulle la passe alors en
+    /// trombe. Null si aucune place n'est libre.
     /// </summary>
-    public static (Box Target, bool Teleport)? PickTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts = 80)
+    public static (Box Target, bool CrossesZone)? PickTarget(Box current, Box screen, IReadOnlyList<Box> forbidden, Random random, double minDistance, int attempts = 80)
     {
         if (screen.Width < current.Width || screen.Height < current.Height) return null;
         Box? fallback = null;

@@ -35,12 +35,12 @@ public class OrbRoamingTests
             var pick = OrbRoaming.PickTarget(current, Screen, zones, random, minDistance: 150);
             Assert.NotNull(pick);
             Assert.True(OrbRoaming.IsAllowed(pick!.Value.Target, Screen, zones));
-            if (!pick.Value.Teleport) Assert.True(OrbRoaming.IsPathClear(current, pick.Value.Target, Screen, zones));
+            if (!pick.Value.CrossesZone) Assert.True(OrbRoaming.IsPathClear(current, pick.Value.Target, Screen, zones));
         }
     }
 
     [Fact]
-    public void PickTarget_WallForcesTeleport()
+    public void PickTarget_WallIsCrossedWhenNoOtherWay()
     {
         var wall = new Box(900, 0, 100, 1080);
         var current = new Box(100, 400, 200, 200);
@@ -48,7 +48,7 @@ public class OrbRoamingTests
         // Côté gauche trop petit pour un déplacement de 900 px : seule la droite convient, derrière le mur.
         var pick = OrbRoaming.PickTarget(current, Screen, new[] { wall }, random, minDistance: 900, attempts: 500);
         Assert.NotNull(pick);
-        Assert.True(pick!.Value.Teleport);
+        Assert.True(pick!.Value.CrossesZone);
     }
 
     [Fact]
@@ -56,6 +56,21 @@ public class OrbRoamingTests
     {
         var everything = new Box(0, 0, 1920, 1080);
         Assert.Null(OrbRoaming.PickTarget(new Box(0, 0, 100, 100), Screen, new[] { everything }, new Random(3), 10));
+    }
+
+    [Fact]
+    public void EntryStart_ComesFromNearestFreeEdge()
+    {
+        var target = new Box(100, 400, 200, 200);
+        var start = OrbRoaming.EntryStart(target, Screen, Array.Empty<Box>(), margin: 50);
+        Assert.Equal(-250, start.X, 3);
+        Assert.Equal(400, start.Y, 3);
+
+        // Zone collée au bord gauche : on arrive par un autre bord, sans la traverser.
+        var leftZone = new Box(0, 300, 90, 400);
+        var other = OrbRoaming.EntryStart(target, Screen, new[] { leftZone }, margin: 50);
+        Assert.False(OrbRoaming.CrossesZones(other, target, new[] { leftZone }));
+        Assert.False(Screen.Intersects(other));
     }
 
     [Fact]

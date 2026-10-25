@@ -27,7 +27,7 @@ public sealed class OrbZonesEditorWindow : Window
     /// <summary>Zones validées (fractions de l'écran), null si annulé.</summary>
     public List<OrbZone>? Result { get; private set; }
 
-    public OrbZonesEditorWindow(Rect screen, IEnumerable<OrbZone> zones, Rect? orbPreview)
+    public OrbZonesEditorWindow(Rect screen, IEnumerable<OrbZone> zones, Rect? orbPreview, IEnumerable<Rect>? automaticZones = null)
     {
         _screen = screen;
         Title = "Zones interdites de la bulle";
@@ -62,6 +62,24 @@ public sealed class OrbZonesEditorWindow : Window
             _canvas.Children.Add(hint);
         }
 
+        // Zones automatiques (premier overlay) : affichées pour info, non modifiables.
+        foreach (var area in automaticZones ?? Enumerable.Empty<Rect>())
+        {
+            var auto = new Border
+            {
+                Width = area.Width,
+                Height = area.Height,
+                Background = new SolidColorBrush(Color.FromArgb(0x50, 0x60, 0x90, 0xc0)),
+                BorderBrush = Brushes.LightSteelBlue,
+                BorderThickness = new Thickness(2),
+                IsHitTestVisible = false,
+                Child = new TextBlock { Text = "Overlay (évité automatiquement)", Foreground = Brushes.White, FontSize = 12, Margin = new Thickness(6, 4, 6, 4), TextWrapping = TextWrapping.Wrap },
+            };
+            Canvas.SetLeft(auto, area.Left - screen.Left);
+            Canvas.SetTop(auto, area.Top - screen.Top);
+            _canvas.Children.Add(auto);
+        }
+
         var box = new Box(screen.Left, screen.Top, screen.Width, screen.Height);
         foreach (var zone in zones)
         {
@@ -87,7 +105,7 @@ public sealed class OrbZonesEditorWindow : Window
         var panel = new StackPanel { Orientation = Orientation.Vertical };
         panel.Children.Add(new TextBlock
         {
-            Text = "Dessine les cadres où la bulle ne doit jamais aller (cliquer-glisser).\nClic droit sur un cadre : le supprimer.  Entrée : valider.  Échap : annuler.",
+            Text = "Dessine les cadres où la bulle ne doit pas rester (cliquer-glisser) : elle ne s'y arrête jamais et les traverse en trombe si besoin.\nClic droit sur un cadre : le supprimer.  Entrée : valider.  Échap : annuler.",
             Foreground = Brushes.White,
             FontSize = 14,
             TextAlignment = TextAlignment.Center,

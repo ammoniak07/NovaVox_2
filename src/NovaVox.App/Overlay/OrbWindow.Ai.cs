@@ -112,6 +112,13 @@ public partial class OrbWindow
             _nextGazeAt = t + 1.5 + _random.NextDouble() * 3;
         }
         var target = _thinkingAmount > 0.5 ? new Point(0.07, -0.08) : _attention > 0.5 ? new Point(0, -0.02) : _gazeTarget;
+        // En déplacement, elle regarde là où elle va.
+        var speed = _roamVelocity.Length;
+        if (speed > 40 && _thinkingAmount < 0.5)
+        {
+            var look = Math.Min(1, (speed - 40) / 160);
+            target = new Point(target.X + (_roamVelocity.X / speed * 0.11 - target.X) * look, target.Y + (_roamVelocity.Y / speed * 0.08 - target.Y) * look);
+        }
         var follow = 1 - Math.Exp(-dt * 9);
         _gaze = new Point(_gaze.X + (target.X - _gaze.X) * follow, _gaze.Y + (target.Y - _gaze.Y) * follow);
 

@@ -8,24 +8,48 @@ namespace NovaVox.App.Overlay;
 /// <summary>
 /// Bulle baladeuse et apparition/disparition au repos. Écran utilisé :
 /// celui où se trouve la position choisie de la bulle (détecté tout seul).
-/// Elle va de place en place sans jamais toucher les zones interdites ;
-/// si aucune place n'est atteignable en ligne droite, elle disparaît et
-/// réapparaît à destination. Elle s'arrête pour t'écouter ou réfléchir et
-/// ralentit quand elle parle, pour ne pas distraire.
+/// Elle va de place en place comme une petite créature : elle prend son
+/// élan, avance en ondulant, s'étire dans le sens du mouvement, regarde où
+/// elle va, se pose avec un petit rebond et flotte sur place. Elle ne
+/// s'arrête jamais dans une zone interdite (ni sur le premier overlay) :
+/// si elle doit en traverser une, elle la passe en trombe. Elle s'arrête
+/// pour t'écouter ou réfléchir et ralentit quand elle parle. Au repos
+/// (option "Disparaît au repos"), elle quitte l'écran en filant vers le bord
+/// le plus proche, et revient à toute vitesse depuis le bord quand il se
+/// passe quelque chose.
 /// </summary>
 public partial class OrbWindow
 {
     private double _homeLeft, _homeTop;
-    private bool _roamInit, _teleporting, _wasFullyHidden, _relocatedWhileHidden;
-    private Point _roamPos, _teleportTo;
+    private bool _roamInit, _wasFullyHidden;
+    private Point _roamPos;
     private Vector _roamVelocity;
     private Point? _roamTarget;
     private double _dwellUntil, _screenCheckedAt = double.NegativeInfinity, _roamTilt;
     private double _appear = 1;
     private Rect _screenDips = SystemParameters.WorkArea;
 
+    // Trajet en cours : départ après la prise d'élan, vitesse propre au trajet, ondulation.
+    private double _departAt, _tripSpeed = 1, _wobblePhase, _wobbleFrequency = 0.7;
+    private bool _tripCrosses;
+    // Flottement sur place (décalage vertical affiché, pas la position "réelle").
+    private double _bobPhase, _bobOffset;
+    /// <summary>Étirement dans le sens du mouvement (direction et intensité), utilisé par BuildBlob.</summary>
+    private Vector _motionStretch;
+
+    // Entrée en trombe depuis le bord de l'écran, et départ vers le bord au repos.
+    private bool _entering, _entryImpactDone, _exiting;
+    private Point _entryTarget, _exitFrom;
+    private Vector _exitDirection;
+    private double _exitDepartAt;
+
     /// <summary>Délai au repos avant de disparaître (option "Disparaît au repos").</summary>
     private const double HideAfterSeconds = 3;
+    /// <summary>Vitesse minimale (unités WPF/s) pour traverser une zone interdite.</summary>
+    private const double ZoneCrossingSpeed = 1500;
+
+    /// <summary>Autres fenêtres à éviter automatiquement (le premier overlay), en unités WPF.</summary>
+    public Func<IEnumerable<Rect>>? ExtraForbiddenAreas { get; set; }
 
     private bool IsRoaming => _config.Roam && !_moveMode;
 
@@ -46,13 +70,15 @@ public partial class OrbWindow
     /// <summary>Rectangle de la bulle elle-même (sans le halo) quand la fenêtre est en <paramref name="topLeft"/>.</summary>
     private Box OrbBoxAt(Point topLeft)
     {
-        var size = Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
+        var size = OrbSize;
         var cx = Width / 2;
         var cy = size * GlowMarginRatio + size * 0.6;
         var halfWidth = size * 0.55;
         var halfHeight = size * 0.62;
         return new Box(topLeft.X + cx - halfWidth, topLeft.Y + cy - halfHeight, 2 * halfWidth, 2 * halfHeight);
     }
+
+    private double OrbSize => Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
 
     private void RefreshScreen(double t)
     {
@@ -83,51 +109,49 @@ public partial class OrbWindow
 
     private void UpdateRoamAndVisibility(double t, double dt, bool hearing)
     {
-        // --- Apparition / disparition ---------------------------------
-        var wantVisible = !_teleporting && (_moveMode || !_config.HideAtRest || t - _lastActivityAt < HideAfterSeconds);
-        var appearTarget = wantVisible ? 1.0 : 0.0;
-        _appear += (appearTarget - _appear) * (1 - Math.Exp(-dt * (appearTarget > _appear ? 7 : 3)));
-        if (_appear < 0.02 && !wantVisible)
+        // --- Départ au repos (elle quitte l'écran) / retour en trombe ------
+        var restHide = _config.HideAtRest && !_moveMode && !_entering && t - _lastActivityAt >= HideAfterSeconds;
+        if (restHide && !_wasFullyHidden && !_exiting) StartExit(t);
+        if (_exiting && !restHide)
         {
-            _appear = 0;
-            _wasFullyHidden = true;
-            if (_teleporting)
-            {
-                MoveWindowTo(_teleportTo);
-                _teleporting = false;
-                _roamTarget = null;
-                _roamVelocity = default;
-                _dwellUntil = t + 2;
-            }
-            else if (IsRoaming && !_relocatedWhileHidden)
-            {
-                // Cachée au repos : elle réapparaîtra ailleurs.
-                _relocatedWhileHidden = true;
-                var spot = PickSpot(minDistance: 0);
-                if (spot is { } s) MoveWindowTo(s.TopLeft);
-            }
+            // Quelque chose se passe pendant qu'elle s'en va : elle fait demi-tour.
+            _exiting = false;
+            FlyTo(_exitFrom);
         }
-        if (wantVisible && _wasFullyHidden && _appear > 0.05)
+        if (!restHide && _wasFullyHidden)
         {
-            // Apparition : petit "pop".
             _wasFullyHidden = false;
-            _relocatedWhileHidden = false;
-            _squashVelocity += 0.9;
-            Kick(_random.NextDouble() * Math.PI * 2, 0.15, 1.3);
+            StartEntrance(t);
         }
+        _appear = _wasFullyHidden ? 0 : 1;
         RootGrid.Opacity = _appear;
 
-        // --- Balade ------------------------------------------------------
+        if (_exiting)
+        {
+            StepExit(t, dt);
+            UpdateMotionStretch(dt);
+            return;
+        }
+        if (_wasFullyHidden) return;
+        if (_entering)
+        {
+            StepEntrance(t, dt);
+            UpdateMotionStretch(dt);
+            return;
+        }
+
+        // --- Balade --------------------------------------------------------
         if (!IsRoaming)
         {
             if (_roamInit)
             {
                 _roamInit = false;
-                _teleporting = false;
                 Left = _homeLeft;
                 Top = _homeTop;
             }
+            _roamVelocity = default;
             _roamTilt *= Math.Exp(-dt * 3);
+            UpdateMotionStretch(dt);
             return;
         }
         if (!_roamInit)
@@ -143,66 +167,218 @@ public partial class OrbWindow
         var screen = ScreenBox();
         var zones = ForbiddenBoxes(screen);
         var here = OrbBoxAt(_roamPos);
+        var inZone = TouchesZone(here, zones);
+        var size = OrbSize;
 
-        // Une zone vient d'être posée sur elle (ou l'écran a changé) : elle file ailleurs.
-        if (!_teleporting && !OrbRoaming.IsAllowed(here, screen, zones))
+        // Une zone vient d'être posée sur elle : elle en sort tout de suite.
+        if (inZone && _roamTarget is null && PickSpot(minDistance: 0) is { } escape)
         {
-            if (PickSpot(minDistance: 0) is { } escape)
-            {
-                _teleporting = true;
-                _teleportTo = escape.TopLeft;
-            }
+            _roamTarget = escape.TopLeft;
+            _tripCrosses = true;
+            _tripSpeed = 1;
+            _departAt = t;
         }
 
-        // Elle s'arrête pour t'écouter ou réfléchir, et ralentit quand elle parle.
+        // Elle s'arrête pour t'écouter ou réfléchir, ralentit quand elle parle — jamais dans une zone.
         var speedFactor = _speaking ? 0.4 : hearing || _thinking ? 0 : 1;
-        if (_appear < 0.3) speedFactor = 0;
+        if (inZone) speedFactor = 1;
 
-        if (_roamTarget is null && !_teleporting && speedFactor > 0 && t > _dwellUntil)
+        if (_roamTarget is null && speedFactor > 0 && t > _dwellUntil)
         {
-            var size = Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
             var pick = OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5);
             if (pick is null) _dwellUntil = t + 3;
             else
             {
-                var topLeft = new Point(_roamPos.X + pick.Value.Target.X - here.X, _roamPos.Y + pick.Value.Target.Y - here.Y);
-                if (pick.Value.Teleport)
-                {
-                    _teleporting = true;
-                    _teleportTo = topLeft;
-                }
-                else _roamTarget = topLeft;
+                _roamTarget = new Point(_roamPos.X + pick.Value.Target.X - here.X, _roamPos.Y + pick.Value.Target.Y - here.Y);
+                _tripCrosses = pick.Value.CrossesZone;
+                // Chaque trajet a son allure ; parfois une petite course rapide.
+                _tripSpeed = 0.6 + _random.NextDouble() * 0.9;
+                if (_random.NextDouble() < 0.2) _tripSpeed *= 1.8;
+                _wobblePhase = _random.NextDouble() * Math.PI * 2;
+                _wobbleFrequency = 0.4 + _random.NextDouble() * 0.6;
+                // Prise d'élan : elle se tasse et recule un peu avant de partir.
+                _departAt = t + 0.35 + _random.NextDouble() * 0.25;
+                _squashVelocity -= 0.6;
+                var away = _roamPos - _roamTarget.Value;
+                Kick(Math.Atan2(away.Y, away.X), 0.09, 1.0);
             }
         }
 
         var desired = new Vector();
-        if (_roamTarget is { } target)
+        Vector direction = default;
+        if (_roamTarget is { } target && t >= _departAt)
         {
             var toTarget = target - _roamPos;
             var distance = toTarget.Length;
             if (distance < 2)
             {
+                // Atterrissage : petit rebond dans le sens où elle arrivait.
+                var landing = Math.Min(1, _roamVelocity.Length / 150);
+                _squashVelocity -= 0.6 * landing;
+                if (_roamVelocity.Length > 1) Kick(Math.Atan2(_roamVelocity.Y, _roamVelocity.X), 0.1 * landing, 1.0);
                 _roamTarget = null;
                 _dwellUntil = t + 3 + _random.NextDouble() * 7;
             }
             else
             {
-                var maxSpeed = 70 * Math.Clamp(_config.RoamSpeed, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed) / 100.0 * speedFactor;
-                // Démarre et s'arrête en douceur (ralentit à l'approche).
-                desired = toTarget / distance * Math.Min(maxSpeed, distance * 0.9 + 4 * speedFactor);
+                direction = toTarget / distance;
+                var maxSpeed = 70 * Math.Clamp(_config.RoamSpeed, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed) / 100.0 * _tripSpeed * speedFactor;
+                if (inZone) maxSpeed = Math.Max(maxSpeed, ZoneCrossingSpeed);
+                var forward = Math.Min(maxSpeed, distance * (inZone ? 4 : 0.9) + 4 * speedFactor);
+                // Elle ondule au lieu d'aller tout droit (sauf dans une zone, qu'elle file traverser).
+                var perpendicular = new Vector(-direction.Y, direction.X);
+                var wobble = inZone ? 0 : Math.Sin(t * _wobbleFrequency * 2 * Math.PI + _wobblePhase) * 0.35 * maxSpeed * Math.Min(1, distance / (size * 2));
+                desired = direction * forward + perpendicular * wobble;
             }
         }
-        _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * 1.5));
+        _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * (inZone ? 10 : 1.5)));
         var next = _roamPos + _roamVelocity * dt;
-        // Sécurité : jamais dans une zone interdite, même à cause de l'élan.
-        if (OrbRoaming.IsAllowed(OrbBoxAt(next), screen, zones) || !OrbRoaming.IsAllowed(here, screen, zones)) MoveWindowTo(next);
-        else
+
+        // Un trajet "libre" ne doit pas frôler une zone à cause de l'ondulation : on garde l'avance seule.
+        if (!_tripCrosses && !inZone && direction != default && TouchesZone(OrbBoxAt(next), zones))
+        {
+            _roamVelocity = direction * Math.Max(0, Vector.Multiply(_roamVelocity, direction));
+            next = _roamPos + _roamVelocity * dt;
+        }
+        // Toujours entière dans l'écran.
+        if (!screen.Contains(OrbBoxAt(next)) && screen.Contains(here))
         {
             _roamVelocity = default;
             _roamTarget = null;
+            next = _roamPos;
         }
-        // Elle penche un peu dans le sens où elle avance.
+
+        // Flotte doucement sur place quand elle ne bouge presque pas.
+        var still = Math.Clamp(1 - _roamVelocity.Length / 60, 0, 1);
+        _bobPhase += dt * 1.6;
+        _bobOffset = 4 * still * Math.Sin(_bobPhase);
+        MoveWindowTo(next);
+
         _roamTilt += (Math.Clamp(_roamVelocity.X / 400, -0.15, 0.15) - _roamTilt) * (1 - Math.Exp(-dt * 3));
+        UpdateMotionStretch(dt);
+    }
+
+    /// <summary>
+    /// Départ au repos : elle se tasse un instant, puis file en accélérant vers
+    /// le bord de l'écran le plus proche et sort complètement (pas de fondu).
+    /// </summary>
+    private void StartExit(double t)
+    {
+        RefreshScreen(t);
+        var screen = ScreenBox();
+        var here = OrbBoxAt(_roamPos = new Point(Left, Top - _bobOffset));
+        var outside = OrbRoaming.EntryStart(here, screen, ForbiddenBoxes(screen), margin: OrbSize * 0.7);
+        var away = new Vector(outside.X - here.X, outside.Y - here.Y);
+        if (away.Length > 0) away.Normalize();
+        _exitDirection = away;
+        _exitFrom = _entering ? _entryTarget : _roamPos;
+        _exiting = true;
+        _entering = false;
+        _roamTarget = null;
+        _exitDepartAt = t + 0.3;
+        // Prise d'élan : elle se tasse et recule un peu à l'opposé.
+        _squashVelocity -= 0.8;
+        Kick(Math.Atan2(-away.Y, -away.X), 0.12, 1.0);
+        _roamVelocity = -away * 60;
+    }
+
+    private void StepExit(double t, double dt)
+    {
+        if (t >= _exitDepartAt)
+        {
+            _roamVelocity += _exitDirection * 6000 * dt;
+            if (_roamVelocity.Length > 5000) _roamVelocity *= 5000 / _roamVelocity.Length;
+        }
+        else _roamVelocity *= Math.Exp(-dt * 6);
+        _bobOffset = 0;
+        MoveWindowTo(_roamPos + _roamVelocity * dt);
+        _roamTilt += (Math.Clamp(_roamVelocity.X / 1500, -0.25, 0.25) - _roamTilt) * (1 - Math.Exp(-dt * 8));
+
+        // Sortie complète (halo compris) : elle est partie.
+        var screen = ScreenBox();
+        var glow = OrbSize * 0.6;
+        var visibleArea = new Box(screen.X - glow, screen.Y - glow, screen.Width + 2 * glow, screen.Height + 2 * glow);
+        if (!visibleArea.Intersects(OrbBoxAt(_roamPos)))
+        {
+            _exiting = false;
+            _wasFullyHidden = true;
+            _roamVelocity = default;
+            _motionStretch = default;
+        }
+    }
+
+    /// <summary>Revient vers <paramref name="destination"/> depuis là où elle est (même mouvement que l'entrée en trombe).</summary>
+    private void FlyTo(Point destination)
+    {
+        _entryTarget = destination;
+        _entering = true;
+        _entryImpactDone = false;
+        _roamTarget = null;
+    }
+
+    /// <summary>Retour après une disparition : part de hors de l'écran (bord le plus proche) et fonce vers sa place.</summary>
+    private void StartEntrance(double t)
+    {
+        RefreshScreen(t);
+        var screen = ScreenBox();
+        var zones = ForbiddenBoxes(screen);
+        if (!IsRoaming) _roamPos = new Point(_homeLeft, _homeTop);
+        var destination = IsRoaming ? PickSpot(minDistance: 0)?.TopLeft ?? _roamPos : new Point(_homeLeft, _homeTop);
+        var destinationBox = OrbBoxAt(destination);
+        var startBox = OrbRoaming.EntryStart(destinationBox, screen, zones, margin: OrbSize * 0.7);
+        var start = new Point(destination.X + startBox.X - destinationBox.X, destination.Y + startBox.Y - destinationBox.Y);
+
+        _bobOffset = 0;
+        MoveWindowTo(start);
+        var direction = destination - start;
+        if (direction.Length > 0) direction.Normalize();
+        _roamVelocity = direction * 2800;
+        _roamTarget = null;
+        _entryTarget = destination;
+        _entering = true;
+        _entryImpactDone = false;
+        _appear = 1;
+        RootGrid.Opacity = 1;
+    }
+
+    /// <summary>Entrée en trombe : ressort raide et peu amorti — elle arrive très vite, freine d'un coup, dépasse un peu et revient.</summary>
+    private void StepEntrance(double t, double dt)
+    {
+        var steps = Math.Max(1, (int)Math.Ceiling(dt / (1.0 / 240)));
+        var h = dt / steps;
+        for (var i = 0; i < steps; i++)
+        {
+            var acceleration = 60 * (_entryTarget - _roamPos) - 13 * _roamVelocity;
+            _roamVelocity += acceleration * h;
+            if (_roamVelocity.Length > 6000) _roamVelocity *= 6000 / _roamVelocity.Length;
+            _roamPos += _roamVelocity * h;
+        }
+        var distance = (_entryTarget - _roamPos).Length;
+        if (!_entryImpactDone && distance < OrbSize * 0.3)
+        {
+            // Freinage brutal : elle s'écrase un peu dans le sens de sa course.
+            _entryImpactDone = true;
+            _squashVelocity -= 1.2;
+            Kick(Math.Atan2(_roamVelocity.Y, _roamVelocity.X), 0.3, 1.1);
+            _lastActivityAt = Math.Max(_lastActivityAt, t);
+        }
+        if (distance < 1 && _roamVelocity.Length < 12)
+        {
+            _roamPos = _entryTarget;
+            _roamVelocity = default;
+            _entering = false;
+            _dwellUntil = t + 2 + _random.NextDouble() * 3;
+        }
+        _roamTilt += (Math.Clamp(_roamVelocity.X / 1500, -0.25, 0.25) - _roamTilt) * (1 - Math.Exp(-dt * 8));
+        MoveWindowTo(_roamPos);
+    }
+
+    /// <summary>Plus elle va vite, plus elle s'étire dans le sens du mouvement (et s'amincit sur les côtés).</summary>
+    private void UpdateMotionStretch(double dt)
+    {
+        var wanted = _roamVelocity / 1800;
+        if (wanted.Length > 0.4) wanted *= 0.4 / wanted.Length;
+        _motionStretch += (wanted - _motionStretch) * (1 - Math.Exp(-dt * 10));
     }
 
     private (Point TopLeft, Box Area)? PickSpot(double minDistance)
@@ -218,13 +394,31 @@ public partial class OrbWindow
     private void MoveWindowTo(Point topLeft)
     {
         _roamPos = topLeft;
+        var y = topLeft.Y + _bobOffset;
         if (Math.Abs(Left - topLeft.X) > 0.01) Left = topLeft.X;
-        if (Math.Abs(Top - topLeft.Y) > 0.01) Top = topLeft.Y;
+        if (Math.Abs(Top - y) > 0.01) Top = y;
     }
+
+    private static bool TouchesZone(Box box, List<Box> zones) => zones.Any(z => box.Intersects(z));
 
     private Box ScreenBox() => new(_screenDips.X, _screenDips.Y, _screenDips.Width, _screenDips.Height);
 
-    private List<Box> ForbiddenBoxes(Box screen) => _config.ForbiddenZones.Select(z => z.ToScreen(screen)).ToList();
+    /// <summary>Zones dessinées par le joueur + premier overlay (avec une petite marge).</summary>
+    private List<Box> ForbiddenBoxes(Box screen)
+    {
+        var boxes = _config.ForbiddenZones.Select(z => z.ToScreen(screen)).ToList();
+        try
+        {
+            foreach (var area in ExtraForbiddenAreas?.Invoke() ?? Enumerable.Empty<Rect>())
+                if (!area.IsEmpty && area.Width > 0 && area.Height > 0)
+                    boxes.Add(new Box(area.X - 12, area.Y - 12, area.Width + 24, area.Height + 24));
+        }
+        catch
+        {
+            // Overlay en cours de fermeture : on l'ignore.
+        }
+        return boxes;
+    }
 
     // --- Win32 : écran contenant un point -----------------------------
     private const uint MonitorDefaultToNearest = 2;

@@ -319,6 +319,8 @@ public partial class OrbWindow : Window
         var cosTilt = Math.Cos(tilt);
         var sinTilt = Math.Sin(tilt);
 
+        var stretchAmount = _motionStretch.Length;
+        var stretchDir = stretchAmount > 0.001 ? _motionStretch / stretchAmount : new Vector(1, 0);
         var points = new Point[PointCount];
         for (var i = 0; i < PointCount; i++)
         {
@@ -329,7 +331,17 @@ public partial class OrbWindow : Window
             var sn = Math.Sin(angle);
             var x = rx * scaleX * r * Math.Sign(c) * Math.Pow(Math.Abs(c), 2 / 2.25);
             var y = ry * scaleY * r * Math.Sign(sn) * Math.Pow(Math.Abs(sn), 2 / 2.25);
-            points[i] = new Point(center.X + x * cosTilt - y * sinTilt, center.Y + x * sinTilt + y * cosTilt);
+            var px = x * cosTilt - y * sinTilt;
+            var py = x * sinTilt + y * cosTilt;
+            // En mouvement : étirée dans le sens de la course, amincie sur les côtés.
+            if (stretchAmount > 0.001)
+            {
+                var along = (px * stretchDir.X + py * stretchDir.Y) * (1 + stretchAmount);
+                var across = (-px * stretchDir.Y + py * stretchDir.X) * (1 - 0.45 * stretchAmount);
+                px = along * stretchDir.X - across * stretchDir.Y;
+                py = along * stretchDir.Y + across * stretchDir.X;
+            }
+            points[i] = new Point(center.X + px, center.Y + py);
         }
 
         // Courbe fermée lisse passant par tous les points (Catmull-Rom -> Bézier).

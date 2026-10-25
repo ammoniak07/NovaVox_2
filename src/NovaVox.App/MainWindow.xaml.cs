@@ -3889,6 +3889,10 @@ public partial class MainWindow : Window
         _orbWindow = new OrbWindow();
         _orbWindow.ApplyConfig(_state.Orb);
         _orbWindow.SetListeningActive(false); // écoute pas encore lancée au démarrage
+        // La bulle baladeuse évite toujours le premier overlay quand il est affiché.
+        _orbWindow.ExtraForbiddenAreas = () => _overlayWindow is { IsVisible: true } overlay
+            ? new[] { new Rect(overlay.Left, overlay.Top, overlay.ActualWidth, overlay.ActualHeight) }
+            : Array.Empty<Rect>();
         _orbWindow.PositionChanged += (_, pos) =>
         {
             _state.Orb.X = (int)Math.Round(pos.X);
@@ -4005,7 +4009,8 @@ public partial class MainWindow : Window
     private void OrbZonesButton_Click(object sender, RoutedEventArgs e)
     {
         if (_orbWindow is null) return;
-        var editor = new OrbZonesEditorWindow(_orbWindow.CurrentScreen(), _state.Orb.ForbiddenZones, _orbWindow.HomeOrbRect());
+        var editor = new OrbZonesEditorWindow(_orbWindow.CurrentScreen(), _state.Orb.ForbiddenZones, _orbWindow.HomeOrbRect(),
+            _orbWindow.ExtraForbiddenAreas?.Invoke() ?? Array.Empty<Rect>());
         editor.ShowDialog();
         if (editor.Result is null) return;
         _state.Orb.ForbiddenZones = editor.Result;
