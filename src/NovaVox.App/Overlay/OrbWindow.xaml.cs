@@ -76,6 +76,7 @@ public partial class OrbWindow : Window
     private bool _engaged;
     private double _engagedUntil = double.NegativeInfinity;
     private const double EngagedHoldSeconds = 3.0;
+    private double _micAboveSince = double.NaN;
     /// <summary>0 = taille normale, 1 = taille au repos (écoute arrêtée ou endormie).</summary>
     private double _rest;
     private bool _listeningActive;
@@ -265,12 +266,20 @@ public partial class OrbWindow : Window
         _thinkingAmount += ((_thinking && !_speaking ? 1.0 : 0.0) - _thinkingAmount) * (1 - Math.Exp(-dt * 3));
 
         // Priorité des couleurs : parle > réfléchit > t'entend > repos.
-        if (_micLevel > 0.05) _lastHeardSeconds = t;
+        // Ta voix, pas un bruit bref : le niveau doit rester au-dessus du seuil au moins 0,15 s.
+        if (_micLevel > 0.05)
+        {
+            if (double.IsNaN(_micAboveSince)) _micAboveSince = t;
+            if (t - _micAboveSince >= 0.15) _lastHeardSeconds = t;
+        }
+        else _micAboveSince = double.NaN;
         var hearing = t - _lastHeardSeconds < 0.8;
         // Conversation en cours : elle t'entend, réfléchit ou parle — et elle le reste quelques
         // secondes, pour couvrir les blancs entre tes mots et entre ta phrase et sa réponse
         // (préparation de la voix). Sans ça, elle reculait/repartait puis revenait : hésitation.
-        if (_speaking || _thinking || hearing) _engagedUntil = t + EngagedHoldSeconds;
+        if (_speaking || _thinking) _engagedUntil = Math.Max(_engagedUntil, t + EngagedHoldSeconds);
+        // Juste entendue (sans commande ni réponse) : maintien plus court, pour qu'un bruit ne la fige pas longtemps.
+        if (hearing) _engagedUntil = Math.Max(_engagedUntil, t + 1.5);
         _engaged = t < _engagedUntil;
         StepLife(t, dt, target, hearing);
         UpdateDepth(dt, hearing);

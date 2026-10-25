@@ -38,6 +38,8 @@ public partial class OrbWindow
     private const double MinSecondsBetweenSideChanges = 120;
     /// <summary>Changement de côté par les bords : 0 = non, 1 = sort par un bord, 2 = rentre par l'autre.</summary>
     private int _wrapPhase;
+    /// <summary>Depuis quand elle ne trouve aucune place où aller (infini = pas coincée).</summary>
+    private double _stuckSince = double.PositiveInfinity;
     private Point _wrapEntry, _wrapFinal;
     /// <summary>Points suivants d'un passage le long du haut/bas de l'écran (le dernier = destination).</summary>
     private readonly Queue<Point> _routeWaypoints = new();
@@ -234,7 +236,9 @@ public partial class OrbWindow
             // Changement de côté (en moyenne toutes les 5 minutes, jamais moins de 2 minutes après le
             // précédent) : sans jamais entrer dans une zone. Si une zone barre le chemin, elle fait le
             // tour : elle sort par le bord opposé à sa destination et rentre par l'autre bord.
-            if (t >= _nextExploreAt && t - _lastSideChangeAt >= MinSecondsBetweenSideChanges)
+            // Coincée depuis 8 s (aucune place atteignable de son côté) : elle change de côté sans attendre.
+            var stuck = t - _stuckSince > 8;
+            if (stuck || (t >= _nextExploreAt && t - _lastSideChangeAt >= MinSecondsBetweenSideChanges))
             {
                 _nextExploreAt = t + MinSecondsBetweenSideChanges + _random.NextDouble() * 360;
                 var plan = OrbRoaming.PickSideChange(here, screen, zones, _random, minDistance: Math.Max(size * 1.5, screen.Width * 0.4), margin: size * 0.7);
@@ -263,9 +267,16 @@ public partial class OrbWindow
             }
             // Petit déplacement de son côté : uniquement par un chemin libre.
             chosen ??= OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 1.5, allowCrossing: false)?.Target;
-            if (chosen is null) _dwellUntil = t + 3;
+            // Petit recoin : un déplacement plus court plutôt que rien.
+            chosen ??= OrbRoaming.PickTarget(here, screen, zones, _random, minDistance: size * 0.4, attempts: 150, allowCrossing: false)?.Target;
+            if (chosen is null)
+            {
+                _dwellUntil = t + 2;
+                if (double.IsInfinity(_stuckSince)) _stuckSince = t;
+            }
             else
             {
+                _stuckSince = double.PositiveInfinity;
                 _roamTarget = new Point(_roamPos.X + chosen.Value.X - here.X, _roamPos.Y + chosen.Value.Y - here.Y);
                 _tripCrosses = false;
                 // Chaque trajet a son allure ; parfois une petite course rapide.

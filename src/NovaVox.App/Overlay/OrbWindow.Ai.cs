@@ -59,8 +59,10 @@ public partial class OrbWindow
 
     private void OnReaction(object? sender, OrbReaction reaction) => Dispatcher.BeginInvoke(() =>
     {
-        if (!_config.ShowReactions) return;
         var t = _clock.Elapsed.TotalSeconds;
+        // Commande reconnue : la confirmation vocale va suivre, elle reste en conversation.
+        if (reaction == OrbReaction.Success) _engagedUntil = Math.Max(_engagedUntil, t + EngagedHoldSeconds);
+        if (!_config.ShowReactions) return;
         if (reaction == OrbReaction.Success)
         {
             _shimmerStart = t;
