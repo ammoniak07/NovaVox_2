@@ -192,8 +192,9 @@ public partial class OrbWindow
                 _roamTarget = new Point(_roamPos.X + pick.Value.Target.X - here.X, _roamPos.Y + pick.Value.Target.Y - here.Y);
                 _tripCrosses = pick.Value.CrossesZone;
                 // Chaque trajet a son allure ; parfois une petite course rapide.
-                _tripSpeed = 0.6 + _random.NextDouble() * 0.9;
-                if (_random.NextDouble() < 0.2) _tripSpeed *= 1.8;
+                var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
+                var high = Math.Clamp(_config.RoamSpeedMax, low, OrbConfig.MaxRoamSpeed);
+                _tripSpeed = (low + _random.NextDouble() * (high - low)) / 100.0;
                 _wobblePhase = _random.NextDouble() * Math.PI * 2;
                 _wobbleFrequency = 0.4 + _random.NextDouble() * 0.6;
                 // Prise d'élan : elle se tasse et recule un peu avant de partir.
@@ -222,7 +223,7 @@ public partial class OrbWindow
             else
             {
                 direction = toTarget / distance;
-                var maxSpeed = 70 * Math.Clamp(_config.RoamSpeed, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed) / 100.0 * _tripSpeed * speedFactor;
+                var maxSpeed = 70 * _tripSpeed * speedFactor;
                 if (inZone) maxSpeed = Math.Max(maxSpeed, ZoneCrossingSpeed);
                 var forward = Math.Min(maxSpeed, distance * (inZone ? 4 : 0.9) + 4 * speedFactor);
                 // Elle ondule au lieu d'aller tout droit (sauf dans une zone, qu'elle file traverser).

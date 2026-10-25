@@ -806,11 +806,19 @@
                                 <CheckBox x:Name="OrbRoamCheckbox" Content="Se balade dans l'écran" Margin="0,6,0,0"
                                           ToolTip="La bulle va de place en place sur l'écran où tu l'as placée, sans jamais entrer dans les zones interdites. Elle s'arrête quand elle t'écoute ou réfléchit et ralentit quand elle parle"
                                           Checked="OrbRoamCheckbox_Changed" Unchecked="OrbRoamCheckbox_Changed" />
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                    <TextBlock Text="Vitesse :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OrbRoamSpeedSlider" Minimum="25" Maximum="300" SmallChange="5" LargeChange="25"
-                                            Width="140" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbRoamSpeedValueText" Text="100 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0"
+                                            ToolTip="Chaque trajet prend une vitesse au hasard entre le minimum et le maximum (mets les deux au même nombre pour une vitesse fixe)">
+                                    <TextBlock Text="Vitesse min :" VerticalAlignment="Center" Width="80" />
+                                    <Slider x:Name="OrbRoamSpeedMinSlider" Minimum="25" Maximum="1000" SmallChange="5" LargeChange="50"
+                                            Width="160" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
+                                    <TextBlock x:Name="OrbRoamSpeedMinValueText" Text="60 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0"
+                                            ToolTip="Chaque trajet prend une vitesse au hasard entre le minimum et le maximum (mets les deux au même nombre pour une vitesse fixe)">
+                                    <TextBlock Text="Vitesse max :" VerticalAlignment="Center" Width="80" />
+                                    <Slider x:Name="OrbRoamSpeedMaxSlider" Minimum="25" Maximum="1000" SmallChange="5" LargeChange="50"
+                                            Width="160" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
+                                    <TextBlock x:Name="OrbRoamSpeedMaxValueText" Text="150 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
                                     <Button x:Name="OrbZonesButton" Content="Définir les zones interdites…" Click="OrbZonesButton_Click"

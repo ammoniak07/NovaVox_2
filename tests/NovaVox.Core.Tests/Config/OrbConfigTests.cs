@@ -30,7 +30,7 @@ public class OrbConfigTests : IDisposable
     public void SaveThenLoad_RoundTrips()
     {
         var store = new OrbConfigStore(_dir);
-        store.Save(new OrbConfig { Enabled = true, X = 120, Y = -40, Size = 220, IdleColor = "#22c55e", ShowCaption = false, Opacity = 45, Roam = true, RoamSpeed = 150, HideAtRest = true, ForbiddenZones = new() { new OrbZone(0.1, 0.2, 0.3, 0.4) }, RestSize = 50, ThinkingColor = "#123456", ListeningColor = "#abcdef", ShowMouth = true, ShowEars = true, ShowCore = false, ShowVoiceWave = false, ShowListenRings = false, ListenRingsInside = false, ShowThinkingFx = false, ShowReactions = false });
+        store.Save(new OrbConfig { Enabled = true, X = 120, Y = -40, Size = 220, IdleColor = "#22c55e", ShowCaption = false, Opacity = 45, Roam = true, RoamSpeedMin = 300, RoamSpeedMax = 1000, HideAtRest = true, ForbiddenZones = new() { new OrbZone(0.1, 0.2, 0.3, 0.4) }, RestSize = 50, ThinkingColor = "#123456", ListeningColor = "#abcdef", ShowMouth = true, ShowEars = true, ShowCore = false, ShowVoiceWave = false, ShowListenRings = false, ListenRingsInside = false, ShowThinkingFx = false, ShowReactions = false });
 
         var loaded = store.Load();
         Assert.True(loaded.Enabled);
@@ -41,7 +41,8 @@ public class OrbConfigTests : IDisposable
         Assert.False(loaded.ShowCaption);
         Assert.Equal(45, loaded.Opacity);
         Assert.True(loaded.Roam);
-        Assert.Equal(150, loaded.RoamSpeed);
+        Assert.Equal(300, loaded.RoamSpeedMin);
+        Assert.Equal(1000, loaded.RoamSpeedMax);
         Assert.True(loaded.HideAtRest);
         Assert.Equal(new OrbZone(0.1, 0.2, 0.3, 0.4), Assert.Single(loaded.ForbiddenZones));
         Assert.Equal(50, loaded.RestSize);

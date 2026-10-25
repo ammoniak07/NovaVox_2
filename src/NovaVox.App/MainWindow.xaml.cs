@@ -3910,8 +3910,10 @@ public partial class MainWindow : Window
         OrbSizeValueText.Text = $"{orb.Size:0}px";
         OrbRestSizeSlider.Value = orb.RestSize;
         OrbRoamCheckbox.IsChecked = orb.Roam;
-        OrbRoamSpeedSlider.Value = orb.RoamSpeed;
-        OrbRoamSpeedValueText.Text = $"{orb.RoamSpeed} %";
+        OrbRoamSpeedMinSlider.Value = orb.RoamSpeedMin;
+        OrbRoamSpeedMaxSlider.Value = orb.RoamSpeedMax;
+        OrbRoamSpeedMinValueText.Text = $"{orb.RoamSpeedMin} %";
+        OrbRoamSpeedMaxValueText.Text = $"{orb.RoamSpeedMax} %";
         OrbHideAtRestCheckbox.IsChecked = orb.HideAtRest;
         UpdateOrbZonesText();
         OrbRestSizeValueText.Text = $"{orb.RestSize} %";
@@ -3984,11 +3986,20 @@ public partial class MainWindow : Window
 
     private void OrbRoamSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (OrbRoamSpeedValueText is null) return;
-        var value = (int)Math.Round(OrbRoamSpeedSlider.Value);
-        OrbRoamSpeedValueText.Text = $"{value} %";
+        if (OrbRoamSpeedMinSlider is null || OrbRoamSpeedMaxSlider is null || OrbRoamSpeedMinValueText is null || OrbRoamSpeedMaxValueText is null) return;
+        // Le minimum ne dépasse jamais le maximum : le curseur bougé pousse l'autre.
+        if (OrbRoamSpeedMinSlider.Value > OrbRoamSpeedMaxSlider.Value)
+        {
+            if (ReferenceEquals(sender, OrbRoamSpeedMinSlider)) OrbRoamSpeedMaxSlider.Value = OrbRoamSpeedMinSlider.Value;
+            else OrbRoamSpeedMinSlider.Value = OrbRoamSpeedMaxSlider.Value;
+        }
+        var low = (int)Math.Round(OrbRoamSpeedMinSlider.Value / 5) * 5;
+        var high = (int)Math.Round(OrbRoamSpeedMaxSlider.Value / 5) * 5;
+        OrbRoamSpeedMinValueText.Text = $"{low} %";
+        OrbRoamSpeedMaxValueText.Text = $"{high} %";
         if (_loadingSettings) return;
-        _state.Orb.RoamSpeed = value;
+        _state.Orb.RoamSpeedMin = low;
+        _state.Orb.RoamSpeedMax = Math.Max(low, high);
         SaveAndApplyOrb();
     }
 
