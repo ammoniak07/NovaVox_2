@@ -3904,6 +3904,8 @@ public partial class MainWindow : Window
         OrbEnabledCheckbox.IsChecked = orb.Enabled;
         OrbSizeSlider.Value = orb.Size;
         OrbSizeValueText.Text = $"{orb.Size:0}px";
+        OrbRestSizeSlider.Value = orb.RestSize;
+        OrbRestSizeValueText.Text = $"{orb.RestSize} %";
         OrbOpacitySlider.Value = orb.Opacity;
         OrbOpacityValueText.Text = $"{orb.Opacity} %";
         OrbIdleColorBox.Text = orb.IdleColor;
@@ -3960,6 +3962,16 @@ public partial class MainWindow : Window
         OrbSizeValueText.Text = $"{OrbSizeSlider.Value:0}px";
         if (_loadingSettings) return;
         _state.Orb.Size = Math.Round(OrbSizeSlider.Value);
+        SaveAndApplyOrb();
+    }
+
+    private void OrbRestSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OrbRestSizeValueText is null) return;
+        var value = (int)Math.Round(OrbRestSizeSlider.Value);
+        OrbRestSizeValueText.Text = $"{value} %";
+        if (_loadingSettings) return;
+        _state.Orb.RestSize = value;
         SaveAndApplyOrb();
     }
 

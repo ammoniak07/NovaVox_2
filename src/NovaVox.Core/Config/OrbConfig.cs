@@ -26,6 +26,10 @@ public sealed class OrbConfig
     /// <summary>Couleur quand la bulle entend le joueur parler au micro (vert).</summary>
     public const string DefaultListeningColor = "#34d399";
 
+    /// <summary>Taille au repos en % de la taille normale (écoute arrêtée, ou bulle endormie).</summary>
+    public const int DefaultRestSize = 60;
+    public const int MinRestSize = 30;
+
     public const int DefaultOpacity = 100;
     public const int MinOpacity = 10;
 
@@ -35,6 +39,8 @@ public sealed class OrbConfig
     public int? X { get; set; }
     public int? Y { get; set; }
     public double Size { get; set; } = DefaultSize;
+    /// <summary>Taille au repos en % (30..100) : la bulle rétrécit quand l'écoute est arrêtée ou qu'elle s'endort.</summary>
+    public int RestSize { get; set; } = DefaultRestSize;
     public string IdleColor { get; set; } = DefaultIdleColor;
     public string SpeakingColor { get; set; } = DefaultSpeakingColor;
     public string ThinkingColor { get; set; } = DefaultThinkingColor;
@@ -86,6 +92,7 @@ public sealed class OrbConfigStore
             config.ShowCaption = GetBool(data["show_caption"], true);
             config.ShowMouth = GetBool(data["show_mouth"]);
             config.ShowEars = GetBool(data["show_ears"]);
+            config.RestSize = Math.Clamp((int)Math.Round(GetDouble(data["rest_size"]) ?? OrbConfig.DefaultRestSize), OrbConfig.MinRestSize, 100);
             config.ShowCore = GetBool(data["show_core"], true);
             config.ShowVoiceWave = GetBool(data["show_voice_wave"], true);
             config.ShowListenRings = GetBool(data["show_listen_rings"], true);
@@ -115,6 +122,7 @@ public sealed class OrbConfigStore
             ["show_caption"] = config.ShowCaption,
             ["show_mouth"] = config.ShowMouth,
             ["show_ears"] = config.ShowEars,
+            ["rest_size"] = config.RestSize,
             ["show_core"] = config.ShowCore,
             ["show_voice_wave"] = config.ShowVoiceWave,
             ["show_listen_rings"] = config.ShowListenRings,

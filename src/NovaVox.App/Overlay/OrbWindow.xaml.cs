@@ -72,6 +72,8 @@ public partial class OrbWindow : Window
     private bool _wasHearing;
     private bool _asleep;
     private double _speakingAmount;
+    /// <summary>0 = taille normale, 1 = taille au repos (écoute arrêtée ou endormie).</summary>
+    private double _rest;
     private bool _listeningActive;
     /// <summary>Couleur au repos quand l'écoute n'est pas lancée.</summary>
     private static readonly Color InactiveColor = Color.FromRgb(0x8a, 0x92, 0x9e);
@@ -245,6 +247,9 @@ public partial class OrbWindow : Window
         if (_micLevel > 0.05) _lastHeardSeconds = t;
         var hearing = t - _lastHeardSeconds < 0.8;
         StepLife(t, dt, target, hearing);
+        // Rétrécit doucement au repos (écoute arrêtée ou endormie), regrandit vite dès qu'il se passe quelque chose.
+        var restTarget = _speaking || _thinking || hearing ? 0.0 : !_listeningActive ? 1.0 : Math.Clamp((_sleepiness - 0.1) / 0.8, 0, 1);
+        _rest += (restTarget - _rest) * (1 - Math.Exp(-dt * (restTarget > _rest ? 1.2 : 5)));
         // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
         var restColor = _listeningActive ? _idleColor : InactiveColor;
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : restColor;
@@ -291,7 +296,8 @@ public partial class OrbWindow : Window
         // soupir ponctuel ; légère hausse quand la voix monte ; elle se tient
         // un peu plus droite quand elle écoute.
         var breathing = 0.025 * (1 - 0.6 * _attention) * Math.Sin(_breathPhase) + _sigh;
-        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness);
+        var restScale = 1 - (1 - Math.Clamp(_config.RestSize, OrbConfig.MinRestSize, 100) / 100.0) * _rest;
+        var scale = (1 + breathing + _level * 0.06) * (1 - 0.04 * _sleepiness) * restScale;
         var stretch = _squash + 0.035 * _attention + _speakingAmount * _level * 0.16 * Math.Sin(t * 0.7 + _phases[0]);
         var scaleY = scale * (1 + stretch);
         var scaleX = scale * (1 - stretch * 0.7);
