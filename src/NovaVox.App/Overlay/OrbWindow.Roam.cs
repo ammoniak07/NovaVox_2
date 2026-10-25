@@ -45,8 +45,8 @@ public partial class OrbWindow
 
     /// <summary>Délai au repos avant de disparaître (option "Disparaît au repos").</summary>
     private const double HideAfterSeconds = 3;
-    /// <summary>Vitesse minimale (unités WPF/s) pour traverser une zone interdite.</summary>
-    private const double ZoneCrossingSpeed = 1500;
+    /// <summary>Vitesse (unités WPF/s) pour traverser une zone interdite : plus rapide que n'importe quel trajet.</summary>
+    private const double ZoneCrossingSpeed = 15000;
 
     /// <summary>Autres fenêtres à éviter automatiquement (le premier overlay), en unités WPF.</summary>
     public Func<IEnumerable<Rect>>? ExtraForbiddenAreas { get; set; }
@@ -236,7 +236,7 @@ public partial class OrbWindow
             }
         }
         // Plus le trajet est rapide, plus elle accélère et freine sec.
-        _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * (inZone ? 10 : 1.5 + 0.6 * Math.Max(0, _tripSpeed - 1))));
+        _roamVelocity += (desired - _roamVelocity) * (1 - Math.Exp(-dt * (inZone ? 30 : 1.5 + 0.6 * Math.Max(0, _tripSpeed - 1))));
         var next = _roamPos + _roamVelocity * dt;
 
         // Un trajet "libre" ne doit pas frôler une zone à cause de l'ondulation : on garde l'avance seule.
