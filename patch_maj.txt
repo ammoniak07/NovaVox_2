@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.2.0
+------
+
 v0.1.9
 ------
 - Bulle animée : plus d'hésitation pendant une conversation. Entre ta phrase et sa réponse (le temps de préparer sa voix), ou entre deux de tes mots, elle croyait être au repos et reculait ou repartait en balade avant de revenir, d'où des allers-retours rapides. Elle reste maintenant proche et immobile pendant tout l'échange, et ne repart que 3 secondes après la fin de la conversation.
