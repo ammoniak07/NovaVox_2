@@ -1,0 +1,14 @@
+Sons des petits gags de la bulle
+================================
+
+Dépose ici tes propres sons (WAV ou MP3, courts : moins de 2 secondes),
+nommés selon le gag. NovaVox en prend un au hasard à chaque gag :
+
+  pet1.wav, pet2.mp3...           -> le pet discret
+  hoquet1.wav...                  -> le hoquet (remplace le « Hic ! » de la voix)
+  eternuement1.wav...             -> l'éternuement (remplace le « Atchoum ! »)
+  baillement1.wav...              -> le bâillement
+  ronflement1.wav...              -> le ronflement
+
+Sans fichier pour un gag, NovaVox utilise son propre son (ou la voix).
+Sons libres de droits : pixabay.com (effets sonores) ou freesound.org (licence CC0).
