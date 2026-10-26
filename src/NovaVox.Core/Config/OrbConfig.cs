@@ -93,6 +93,8 @@ public sealed class OrbConfig
     public bool DepthEffect { get; set; } = true;
     /// <summary>Petits gags de temps en temps quand elle s'ennuie (pet discret, hoquet, éternuement, bâillement, répliques).</summary>
     public bool Gags { get; set; } = true;
+    /// <summary>Son spatialisé : la voix et les sons de la bulle viennent de son côté de l'écran, plus faibles quand elle est loin.</summary>
+    public bool SpatialSound { get; set; } = true;
     /// <summary>Intervalle moyen entre deux gags, en minutes (3..60).</summary>
     public int GagMinutes { get; set; } = DefaultGagMinutes;
     /// <summary>Distance au repos en mètres (1,2..4) pour l'effet de profondeur.</summary>
@@ -139,6 +141,7 @@ public sealed class OrbConfigStore
             config.HideAtRest = GetBool(data["hide_at_rest"]);
             config.DepthEffect = GetBool(data["depth_effect"], true);
             config.Gags = GetBool(data["gags"], true);
+            config.SpatialSound = GetBool(data["spatial_sound"], true);
             config.GagMinutes = Math.Clamp((int)Math.Round(GetDouble(data["gag_minutes"]) ?? OrbConfig.DefaultGagMinutes), OrbConfig.MinGagMinutes, OrbConfig.MaxGagMinutes);
             config.FarDistance = Math.Round(Math.Clamp(GetDouble(data["far_distance"]) ?? OrbConfig.DefaultFarDistance, OrbConfig.MinFarDistance, OrbConfig.MaxFarDistance), 1);
             if (data["forbidden_zones"] is JsonArray zones)
@@ -186,6 +189,7 @@ public sealed class OrbConfigStore
             ["hide_at_rest"] = config.HideAtRest,
             ["depth_effect"] = config.DepthEffect,
             ["gags"] = config.Gags,
+            ["spatial_sound"] = config.SpatialSound,
             ["gag_minutes"] = config.GagMinutes,
             ["far_distance"] = config.FarDistance,
             ["forbidden_zones"] = new JsonArray(config.ForbiddenZones

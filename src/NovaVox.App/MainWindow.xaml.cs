@@ -3919,6 +3919,7 @@ public partial class MainWindow : Window
         OrbSizeValueText.Text = $"{orb.Size:0}px";
         OrbRestSizeSlider.Value = orb.RestSize;
         OrbRoamCheckbox.IsChecked = orb.Roam;
+        OrbSpatialSoundCheckbox.IsChecked = orb.SpatialSound;
         OrbGagsCheckbox.IsChecked = orb.Gags;
         OrbGagMinutesSlider.Value = orb.GagMinutes;
         OrbGagMinutesValueText.Text = $"toutes les {orb.GagMinutes} min environ";
@@ -4155,6 +4156,13 @@ public partial class MainWindow : Window
         OrbGagMinutesValueText.Text = $"toutes les {value} min environ";
         if (_loadingSettings) return;
         _state.Orb.GagMinutes = value;
+        SaveAndApplyOrb();
+    }
+
+    private void OrbSpatialSoundCheckbox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        _state.Orb.SpatialSound = OrbSpatialSoundCheckbox.IsChecked ?? true;
         SaveAndApplyOrb();
     }
 

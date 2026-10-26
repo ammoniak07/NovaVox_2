@@ -23,7 +23,8 @@ public static class SoundEffectPlayer
                 bytes[2 * i + 1] = (byte)((value >> 8) & 0xff);
             }
             using var stream = new RawSourceWaveStream(bytes, 0, bytes.Length, new WaveFormat(sampleRate, 16, 1));
-            PlayToEnd(stream, TimeSpan.FromSeconds(pcm.Length / (double)sampleRate), outputDeviceName);
+            PlayToEnd(OrbSpatialSound.Enabled ? OrbSpatialSound.Wrap(stream.ToSampleProvider()) : stream,
+                TimeSpan.FromSeconds(pcm.Length / (double)sampleRate), outputDeviceName);
         }
         catch
         {
@@ -37,7 +38,7 @@ public static class SoundEffectPlayer
         try
         {
             using var reader = new AudioFileReader(path) { Volume = (float)Math.Clamp(volume, 0, 2) };
-            PlayToEnd(reader, reader.TotalTime, outputDeviceName);
+            PlayToEnd(OrbSpatialSound.Enabled ? OrbSpatialSound.Wrap(reader) : reader, reader.TotalTime, outputDeviceName);
         }
         catch
         {

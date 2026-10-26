@@ -267,7 +267,11 @@ public sealed class PiperTtsEngine : IDisposable
         {
             using var sourceStream = new RawSourceWaveStream(rawBytes, 0, rawBytes.Length, format);
             using var output = createOutput();
-            output.Init(sourceStream);
+            // Bulle affichée avec le son spatialisé : la voix vient du côté de la bulle.
+            if (OrbSpatialSound.Enabled && format.Encoding == WaveFormatEncoding.Pcm && format.BitsPerSample == 16)
+                output.Init(OrbSpatialSound.Wrap(sourceStream.ToSampleProvider()));
+            else
+                output.Init(sourceStream);
 
             using var playbackFinished = new ManualResetEventSlim(false);
             stopRequested = new ManualResetEventSlim(false);

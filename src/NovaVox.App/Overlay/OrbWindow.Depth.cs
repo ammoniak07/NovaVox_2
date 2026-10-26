@@ -1,4 +1,5 @@
 using System.Windows;
+using NovaVox.App.Speech;
 using NovaVox.Core.Config;
 
 namespace NovaVox.App.Overlay;
@@ -87,6 +88,25 @@ public partial class OrbWindow
         }
         if (Math.Abs(Left - x) > 0.01) Left = x;
         if (Math.Abs(Top - y) > 0.01) Top = y;
+    }
+
+    /// <summary>
+    /// Son spatialisé : transmet la position de la bulle (gauche/droite sur son
+    /// écran) et sa distance au son en cours de lecture (voix de Nova, gags).
+    /// </summary>
+    private void UpdateSpatialSound(double t)
+    {
+        if (!_config.SpatialSound || !_config.Enabled)
+        {
+            OrbSpatialSound.Update(false, 0, 1, 1);
+            return;
+        }
+        if (t - _screenCheckedAt > 3) RefreshScreen(t);
+        var body = VisualBoxAt(new Point(Left, Top));
+        OrbSpatialSound.Update(true,
+            NovaVox.Core.Audio.SpatialAudio.Pan(body.CenterX, _screenDips.X, _screenDips.Width),
+            NovaVox.Core.Audio.SpatialAudio.Gain(_depthScale),
+            NovaVox.Core.Audio.SpatialAudio.LowPassAlpha(_depthScale));
     }
 
     /// <summary>

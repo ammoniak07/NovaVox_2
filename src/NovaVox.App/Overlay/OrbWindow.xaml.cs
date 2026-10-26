@@ -100,7 +100,11 @@ public partial class OrbWindow : Window
             _hwnd = new WindowInteropHelper(this).Handle;
             WindowClickThrough.SetClickThrough(_hwnd, clickThrough: !_moveMode);
         };
-        IsVisibleChanged += (_, _) => UpdateRenderingSubscription();
+        IsVisibleChanged += (_, _) =>
+        {
+            UpdateRenderingSubscription();
+            if (!IsVisible) OrbSpatialSound.Update(false, 0, 1, 1);
+        };
         MouseLeftButtonDown += OnMouseLeftButtonDown;
 
         SpeechActivity.SpeakingStarted += OnSpeakingStarted;
@@ -307,6 +311,7 @@ public partial class OrbWindow : Window
 
         var blob = BuildBlob(t);
         UpdateGags(t, dt, blob.Bounds);
+        UpdateSpatialSound(t);
         UpdateSpots(blob, dt, _shownColor);
         UpdateMouth(blob, dt, t, _speaking ? target : 0);
         UpdateEars(blob, dt, t, hearing);
