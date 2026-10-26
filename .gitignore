@@ -40,6 +40,3 @@ docs/game_log_destinations_catalogue.txt
 .idea/
 Thumbs.db
 .DS_Store
-
-# Sons personnels des gags de la bulle (déposés par le joueur, droits non vérifiés)
-sons_gags/
