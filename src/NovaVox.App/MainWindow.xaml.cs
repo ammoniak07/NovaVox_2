@@ -4593,6 +4593,23 @@ public partial class MainWindow : Window
         SelectActiveProfileInCombo();
         UpdateCommandCount();
 
+        // Réglages de la bulle importés : appliqués tout de suite (sinon le prochain
+        // changement de réglage réécrivait les anciennes valeurs par-dessus l'import).
+        if (result.Imported.Contains("orb_config.json"))
+        {
+            _state.ReloadOrb();
+            if (_orbWindow is not null)
+            {
+                _orbWindow.ApplyConfig(_state.Orb);
+                if (_state.Orb.Enabled && !_orbWindow.IsVisible) _orbWindow.Show();
+                else if (!_state.Orb.Enabled && _orbWindow.IsVisible && !_orbMoveMode) _orbWindow.Hide();
+            }
+            var wasLoading = _loadingSettings;
+            _loadingSettings = true;
+            try { LoadOrbSettings(); }
+            finally { _loadingSettings = wasLoading; }
+        }
+
         var message = result.ImportedProfileCount > 0
             ? $"Configuration importée ({result.ImportedProfileCount} profil(s))."
             : "Configuration importée.";

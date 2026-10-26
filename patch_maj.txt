@@ -9,6 +9,7 @@ v0.1.9
 - Gemini : connexion plus robuste. NovaVox essaie maintenant l'IPv4 en premier, avec 5 secondes maximum par adresse, au lieu de pouvoir rester bloqué une minute sur une adresse IPv6 qui ne répond pas (le navigateur, lui, bascule tout seul). En cas d'échec, le message d'erreur indique les adresses essayées et le résultat, pour aider au diagnostic.
 - Bulle animée : elle ne reste plus figée au bout d'un moment. Coincée dans un recoin (entre une zone, l'overlay et le bord), elle fait un plus petit déplacement ou change de côté au bout de 8 secondes au lieu d'attendre plusieurs minutes. Un bruit bref dans le micro ne la fige plus : il faut que le son dure au moins 0,15 s pour qu'elle considère qu'elle t'entend, et elle ne reste arrêtée que 1,5 s après un son (3 s après une commande ou quand elle parle).
 - Bulle animée : corrige un blocage pendant les déplacements. Lors d'un passage au-dessus ou en dessous d'une zone, elle pouvait changer de profondeur (et grossir) en route et ne plus tenir dans le passage : elle poussait alors contre le bord de l'écran sans jamais arriver. Elle garde maintenant sa taille pendant un passage, et si elle ne se rapproche plus de son but pendant 3 secondes, quelle qu'en soit la raison, elle abandonne ce trajet et en choisit un autre.
+- Import de configuration : les réglages de la bulle animée importés s'appliquent tout de suite (avant, il fallait redémarrer NovaVox, et un changement de réglage pouvait les écraser).
 
 v0.1.8
 ------

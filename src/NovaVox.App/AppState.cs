@@ -87,6 +87,9 @@ public sealed class AppState
 
     public void SaveOrb() => OrbConfigStore.Save(Orb);
 
+    /// <summary>Relit orb_config.json (après un import de configuration).</summary>
+    public void ReloadOrb() => Orb = OrbConfigStore.Load();
+
     public void SaveOverlay()
     {
         OverlayConfigStore.Save(
