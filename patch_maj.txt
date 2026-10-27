@@ -4,6 +4,7 @@ v0.2.0
 ------
 - Bulle animée : son spatialisé (option « Son spatialisé », activée par défaut). La voix de Nova et les sons de la bulle viennent de son côté de l'écran : plus à gauche quand elle est à gauche, plus à droite quand elle est à droite, et le son suit ses déplacements pendant qu'elle parle. Avec l'effet de profondeur, le son est un peu plus faible et étouffé quand elle est loin, et redevient net quand elle s'approche. Plus net avec un casque.
 - Import de configuration : les réglages de la bulle animée importés s'appliquent tout de suite (avant, il fallait redémarrer NovaVox, et un changement de réglage pouvait les écraser).
+- Bulle animée, zones interdites : on peut maintenant déplacer un cadre rouge en maintenant le clic dessus, et chaque cadre a son propre bouton ✖ pour le supprimer (le clic droit marche toujours). Cliquer-glisser dans le vide dessine toujours un nouveau cadre.
 
 v0.1.9
 ------

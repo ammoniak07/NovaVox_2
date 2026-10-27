@@ -20,6 +20,11 @@ public sealed class OrbZonesEditorWindow : Window
     private readonly List<Rectangle> _zones = new();
     private Rectangle? _drawing;
     private Point _drawStart;
+    /// <summary>Cadre en cours de déplacement (maintien du clic sur un cadre), et décalage souris/coin.</summary>
+    private Rectangle? _moving;
+    private Vector _moveOffset;
+    /// <summary>Bouton ✖ de chaque cadre (supprime ce cadre seulement).</summary>
+    private readonly Dictionary<Rectangle, Button> _deleteButtons = new();
 
     private static readonly Brush ZoneFill = Freeze(new SolidColorBrush(Color.FromArgb(0x55, 0xff, 0x40, 0x40)));
     private static readonly Brush ZoneStroke = Freeze(new SolidColorBrush(Color.FromRgb(0xff, 0x60, 0x60)));
@@ -105,7 +110,7 @@ public sealed class OrbZonesEditorWindow : Window
         var panel = new StackPanel { Orientation = Orientation.Vertical };
         panel.Children.Add(new TextBlock
         {
-            Text = "Dessine les cadres où la bulle ne doit pas rester (cliquer-glisser) : elle ne s'y arrête jamais et les traverse en trombe si besoin.\nClic droit sur un cadre : le supprimer.  Entrée : valider.  Échap : annuler.",
+            Text = "Dessine les cadres où la bulle ne doit jamais aller (cliquer-glisser dans le vide).\nMaintenir le clic sur un cadre : le déplacer.  ✖ ou clic droit sur un cadre : le supprimer.  Entrée : valider.  Échap : annuler.",
             Foreground = Brushes.White,
             FontSize = 14,
             TextAlignment = TextAlignment.Center,
@@ -115,8 +120,7 @@ public sealed class OrbZonesEditorWindow : Window
         buttons.Children.Add(MakeButton("✔ Valider", (_, _) => Validate()));
         buttons.Children.Add(MakeButton("🗑 Tout effacer", (_, _) =>
         {
-            foreach (var z in _zones) _canvas.Children.Remove(z);
-            _zones.Clear();
+            foreach (var z in _zones.ToList()) RemoveZone(z);
         }));
         buttons.Children.Add(MakeButton("✖ Annuler", (_, _) => Close()));
         panel.Children.Add(buttons);
@@ -148,47 +152,106 @@ public sealed class OrbZonesEditorWindow : Window
 
     private Rectangle AddZone(Rect rect)
     {
-        var shape = new Rectangle { Width = rect.Width, Height = rect.Height, Fill = ZoneFill, Stroke = ZoneStroke, StrokeThickness = 2 };
+        var shape = new Rectangle { Width = rect.Width, Height = rect.Height, Fill = ZoneFill, Stroke = ZoneStroke, StrokeThickness = 2, Cursor = Cursors.SizeAll };
         Canvas.SetLeft(shape, rect.Left);
         Canvas.SetTop(shape, rect.Top);
         shape.MouseRightButtonUp += (_, e) =>
         {
-            _canvas.Children.Remove(shape);
-            _zones.Remove(shape);
+            RemoveZone(shape);
             e.Handled = true;
         };
         _canvas.Children.Add(shape);
         _zones.Add(shape);
+
+        var delete = new Button
+        {
+            Content = "✖",
+            Width = 24,
+            Height = 24,
+            Padding = new Thickness(0),
+            FontSize = 12,
+            Foreground = Brushes.White,
+            Background = new SolidColorBrush(Color.FromArgb(0xe0, 0xb0, 0x20, 0x30)),
+            BorderBrush = Brushes.White,
+            Cursor = Cursors.Hand,
+            ToolTip = "Supprimer ce cadre",
+        };
+        delete.Click += (_, _) => RemoveZone(shape);
+        Panel.SetZIndex(delete, 5);
+        _canvas.Children.Add(delete);
+        _deleteButtons[shape] = delete;
+        SyncDeleteButton(shape);
         return shape;
+    }
+
+    private void RemoveZone(Rectangle shape)
+    {
+        _canvas.Children.Remove(shape);
+        _zones.Remove(shape);
+        if (_deleteButtons.Remove(shape, out var delete)) _canvas.Children.Remove(delete);
+    }
+
+    /// <summary>Le ✖ suit le coin haut-droit de son cadre (caché tant que le cadre est trop petit).</summary>
+    private void SyncDeleteButton(Rectangle shape)
+    {
+        if (!_deleteButtons.TryGetValue(shape, out var delete)) return;
+        Canvas.SetLeft(delete, Canvas.GetLeft(shape) + shape.Width - delete.Width - 3);
+        Canvas.SetTop(delete, Canvas.GetTop(shape) + 3);
+        delete.Visibility = shape.Width >= 34 && shape.Height >= 34 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
-        _drawStart = e.GetPosition(_canvas);
+        var p = e.GetPosition(_canvas);
+        // Clic sur un cadre existant : on le déplace (tant que le clic est maintenu).
+        if (e.OriginalSource is Rectangle shape && _zones.Contains(shape))
+        {
+            _moving = shape;
+            _moveOffset = p - new Point(Canvas.GetLeft(shape), Canvas.GetTop(shape));
+            Panel.SetZIndex(shape, 1);
+            CaptureMouse();
+            return;
+        }
+        // Clic dans le vide : on dessine un nouveau cadre.
+        _drawStart = p;
         _drawing = AddZone(new Rect(_drawStart, new Size(0, 0)));
         CaptureMouse();
     }
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (_drawing is null) return;
         var p = e.GetPosition(_canvas);
+        if (_moving is not null)
+        {
+            // Le cadre reste entier dans l'écran.
+            var left = Math.Clamp(p.X - _moveOffset.X, 0, Math.Max(0, Width - _moving.Width));
+            var top = Math.Clamp(p.Y - _moveOffset.Y, 0, Math.Max(0, Height - _moving.Height));
+            Canvas.SetLeft(_moving, left);
+            Canvas.SetTop(_moving, top);
+            SyncDeleteButton(_moving);
+            return;
+        }
+        if (_drawing is null) return;
         Canvas.SetLeft(_drawing, Math.Min(p.X, _drawStart.X));
         Canvas.SetTop(_drawing, Math.Min(p.Y, _drawStart.Y));
         _drawing.Width = Math.Abs(p.X - _drawStart.X);
         _drawing.Height = Math.Abs(p.Y - _drawStart.Y);
+        SyncDeleteButton(_drawing);
     }
 
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_moving is not null)
+        {
+            Panel.SetZIndex(_moving, 0);
+            _moving = null;
+            ReleaseMouseCapture();
+            return;
+        }
         if (_drawing is null) return;
         ReleaseMouseCapture();
         // Simple clic sans glisser : pas de cadre minuscule.
-        if (_drawing.Width < 12 || _drawing.Height < 12)
-        {
-            _canvas.Children.Remove(_drawing);
-            _zones.Remove(_drawing);
-        }
+        if (_drawing.Width < 12 || _drawing.Height < 12) RemoveZone(_drawing);
         _drawing = null;
     }
 
