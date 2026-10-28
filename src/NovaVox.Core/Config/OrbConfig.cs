@@ -95,6 +95,8 @@ public sealed class OrbConfig
     public bool Gags { get; set; } = true;
     /// <summary>Son spatialisé : la voix et les sons de la bulle viennent de son côté de l'écran, plus faibles quand elle est loin.</summary>
     public bool SpatialSound { get; set; } = true;
+    /// <summary>« ROxieWOOki » : la bulle devient une petite tête de chat rose (oreilles, moustaches, nez).</summary>
+    public bool CatMode { get; set; }
     /// <summary>Intervalle moyen entre deux gags, en minutes (3..60).</summary>
     public int GagMinutes { get; set; } = DefaultGagMinutes;
     /// <summary>Distance au repos en mètres (1,2..4) pour l'effet de profondeur.</summary>
@@ -142,6 +144,7 @@ public sealed class OrbConfigStore
             config.DepthEffect = GetBool(data["depth_effect"], true);
             config.Gags = GetBool(data["gags"], true);
             config.SpatialSound = GetBool(data["spatial_sound"], true);
+            config.CatMode = GetBool(data["roxie_wooki"]);
             config.GagMinutes = Math.Clamp((int)Math.Round(GetDouble(data["gag_minutes"]) ?? OrbConfig.DefaultGagMinutes), OrbConfig.MinGagMinutes, OrbConfig.MaxGagMinutes);
             config.FarDistance = Math.Round(Math.Clamp(GetDouble(data["far_distance"]) ?? OrbConfig.DefaultFarDistance, OrbConfig.MinFarDistance, OrbConfig.MaxFarDistance), 1);
             if (data["forbidden_zones"] is JsonArray zones)
@@ -190,6 +193,7 @@ public sealed class OrbConfigStore
             ["depth_effect"] = config.DepthEffect,
             ["gags"] = config.Gags,
             ["spatial_sound"] = config.SpatialSound,
+            ["roxie_wooki"] = config.CatMode,
             ["gag_minutes"] = config.GagMinutes,
             ["far_distance"] = config.FarDistance,
             ["forbidden_zones"] = new JsonArray(config.ForbiddenZones

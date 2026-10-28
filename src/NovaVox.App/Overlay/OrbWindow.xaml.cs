@@ -296,6 +296,8 @@ public partial class OrbWindow : Window
         // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
         var restColor = _listeningActive ? _idleColor : InactiveColor;
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : restColor;
+        // ROxieWOOki : petite tête de chat rose, avec ses propres tons roses.
+        if (CatMode) targetColor = CatTargetColor(hearing);
         _color = Lerp(_color, targetColor, 1 - Math.Exp(-dt * 5));
         // En parlant : la couleur choisie varie, tantôt plus foncée, tantôt
         // plus claire, au fil des syllabes (comme une lumière qui pulse).
@@ -311,6 +313,7 @@ public partial class OrbWindow : Window
 
         var blob = BuildBlob(t);
         UpdateGags(t, dt, blob.Bounds);
+        UpdateCat(blob.Bounds, dt, t, hearing);
         UpdateSpatialSound(t);
         UpdateSpots(blob, dt, _shownColor);
         UpdateMouth(blob, dt, t, _speaking ? target : 0);

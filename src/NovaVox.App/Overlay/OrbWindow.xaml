@@ -87,6 +87,17 @@
                     </Path.Effect>
                 </Path>
             </Canvas>
+            <!-- ROxieWOOki : oreilles de chat (derrière la bulle, la base est cachée par le corps). -->
+            <Canvas x:Name="CatBackGroup" Opacity="0" IsHitTestVisible="False">
+                <Path x:Name="CatEarLeft">
+                    <Path.Fill><SolidColorBrush x:Name="CatEarBrush" Color="#ff8fc8" /></Path.Fill>
+                </Path>
+                <Path x:Name="CatEarRight" Fill="{Binding Fill, ElementName=CatEarLeft}" />
+                <Path x:Name="CatEarLeftInner">
+                    <Path.Fill><SolidColorBrush x:Name="CatEarInnerBrush" Color="#ffd6e8" /></Path.Fill>
+                </Path>
+                <Path x:Name="CatEarRightInner" Fill="{Binding Fill, ElementName=CatEarLeftInner}" />
+            </Canvas>
             <!-- Corps : dégradé radial (clair en haut à gauche, plus sombre vers le bord). -->
             <Path x:Name="BodyPath">
                 <Path.Fill>
@@ -246,6 +257,18 @@
             <Canvas x:Name="SatelliteLayer" Opacity="0" IsHitTestVisible="False" />
             <!-- Gags : particules devant la bulle (étincelles, « z »). -->
             <Canvas x:Name="GagFrontLayer" IsHitTestVisible="False" />
+            <!-- ROxieWOOki : moustaches, nez et bouche de chat (devant la bulle). -->
+            <Canvas x:Name="CatFrontGroup" Opacity="0" IsHitTestVisible="False">
+                <Path x:Name="CatWhiskers" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                    <Path.Stroke><SolidColorBrush x:Name="CatWhiskersBrush" Color="#d8fff4fa" /></Path.Stroke>
+                </Path>
+                <Path x:Name="CatNose">
+                    <Path.Fill><SolidColorBrush x:Name="CatNoseBrush" Color="#e0508a" /></Path.Fill>
+                </Path>
+                <Path x:Name="CatMouth" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round">
+                    <Path.Stroke><SolidColorBrush x:Name="CatMouthBrush" Color="#a0306a" /></Path.Stroke>
+                </Path>
+            </Canvas>
             <!-- Repère visible uniquement en mode "Déplacer la bulle". -->
             <Ellipse x:Name="MoveHint" Stroke="#dbe4ee" StrokeThickness="1.5" StrokeDashArray="4 3" Visibility="Collapsed" />
         </Canvas>

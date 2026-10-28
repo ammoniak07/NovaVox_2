@@ -6,6 +6,7 @@ v0.2.0
 - Import de configuration : les réglages de la bulle animée importés s'appliquent tout de suite (avant, il fallait redémarrer NovaVox, et un changement de réglage pouvait les écraser).
 - Bulle animée, zones interdites : on peut maintenant déplacer un cadre rouge en maintenant le clic dessus, et chaque cadre a son propre bouton ✖ pour le supprimer (le clic droit marche toujours). Cliquer-glisser dans le vide dessine toujours un nouveau cadre.
 - Bulle animée : sa vitesse change maintenant en plein trajet, toujours entre la vitesse min et max réglées : nouvelle allure toutes les une à deux secondes environ (en douceur), petits sprints jusqu'à la vitesse max, et hésitations où elle ralentit, parfois avec une très courte pause comme si elle regardait quelque chose.
+- Bulle animée : nouvelle option « ROxieWOOki » 🐱 : la bulle devient une petite tête de chat rose, avec des oreilles pointues qui frémissent quand elle t'entend (et bougent toutes seules de temps en temps), des moustaches qui frétillent quand elle parle, un petit nez et une bouche en « ω », et des tons roses pour chaque état (repos, parole, réflexion, écoute).
 
 v0.1.9
 ------

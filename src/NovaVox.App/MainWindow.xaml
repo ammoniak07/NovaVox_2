@@ -890,6 +890,9 @@
                                 <CheckBox x:Name="OrbMouthCheckbox" Content="Bouche qui parle" Margin="0,8,0,0"
                                           ToolTip="Une bouche s'ouvre et se ferme au rythme de la voix quand NovaVox parle"
                                           Checked="OrbMouthCheckbox_Changed" Unchecked="OrbMouthCheckbox_Changed" />
+                                <CheckBox x:Name="OrbCatCheckbox" Content="ROxieWOOki 🐱" Margin="0,6,0,0"
+                                          ToolTip="La bulle devient une petite tête de chat rose : oreilles de chat qui frémissent, moustaches qui frétillent quand elle parle, petit nez et bouche « ω », tons roses à la place des couleurs réglées"
+                                          Checked="OrbCatCheckbox_Changed" Unchecked="OrbCatCheckbox_Changed" />
                                 <CheckBox x:Name="OrbEarsCheckbox" Content="Oreilles qui écoutent" Margin="0,6,0,0"
                                           ToolTip="Deux oreilles sortent des côtés de la bulle quand elle t'entend parler au micro"
                                           Checked="OrbEarsCheckbox_Changed" Unchecked="OrbEarsCheckbox_Changed" />
