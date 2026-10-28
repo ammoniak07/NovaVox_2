@@ -31,6 +31,8 @@ public partial class OrbWindow
 
     // Trajet en cours : départ après la prise d'élan, vitesse propre au trajet, ondulation.
     private double _departAt, _tripSpeed = 1, _wobblePhase, _wobbleFrequency = 0.7;
+    /// <summary>Allure visée en plein trajet (elle y glisse en douceur), prochain changement, sprint et petite pause.</summary>
+    private double _tripSpeedTarget = 1, _nextSpeedChangeAt, _sprintUntil, _pauseUntil;
     private bool _tripCrosses;
     private double _nextExploreAt = 120 + Random.Shared.NextDouble() * 360;
     private double _lastSideChangeAt = double.NegativeInfinity;
@@ -42,6 +44,47 @@ public partial class OrbWindow
     private double _stuckSince = double.PositiveInfinity;
     /// <summary>Meilleure distance atteinte vers le point visé, et quand (détection d'un trajet bloqué).</summary>
     private double _progressBest = double.PositiveInfinity, _progressAt;
+
+    /// <summary>
+    /// Change d'allure en plein trajet, toujours entre la vitesse min et max :
+    /// nouvelle allure toutes les 0,6 à 2,5 s (elle y glisse en douceur), parfois
+    /// un petit sprint jusqu'à la vitesse max, parfois une hésitation (vitesse
+    /// min, et de temps en temps une très courte pause, comme si elle regardait
+    /// quelque chose).
+    /// </summary>
+    private void VaryTripSpeed(double t, double dt)
+    {
+        var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed) / 100.0;
+        var high = Math.Clamp(_config.RoamSpeedMax, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed) / 100.0;
+        if (high < low) high = low;
+        if (t >= _nextSpeedChangeAt)
+        {
+            var roll = _random.NextDouble();
+            if (roll < 0.18)
+            {
+                // Petit sprint.
+                _tripSpeedTarget = high;
+                _sprintUntil = t + 0.4 + _random.NextDouble() * 0.6;
+                _nextSpeedChangeAt = _sprintUntil;
+            }
+            else if (roll < 0.33)
+            {
+                // Hésitation : elle ralentit, et parfois s'arrête un court instant.
+                _tripSpeedTarget = low;
+                if (_random.NextDouble() < 0.4) _pauseUntil = t + 0.25 + _random.NextDouble() * 0.45;
+                _nextSpeedChangeAt = t + 0.6 + _random.NextDouble() * 0.8;
+            }
+            else
+            {
+                _tripSpeedTarget = low + _random.NextDouble() * (high - low);
+                _nextSpeedChangeAt = t + 0.6 + _random.NextDouble() * 1.9;
+            }
+        }
+        // Glisse vers la nouvelle allure : vite pour un sprint, en douceur sinon.
+        var rate = t < _sprintUntil ? 5.0 : 1.6;
+        _tripSpeed += (_tripSpeedTarget - _tripSpeed) * (1 - Math.Exp(-dt * rate));
+        _tripSpeed = Math.Clamp(_tripSpeed, low, high);
+    }
 
     /// <summary>Abandonne le trajet en cours (bloqué) : elle se pose et en choisira un autre.</summary>
     private void AbandonTrip(double t)
@@ -299,6 +342,9 @@ public partial class OrbWindow
                 var low = Math.Clamp(_config.RoamSpeedMin, OrbConfig.MinRoamSpeed, OrbConfig.MaxRoamSpeed);
                 var high = Math.Clamp(_config.RoamSpeedMax, low, OrbConfig.MaxRoamSpeed);
                 _tripSpeed = (low + _random.NextDouble() * (high - low)) / 100.0;
+                _tripSpeedTarget = _tripSpeed;
+                _nextSpeedChangeAt = t + 0.8 + _random.NextDouble() * 1.5;
+                _sprintUntil = _pauseUntil = 0;
                 // Nouvelle profondeur seulement pour un trajet simple : dans un passage ou un tour par
                 // les bords, elle garde sa taille actuelle (sinon, plus grosse, elle ne passerait plus).
                 if (!InPassage && _wrapPhase == 0) PickTripDepth();
@@ -376,7 +422,10 @@ public partial class OrbWindow
             {
                 direction = toTarget / distance;
                 // Vitesse non linéaire : 100 % = 70, 300 % ≈ 700, 500 % ≈ 2060, 1000 % ≈ 8800 unités/s.
-                var maxSpeed = 70 * Math.Pow(_tripSpeed, 2.1) * speedFactor;
+                // Allure qui varie en route (seulement sur un trajet simple, pas dans un passage ni un tour par les bords).
+                if (_wrapPhase == 0 && _routeWaypoints.Count == 0 && !inZone) VaryTripSpeed(t, dt);
+                var paused = t < _pauseUntil && _wrapPhase == 0 && !inZone;
+                var maxSpeed = 70 * Math.Pow(_tripSpeed, 2.1) * speedFactor * (paused ? 0 : 1);
                 if (inZone) maxSpeed = Math.Max(maxSpeed, ZoneCrossingSpeed);
                 // Freinage à l'approche proportionnel à sa vitesse : rapide, elle freine tard et fort.
                 var braking = Math.Max(60, maxSpeed * 1.2);
