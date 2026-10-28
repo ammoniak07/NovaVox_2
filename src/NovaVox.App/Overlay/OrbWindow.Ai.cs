@@ -104,7 +104,7 @@ public partial class OrbWindow
     /// </summary>
     private void UpdateCore(Rect b, double size, double dt, double t)
     {
-        _coreVisible += ((_config.ShowCore ? 1.0 : 0.0) - _coreVisible) * (1 - Math.Exp(-dt * 4));
+        _coreVisible += ((_config.ShowCore && !CatMode ? 1.0 : 0.0) - _coreVisible) * (1 - Math.Exp(-dt * 4));
         CoreGroup.Opacity = _coreVisible;
         if (_coreVisible < 0.01) return;
 
@@ -168,7 +168,7 @@ public partial class OrbWindow
     /// </summary>
     private void UpdateWave(Geometry blob, Rect b, double size, double dt, double t, double voice)
     {
-        var wanted = _config.ShowVoiceWave && !_config.ShowMouth && _speaking ? 1.0 : 0.0;
+        var wanted = _config.ShowVoiceWave && !_config.ShowMouth && !CatMode && _speaking ? 1.0 : 0.0;
         _waveVisible += (wanted - _waveVisible) * (1 - Math.Exp(-dt * 5));
         _waveAccum += dt;
         while (_waveAccum >= 0.025)

@@ -262,6 +262,21 @@
                 <Path x:Name="CatWhiskers" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                     <Path.Stroke><SolidColorBrush x:Name="CatWhiskersBrush" Color="#d8fff4fa" /></Path.Stroke>
                 </Path>
+                <!-- Yeux : blanc rosé, pupille fendue, petit reflet. -->
+                <Ellipse x:Name="CatEyeLeft" StrokeThickness="1.5">
+                    <Ellipse.Fill><SolidColorBrush x:Name="CatEyeBrush" Color="#fff7fb" /></Ellipse.Fill>
+                    <Ellipse.Stroke><SolidColorBrush x:Name="CatEyeStrokeBrush" Color="#c04a80" /></Ellipse.Stroke>
+                </Ellipse>
+                <Ellipse x:Name="CatEyeRight" StrokeThickness="1.5" Fill="{Binding Fill, ElementName=CatEyeLeft}" Stroke="{Binding Stroke, ElementName=CatEyeLeft}" />
+                <Ellipse x:Name="CatPupilLeft" Fill="#2a0f1f" />
+                <Ellipse x:Name="CatPupilRight" Fill="#2a0f1f" />
+                <Ellipse x:Name="CatShineLeft" Fill="#f0ffffff" />
+                <Ellipse x:Name="CatShineRight" Fill="#f0ffffff" />
+                <!-- Bouche ouverte (elle parle) : intérieur sombre et petite langue rose. -->
+                <Path x:Name="CatMouthOpen" Opacity="0">
+                    <Path.Fill><SolidColorBrush x:Name="CatMouthOpenBrush" Color="#5a1030" /></Path.Fill>
+                </Path>
+                <Path x:Name="CatTongue" Opacity="0" Fill="#ff7aa8" />
                 <Path x:Name="CatNose">
                     <Path.Fill><SolidColorBrush x:Name="CatNoseBrush" Color="#e0508a" /></Path.Fill>
                 </Path>

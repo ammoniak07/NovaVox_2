@@ -537,7 +537,7 @@ public partial class OrbWindow : Window
     /// </summary>
     private void UpdateMouth(Geometry blob, double dt, double t, double voice)
     {
-        var wanted = _config.ShowMouth && _speaking ? 1.0 : 0.0;
+        var wanted = _config.ShowMouth && !CatMode && _speaking ? 1.0 : 0.0;
         _mouthVisible += (wanted - _mouthVisible) * (1 - Math.Exp(-dt * 6));
         _mouthOpen += (voice - _mouthOpen) * (1 - Math.Exp(-dt * (voice > _mouthOpen ? 30 : 14)));
         MouthGroup.Opacity = _mouthVisible;
@@ -603,7 +603,7 @@ public partial class OrbWindow : Window
     /// </summary>
     private void UpdateEars(Geometry blob, double dt, double t, bool hearing)
     {
-        var wanted = _config.ShowEars && hearing && !_speaking ? 1.0 : 0.0;
+        var wanted = _config.ShowEars && !CatMode && hearing && !_speaking ? 1.0 : 0.0;
         _earsOut += (wanted - _earsOut) * (1 - Math.Exp(-dt * (wanted > _earsOut ? 7 : 2.5)));
         EarGroup.Opacity = Math.Clamp(_earsOut * 3, 0, 1);
 
