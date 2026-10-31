@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.2.1
 ------
+- Schémas : images ajoutées pour l'armure Monolith (casque, torse, bras, jambes, sac à dos) et sa version Shadowflux, et fabricant affiché pour 36 armes à énergie qui montraient « <= PLACEHOLDER => » (Yubarev et Atzkav : Lightning Bolt Co. ; Pulse, Parallax, Prism, Quartz et Zenith : Verified Offworld Laser Technologies).
 
 v0.2.0
 ------
