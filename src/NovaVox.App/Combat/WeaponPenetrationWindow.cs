@@ -91,7 +91,7 @@ public sealed class WeaponPenetrationWindow : Window
 
         var top = new StackPanel();
         top.Children.Add(new TextBlock { Text = "🎯 ARME UTILISÉE", FontSize = 18, FontWeight = FontWeights.Bold });
-        top.Children.Add(Muted("Mon vaisseau (facultatif : ne montre que ses armes d'origine)", 12, new Thickness(0, 10, 0, 0)));
+        top.Children.Add(Muted("Mon vaisseau (facultatif : ne montre que ses armes d'origine, tourelles, missiles et torpilles compris)", 12, new Thickness(0, 10, 0, 0)));
         top.Children.Add(_myShipCombo);
         var filters = new StackPanel { Orientation = Orientation.Horizontal };
         filters.Children.Add(_kindCombo);
@@ -207,7 +207,10 @@ public sealed class WeaponPenetrationWindow : Window
         var w = _weapon;
         if (w is null)
         {
-            _weaponInfo.Children.Add(Muted("Aucune arme ne correspond à ces filtres.", 12, default));
+            var message = _myShipCombo.SelectedItem is ComboBoxItem { Tag: CombatShip ship } && CombatDatabase.StockWeaponsOf(ship).Count == 0
+                ? $"Le {ship.Name} n'a aucune arme d'origine."
+                : "Aucune arme ne correspond à ces filtres.";
+            _weaponInfo.Children.Add(Muted(message, 12, default));
             return;
         }
 

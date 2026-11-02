@@ -12,6 +12,11 @@ ships=json.load(open(D+'/ships.json',encoding='utf-8')); items=json.load(open(D+
 T=['Physical','Energy','Distortion']
 def r(x,n=2): return round(float(x or 0),n)
 bad_cls=re.compile(r'_(Collector|Teach|Showdown|BTALA|Display|BIS\d+|Tutorial|AI|PU_AI|Unmanned|NoInterior)(_|$)',re.I)
+WEAPON_BY_CLASS={}
+for i in items:
+    si=i.get('stdItem') or {}
+    if i.get('type') in ('WeaponGun','Missile') and i.get('className') and si.get('Name'):
+        WEAPON_BY_CLASS[i['className'].lower()]=re.sub(r'\s+',' ',si['Name'].replace('\xa0',' ')).strip()
 out_s={}
 for v in ships:
     if not v.get('IsSpaceship'): continue
@@ -34,6 +39,16 @@ for v in ships:
         elif isinstance(o,list):
             for x in o: walk(x)
     walk(v.get('Weaponry') or {})
+    # Équipement complet (tourelles, PDC, missiles, torpilles) : le résumé
+    # « Weaponry » est vide pour beaucoup de gros vaisseaux (Polaris...).
+    def walk_loadout(o):
+        if isinstance(o,dict):
+            c=(o.get('ClassName') or '').lower()
+            if c in WEAPON_BY_CLASS: weap.append(WEAPON_BY_CLASS[c])
+            for x in o.values(): walk_loadout(x)
+        elif isinstance(o,list):
+            for x in o: walk_loadout(x)
+    walk_loadout(v.get('Loadout') or [])
     e={'name':short,'fullName':name,'manufacturer':man,'size':v.get('Size'),
        'deflection':[r(d.get(t)) for t in T],'armorHp':r(a['Health'],0),
        'armorDamageMultiplier':[r((a.get('DamageMultipliers') or {}).get(t,1)) for t in T],
@@ -49,7 +64,7 @@ out_w={}
 for i in items:
     si=i.get('stdItem') or {}
     n=re.sub(r'\s+',' ',(si.get('Name') or '').replace('\xa0',' ')).strip()
-    if not n or 'PLACEHOLDER' in n or n.startswith('Vanduul') or 'Vanduul' in ((si.get('Manufacturer') or {}).get('Name') or ''): continue
+    if not n or 'PLACEHOLDER' in n: continue
     typ=i.get('type'); sub=i.get('subType')
     if typ=='WeaponGun':
         w=si.get('Weapon') or {}; modes=w.get('Modes') or []
