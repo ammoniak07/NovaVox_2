@@ -2592,6 +2592,22 @@ public partial class MainWindow : Window
 
     private void OpenSchemas_Click(object sender, RoutedEventArgs e) => SchemasOverlay.Visibility = Visibility.Visible;
 
+    /// <summary>Tableau « 🎯 Pénétration » : une seule fenêtre à la fois, ramenée au premier plan si déjà ouverte.</summary>
+    private NovaVox.App.Combat.WeaponPenetrationWindow? _penetrationWindow;
+
+    private void OpenPenetration_Click(object sender, RoutedEventArgs e)
+    {
+        if (_penetrationWindow is not null)
+        {
+            if (_penetrationWindow.WindowState == WindowState.Minimized) _penetrationWindow.WindowState = WindowState.Normal;
+            _penetrationWindow.Activate();
+            return;
+        }
+        _penetrationWindow = new NovaVox.App.Combat.WeaponPenetrationWindow();
+        _penetrationWindow.Closed += (_, _) => _penetrationWindow = null;
+        _penetrationWindow.Show();
+    }
+
     private void CloseSchemas_Click(object sender, RoutedEventArgs e) => SchemasOverlay.Visibility = Visibility.Collapsed;
 
     private void AddSchema_Click(object sender, RoutedEventArgs e) => AddSchema(NewSchemaNameBox.Text);

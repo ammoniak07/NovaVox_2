@@ -33,6 +33,8 @@
     <!-- Nom canonique -> clé global.ini (voir GameLogLocalization/SchemaDatabase.RegisterLiveNameAliases) —
          construit une fois depuis scunpacked-data (labels.json), jamais modifié par l'utilisateur. -->
     <EmbeddedResource Include="GameLog\SchemaNameLocalizationKeys.json" />
+    <!-- Armes de vaisseau, blindage et boucliers (tableau « 🎯 Pénétration », voir CombatDatabase). -->
+    <EmbeddedResource Include="Combat\CombatData.json" />
   </ItemGroup>
 
 </Project>

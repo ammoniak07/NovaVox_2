@@ -2,6 +2,7 @@ NOVAVOX — Notes de mise à jour
 ==============================
 v0.2.1
 ------
+- Nouveau bouton « 🎯 Pénétration » (en haut) : choisis une arme de vaisseau (canon, missile ou torpille, avec filtres par type, taille, recherche, ou « Mon vaisseau » pour ne voir que ses armes d'origine) et un tableau te dit pour chaque vaisseau du jeu si tes tirs font des dégâts. Vert : ça passe ; rouge : ça ricoche sur le blindage (les dégâts d'un projectile ne dépassent pas son seuil de déflexion) ou c'est absorbé par le bouclier. Deux colonnes : bouclier levé (le bouclier absorbe toute l'énergie et la distorsion, et 45 % du physique quand il est plein) et bouclier tombé (avec la marge, ex. ×2). Affiche aussi la déflexion, les PV du blindage et du bouclier de chaque vaisseau, et pour l'arme : dégâts par projectile, alpha, cadence, DPS, vitesse et portée. Tri en cliquant sur les titres des colonnes, recherche de vaisseau, filtre « ceux que je perce / qui résistent ». Données du jeu 4.10.2, hors ligne.
 - Schémas : images ajoutées pour l'armure Monolith (casque, torse, bras, jambes, sac à dos) et sa version Shadowflux, et fabricant affiché pour 36 armes à énergie qui montraient « <= PLACEHOLDER => » (Yubarev et Atzkav : Lightning Bolt Co. ; Pulse, Parallax, Prism, Quartz et Zenith : Verified Offworld Laser Technologies).
 
 v0.2.0

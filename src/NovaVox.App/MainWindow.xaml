@@ -120,6 +120,8 @@
                             <Button x:Name="ShipCheatSheetHeaderButton" Content="🚀 Vaisseaux" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenShipCheatSheet_Click" />
                             <Button x:Name="GameLogHeaderButton" Content="🛰 Game.log" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenGameLog_Click" />
                             <Button x:Name="SchemasHeaderButton" Content="📐 Schémas" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenSchemas_Click" />
+                            <Button x:Name="PenetrationHeaderButton" Content="🎯 Pénétration" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenPenetration_Click"
+                                    ToolTip="Choisis une arme de vaisseau : le tableau dit si elle passe le bouclier et le blindage de chaque vaisseau" />
                             <Button x:Name="StatsHeaderButton" Content="📊 Statistiques" Style="{StaticResource PillGhostButtonStyle}" Margin="8,0,0,0" Click="OpenStats_Click" />
                             <Button x:Name="SettingsButton" Style="{StaticResource IconCircleButtonStyle}" Content="⚙️" Margin="12,0,0,0" Click="SettingsButton_Click"
                                     ToolTip="Réglages" />
