@@ -267,3 +267,75 @@ public class CombatReferenceValuesTests
         Assert.All(CombatDatabase.Weapons.Where(w => w.IsGun), w => Assert.True(w.Rpm > 0 && w.Speed > 0, w.Name));
     }
 }
+
+public class DefenseTests
+{
+    [Fact]
+    public void Profile_StockShields_MatchShipShieldHp()
+    {
+        foreach (var ship in CombatDatabase.Ships.Where(s => s.MountList.Any(m => m.IsShield)))
+            Assert.Equal(ship.ShieldHp, DefenseCalculator.Profile(ship).ShieldHp, 0);
+    }
+
+    [Fact]
+    public void Profile_OnlyTwoStrongestShieldsAreActive()
+    {
+        var asgard = CombatDatabase.FindShip("Asgard")!;
+        var p = DefenseCalculator.Profile(asgard);
+        Assert.Equal(4, p.Mounted.Count);
+        Assert.Equal(2, p.Active.Count);
+    }
+
+    [Fact]
+    public void Profile_UsesChosenShields()
+    {
+        var cutlass = CombatDatabase.FindShip("Cutlass Black")!;
+        var mount = cutlass.MountList.Single(m => m.IsShield);
+        var best = CombatDatabase.ShieldsFor(mount).First();
+        var loadout = new MyShipLoadout { Ship = cutlass.Name, Weapons = { [mount.Id] = best.Name } };
+        Assert.Equal(best.Hp, DefenseCalculator.Profile(cutlass, loadout).ShieldHp);
+        Assert.True(best.Hp >= cutlass.ShieldHp);
+    }
+
+    [Fact]
+    public void Evaluate_EnergyBelowDeflection_HitsShieldOnly()
+    {
+        var idris = DefenseCalculator.Profile(CombatDatabase.FindShip("Idris-M")!);
+        var ndb = CombatDatabase.FindWeapon("NDB-30 Repeater")!;
+        var r = DefenseCalculator.Evaluate(idris, "test", null, new[] { (ndb, 2) });
+        Assert.Equal(2 * 712.5, r.ShieldDps, 1);
+        Assert.Equal(0, r.HullDps);
+        Assert.False(r.CanHurtHull);
+        Assert.Equal(idris.ShieldHp / (2 * 712.5), r.SecondsToDropShield, 1);
+    }
+
+    [Fact]
+    public void Evaluate_EnergyAboveDeflection_HurtsHullWithArmorMultiplier()
+    {
+        var gladiusShip = CombatDatabase.FindShip("Gladius")!;
+        var gladius = DefenseCalculator.Profile(gladiusShip);
+        var ndb = CombatDatabase.FindWeapon("NDB-30 Repeater")!;
+        var r = DefenseCalculator.Evaluate(gladius, "test", null, new[] { (ndb, 1) });
+        Assert.Equal(712.5 * gladiusShip.ArmorMultiplierOf(DamageKind.Energy), r.HullDps, 1);
+        Assert.Equal(0, r.LeakHullDps);
+    }
+
+    [Fact]
+    public void Evaluate_Ballistic_LeaksThroughShield()
+    {
+        var gladius = DefenseCalculator.Profile(CombatDatabase.FindShip("Gladius")!);
+        var mantis = CombatDatabase.FindWeapon("Mantis GT-220 Gatling")!;
+        var r = DefenseCalculator.Evaluate(gladius, "test", null, new[] { (mantis, 1) });
+        Assert.True(r.LeakHullDps > 0);
+        Assert.True(r.ShieldDps < mantis.Dps);
+    }
+
+    [Fact]
+    public void AllStockAttackers_ListsArmedShips()
+    {
+        var target = DefenseCalculator.Profile(CombatDatabase.FindShip("Cutlass Black")!);
+        var all = DefenseCalculator.AllStockAttackers(target);
+        Assert.True(all.Count > 150);
+        Assert.Contains(all, a => a.CanHurtHull);
+    }
+}

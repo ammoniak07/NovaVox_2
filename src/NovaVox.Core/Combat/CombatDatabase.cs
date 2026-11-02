@@ -54,9 +54,19 @@ public sealed record CombatMount(
 {
     public bool IsGun => Kind == "gun";
 
+    /// <summary>Emplacement de générateur de bouclier.</summary>
+    public bool IsShield => Kind == "shield";
+
+    private bool SizeOk(int size) =>
+        size >= (MinSize > 0 ? MinSize : 0) && size <= (MaxSize > 0 ? MaxSize : int.MaxValue);
+
+    /// <summary>Ce générateur de bouclier peut-il aller sur cet emplacement ?</summary>
+    public bool Accepts(CombatShield shield) => IsShield && SizeOk(shield.Size);
+
     /// <summary>L'arme peut-elle aller sur cet emplacement (bon type, taille entre min et max) ?</summary>
     public bool Accepts(CombatWeapon weapon)
     {
+        if (IsShield) return false;
         var typeOk = IsGun ? weapon.IsGun : !weapon.IsGun;
         var size = weapon.Size ?? 0;
         var min = MinSize > 0 ? MinSize : 0;
@@ -83,8 +93,25 @@ public sealed record CombatShip(
     [property: JsonPropertyName("shieldAbsorption")] double[][] ShieldAbsorption,
     [property: JsonPropertyName("stockWeapons")] IReadOnlyList<string> StockWeapons,
     /// <summary>Emplacements d'armes (canons et lance-missiles), pour équiper « Mes vaisseaux ».</summary>
-    [property: JsonPropertyName("mounts")] IReadOnlyList<CombatMount>? Mounts = null)
+    [property: JsonPropertyName("mounts")] IReadOnlyList<CombatMount>? Mounts = null,
+    /// <summary>Régénération totale du bouclier d'origine (PV/s), quand il ne prend plus de coups.</summary>
+    [property: JsonPropertyName("shieldRegen")] double ShieldRegen = 0,
+    /// <summary>Nombre de générateurs de bouclier qui fonctionnent en même temps (2 dans le jeu actuel).</summary>
+    [property: JsonPropertyName("activeShields")] int ActiveShields = 2,
+    /// <summary>Résistance du bouclier par type, [min, max] : part des dégâts absorbés qui n'entame pas ses PV.</summary>
+    [property: JsonPropertyName("shieldResistance")] double[][]? ShieldResistance = null)
 {
+    /// <summary>Résistance du bouclier plein à ce type de dégâts (0 à 1).</summary>
+    public double ShieldResistanceOf(DamageKind kind)
+    {
+        var i = (int)kind;
+        if (ShieldResistance is null || i >= ShieldResistance.Length || ShieldResistance[i].Length < 2) return 0;
+        return Math.Clamp(ShieldResistance[i][1], 0, 1);
+    }
+
+    public double ArmorMultiplierOf(DamageKind kind) =>
+        (int)kind < ArmorDamageMultiplier.Length ? ArmorDamageMultiplier[(int)kind] : 1;
+
     public IReadOnlyList<CombatMount> MountList => Mounts ?? Array.Empty<CombatMount>();
 
     public double DeflectionOf(DamageKind kind) => (int)kind < Deflection.Length ? Deflection[(int)kind] : 0;
@@ -106,10 +133,25 @@ public sealed record CombatShip(
     }
 }
 
+/// <summary>Générateur de bouclier (même absorption/résistance pour tous : seuls PV, régénération et délais changent).</summary>
+public sealed record CombatShield(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("size")] int Size,
+    [property: JsonPropertyName("grade")] string? Grade,
+    [property: JsonPropertyName("class")] string? Class,
+    [property: JsonPropertyName("manufacturer")] string? Manufacturer,
+    [property: JsonPropertyName("hp")] double Hp,
+    [property: JsonPropertyName("regen")] double Regen,
+    /// <summary>Secondes sans dégâts avant que la régénération reprenne.</summary>
+    [property: JsonPropertyName("damagedDelay")] double DamagedDelay,
+    /// <summary>Secondes avant de remonter une fois le bouclier tombé.</summary>
+    [property: JsonPropertyName("downedDelay")] double DownedDelay);
+
 public sealed record CombatData(
     [property: JsonPropertyName("gameVersion")] string GameVersion,
     [property: JsonPropertyName("ships")] IReadOnlyList<CombatShip> Ships,
-    [property: JsonPropertyName("weapons")] IReadOnlyList<CombatWeapon> Weapons);
+    [property: JsonPropertyName("weapons")] IReadOnlyList<CombatWeapon> Weapons,
+    [property: JsonPropertyName("shields")] IReadOnlyList<CombatShield>? Shields = null);
 
 /// <summary>
 /// Base locale (hors-ligne) des armes de vaisseau et du blindage/bouclier
@@ -128,6 +170,15 @@ public static class CombatDatabase
     public static IReadOnlyList<CombatShip> Ships => Data.Value.Ships;
 
     public static IReadOnlyList<CombatWeapon> Weapons => Data.Value.Weapons;
+
+    public static IReadOnlyList<CombatShield> Shields => Data.Value.Shields ?? Array.Empty<CombatShield>();
+
+    public static CombatShield? FindShield(string name) =>
+        Shields.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Générateurs qui peuvent aller sur cet emplacement, du plus solide au moins solide.</summary>
+    public static IReadOnlyList<CombatShield> ShieldsFor(CombatMount mount) =>
+        Shields.Where(mount.Accepts).OrderByDescending(s => s.Hp).ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
     public static CombatWeapon? FindWeapon(string name) =>
         Weapons.FirstOrDefault(w => string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase));

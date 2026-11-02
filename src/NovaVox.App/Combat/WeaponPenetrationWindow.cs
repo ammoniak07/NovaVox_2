@@ -48,7 +48,7 @@ public sealed class WeaponPenetrationWindow : Window
 
     public WeaponPenetrationWindow()
     {
-        Title = "NovaVox — Pénétration des armes";
+        Title = "NovaVox — Pénétration : attaque et défense";
         Width = 1280;
         Height = 820;
         MinWidth = 900;
@@ -70,7 +70,12 @@ public sealed class WeaponPenetrationWindow : Window
         Grid.SetColumn(right, 2);
         root.Children.Add(right);
 
-        Content = root;
+        // Deux onglets : « Attaque » (mon arme contre tous les vaisseaux) et
+        // « Défense » (mon vaisseau contre tous les attaquants).
+        var tabs = new TabControl { Margin = new Thickness(6, 6, 6, 0), Background = Brushes.Transparent };
+        tabs.Items.Add(new TabItem { Header = "🎯 Attaque : mon arme contre les vaisseaux", Content = root });
+        tabs.Items.Add(new TabItem { Header = "🛡️ Défense : qui peut me faire des dégâts", Content = new DefensePanel(_myShipsStore) });
+        Content = tabs;
 
         FillFilters();
         RefreshWeaponList();

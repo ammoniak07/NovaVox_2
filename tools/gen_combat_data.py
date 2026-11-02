@@ -82,6 +82,28 @@ for n,variants in groups.items():
         vn=f"{n} ({variant_label(cls,e,base)})"
         while vn in out_w: vn+="'"
         out_w[vn]=dict(name=vn,**e); seen[k]=vn; WEAPON_BY_CLASS[cls.lower()]=vn; VARIANTS.add(vn)
+# Générateurs de bouclier : tous ont la même absorption/résistance (vérifié),
+# seuls les PV, la régénération et les délais changent.
+out_sh={}; SHIELD_BY_CLASS={}
+for i in items:
+    if i.get('type')!='Shield' or not i.get('className'): continue
+    si=i.get('stdItem') or {}; sh=si.get('Shield') or {}
+    if not sh.get('MaxShieldHealth') or re.search(r'Template',i['className'],re.I): continue
+    dd=si.get('DescriptionData') or {}
+    n=clean(si.get('Name'))
+    if not n or 'PLACEHOLDER' in n:
+        m=re.match(r'^SHLD_[A-Z]+_S\d+_(.+?)_SCItem',i['className'])
+        n=f"Bouclier {m.group(1).replace('_',' ')}" if m else i['className']
+    e={'name':n,'size':si.get('Size') or 0,'grade':dd.get('Grade'),'class':dd.get('Class'),
+       'manufacturer':(si.get('Manufacturer') or {}).get('Name'),'hp':r(sh['MaxShieldHealth'],0),'regen':r(sh.get('MaxShieldRegen'),0),
+       'damagedDelay':r(sh.get('DamagedDelay')),'downedDelay':r(sh.get('DownedDelay'))}
+    if e['manufacturer'] and 'PLACEHOLDER' in e['manufacturer']: e['manufacturer']=None
+    key=n
+    if key in out_sh and (out_sh[key]['hp'],out_sh[key]['regen'],out_sh[key]['size'])!=(e['hp'],e['regen'],e['size']):
+        key=e['name']=f"{n} (S{e['size']})"
+    if key in out_sh and (out_sh[key]['hp'],out_sh[key]['regen'])!=(e['hp'],e['regen']):
+        key=e['name']=f"{n} ({i['className']})"
+    out_sh.setdefault(key,e); SHIELD_BY_CLASS[i['className'].lower()]=key
 out_s={}
 for v in ships:
     if not v.get('IsSpaceship'): continue
@@ -129,6 +151,11 @@ for v in ships:
                     'minSize':o.get('MinSize') or 0,'maxSize':o.get('MaxSize') or 0,'count':1,
                     'stock':WEAPON_BY_CLASS.get(cls),'editable':bool(o.get('Editable'))})
                 return
+            if hp and (it=='Shield' or (not cls and 'Shield' in ct and not children)):
+                mounts.append({'id':o.get('PortId') or hp,'label':' › '.join(here[-2:]) or hp,'kind':'shield',
+                    'minSize':o.get('MinSize') or 0,'maxSize':o.get('MaxSize') or 0,'count':1,
+                    'stock':SHIELD_BY_CLASS.get(cls),'editable':bool(o.get('Editable'))})
+                return
             if hp and it=='MissileLauncher':
                 slots=[x for x in children if 'Missile' in [c.get('Type') for c in x.get('CompatibleTypes') or []]]
                 if slots:
@@ -145,7 +172,9 @@ for v in ships:
     e={'name':short,'fullName':name,'manufacturer':man,'size':v.get('Size'),
        'deflection':[r(d.get(t)) for t in T],'armorHp':r(a['Health'],0),
        'armorDamageMultiplier':[r((a.get('DamageMultipliers') or {}).get(t,1)) for t in T],
-       'shieldHp':r(v.get('ShieldHp'),0),
+       'shieldHp':r(v.get('ShieldHp'),0),'shieldRegen':r((v.get('ShieldsTotal') or {}).get('Regen'),0),
+       'activeShields':int(((v.get('PowerPools') or {}).get('Shield') or {}).get('Size') or 2),
+       'shieldResistance':[[r((((v.get('ShieldsTotal') or {}).get('Resistance') or {}).get(t) or {}).get('Minimum',0)),r((((v.get('ShieldsTotal') or {}).get('Resistance') or {}).get(t) or {}).get('Maximum',0))] for t in T],
        'shieldAbsorption':[[r((sa.get(t) or {}).get('Minimum',1)),r((sa.get(t) or {}).get('Maximum',1))] for t in T],
        'stockWeapons':sorted(set(weap)),'mounts':mounts}
     key=short
@@ -171,9 +200,12 @@ if len(no_mounts)>len(out_s)*0.15: problems.append(f'{len(no_mounts)} vaisseaux 
 guns=[w for w in out_w.values() if w['kind']=='gun']
 bad_guns=[w['name'] for w in guns if not w['rpm'] or not w['speed']]
 if len(bad_guns)>len(guns)*0.05: problems.append(f'cadence/vitesse manquante sur {len(bad_guns)} canons: {bad_guns[:10]}')
+if len(out_sh)<40: problems.append(f'seulement {len(out_sh)} boucliers')
+no_sh=[e['name'] for e in out_s.values() if e['shieldHp']>0 and not any(m['kind']=='shield' for m in e['mounts'])]
+if len(no_sh)>len(out_s)*0.1: problems.append(f'{len(no_sh)} vaisseaux sans emplacement de bouclier: {no_sh[:10]}')
 if problems:
     sys.exit('ARRET, données suspectes :\n- '+'\n- '.join(problems))
-data={'gameVersion':gv,'ships':sorted(out_s.values(),key=lambda e:-e['armorHp']),'weapons':sorted(out_w.values(),key=lambda e:(e['kind'],e['size'] or 0,e['name']))}
+data={'gameVersion':gv,'ships':sorted(out_s.values(),key=lambda e:-e['armorHp']),'weapons':sorted(out_w.values(),key=lambda e:(e['kind'],e['size'] or 0,e['name'])),'shields':sorted(out_sh.values(),key=lambda e:(e['size'],-e['hp'],e['name']))}
 json.dump(data,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
 print('ships',len(out_s),'weapons',len(out_w),collections.Counter(w['kind'] for w in out_w.values()))
 known=set(out_w); miss=collections.Counter(n for s in out_s.values() for n in s['stockWeapons'] if n not in known); print('armes de série inconnues',len(miss),list(miss)[:15])

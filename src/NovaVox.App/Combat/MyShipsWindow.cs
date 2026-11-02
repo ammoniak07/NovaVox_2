@@ -79,7 +79,7 @@ public sealed class MyShipsWindow : Window
 
         var title = new StackPanel();
         title.Children.Add(new TextBlock { Text = "🛠 MES VAISSEAUX", FontSize = 18, FontWeight = FontWeights.Bold });
-        title.Children.Add(Ui.Muted("Crée tes vaisseaux et choisis leurs armes. Ils apparaissent ensuite dans « Mon vaisseau » du tableau Pénétration.", 12, new Thickness(0, 6, 0, 10)));
+        title.Children.Add(Ui.Muted("Crée tes vaisseaux et choisis leurs armes et leurs boucliers. Ils apparaissent ensuite (avec une ⭐) dans les onglets Attaque et Défense de la fenêtre Pénétration.", 12, new Thickness(0, 6, 0, 10)));
         grid.Children.Add(title);
 
         _list.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
@@ -253,11 +253,13 @@ public sealed class MyShipsWindow : Window
         }
 
         var editable = ship.MountList.Where(m => m.Editable).ToList();
-        foreach (var group in editable.GroupBy(m => (m.IsGun, m.MinSize, m.MaxSize)).Where(g => g.Count() > 1))
+        foreach (var group in editable.GroupBy(m => (m.Kind, m.MinSize, m.MaxSize)).Where(g => g.Count() > 1))
         {
             var first = group.First();
             var count = group.Sum(m => m.Count);
-            var label = first.IsGun ? $"Tous les canons {SizeText(first)} (×{group.Count()})" : $"Tous les lance-missiles {SizeText(first)} ({count} projectiles)";
+            var label = first.IsShield ? $"Tous les boucliers {SizeText(first)} (×{group.Count()})"
+                : first.IsGun ? $"Tous les canons {SizeText(first)} (×{group.Count()})"
+                : $"Tous les lance-missiles {SizeText(first)} ({count} projectiles)";
             var current = group.Select(m => _current.WeaponOn(m)).Distinct().ToList();
             var combo = WeaponCombo(first, current.Count == 1 ? current[0] : null, mixed: current.Count > 1);
             combo.SelectionChanged += (_, _) =>
@@ -284,7 +286,7 @@ public sealed class MyShipsWindow : Window
                 Save();
                 BuildMountRows();
             };
-            var detail = mount.IsGun ? $"Canon {SizeText(mount)}" : $"{mount.Count} × {SizeText(mount)}";
+            var detail = mount.IsShield ? $"Bouclier {SizeText(mount)}" : mount.IsGun ? $"Canon {SizeText(mount)}" : $"{mount.Count} × {SizeText(mount)}";
             _mountRows.Children.Add(Row(mount.FrenchLabel, detail, combo));
         }
     }
@@ -309,7 +311,16 @@ public sealed class MyShipsWindow : Window
         var combo = new ComboBox { MinWidth = 320 };
         if (mixed) combo.Items.Add(new ComboBoxItem { Content = "— Différentes armes —", Tag = null, IsEnabled = false });
         combo.Items.Add(new ComboBoxItem { Content = "— Vide —", Tag = "" });
-        foreach (var weapon in CombatDatabase.WeaponsFor(mount))
+        if (mount.IsShield)
+        {
+            foreach (var shield in CombatDatabase.ShieldsFor(mount))
+            {
+                var isStock = string.Equals(shield.Name, mount.Stock, StringComparison.OrdinalIgnoreCase) ? "  (d'origine)" : "";
+                var grade = string.Join(" ", new[] { shield.Class, shield.Grade }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                combo.Items.Add(new ComboBoxItem { Content = $"S{shield.Size} · {shield.Name} — {shield.Hp:N0} PV{(grade.Length > 0 ? " · " + grade : "")}{isStock}", Tag = shield.Name });
+            }
+        }
+        else foreach (var weapon in CombatDatabase.WeaponsFor(mount))
         {
             var stock = string.Equals(weapon.Name, mount.Stock, StringComparison.OrdinalIgnoreCase) ? "  (d'origine)" : "";
             combo.Items.Add(new ComboBoxItem { Content = $"S{weapon.Size} · {weapon.Name} — {weapon.ItemType}{stock}", Tag = weapon.Name });
