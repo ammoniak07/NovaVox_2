@@ -173,6 +173,7 @@ for v in ships:
        'deflection':[r(d.get(t)) for t in T],'armorHp':r(a['Health'],0),
        'armorDamageMultiplier':[r((a.get('DamageMultipliers') or {}).get(t,1)) for t in T],
        'shieldHp':r(v.get('ShieldHp'),0),'shieldRegen':r((v.get('ShieldsTotal') or {}).get('Regen'),0),
+       'hullHp':r(sum(float(x.get('DestructionDamage') or x.get('HP') or 0) for x in (v.get('DamageBeforeDestruction') or [])),0),
        'activeShields':int(((v.get('PowerPools') or {}).get('Shield') or {}).get('Size') or 2),
        'shieldResistance':[[r((((v.get('ShieldsTotal') or {}).get('Resistance') or {}).get(t) or {}).get('Minimum',0)),r((((v.get('ShieldsTotal') or {}).get('Resistance') or {}).get(t) or {}).get('Maximum',0))] for t in T],
        'shieldAbsorption':[[r((sa.get(t) or {}).get('Minimum',1)),r((sa.get(t) or {}).get('Maximum',1))] for t in T],

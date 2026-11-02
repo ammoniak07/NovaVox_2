@@ -3,11 +3,17 @@ namespace NovaVox.Core.Combat;
 /// <summary>Résultat pour un type de dégâts de l'arme contre un vaisseau.</summary>
 public sealed record DamageCheck(DamageKind Kind, double Alpha, double Deflection, double ShieldLeak, double AlphaThroughShield)
 {
-    /// <summary>Bouclier tombé : le projectile dépasse le seuil de déflexion du blindage.</summary>
-    public bool PenetratesArmor => Alpha > Deflection;
+    /// <summary>
+    /// La distorsion ne fait pas de dégâts au blindage ni à la coque : elle
+    /// surcharge les composants (puissance, boucliers, armes).
+    /// </summary>
+    public bool IsDistortion => Kind == DamageKind.Distortion;
+
+    /// <summary>Bouclier tombé : le projectile dépasse le seuil de déflexion du blindage (dégâts de coque).</summary>
+    public bool PenetratesArmor => !IsDistortion && Alpha > Deflection;
 
     /// <summary>Bouclier plein : ce qui traverse le bouclier dépasse encore le seuil de déflexion.</summary>
-    public bool PenetratesThroughShield => AlphaThroughShield > 0 && AlphaThroughShield > Deflection;
+    public bool PenetratesThroughShield => !IsDistortion && AlphaThroughShield > 0 && AlphaThroughShield > Deflection;
 }
 
 /// <summary>Verdict d'une arme contre un vaisseau (voir <see cref="WeaponPenetration.Evaluate"/>).</summary>
@@ -20,14 +26,18 @@ public sealed record PenetrationResult(CombatWeapon Weapon, CombatShip Ship, IRe
     public bool ShieldAndArmorPenetrated => Checks.Any(c => c.PenetratesThroughShield);
 
     /// <summary>Le bouclier plein laisse passer une partie des dégâts de l'arme (même s'ils ricochent ensuite).</summary>
-    public bool LeaksThroughShield => Checks.Any(c => c.AlphaThroughShield > 0);
+    public bool LeaksThroughShield => Checks.Any(c => !c.IsDistortion && c.AlphaThroughShield > 0);
+
+    /// <summary>Arme à distorsion pure : elle vise les composants, pas le blindage.</summary>
+    public bool IsDistortionOnly => Checks.Count > 0 && Checks.All(c => c.IsDistortion);
 
     /// <summary>
     /// Marge par rapport au seuil de déflexion (bouclier tombé) : dégâts du
     /// meilleur type / seuil. Au-dessus de 1, ça passe ; plus c'est haut, plus
     /// c'est confortable. Infini si le seuil est nul.
     /// </summary>
-    public double ArmorMargin => Checks.Count == 0 ? 0 : Checks.Max(c => c.Deflection <= 0 ? double.PositiveInfinity : c.Alpha / c.Deflection);
+    public double ArmorMargin => Checks.Count(c => !c.IsDistortion) == 0 ? 0
+        : Checks.Where(c => !c.IsDistortion).Max(c => c.Deflection <= 0 ? double.PositiveInfinity : c.Alpha / c.Deflection);
 }
 
 /// <summary>

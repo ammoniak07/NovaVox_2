@@ -19,11 +19,12 @@ public sealed class DefensePanel : Grid
     private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
     private static readonly Brush DangerBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x50, 0xFF, 0x4D, 0x5E)));
     private static readonly Brush WarnBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x50, 0xFF, 0xB0, 0x20)));
+    private static readonly Brush NeutralBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x40, 0x90, 0xA0, 0xB8)));
     private static readonly Brush SafeBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x50, 0x35, 0xE0, 0xA1)));
 
-    private static readonly double[] ColumnWidths = { 0, 50, 95, 110, 95, 110, 120, 95, 190 };
+    private static readonly double[] ColumnWidths = { 0, 46, 90, 95, 85, 95, 95, 100, 90, 230 };
 
-    private enum SortColumn { Name, Size, ShieldDps, ShieldTime, HullDps, ArmorTime, Leak, Missiles, Verdict }
+    private enum SortColumn { Name, Size, ShieldDps, ShieldTime, HullDps, ArmorTime, DestroyTime, Leak, Missiles, Verdict }
 
     private readonly MyShipsStore _store;
     private readonly ComboBox _shipCombo = new() { Margin = new Thickness(0, 4, 0, 10) };
@@ -212,6 +213,7 @@ public sealed class DefensePanel : Grid
         _summaryLeft.Children.Add(Ui.Section("Ma défense"));
         Line("Déflexion du blindage", $"{Num(ship.DeflectionOf(DamageKind.Physical), 1)} physique · {Num(ship.DeflectionOf(DamageKind.Energy), 1)} énergie · {Num(ship.DeflectionOf(DamageKind.Distortion), 1)} distorsion");
         Line("Blindage", $"{Num(ship.ArmorHp, 0)} PV");
+        Line("Structure (coque)", ship.HullHp > 0 ? $"{Num(ship.HullHp, 0)} PV, à détruire après le blindage" : "?");
         var activeText = profile.Mounted.Count > profile.Active.Count ? $" ({profile.Active.Count} générateurs actifs sur {profile.Mounted.Count})" : "";
         Line("Bouclier", $"{Num(profile.ShieldHp, 0)} PV{activeText}");
         Line("Régénération", $"{Num(profile.ShieldRegen, 0)} PV/s");
@@ -270,7 +272,8 @@ public sealed class DefensePanel : Grid
 
         var help = Ui.Muted(
             "Chaque attaquant avec toutes ses armes d'origine (tourelles comprises), ou tes vaisseaux ⭐ avec les armes choisies. " +
-            "Estimations, tous les tirs touchent : le bouclier ne régénère pas sous le feu. Rouge : perce ton blindage (dégâts de coque), avec ses canons ou seulement avec ses missiles (une salve, une fois ton bouclier tombé) ; " +
+            "Estimations, tous les tirs touchent : le bouclier ne régénère pas sous le feu. « Coque » = blindage puis structure, détruire le vaisseau demande de vider les deux. " +
+            "Rouge : ses canons percent ton blindage (ou sa salve de missiles suffit à te détruire) ; gris : seulement ses missiles (une salve, % de ta coque) ou de la distorsion (composants, pas de dégâts de coque) ; " +
             "orange : perce même à travers ton bouclier plein (balistique) ; vert : ne fait que vider ton bouclier, ses tirs ricochent ensuite. " +
             "Survole une ligne pour voir le détail de ses armes. Données du jeu " + CombatDatabase.GameVersion + ".",
             11, new Thickness(0, 8, 0, 0));
@@ -295,11 +298,12 @@ public sealed class DefensePanel : Grid
             ("Taille", SortColumn.Size, "Taille du vaisseau attaquant"),
             ("DPS bouclier", SortColumn.ShieldDps, "PV de ton bouclier retirés par seconde"),
             ("Bouclier tombe", SortColumn.ShieldTime, "Temps pour faire tomber ton bouclier"),
-            ("DPS blindage", SortColumn.HullDps, "Dégâts par seconde à ton blindage une fois le bouclier tombé (canons qui dépassent ta déflexion)"),
+            ("DPS coque", SortColumn.HullDps, "Dégâts par seconde à ton blindage puis à ta structure une fois le bouclier tombé (canons qui dépassent ta déflexion ; la distorsion ne compte pas)"),
             ("Blindage vidé", SortColumn.ArmorTime, "Temps pour vider ton blindage une fois le bouclier tombé"),
-            ("À travers bouclier", SortColumn.Leak, "Dégâts par seconde à ton blindage même avec le bouclier plein (part physique qui passe)"),
-            ("Missiles", SortColumn.Missiles, "Dégâts de toute sa salve de missiles/torpilles à ton blindage (bouclier tombé)"),
-            ("Verdict", SortColumn.Verdict, "Du plus dangereux au moins dangereux (temps bouclier + blindage)"),
+            ("Détruit en", SortColumn.DestroyTime, "Temps pour te détruire avec ses canons : bouclier, puis blindage, puis structure"),
+            ("Bouclier levé", SortColumn.Leak, "Dégâts par seconde à ta coque même avec ton bouclier plein (part physique qui traverse le bouclier et dépasse ta déflexion)"),
+            ("Missiles", SortColumn.Missiles, "Dégâts de toute sa salve de missiles/torpilles à ta coque (une fois ton bouclier tombé)"),
+            ("Verdict", SortColumn.Verdict, "Du plus dangereux au moins dangereux"),
         };
         for (var i = 0; i < titles.Length; i++)
         {
@@ -360,10 +364,12 @@ public sealed class DefensePanel : Grid
         }
         attacks.AddRange(DefenseCalculator.AllStockAttackers(profile));
 
-        var hurt = attacks.Count(a => a.CanHurtHull);
+        var guns = attacks.Count(a => a.GunsPierce);
         var leak = attacks.Count(a => a.LeakHullDps > 0);
-        _summary.Text = $"{_ship.Name} : {hurt} attaquants sur {attacks.Count} peuvent percer ton blindage une fois ton bouclier tombé, " +
-                        $"dont {leak} même à travers ton bouclier plein. Les autres ne font que vider ton bouclier.";
+        var missilesOnly = attacks.Count(a => !a.GunsPierce && a.MissileHullDamage > 0);
+        var safe = attacks.Count - guns - missilesOnly;
+        _summary.Text = $"{_ship.Name} : sur {attacks.Count} attaquants, {guns} percent ton blindage avec leurs canons (dont {leak} même bouclier levé), " +
+                        $"{missilesOnly} seulement avec leurs missiles (une salve), et {safe} ne font que vider ton bouclier.";
 
         var query = _search.Text.Trim();
         IEnumerable<AttackOnMe> shown = attacks;
@@ -396,15 +402,17 @@ public sealed class DefensePanel : Grid
             SortColumn.ShieldTime => a => Cap(a.SecondsToDropShield),
             SortColumn.HullDps => a => a.HullDps,
             SortColumn.ArmorTime => a => Cap(a.SecondsToStripArmor),
+            SortColumn.DestroyTime => a => Cap(a.SecondsToDestroy),
             SortColumn.Leak => a => a.LeakHullDps,
             SortColumn.Missiles => a => a.MissileHullDamage,
             // Les plus dangereux d'abord : touche à travers le bouclier, puis perce
             // le blindage avec ses canons (le plus rapide d'abord), puis missiles
             // seulement (la plus grosse salve d'abord), puis ceux qui ricochent.
-            _ => a => a.LeakHullDps > 0 ? Cap(a.SecondsTotal) / 1e9
-                : a.HullDps > 0 ? 1 + Cap(a.SecondsTotal) / 1e9
-                : a.MissileHullDamage > 0 ? 2 + 1 / (1 + a.MissileHullDamage)
-                : 3 + Cap(a.SecondsToDropShield) / 1e9,
+            _ => a => a.LeakHullDps > 0 ? Cap(a.SecondsToDestroy) / 1e9
+                : a.HullDps > 0 ? 1 + Cap(a.SecondsToDestroy) / 1e9
+                : a.MissileShareOfHull >= 1 ? 2 + 1 / (1 + a.MissileHullDamage)
+                : a.MissileHullDamage > 0 ? 3 + 1 / (1 + a.MissileHullDamage)
+                : 4 + Cap(a.SecondsToDropShield) / 1e9,
         };
         return _sortDescending
             ? attacks.OrderByDescending(key).ThenBy(a => a.Attacker, StringComparer.CurrentCultureIgnoreCase)
@@ -426,11 +434,12 @@ public sealed class DefensePanel : Grid
         AddCell(row, 3, Duration(a.SecondsToDropShield), null);
         AddCell(row, 4, a.HullDps > 0 ? Num(a.HullDps, 0) : "0", a.HullDps > 0 ? DangerBrush : null);
         AddCell(row, 5, Duration(a.SecondsToStripArmor), null);
-        AddCell(row, 6, a.LeakHullDps > 0 ? $"⚠ {Num(a.LeakHullDps, 0)}/s" : "—", a.LeakHullDps > 0 ? WarnBrush : null);
-        AddCell(row, 7, a.MissileHullDamage > 0 ? Num(a.MissileHullDamage, 0) : "—", null);
+        AddCell(row, 6, Duration(a.SecondsToDestroy), a.HullDps > 0 ? DangerBrush : null);
+        AddCell(row, 7, a.LeakHullDps > 0 ? $"⚠ {Num(a.LeakHullDps, 0)}/s" : "rien", a.LeakHullDps > 0 ? WarnBrush : null);
+        AddCell(row, 8, a.MissileHullDamage > 0 ? Num(a.MissileHullDamage, 0) : "rien", null);
 
         var (text, brush) = Verdict(a);
-        AddCell(row, 8, text, brush);
+        AddCell(row, 9, text, brush);
         return border;
     }
 
@@ -440,15 +449,16 @@ public sealed class DefensePanel : Grid
     /// </summary>
     private static (string Text, Brush Brush) Verdict(AttackOnMe a)
     {
-        if (a.LeakHullDps > 0) return ("⚠ Te touche même bouclier levé", WarnBrush);
-        if (a.HullDps > 0) return ($"✖ Perce ton blindage ({Duration(a.SecondsTotal)})", DangerBrush);
+        if (a.LeakHullDps > 0) return ($"⚠ Te touche même bouclier levé", WarnBrush);
+        if (a.HullDps > 0) return ($"✖ Ses canons percent ton blindage", DangerBrush);
         if (a.MissileHullDamage > 0)
         {
-            var share = a.ArmorHp > 0 ? a.MissileHullDamage / a.ArmorHp : 1;
+            var share = a.MissileShareOfHull;
             return share >= 1
-                ? ("✖ Ses missiles peuvent te détruire", DangerBrush)
-                : ($"✖ Missiles seulement ({Num(share * 100, 0)} % du blindage)", DangerBrush);
+                ? ("✖ Sa salve de missiles peut te détruire", DangerBrush)
+                : ($"◇ Missiles seulement : {Num(share * 100, share < 0.1 ? 1 : 0)} % de ta coque", NeutralBrush);
         }
+        if (a.DistortionDps > 0) return ("◇ Distorsion : surcharge tes composants", NeutralBrush);
         return ("✔ Ricoche sur ton blindage", SafeBrush);
     }
 

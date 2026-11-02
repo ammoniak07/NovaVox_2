@@ -63,11 +63,12 @@ public class WeaponPenetrationTests
     }
 
     [Fact]
-    public void ZeroDeflection_MarginIsInfinite()
+    public void Distortion_NeverCountsAsHullDamage()
     {
         var r = WeaponPenetration.Evaluate(Weapon(0, 0, 90), Ship(10, 10, 0));
-        Assert.True(r.ArmorPenetrated);
-        Assert.True(double.IsPositiveInfinity(r.ArmorMargin));
+        Assert.True(r.IsDistortionOnly);
+        Assert.False(r.ArmorPenetrated);
+        Assert.False(r.LeaksThroughShield);
     }
 
     [Fact]
@@ -337,5 +338,39 @@ public class DefenseTests
         var all = DefenseCalculator.AllStockAttackers(target);
         Assert.True(all.Count > 150);
         Assert.Contains(all, a => a.CanHurtHull);
+    }
+}
+
+public class DefenseConsistencyTests
+{
+    [Fact]
+    public void Distortion_DoesNotHurtHull()
+    {
+        var polaris = DefenseCalculator.Profile(CombatDatabase.FindShip("Polaris")!);
+        var suckerpunch = CombatDatabase.FindWeapon("Suckerpunch Cannon")!;
+        var r = DefenseCalculator.Evaluate(polaris, "test", null, new[] { (suckerpunch, 4) });
+        Assert.False(r.CanHurtHull);
+        Assert.True(r.DistortionDps > 0);
+    }
+
+    [Fact]
+    public void Destruction_IncludesStructureAfterArmor()
+    {
+        var polarisShip = CombatDatabase.FindShip("Polaris")!;
+        Assert.Equal(918000, polarisShip.HullHp);
+        var polaris = DefenseCalculator.Profile(polarisShip);
+        var m7a = CombatDatabase.FindWeapon("M7A Cannon")!;
+        var r = DefenseCalculator.Evaluate(polaris, "test", null, new[] { (m7a, 2) });
+        Assert.True(r.GunsPierce);
+        Assert.True(r.SecondsToDestroy > r.SecondsToDropShield + r.SecondsToStripArmor * 10);
+    }
+
+    [Fact]
+    public void Polaris_SmallFightersCannotPierceWithGuns()
+    {
+        var polaris = DefenseCalculator.Profile(CombatDatabase.FindShip("Polaris")!);
+        var all = DefenseCalculator.AllStockAttackers(polaris);
+        foreach (var name in new[] { "Gladius", "Arrow", "Cutlass Black", "Avenger Titan", "Hawk", "Cutlass Blue", "Vanguard Sentinel" })
+            Assert.False(all.Single(a => a.Attacker == name).GunsPierce, name);
     }
 }

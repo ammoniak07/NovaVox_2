@@ -99,7 +99,9 @@ public sealed record CombatShip(
     /// <summary>Nombre de générateurs de bouclier qui fonctionnent en même temps (2 dans le jeu actuel).</summary>
     [property: JsonPropertyName("activeShields")] int ActiveShields = 2,
     /// <summary>Résistance du bouclier par type, [min, max] : part des dégâts absorbés qui n'entame pas ses PV.</summary>
-    [property: JsonPropertyName("shieldResistance")] double[][]? ShieldResistance = null)
+    [property: JsonPropertyName("shieldResistance")] double[][]? ShieldResistance = null,
+    /// <summary>PV de la structure (coque) à détruire une fois le blindage vidé.</summary>
+    [property: JsonPropertyName("hullHp")] double HullHp = 0)
 {
     /// <summary>Résistance du bouclier plein à ce type de dégâts (0 à 1).</summary>
     public double ShieldResistanceOf(DamageKind kind)

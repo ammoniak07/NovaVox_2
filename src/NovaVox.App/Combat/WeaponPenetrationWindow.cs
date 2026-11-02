@@ -349,7 +349,7 @@ public sealed class WeaponPenetrationWindow : Window
             "Vert : l'arme fait des dégâts. Rouge : les tirs ricochent sur le blindage (les dégâts d'un projectile ne dépassent pas son seuil de déflexion) " +
             "ou sont absorbés par le bouclier. Bouclier levé : le bouclier absorbe toute l'énergie et toute la distorsion, et 45 % des dégâts physiques " +
             "quand il est plein (de moins en moins en faiblissant) ; ce qui passe doit encore dépasser le seuil de déflexion. La distorsion ne vise pas " +
-            "le blindage mais les composants (seuil 0). Données du jeu " + CombatDatabase.GameVersion + ".",
+            "le blindage mais les composants : elle ne fait pas de dégâts de coque. Données du jeu " + CombatDatabase.GameVersion + ".",
             11, new Thickness(0, 8, 0, 0));
         help.TextWrapping = TextWrapping.Wrap;
         Grid.SetRow(help, 5);
@@ -518,6 +518,7 @@ public sealed class WeaponPenetrationWindow : Window
 
     private static (string, Brush) ShieldUpVerdict(PenetrationResult r)
     {
+        if (r.IsDistortionOnly) return ("✖ Absorbé par le bouclier", BlockBrush);
         if (!r.LeaksThroughShield) return ("✖ Absorbé par le bouclier", BlockBrush);
         var best = r.Checks.Where(c => c.AlphaThroughShield > 0).MaxBy(c => c.Deflection <= 0 ? double.MaxValue : c.AlphaThroughShield / c.Deflection)!;
         var leak = $"{Num(best.ShieldLeak * 100, 0)} % → {Num(best.AlphaThroughShield)}";
@@ -529,6 +530,7 @@ public sealed class WeaponPenetrationWindow : Window
     private static (string, Brush) ShieldDownVerdict(PenetrationResult r)
     {
         if (r.Checks.Count == 0) return ("—", NeutralBrush);
+        if (r.IsDistortionOnly) return ("◇ Distorsion : vise les composants", NeutralBrush);
         var margin = r.ArmorMargin;
         if (r.ArmorPenetrated)
             return (double.IsPositiveInfinity(margin) ? "✔ Passe (aucun seuil)" : $"✔ Passe (×{Num(margin)})", PassBrush);

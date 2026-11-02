@@ -26,9 +26,22 @@ public sealed record AttackOnMe(
     /// <summary>Dégâts de toute la salve de missiles/torpilles au blindage (bouclier tombé).</summary>
     double MissileHullDamage,
     double ShieldHp,
-    double ArmorHp)
+    double ArmorHp,
+    /// <summary>PV de structure à détruire après le blindage.</summary>
+    double HullHp = 0,
+    /// <summary>Dégâts de distorsion par seconde (bouclier tombé) : surchargent les composants, pas la coque.</summary>
+    double DistortionDps = 0)
 {
+    /// <summary>Ses canons percent le blindage (dégâts de coque continus).</summary>
+    public bool GunsPierce => HullDps > 0;
+
     public bool CanHurtHull => HullDps > 0 || MissileHullDamage > 0;
+
+    /// <summary>Secondes pour détruire le vaisseau : bouclier, puis blindage, puis structure (canons seulement).</summary>
+    public double SecondsToDestroy => HullDps > 0 ? SecondsToDropShield + (ArmorHp + HullHp) / HullDps : double.PositiveInfinity;
+
+    /// <summary>Part du blindage + structure qu'enlève toute la salve de missiles (bouclier tombé).</summary>
+    public double MissileShareOfHull => ArmorHp + HullHp > 0 ? MissileHullDamage / (ArmorHp + HullHp) : 0;
 
     /// <summary>Secondes pour faire tomber le bouclier (sans régénération : il ne remonte pas sous le feu).</summary>
     public double SecondsToDropShield => ShieldDps > 0 ? ShieldHp / ShieldDps : double.PositiveInfinity;
@@ -70,7 +83,7 @@ public static class DefenseCalculator
     public static AttackOnMe Evaluate(DefenseProfile target, string attacker, CombatShip? attackerShip, IReadOnlyList<(CombatWeapon Weapon, int Count)> weapons)
     {
         var ship = target.Ship;
-        double shieldDps = 0, hullDps = 0, leakDps = 0, missileHull = 0;
+        double shieldDps = 0, hullDps = 0, leakDps = 0, missileHull = 0, distortionDps = 0;
         var threats = new List<WeaponThreat>();
         foreach (var (weapon, rawCount) in weapons)
         {
@@ -86,24 +99,30 @@ public static class DefenseCalculator
                 var leak = ship.ShieldLeak(kind);
                 var deflection = ship.DeflectionOf(kind);
                 var armorMult = ship.ArmorMultiplierOf(kind);
-                if (alpha > deflection) pierces = true;
-                if (alpha * leak > deflection && leak > 0) leaks = true;
+                // La distorsion ne touche ni le blindage ni la coque (elle surcharge les composants).
+                var hitsHull = kind != DamageKind.Distortion;
+                if (hitsHull && alpha > deflection) pierces = true;
+                if (hitsHull && alpha * leak > deflection && leak > 0) leaks = true;
 
                 if (weapon.IsGun)
                 {
                     var dps = weapon.Dps * (alpha / alphaSum) * count;
                     shieldDps += dps * absorbed * (1 - ship.ShieldResistanceOf(kind));
-                    if (alpha > deflection) hullDps += dps * armorMult;
-                    if (leak > 0 && alpha * leak > deflection) leakDps += dps * leak * armorMult;
+                    if (!hitsHull) distortionDps += dps;
+                    else
+                    {
+                        if (alpha > deflection) hullDps += dps * armorMult;
+                        if (leak > 0 && alpha * leak > deflection) leakDps += dps * leak * armorMult;
+                    }
                 }
-                else if (alpha > deflection)
+                else if (hitsHull && alpha > deflection)
                 {
                     missileHull += alpha * weapon.Pellets * count * armorMult;
                 }
             }
             threats.Add(new WeaponThreat(weapon, rawCount, pierces, leaks));
         }
-        return new AttackOnMe(attacker, attackerShip, threats, shieldDps, hullDps, leakDps, missileHull, target.ShieldHp, ship.ArmorHp);
+        return new AttackOnMe(attacker, attackerShip, threats, shieldDps, hullDps, leakDps, missileHull, target.ShieldHp, ship.ArmorHp, ship.HullHp, distortionDps);
     }
 
     /// <summary>Tous les vaisseaux du jeu (armes d'origine) contre le défenseur.</summary>
