@@ -197,6 +197,31 @@ public class CombatReferenceValuesTests
         Assert.Equal(armorHp, s.ArmorHp);
     }
 
+    /// <summary>
+    /// Valeurs lues directement dans Data.p4k avec StarBreaker (jeu 4.10.2) :
+    /// déflexion physique / énergie / distorsion et PV du blindage. Les 195
+    /// vaisseaux de la base étaient identiques lors de la comparaison.
+    /// </summary>
+    [Theory]
+    [InlineData("Idris-M", 554, 485, 0, 87516)]
+    [InlineData("Javelin", 539, 473, 0, 117810)]
+    [InlineData("Hammerhead", 531, 380, 0, 25740)]
+    [InlineData("Carrack", 420, 240, 0, 18700)]
+    [InlineData("Asgard", 139, 88, 0, 23760)]
+    [InlineData("Hermes", 116, 110, 0, 15840)]
+    [InlineData("Corsair", 95, 100, 0, 15120)]
+    [InlineData("Cutlass Black", 32, 29, 0, 7290)]
+    [InlineData("S-65 Stingray", 24, 19.2, 0, 3512)]
+    [InlineData("Gladius", 11, 9, 0, 3300)]
+    public void ShipArmor_MatchesStarBreaker(string ship, double physical, double energy, double distortion, double armorHp)
+    {
+        var s = CombatDatabase.FindShip(ship)!;
+        Assert.Equal(physical, s.DeflectionOf(DamageKind.Physical));
+        Assert.Equal(energy, s.DeflectionOf(DamageKind.Energy), 3);
+        Assert.Equal(distortion, s.DeflectionOf(DamageKind.Distortion));
+        Assert.Equal(armorHp, s.ArmorHp);
+    }
+
     [Fact]
     public void Ndb30_MatchesOtherTool()
     {
