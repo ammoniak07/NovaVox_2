@@ -207,6 +207,27 @@ public class CombatReferenceValuesTests
         Assert.Equal(712.5, w.Dps, 1);
     }
 
+    /// <summary>
+    /// Dégâts par tir relevés sur CStone (finder.cstone.space), autre source
+    /// que scunpacked. Vérifie aussi que l'arme « normale » est retenue et
+    /// pas une variante de PNJ ou de l'exosquelette ATLS du même nom.
+    /// </summary>
+    [Theory]
+    [InlineData("Tarantula GT-870 Mark 3 Cannon", 3, 136.62)]
+    [InlineData("CF-117 Bulldog Repeater", 1, 17.496)]
+    [InlineData("PyroBurst Scattergun", 3, 396)]
+    [InlineData("GVSR Repeater", 2, 99.72)]
+    [InlineData("Revenant Gatling", 4, 63.27)]
+    [InlineData("CF-337 Panther Repeater", 3, 43.7)]
+    [InlineData("NDB-30 Repeater", 3, 85.5)]
+    public void WeaponAlpha_MatchesCStone(string name, int size, double alpha)
+    {
+        var w = CombatDatabase.FindWeapon(name);
+        Assert.NotNull(w);
+        Assert.Equal(size, w!.Size);
+        Assert.InRange(w.AlphaTotal, alpha * 0.99, alpha * 1.01);
+    }
+
     [Fact]
     public void Database_HasNoSuspiciousValues()
     {

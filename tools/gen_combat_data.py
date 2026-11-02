@@ -12,12 +12,76 @@ ships=json.load(open(D+'/ships.json',encoding='utf-8')); items=json.load(open(D+
 T=['Physical','Energy','Distortion']
 def r(x,n=2): return round(float(x or 0),n)
 bad_cls=re.compile(r'_(Collector|Teach|Showdown|BTALA|Display|BIS\d+|Tutorial|AI|PU_AI|Unmanned|NoInterior)(_|$)',re.I)
-WEAPON_BY_CLASS={}
 ITEM_TYPE={(i.get('className') or '').lower():i.get('type') for i in items if i.get('className')}
+def clean(n): return re.sub(r'\s+',' ',(n or '').replace('\xa0',' ')).strip()
+def weapon_entry(i):
+    si=i.get('stdItem') or {}; typ=i.get('type'); sub=i.get('subType')
+    if typ=='WeaponGun':
+        w=si.get('Weapon') or {}; modes=w.get('Modes') or []
+        al=((w.get('Damage') or {}).get('Alpha')) or {}
+        if not modes or not sum(al.get(t,0) for t in T): return None
+        m=modes[0]; pel=max(1,int(m.get('PelletsPerShot') or 1))
+        e={'kind':'gun','size':si.get('Size'),'manufacturer':(si.get('Manufacturer') or {}).get('Name'),
+           'itemType':(si.get('DescriptionData') or {}).get('Item Type') or sub,
+           'alphaPerProjectile':[r(al.get(t,0)/pel) for t in T],'pellets':pel,
+           'rpm':r(m.get('RoundsPerMinute'),1),'dps':r((w.get('Damage') or {}).get('DpsTotal'),1),
+           'speed':r((si.get('Ammunition') or {}).get('Speed'),0),'range':r(w.get('EffectiveRange') or (si.get('Ammunition') or {}).get('Range'),0)}
+    elif typ=='Missile' and sub in ('Missile','Torpedo','Rocket'):
+        mi=si.get('Missile') or {}; dm=mi.get('Damage') or {}
+        if not sum(dm.get(t,0) for t in T): return None
+        e={'kind':'torpedo' if sub=='Torpedo' else 'missile','size':si.get('Size'),'manufacturer':(si.get('Manufacturer') or {}).get('Name'),
+           'itemType':(si.get('DescriptionData') or {}).get('Item Type') or sub,
+           'alphaPerProjectile':[r(dm.get(t,0)) for t in T],'pellets':1,'rpm':0,'dps':0,
+           'speed':r((mi.get('GCS') or {}).get('LinearSpeed'),0),'range':r(mi.get('Distance'),0)}
+    else: return None
+    if e['manufacturer'] and 'PLACEHOLDER' in e['manufacturer']: e['manufacturer']=None
+    return e
+# Plusieurs objets du jeu portent souvent le même nom : l'arme normale
+# (ex. GATS_BallisticCannon_S3) et des variantes propres à un vaisseau, à un
+# PNJ ou à l'exosquelette ATLS (Bengal_..._S8, ..._Idris_M, ..._ATLS, AAgun...).
+# On garde l'arme normale sous son nom ; une variante aux stats différentes
+# devient une entrée à part, « Nom (variante) » ; une variante identique est
+# simplement rattachée à l'arme normale.
+CANON=re.compile(r'^[A-Z]{3,5}_[A-Za-z]+_S\d+$')
+def canon_score(i):
+    cls=i['className']; si=i.get('stdItem') or {}
+    desc_size=str((si.get('DescriptionData') or {}).get('Size') or '').strip()
+    score=0 if desc_size==str(si.get('Size')) else 4          # taille de la description = taille réelle
+    if not CANON.match(cls): score+=1                           # nom de classe « standard » (GATS_BallisticCannon_S3)
+    if re.search(r'(LowPoly|Turret|Idris|Bengal|SecurityNetwork|ATLS|AAgun|Mounted|Bespoke|Collector)',cls,re.I): score+=2
+    return score
+TYPE_WORD=re.compile(r'(Cannon|Repeater|Gatling|Scatter[Gg]un|MassDriver|Gun|Rifle|Laser|Ballistic|Plasma|Neutron|Tachyon|Distortion)',re.I)
+def variant_label(cls,e,base):
+    parts=[]
+    for k,t in enumerate(cls.split('_')):
+        if k==0 and re.match(r'^[A-Z]{3,5}$',t): continue
+        if re.match(r'^S\d+$',t): continue
+        t2=TYPE_WORD.sub('',t)
+        if t2: parts.append(t2)
+    if base and e['size']!=base['size']: parts.insert(0,f"S{e['size']}")
+    return ' '.join(parts) or 'variante'
+groups=collections.defaultdict(list)
 for i in items:
     si=i.get('stdItem') or {}
-    if i.get('type') in ('WeaponGun','Missile') and i.get('className') and si.get('Name'):
-        WEAPON_BY_CLASS[i['className'].lower()]=re.sub(r'\s+',' ',si['Name'].replace('\xa0',' ')).strip()
+    n=clean(si.get('Name'))
+    if not n or 'PLACEHOLDER' in n or not i.get('className'): continue
+    if re.search(r'Dummy',i['className'],re.I): continue
+    e=weapon_entry(i)
+    if e: groups[n].append((i,e))
+def stats_key(e): return (tuple(e['alphaPerProjectile']),e['pellets'],e['rpm'],e['size'],e['kind'])
+out_w={}; WEAPON_BY_CLASS={}; VARIANTS=set()
+for n,variants in groups.items():
+    variants.sort(key=lambda ie:(canon_score(ie[0]),len(ie[0]['className'])))
+    variants=[(i['className'],e) for i,e in variants]
+    base_cls,base=variants[0]
+    out_w[n]=dict(name=n,**base); WEAPON_BY_CLASS[base_cls.lower()]=n
+    seen={stats_key(base):n}
+    for cls,e in variants[1:]:
+        k=stats_key(e)
+        if k in seen: WEAPON_BY_CLASS[cls.lower()]=seen[k]; continue
+        vn=f"{n} ({variant_label(cls,e,base)})"
+        while vn in out_w: vn+="'"
+        out_w[vn]=dict(name=vn,**e); seen[k]=vn; WEAPON_BY_CLASS[cls.lower()]=vn; VARIANTS.add(vn)
 out_s={}
 for v in ships:
     if not v.get('IsSpaceship'): continue
@@ -89,32 +153,9 @@ for v in ships:
         # même nom : on garde la première (les variantes identiques sont fréquentes)
         continue
     out_s[key]=e
-out_w={}
-for i in items:
-    si=i.get('stdItem') or {}
-    n=re.sub(r'\s+',' ',(si.get('Name') or '').replace('\xa0',' ')).strip()
-    if not n or 'PLACEHOLDER' in n: continue
-    typ=i.get('type'); sub=i.get('subType')
-    if typ=='WeaponGun':
-        w=si.get('Weapon') or {}; modes=w.get('Modes') or []
-        al=((w.get('Damage') or {}).get('Alpha')) or {}
-        if not modes or not sum(al.get(t,0) for t in T): continue
-        m=modes[0]; pel=max(1,int(m.get('PelletsPerShot') or 1))
-        e={'name':n,'kind':'gun','size':si.get('Size'),'manufacturer':(si.get('Manufacturer') or {}).get('Name'),
-           'itemType':(si.get('DescriptionData') or {}).get('Item Type') or sub,
-           'alphaPerProjectile':[r(al.get(t,0)/pel) for t in T],'pellets':pel,
-           'rpm':r(m.get('RoundsPerMinute'),1),'dps':r((w.get('Damage') or {}).get('DpsTotal'),1),
-           'speed':r((si.get('Ammunition') or {}).get('Speed'),0),'range':r(w.get('EffectiveRange') or (si.get('Ammunition') or {}).get('Range'),0)}
-    elif typ=='Missile' and sub in ('Missile','Torpedo','Rocket'):
-        mi=si.get('Missile') or {}; dm=mi.get('Damage') or {}
-        if not sum(dm.get(t,0) for t in T): continue
-        e={'name':n,'kind':'torpedo' if sub=='Torpedo' else 'missile','size':si.get('Size'),'manufacturer':(si.get('Manufacturer') or {}).get('Name'),
-           'itemType':(si.get('DescriptionData') or {}).get('Item Type') or sub,
-           'alphaPerProjectile':[r(dm.get(t,0)) for t in T],'pellets':1,'rpm':0,'dps':0,
-           'speed':r((mi.get('GCS') or {}).get('LinearSpeed'),0),'range':r(mi.get('Distance'),0)}
-    else: continue
-    if e['manufacturer'] and 'PLACEHOLDER' in e['manufacturer']: e['manufacturer']=None
-    if n not in out_w: out_w[n]=e
+# Variantes que personne n'utilise (PNJ, modèles « LowPoly »...) : retirées de la liste.
+used={n for e in out_s.values() for n in e['stockWeapons']}|{m['stock'] for e in out_s.values() for m in e['mounts'] if m['stock']}
+for vn in sorted(VARIANTS-used): del out_w[vn]
 gv=sys.argv[2]
 # Garde-fous : si un patch (ou un changement du parsing de scunpacked)
 # déplace une valeur sur un autre champ, on s'arrête au lieu de produire
