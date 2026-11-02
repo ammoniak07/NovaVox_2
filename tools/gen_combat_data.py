@@ -140,8 +140,14 @@ for v in ships:
     def pretty(h):
         h=re.sub(r'^hardpoint_','',h,flags=re.I)
         return re.sub(r'\s+',' ',h.replace('_',' ')).strip()
-    def walk_mounts(o,labels):
+    # Armes du pilote : hors tourelles habitées (équipage) et hors défense
+    # automatique (PDC) et hors armes de porte ; les tourelles téléguidées
+    # comptent (le pilote les contrôle). Vérifié contre le « PilotDps » du jeu.
+    crew_tops={t.get('HardpointName') for t in (v.get('MannedTurrets') or [])}|{t.get('HardpointName') for t in (v.get('PdcTurrets') or [])}
+    def walk_mounts(o,labels,top=None,slave=False):
         if isinstance(o,dict):
+            if o.get('HardpointName') and len(o.get('Path') or [])==1: top=o['HardpointName']
+            if o.get('IsPilotSlaveable'): slave=True
             hp=o.get('HardpointName'); ct=[c.get('Type') for c in o.get('CompatibleTypes') or []]
             cls=(o.get('ClassName') or '').lower(); it=ITEM_TYPE.get(cls)
             here=labels+([pretty(hp)] if hp and not re.match(r'(hardpoint_)?class_\d+$',hp,re.I) else [])
@@ -149,7 +155,7 @@ for v in ships:
             if hp and (it=='WeaponGun' or (not cls and 'WeaponGun' in ct and not children)):
                 mounts.append({'id':o.get('PortId') or hp,'label':' › '.join(here[-2:]) or hp,'kind':'gun',
                     'minSize':o.get('MinSize') or 0,'maxSize':o.get('MaxSize') or 0,'count':1,
-                    'stock':WEAPON_BY_CLASS.get(cls),'editable':bool(o.get('Editable'))})
+                    'stock':WEAPON_BY_CLASS.get(cls),'editable':bool(o.get('Editable')),'pilot':is_pilot(top,slave)})
                 return
             if hp and (it=='Shield' or (not cls and 'Shield' in ct and not children)):
                 mounts.append({'id':o.get('PortId') or hp,'label':' › '.join(here[-2:]) or hp,'kind':'shield',
@@ -162,18 +168,24 @@ for v in ships:
                     first=next((WEAPON_BY_CLASS.get((x.get('ClassName') or '').lower()) for x in slots if x.get('ClassName')),None)
                     mounts.append({'id':o.get('PortId') or hp,'label':' › '.join(here[-2:]),'kind':'missile',
                         'minSize':slots[0].get('MinSize') or 0,'maxSize':slots[0].get('MaxSize') or 0,'count':len(slots),
-                        'stock':first,'editable':bool(o.get('Editable')) or any(x.get('Editable') for x in slots)})
+                        'stock':first,'editable':bool(o.get('Editable')) or any(x.get('Editable') for x in slots),'pilot':is_pilot(top,slave)})
                     return
             for k,x in o.items():
-                if k!='CompatibleTypes': walk_mounts(x,here)
+                if k!='CompatibleTypes': walk_mounts(x,here,top,slave)
         elif isinstance(o,list):
-            for x in o: walk_mounts(x,labels)
+            for x in o: walk_mounts(x,labels,top,slave)
+    def is_pilot(top,slave):
+        if top in crew_tops: return False
+        # Armes de porte / montées tenues par un membre d'équipage (Cutlass Steel, Asgard...).
+        if top and re.search(r'(door|mountedgun)',top,re.I): return False
+        return True
     walk_mounts(v.get('Loadout') or [],[])
     e={'name':short,'fullName':name,'manufacturer':man,'size':v.get('Size'),
        'deflection':[r(d.get(t)) for t in T],'armorHp':r(a['Health'],0),
        'armorDamageMultiplier':[r((a.get('DamageMultipliers') or {}).get(t,1)) for t in T],
        'shieldHp':r(v.get('ShieldHp'),0),'shieldRegen':r((v.get('ShieldsTotal') or {}).get('Regen'),0),
        'hullHp':r(sum(float(x.get('DestructionDamage') or x.get('HP') or 0) for x in (v.get('DamageBeforeDestruction') or [])),0),
+       '_pilotDps':(v.get('Weaponry') or {}).get('PilotDps'),
        'activeShields':int(((v.get('PowerPools') or {}).get('Shield') or {}).get('Size') or 2),
        'shieldResistance':[[r((((v.get('ShieldsTotal') or {}).get('Resistance') or {}).get(t) or {}).get('Minimum',0)),r((((v.get('ShieldsTotal') or {}).get('Resistance') or {}).get(t) or {}).get('Maximum',0))] for t in T],
        'shieldAbsorption':[[r((sa.get(t) or {}).get('Minimum',1)),r((sa.get(t) or {}).get('Maximum',1))] for t in T],
@@ -204,6 +216,15 @@ if len(bad_guns)>len(guns)*0.05: problems.append(f'cadence/vitesse manquante sur
 if len(out_sh)<40: problems.append(f'seulement {len(out_sh)} boucliers')
 no_sh=[e['name'] for e in out_s.values() if e['shieldHp']>0 and not any(m['kind']=='shield' for m in e['mounts'])]
 if len(no_sh)>len(out_s)*0.1: problems.append(f'{len(no_sh)} vaisseaux sans emplacement de bouclier: {no_sh[:10]}')
+# Contrôle « pilote seul » : DPS des canons du pilote = PilotDps du jeu.
+W_DPS={n:w['dps'] for n,w in out_w.items()}
+pilot_bad=[]
+for e in out_s.values():
+    ref=e.pop('_pilotDps',None)
+    mine=sum(W_DPS.get(m['stock'],0) for m in e['mounts'] if m['kind']=='gun' and m.get('pilot'))
+    if ref and abs(mine-ref)>max(5,0.02*ref): pilot_bad.append((e['name'],round(mine),round(ref)))
+print('pilote seul : écarts',len(pilot_bad),pilot_bad[:25])
+if len(pilot_bad)>len(out_s)*0.1: problems.append(f'DPS pilote incohérent sur {len(pilot_bad)} vaisseaux')
 if problems:
     sys.exit('ARRET, données suspectes :\n- '+'\n- '.join(problems))
 data={'gameVersion':gv,'ships':sorted(out_s.values(),key=lambda e:-e['armorHp']),'weapons':sorted(out_w.values(),key=lambda e:(e['kind'],e['size'] or 0,e['name'])),'shields':sorted(out_sh.values(),key=lambda e:(e['size'],-e['hp'],e['name']))}

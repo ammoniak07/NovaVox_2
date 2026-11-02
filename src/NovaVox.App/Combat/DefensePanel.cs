@@ -9,10 +9,10 @@ namespace NovaVox.App.Combat;
 
 /// <summary>
 /// Onglet « 🛡️ Défense » : on choisit son vaisseau et ses générateurs de
-/// bouclier, et le tableau liste tous les vaisseaux du jeu (armes d'origine)
-/// et mes vaisseaux ⭐ avec ce qu'ils font : temps pour faire tomber mon
-/// bouclier, dégâts au blindage, ce qui passe à travers le bouclier.
-/// Calcul : <see cref="DefenseCalculator"/>.
+/// bouclier, et le tableau liste tous les vaisseaux du jeu (armes d'origine,
+/// « pilote seul » ou équipage complet) et mes vaisseaux ⭐ avec ce qu'ils
+/// font. Colonnes essentielles par défaut, « Détails » pour tout voir ; un
+/// clic sur une ligne explique arme par arme. Calcul : <see cref="DefenseCalculator"/>.
 /// </summary>
 public sealed class DefensePanel : Grid
 {
@@ -22,31 +22,60 @@ public sealed class DefensePanel : Grid
     private static readonly Brush NeutralBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x40, 0x90, 0xA0, 0xB8)));
     private static readonly Brush SafeBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x50, 0x35, 0xE0, 0xA1)));
 
-    private static readonly double[] ColumnWidths = { 0, 46, 90, 95, 85, 95, 95, 100, 90, 230 };
-
     private enum SortColumn { Name, Size, ShieldDps, ShieldTime, HullDps, ArmorTime, DestroyTime, Leak, Missiles, Verdict }
 
+    /// <summary>Colonnes du tableau ; Detail = visible seulement avec « Détails ».</summary>
+    private sealed record Column(string Title, SortColumn Sort, string Tip, double Width, bool Detail);
+
+    private static readonly Column[] AllColumns =
+    {
+        new("Attaquant", SortColumn.Name, "Vaisseau attaquant (clic sur une ligne : détail de ses armes)", 0, false),
+        new("Taille", SortColumn.Size, "Taille du vaisseau attaquant", 46, false),
+        new("DPS bouclier", SortColumn.ShieldDps, "PV de ton bouclier retirés par seconde", 90, true),
+        new("Bouclier tombe", SortColumn.ShieldTime, "Temps pour faire tomber ton bouclier", 100, false),
+        new("DPS coque", SortColumn.HullDps, "Dégâts par seconde à ton blindage puis à ta structure, une fois le bouclier tombé (la distorsion ne compte pas)", 85, true),
+        new("Blindage vidé", SortColumn.ArmorTime, "Temps pour vider ton blindage une fois le bouclier tombé", 95, true),
+        new("Détruit en", SortColumn.DestroyTime, "Temps pour te détruire avec ses canons : bouclier, puis blindage, puis structure", 95, false),
+        new("Bouclier levé", SortColumn.Leak, "Dégâts par seconde à ta coque même avec ton bouclier plein (balistique qui traverse et dépasse ta déflexion)", 105, false),
+        new("Missiles", SortColumn.Missiles, "Dégâts de toute sa salve de missiles/torpilles à ta coque (une fois ton bouclier tombé)", 90, true),
+        new("Verdict", SortColumn.Verdict, "Du plus dangereux au moins dangereux", 230, false),
+    };
+
     private readonly MyShipsStore _store;
+    private readonly PenetrationViewState _view;
     private readonly ComboBox _shipCombo = new() { Margin = new Thickness(0, 4, 0, 10) };
     private readonly StackPanel _shieldRows = new();
     private readonly StackPanel _summaryLeft = new() { Margin = new Thickness(0, 10, 0, 0) };
-    private readonly TextBox _search = new() { Width = 200, ToolTip = "Rechercher un attaquant" };
-    private readonly ComboBox _showCombo = new() { Width = 280, Margin = new Thickness(10, 0, 0, 0) };
-    private readonly TextBlock _summary = new() { FontSize = 13, Margin = new Thickness(0, 8, 0, 8), TextWrapping = TextWrapping.Wrap };
+    private readonly TextBox _search = new() { Width = 180, ToolTip = "Rechercher un attaquant" };
+    private readonly ComboBox _showCombo = new() { Width = 250, Margin = new Thickness(10, 0, 0, 0) };
+    private readonly ComboBox _sizeCombo = new() { Width = 170 };
+    private readonly CheckBox _pilotOnly = new()
+    {
+        Content = "Pilote seul (sans tourelles d'équipage)",
+        Margin = new Thickness(0, 0, 16, 0),
+        VerticalAlignment = VerticalAlignment.Center,
+        ToolTip = "Coché : chaque attaquant ne tire qu'avec les armes du pilote (et ses tourelles téléguidées), comme un vaisseau seul à bord. Décoché : équipage complet, toutes les tourelles tirent.",
+    };
+    private readonly CheckBox _details = new() { Content = "Détails", Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Affiche toutes les colonnes (DPS, blindage vidé, missiles)" };
+    private readonly TextBlock _summary = new() { FontSize = 13, Margin = new Thickness(0, 8, 0, 6), TextWrapping = TextWrapping.Wrap };
     private readonly Grid _header = new() { Margin = new Thickness(0, 0, 14, 4) };
     private readonly StackPanel _rows = new();
+    private readonly Border _detailBox = new() { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(10, 8, 10, 8), Margin = new Thickness(0, 8, 0, 0), MaxHeight = 190 };
+    private readonly StackPanel _detail = new();
 
     /// <summary>Choix de boucliers en cours (copie de travail : enregistrée seulement pour un vaisseau ⭐).</summary>
     private MyShipLoadout? _working;
     private MyShipLoadout? _saved;
     private CombatShip? _ship;
+    private string? _selectedAttacker;
     private SortColumn _sort = SortColumn.Verdict;
     private bool _sortDescending;
-    private bool _loading;
+    private bool _loading = true;
 
-    public DefensePanel(MyShipsStore store)
+    public DefensePanel(MyShipsStore store, PenetrationViewState view)
     {
         _store = store;
+        _view = view;
         Margin = new Thickness(14);
         ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(340) });
         ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
@@ -62,8 +91,19 @@ public sealed class DefensePanel : Grid
         foreach (var label in new[] { "Tous les attaquants", "Seulement ceux qui percent mon blindage", "Seulement ceux qui ne le percent pas" })
             _showCombo.Items.Add(new ComboBoxItem { Content = label });
         _showCombo.SelectedIndex = 0;
-        FillShipCombo(null);
+        foreach (var label in new[] { "Toutes tailles", "Petits (S1-S2)", "Moyens (S3)", "Gros (S4-S5)", "Capitaux (S6+)" })
+            _sizeCombo.Items.Add(new ComboBoxItem { Content = label });
+        _sizeCombo.SelectedIndex = Math.Clamp(_view.AttackerSize, 0, _sizeCombo.Items.Count - 1);
+        _pilotOnly.IsChecked = _view.PilotOnly;
+        _details.IsChecked = _view.ShowDetails;
+        BuildHeader();
+        _loading = false;
+        FillShipCombo(null, _view.DefenseShipKey);
     }
+
+    private bool ShowDetails => _details.IsChecked == true;
+
+    private IReadOnlyList<Column> VisibleColumns => AllColumns.Where(c => !c.Detail || ShowDetails).ToList();
 
     // ───────────────────────────── Mon vaisseau ─────────────────────────────
 
@@ -96,7 +136,7 @@ public sealed class DefensePanel : Grid
         return card;
     }
 
-    private void FillShipCombo(string? selectLoadout)
+    private void FillShipCombo(string? selectLoadout, string? selectKey = null)
     {
         _loading = true;
         _shipCombo.Items.Clear();
@@ -109,6 +149,8 @@ public sealed class DefensePanel : Grid
         }
         foreach (var ship in CombatDatabase.Ships.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
             _shipCombo.Items.Add(new ComboBoxItem { Content = $"{ship.Name}  (d'origine)", Tag = ship });
+        if (toSelect is null && selectKey is not null)
+            toSelect = _shipCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => PenetrationViewState.KeyOf(i.Tag) == selectKey);
         toSelect ??= _shipCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag is CombatShip { Name: "Cutlass Black" })
                      ?? _shipCombo.Items.OfType<ComboBoxItem>().FirstOrDefault();
         _shipCombo.SelectedItem = toSelect;
@@ -143,6 +185,7 @@ public sealed class DefensePanel : Grid
                 _working = null;
                 break;
         }
+        _view.DefenseShipKey = PenetrationViewState.KeyOf(tag);
         BuildShieldRows();
         Refresh();
     }
@@ -245,8 +288,9 @@ public sealed class DefensePanel : Grid
     {
         var card = Ui.Card();
         var grid = new Grid();
-        for (var i = 0; i < 3; i++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        for (var i = 0; i < 5; i++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var top = new DockPanel();
@@ -259,29 +303,65 @@ public sealed class DefensePanel : Grid
         top.Children.Add(new TextBlock { Text = "⚔️ QUI PEUT ME FAIRE DES DÉGÂTS", FontSize = 18, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center });
         grid.Children.Add(top);
 
-        SetRow(_summary, 1);
+        var options = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
+        options.Children.Add(_pilotOnly);
+        options.Children.Add(Ui.Muted("Attaquants :", 12, new Thickness(0, 4, 6, 0)));
+        options.Children.Add(_sizeCombo);
+        options.Children.Add(_details);
+        SetRow(options, 1);
+        grid.Children.Add(options);
+
+        SetRow(_summary, 2);
         grid.Children.Add(_summary);
 
-        BuildHeader();
-        SetRow(_header, 2);
+        var legend = Legend.Bar(
+            (DangerBrush, "Ses canons percent ton blindage"),
+            (WarnBrush, "Te touche même bouclier levé"),
+            (NeutralBrush, "Missiles seulement ou distorsion"),
+            (SafeBrush, "Ricoche sur ton blindage"));
+        if (legend is FrameworkElement fe) fe.Margin = new Thickness(0, 0, 0, 6);
+        SetRow(legend, 3);
+        grid.Children.Add(legend);
+
+        SetRow(_header, 4);
         grid.Children.Add(_header);
 
         var scroll = new ScrollViewer { Content = _rows, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        SetRow(scroll, 3);
+        SetRow(scroll, 5);
         grid.Children.Add(scroll);
 
+        _detailBox.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+        _detailBox.SetResourceReference(Border.BackgroundProperty, "PanelAltBrush50");
+        _detailBox.Child = new ScrollViewer { Content = _detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        SetRow(_detailBox, 6);
+        grid.Children.Add(_detailBox);
+
         var help = Ui.Muted(
-            "Chaque attaquant avec toutes ses armes d'origine (tourelles comprises), ou tes vaisseaux ⭐ avec les armes choisies. " +
-            "Estimations, tous les tirs touchent : le bouclier ne régénère pas sous le feu. « Coque » = blindage puis structure, détruire le vaisseau demande de vider les deux. " +
-            "Rouge : ses canons percent ton blindage (ou sa salve de missiles suffit à te détruire) ; gris : seulement ses missiles (une salve, % de ta coque) ou de la distorsion (composants, pas de dégâts de coque) ; " +
-            "orange : perce même à travers ton bouclier plein (balistique) ; vert : ne fait que vider ton bouclier, ses tirs ricochent ensuite. " +
-            "Survole une ligne pour voir le détail de ses armes. Données du jeu " + CombatDatabase.GameVersion + ".",
-            11, new Thickness(0, 8, 0, 0));
-        SetRow(help, 4);
+            "Estimations : tous les tirs touchent, le bouclier ne régénère pas sous le feu, DPS en rafale. Détruire un vaisseau = vider son bouclier, " +
+            "puis son blindage, puis sa structure. La distorsion surcharge les composants sans faire de dégâts de coque. Données du jeu " + CombatDatabase.GameVersion + ".",
+            11, new Thickness(0, 6, 0, 0));
+        SetRow(help, 7);
         grid.Children.Add(help);
 
         _search.TextChanged += (_, _) => Refresh();
         _showCombo.SelectionChanged += (_, _) => Refresh();
+        _sizeCombo.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            _view.AttackerSize = _sizeCombo.SelectedIndex;
+            Refresh();
+        };
+        _pilotOnly.Click += (_, _) =>
+        {
+            _view.PilotOnly = _pilotOnly.IsChecked == true;
+            Refresh();
+        };
+        _details.Click += (_, _) =>
+        {
+            _view.ShowDetails = ShowDetails;
+            BuildHeader();
+            Refresh();
+        };
 
         card.Child = grid;
         return card;
@@ -291,42 +371,30 @@ public sealed class DefensePanel : Grid
     {
         _header.Children.Clear();
         _header.ColumnDefinitions.Clear();
-        AddColumns(_header);
-        var titles = new (string Text, SortColumn Column, string Tip)[]
+        var columns = VisibleColumns;
+        AddColumns(_header, columns);
+        for (var i = 0; i < columns.Count; i++)
         {
-            ("Attaquant", SortColumn.Name, "Vaisseau attaquant"),
-            ("Taille", SortColumn.Size, "Taille du vaisseau attaquant"),
-            ("DPS bouclier", SortColumn.ShieldDps, "PV de ton bouclier retirés par seconde"),
-            ("Bouclier tombe", SortColumn.ShieldTime, "Temps pour faire tomber ton bouclier"),
-            ("DPS coque", SortColumn.HullDps, "Dégâts par seconde à ton blindage puis à ta structure une fois le bouclier tombé (canons qui dépassent ta déflexion ; la distorsion ne compte pas)"),
-            ("Blindage vidé", SortColumn.ArmorTime, "Temps pour vider ton blindage une fois le bouclier tombé"),
-            ("Détruit en", SortColumn.DestroyTime, "Temps pour te détruire avec ses canons : bouclier, puis blindage, puis structure"),
-            ("Bouclier levé", SortColumn.Leak, "Dégâts par seconde à ta coque même avec ton bouclier plein (part physique qui traverse le bouclier et dépasse ta déflexion)"),
-            ("Missiles", SortColumn.Missiles, "Dégâts de toute sa salve de missiles/torpilles à ta coque (une fois ton bouclier tombé)"),
-            ("Verdict", SortColumn.Verdict, "Du plus dangereux au moins dangereux"),
-        };
-        for (var i = 0; i < titles.Length; i++)
-        {
-            var (text, column, tip) = titles[i];
-            var arrow = _sort == column ? (_sortDescending ? " ▼" : " ▲") : "";
+            var column = columns[i];
+            var arrow = _sort == column.Sort ? (_sortDescending ? " ▼" : " ▲") : "";
             var label = new TextBlock
             {
-                Text = text + arrow,
+                Text = column.Title + arrow,
                 FontSize = 12,
                 FontWeight = FontWeights.Bold,
                 Cursor = Cursors.Hand,
-                ToolTip = tip,
+                ToolTip = column.Tip,
                 Margin = new Thickness(8, 0, 4, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
             };
-            label.SetResourceReference(TextBlock.ForegroundProperty, _sort == column ? "AccentBrush" : "MutedBrush");
+            label.SetResourceReference(TextBlock.ForegroundProperty, _sort == column.Sort ? "AccentBrush" : "MutedBrush");
             label.MouseLeftButtonUp += (_, _) =>
             {
-                if (_sort == column) _sortDescending = !_sortDescending;
+                if (_sort == column.Sort) _sortDescending = !_sortDescending;
                 else
                 {
-                    _sort = column;
-                    _sortDescending = column is SortColumn.ShieldDps or SortColumn.HullDps or SortColumn.Leak or SortColumn.Missiles or SortColumn.Size;
+                    _sort = column.Sort;
+                    _sortDescending = column.Sort is SortColumn.ShieldDps or SortColumn.HullDps or SortColumn.Leak or SortColumn.Missiles or SortColumn.Size;
                 }
                 BuildHeader();
                 Refresh();
@@ -336,22 +404,38 @@ public sealed class DefensePanel : Grid
         }
     }
 
-    private static void AddColumns(Grid grid)
+    private static void AddColumns(Grid grid, IReadOnlyList<Column> columns)
     {
-        foreach (var width in ColumnWidths)
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width <= 0 ? new GridLength(1, GridUnitType.Star) : new GridLength(width) });
+        foreach (var column in columns)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = column.Width <= 0 ? new GridLength(1, GridUnitType.Star) : new GridLength(column.Width), MinWidth = column.Width <= 0 ? 120 : 0 });
+    }
+
+    private bool SizeMatches(CombatShip? ship)
+    {
+        var size = ship?.Size ?? 0;
+        return _sizeCombo.SelectedIndex switch
+        {
+            1 => size is >= 1 and <= 2,
+            2 => size == 3,
+            3 => size is >= 4 and <= 5,
+            4 => size >= 6,
+            _ => true,
+        };
     }
 
     private void Refresh()
     {
+        if (_loading) return;
         _rows.Children.Clear();
         if (_ship is null || _working is null)
         {
             _summary.Text = "Choisis ton vaisseau à gauche.";
             _summaryLeft.Children.Clear();
+            ShowDetail(null);
             return;
         }
 
+        var pilotOnly = _pilotOnly.IsChecked == true;
         var profile = DefenseCalculator.Profile(_ship, _working);
         FillLeftSummary(profile);
 
@@ -359,17 +443,19 @@ public sealed class DefensePanel : Grid
         foreach (var mine in _store.Load())
         {
             if (CombatDatabase.FindShip(mine.Ship) is not { } model) continue;
-            var weapons = mine.EquippedWeapons(model);
+            var weapons = mine.EquippedWeapons(model, pilotOnly);
             if (weapons.Count > 0) attacks.Add(DefenseCalculator.Evaluate(profile, "⭐ " + mine.Name, model, weapons));
         }
-        attacks.AddRange(DefenseCalculator.AllStockAttackers(profile));
+        attacks.AddRange(DefenseCalculator.AllStockAttackers(profile, pilotOnly));
+        attacks = attacks.Where(a => SizeMatches(a.AttackerShip)).ToList();
 
         var guns = attacks.Count(a => a.GunsPierce);
         var leak = attacks.Count(a => a.LeakHullDps > 0);
         var missilesOnly = attacks.Count(a => !a.GunsPierce && a.MissileHullDamage > 0);
         var safe = attacks.Count - guns - missilesOnly;
-        _summary.Text = $"{_ship.Name} : sur {attacks.Count} attaquants, {guns} percent ton blindage avec leurs canons (dont {leak} même bouclier levé), " +
-                        $"{missilesOnly} seulement avec leurs missiles (une salve), et {safe} ne font que vider ton bouclier.";
+        var mode = pilotOnly ? "pilote seul" : "équipage complet";
+        _summary.Text = $"{_ship.Name} ({mode}) : sur {attacks.Count} attaquants, {guns} percent ton blindage avec leurs canons (dont {leak} même bouclier levé), " +
+                        $"{missilesOnly} seulement avec leurs missiles, et {safe} ne font que vider ton bouclier.";
 
         var query = _search.Text.Trim();
         IEnumerable<AttackOnMe> shown = attacks;
@@ -383,10 +469,16 @@ public sealed class DefensePanel : Grid
             _ => shown,
         };
 
+        var columns = VisibleColumns;
         var index = 0;
+        AttackOnMe? selected = null;
         foreach (var attack in Sort(shown))
-            _rows.Children.Add(BuildRow(attack, index++));
+        {
+            _rows.Children.Add(BuildRow(attack, index++, columns));
+            if (attack.Attacker == _selectedAttacker) selected = attack;
+        }
         if (index == 0) _rows.Children.Add(Ui.Muted("Aucun attaquant ne correspond.", 12, new Thickness(8)));
+        ShowDetail(selected);
     }
 
     private IEnumerable<AttackOnMe> Sort(IEnumerable<AttackOnMe> attacks)
@@ -405,9 +497,6 @@ public sealed class DefensePanel : Grid
             SortColumn.DestroyTime => a => Cap(a.SecondsToDestroy),
             SortColumn.Leak => a => a.LeakHullDps,
             SortColumn.Missiles => a => a.MissileHullDamage,
-            // Les plus dangereux d'abord : touche à travers le bouclier, puis perce
-            // le blindage avec ses canons (le plus rapide d'abord), puis missiles
-            // seulement (la plus grosse salve d'abord), puis ceux qui ricochent.
             // Les plus dangereux d'abord : ceux qui te détruisent le plus vite avec
             // leurs canons (bouclier levé ou non), puis missiles, puis les autres.
             _ => a => a.HullDps > 0 || a.LeakHullDps > 0 ? Cap(a.SecondsToDestroy) / 1e9
@@ -422,26 +511,45 @@ public sealed class DefensePanel : Grid
 
     private static double Cap(double seconds) => double.IsInfinity(seconds) ? 1e8 : seconds;
 
-    private UIElement BuildRow(AttackOnMe a, int index)
+    private UIElement BuildRow(AttackOnMe a, int index, IReadOnlyList<Column> columns)
     {
         var row = new Grid { MinHeight = 26 };
-        AddColumns(row);
-        var border = new Border { Child = row, Padding = new Thickness(0, 2, 0, 2), ToolTip = WeaponsTooltip(a) };
-        if (index % 2 == 1) border.SetResourceReference(Border.BackgroundProperty, "PanelAltBrush50");
+        AddColumns(row, columns);
+        var border = new Border { Child = row, Padding = new Thickness(0, 2, 0, 2), Cursor = Cursors.Hand, ToolTip = "Clic : détail de ses armes" };
+        if (a.Attacker == _selectedAttacker) border.SetResourceReference(Border.BackgroundProperty, "AccentDimBrush");
+        else if (index % 2 == 1) border.SetResourceReference(Border.BackgroundProperty, "PanelAltBrush50");
+        border.MouseLeftButtonUp += (_, _) =>
+        {
+            _selectedAttacker = a.Attacker;
+            Refresh();
+        };
 
-        AddCell(row, 0, a.Attacker, null, bold: true);
-        AddCell(row, 1, a.AttackerShip?.Size is { } size and > 0 ? $"S{size}" : "—", null);
-        AddCell(row, 2, Num(a.ShieldDps, 0), null);
-        AddCell(row, 3, Duration(a.SecondsToDropShield), null);
-        AddCell(row, 4, a.HullDps > 0 ? Num(a.HullDps, 0) : "0", a.HullDps > 0 ? DangerBrush : null);
-        AddCell(row, 5, Duration(a.SecondsToStripArmor), null);
-        AddCell(row, 6, Duration(a.SecondsToDestroy), a.HullDps > 0 || a.LeakHullDps > 0 ? DangerBrush : null);
-        AddCell(row, 7, a.LeakHullDps > 0 ? $"⚠ {Num(a.LeakHullDps, 0)}/s" : "rien", a.LeakHullDps > 0 ? WarnBrush : null);
-        AddCell(row, 8, a.MissileHullDamage > 0 ? Num(a.MissileHullDamage, 0) : "rien", null);
-
-        var (text, brush) = Verdict(a);
-        AddCell(row, 9, text, brush);
+        for (var i = 0; i < columns.Count; i++)
+        {
+            var (text, brush, bold) = Cell(a, columns[i].Sort);
+            AddCell(row, i, text, brush, bold);
+        }
         return border;
+    }
+
+    private static (string Text, Brush? Brush, bool Bold) Cell(AttackOnMe a, SortColumn column) => column switch
+    {
+        SortColumn.Name => (a.Attacker, null, true),
+        SortColumn.Size => (a.AttackerShip?.Size is { } size and > 0 ? $"S{size}" : "—", null, false),
+        SortColumn.ShieldDps => (Num(a.ShieldDps, 0), null, false),
+        SortColumn.ShieldTime => (Duration(a.SecondsToDropShield), null, false),
+        SortColumn.HullDps => (a.HullDps > 0 ? Num(a.HullDps, 0) : "0", a.HullDps > 0 ? DangerBrush : null, false),
+        SortColumn.ArmorTime => (Duration(a.SecondsToStripArmor), null, false),
+        SortColumn.DestroyTime => (Duration(a.SecondsToDestroy), a.HullDps > 0 || a.LeakHullDps > 0 ? DangerBrush : null, false),
+        SortColumn.Leak => (a.LeakHullDps > 0 ? $"⚠ {Num(a.LeakHullDps, 0)}/s" : "rien", a.LeakHullDps > 0 ? WarnBrush : null, false),
+        SortColumn.Missiles => (a.MissileHullDamage > 0 ? Num(a.MissileHullDamage, 0) : "rien", null, false),
+        _ => VerdictCell(a),
+    };
+
+    private static (string Text, Brush? Brush, bool Bold) VerdictCell(AttackOnMe a)
+    {
+        var (text, brush) = Verdict(a);
+        return (text, brush, false);
     }
 
     /// <summary>
@@ -450,8 +558,8 @@ public sealed class DefensePanel : Grid
     /// </summary>
     private static (string Text, Brush Brush) Verdict(AttackOnMe a)
     {
-        if (a.LeakHullDps > 0) return ($"⚠ Te touche même bouclier levé", WarnBrush);
-        if (a.HullDps > 0) return ($"✖ Ses canons percent ton blindage", DangerBrush);
+        if (a.LeakHullDps > 0) return ("⚠ Te touche même bouclier levé", WarnBrush);
+        if (a.HullDps > 0) return ("✖ Ses canons percent ton blindage", DangerBrush);
         if (a.MissileHullDamage > 0)
         {
             var share = a.MissileShareOfHull;
@@ -463,20 +571,64 @@ public sealed class DefensePanel : Grid
         return ("✔ Ricoche sur ton blindage", SafeBrush);
     }
 
-    private static string WeaponsTooltip(AttackOnMe a)
+    // ───────────────────────────── Détail d'un attaquant (clic) ─────────────────────────────
+
+    private void ShowDetail(AttackOnMe? a)
     {
-        var lines = new List<string> { a.AttackerShip?.FullName ?? a.Attacker };
-        foreach (var t in a.Weapons)
+        _detail.Children.Clear();
+        if (a is null || _ship is null)
         {
-            var mark = t.PenetratesThroughShield ? "⚠" : t.PenetratesArmor ? "✖" : "✔";
-            var verdict = t.PenetratesThroughShield ? "perce même à travers le bouclier" : t.PenetratesArmor ? "perce le blindage" : "ricoche sur le blindage";
-            var damage = string.Join(" + ", new[] { DamageKind.Physical, DamageKind.Energy, DamageKind.Distortion }
-                .Where(k => t.Weapon.Alpha(k) > 0)
-                .Select(k => $"{Num(t.Weapon.Alpha(k), 1)} {WeaponPenetration.FrenchName(k).ToLowerInvariant()}"));
-            lines.Add($"{mark} {(t.Count > 0 ? t.Count + "× " : "")}S{t.Weapon.Size} {t.Weapon.Name} ({damage}) : {verdict}");
+            _detail.Children.Add(Ui.Muted("👆 Clique sur un attaquant pour voir ce que fait chacune de ses armes contre toi, et pourquoi.", 12, default));
+            return;
         }
-        return string.Join("\n", lines);
+
+        var title = new TextBlock { Text = $"{a.Attacker} — {Verdict(a).Text}", FontSize = 14, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
+        title.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+        _detail.Children.Add(title);
+        _detail.Children.Add(Ui.Muted(
+            $"Ton bouclier tombe en {Duration(a.SecondsToDropShield)} · blindage vidé {Duration(a.SecondsToStripArmor)} plus tard · détruit en {Duration(a.SecondsToDestroy)}" +
+            (a.MissileHullDamage > 0 ? $" · salve de missiles : {Num(a.MissileHullDamage, 0)} dégâts ({Num(a.MissileShareOfHull * 100, 1)} % de ta coque)" : ""),
+            12, new Thickness(0, 2, 0, 6)));
+
+        foreach (var threat in a.Weapons.OrderByDescending(t => t.PenetratesThroughShield).ThenByDescending(t => t.PenetratesArmor).ThenBy(t => t.Weapon.Name))
+        {
+            var (mark, explanation) = Explain(threat, _ship);
+            var line = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 1) };
+            line.Inlines.Add(new System.Windows.Documents.Run($"{mark} {(threat.Count > 0 ? threat.Count + "× " : "")}S{threat.Weapon.Size} {threat.Weapon.Name}") { FontWeight = FontWeights.SemiBold });
+            line.Inlines.Add(new System.Windows.Documents.Run(" — " + explanation));
+            _detail.Children.Add(line);
+        }
     }
+
+    /// <summary>Explication en clair d'une arme contre mon vaisseau (chiffres à l'appui).</summary>
+    private static (string Mark, string Text) Explain(WeaponThreat threat, CombatShip ship)
+    {
+        var parts = new List<string>();
+        foreach (var kind in new[] { DamageKind.Physical, DamageKind.Energy, DamageKind.Distortion })
+        {
+            var alpha = threat.Weapon.Alpha(kind);
+            if (alpha <= 0) continue;
+            var name = WeaponPenetration.FrenchName(kind).ToLowerInvariant();
+            if (kind == DamageKind.Distortion)
+            {
+                parts.Add($"{Num(alpha, 1)} {name} : surcharge tes composants, pas de dégâts de coque");
+                continue;
+            }
+            var deflection = ship.DeflectionOf(kind);
+            var leak = ship.ShieldLeak(kind);
+            var through = alpha * leak;
+            var down = alpha > deflection ? $"{Num(alpha, 1)} > ta déflexion de {Num(deflection, 0)} : perce ton blindage" : $"{Num(alpha, 1)} ≤ ta déflexion de {Num(deflection, 0)} : ricoche";
+            var up = leak <= 0 ? "entièrement arrêté par ton bouclier levé"
+                : through > deflection ? $"bouclier levé : {Num(leak * 100, 0)} % passent ({Num(through, 0)} > {Num(deflection, 0)}), te touche déjà"
+                : $"bouclier levé : {Num(leak * 100, 0)} % passent ({Num(through, 0)} ≤ {Num(deflection, 0)}), ricoche";
+            parts.Add($"{name} {down} ; {up}");
+        }
+        var mark = threat.PenetratesThroughShield ? "⚠" : threat.PenetratesArmor ? "✖" : "✔";
+        var kindText = threat.Weapon.IsGun ? "" : (threat.Weapon.Kind == "torpedo" ? "torpille, " : "missile, ");
+        return (mark, kindText + string.Join(" · ", parts));
+    }
+
+    // ───────────────────────────── Utilitaires ─────────────────────────────
 
     private static void AddCell(Grid row, int column, string text, Brush? background, bool bold = false)
     {
@@ -493,7 +645,6 @@ public sealed class DefensePanel : Grid
                 FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                ToolTip = text.Length > 18 ? text : null,
             },
         };
         SetColumn(cell, column);
@@ -504,8 +655,8 @@ public sealed class DefensePanel : Grid
     {
         if (double.IsInfinity(seconds) || seconds > 3600 * 10) return "jamais";
         if (seconds < 60) return $"{Num(seconds, seconds < 10 ? 1 : 0)} s";
-        var minutes = (int)(seconds / 60);
-        return $"{minutes} min {(int)(seconds % 60):00}";
+        if (seconds < 3600) return $"{(int)(seconds / 60)} min {(int)(seconds % 60):00}";
+        return $"{(int)(seconds / 3600)} h {(int)(seconds % 3600 / 60):00}";
     }
 
     private static string Num(double value, int decimals)

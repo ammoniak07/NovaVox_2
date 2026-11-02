@@ -394,3 +394,38 @@ public class DefenseLeakTests
         Assert.Equal(10, a.SecondsToDestroy, 3);
     }
 }
+
+public class PilotOnlyTests
+{
+    private static double PilotDps(string ship)
+    {
+        var s = CombatDatabase.FindShip(ship)!;
+        return new MyShipLoadout { Ship = s.Name }.EquippedWeapons(s, pilotOnly: true).Where(w => w.Weapon.IsGun).Sum(w => w.Weapon.Dps * w.Count);
+    }
+
+    [Theory]
+    [InlineData("Cutlass Black", 2797.8)]   // PilotDps du jeu (scunpacked)
+    [InlineData("Polaris", 2182.4)]         // tourelle téléguidée du pilote seulement
+    [InlineData("Idris-M", 19738.7)]
+    [InlineData("Asgard", 3273.6)]
+    [InlineData("Cutlass Steel", 3454)]
+    public void PilotOnly_MatchesGamePilotDps(string ship, double expected)
+    {
+        Assert.InRange(PilotDps(ship), expected * 0.98, expected * 1.02);
+    }
+
+    [Fact]
+    public void PilotOnly_HammerheadHasNoPilotGuns()
+    {
+        Assert.Equal(0, PilotDps("Hammerhead"));
+    }
+
+    [Fact]
+    public void PilotOnly_ReducesThreatOfCrewedShips()
+    {
+        var polaris = DefenseCalculator.Profile(CombatDatabase.FindShip("Polaris")!);
+        var crew = DefenseCalculator.AllStockAttackers(polaris).Count(a => a.GunsPierce);
+        var solo = DefenseCalculator.AllStockAttackers(polaris, pilotOnly: true).Count(a => a.GunsPierce);
+        Assert.True(solo < crew);
+    }
+}

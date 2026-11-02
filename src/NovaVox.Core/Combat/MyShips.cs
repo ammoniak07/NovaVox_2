@@ -23,11 +23,12 @@ public sealed class MyShipLoadout
     /// Armes montées, regroupées par arme : (arme, nombre d'armes ou de
     /// missiles). Ignore les noms inconnus de la base (ex. après un patch).
     /// </summary>
-    public IReadOnlyList<(CombatWeapon Weapon, int Count)> EquippedWeapons(CombatShip ship)
+    public IReadOnlyList<(CombatWeapon Weapon, int Count)> EquippedWeapons(CombatShip ship, bool pilotOnly = false)
     {
         var counts = new Dictionary<string, (CombatWeapon Weapon, int Count)>(StringComparer.OrdinalIgnoreCase);
         foreach (var mount in ship.MountList)
         {
+            if (pilotOnly && !mount.Pilot) continue;
             var name = WeaponOn(mount);
             if (name is null || CombatDatabase.FindWeapon(name) is not { } weapon) continue;
             counts[weapon.Name] = counts.TryGetValue(weapon.Name, out var c) ? (weapon, c.Count + mount.Count) : (weapon, mount.Count);

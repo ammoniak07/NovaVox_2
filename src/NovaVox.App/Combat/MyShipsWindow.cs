@@ -287,6 +287,7 @@ public sealed class MyShipsWindow : Window
                 BuildMountRows();
             };
             var detail = mount.IsShield ? $"Bouclier {SizeText(mount)}" : mount.IsGun ? $"Canon {SizeText(mount)}" : $"{mount.Count} × {SizeText(mount)}";
+            if (!mount.IsShield && !mount.Pilot) detail += " · équipage";
             _mountRows.Children.Add(Row(mount.FrenchLabel, detail, combo));
         }
     }

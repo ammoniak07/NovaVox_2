@@ -50,7 +50,9 @@ public sealed record CombatMount(
     /// <summary>Arme montée d'origine (null si l'emplacement est vide).</summary>
     [property: JsonPropertyName("stock")] string? Stock,
     /// <summary>Faux pour les armes que le jeu ne laisse pas changer (ex. défense rapprochée).</summary>
-    [property: JsonPropertyName("editable")] bool Editable)
+    [property: JsonPropertyName("editable")] bool Editable,
+    /// <summary>Arme tirée par le pilote (faux : tourelle d'équipage, défense automatique, arme de porte).</summary>
+    [property: JsonPropertyName("pilot")] bool Pilot = true)
 {
     public bool IsGun => Kind == "gun";
 

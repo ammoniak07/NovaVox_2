@@ -142,10 +142,14 @@ public static class DefenseCalculator
         return new AttackOnMe(attacker, attackerShip, threats, shieldDps, hullDps, leakDps, missileHull, target.ShieldHp, ship.ArmorHp, ship.HullHp, distortionDps);
     }
 
-    /// <summary>Tous les vaisseaux du jeu (armes d'origine) contre le défenseur.</summary>
-    public static IReadOnlyList<AttackOnMe> AllStockAttackers(DefenseProfile target) =>
+    /// <summary>
+    /// Tous les vaisseaux du jeu (armes d'origine) contre le défenseur.
+    /// <paramref name="pilotOnly"/> : seulement les armes du pilote (pas de
+    /// tourelles d'équipage), plus réaliste pour un vaisseau seul à bord.
+    /// </summary>
+    public static IReadOnlyList<AttackOnMe> AllStockAttackers(DefenseProfile target, bool pilotOnly = false) =>
         CombatDatabase.Ships
-            .Select(s => (Ship: s, Weapons: new MyShipLoadout { Ship = s.Name }.EquippedWeapons(s)))
+            .Select(s => (Ship: s, Weapons: new MyShipLoadout { Ship = s.Name }.EquippedWeapons(s, pilotOnly)))
             .Where(a => a.Weapons.Count > 0)
             .Select(a => Evaluate(target, a.Ship.Name, a.Ship, a.Weapons))
             .ToList();

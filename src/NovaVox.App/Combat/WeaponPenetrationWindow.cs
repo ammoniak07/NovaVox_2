@@ -23,9 +23,9 @@ public sealed class WeaponPenetrationWindow : Window
     private static readonly Brush NeutralBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)));
 
     /// <summary>Largeurs des colonnes du tableau des vaisseaux (la première prend le reste).</summary>
-    private static readonly double[] ColumnWidths = { 0, 52, 130, 105, 105, 200, 170 };
+    private static readonly double[] ColumnWidths = { 0, 44, 92, 82, 92, 170, 140, 105 };
 
-    private enum SortColumn { Name, Size, Deflection, Armor, Shield, ShieldUp, ShieldDown }
+    private enum SortColumn { Name, Size, Deflection, Armor, Shield, ShieldUp, ShieldDown, Destroy }
 
     private readonly ComboBox _myShipCombo = new() { Margin = new Thickness(0, 4, 0, 10) };
     private readonly ComboBox _kindCombo = new() { Width = 140, Margin = new Thickness(0, 0, 8, 0) };
@@ -33,6 +33,11 @@ public sealed class WeaponPenetrationWindow : Window
     private readonly TextBox _weaponSearch = new() { Margin = new Thickness(0, 8, 0, 6), ToolTip = "Rechercher une arme (nom, type, fabricant)" };
     private readonly ListBox _weaponList = new();
     private readonly StackPanel _weaponInfo = new() { Margin = new Thickness(0, 10, 0, 0) };
+    private readonly TextBox _countBox = new() { Width = 48, Text = "1", TextAlignment = TextAlignment.Center, ToolTip = "Nombre d'armes identiques qui tirent ensemble (rempli tout seul avec « Mon vaisseau »)" };
+    private readonly Dictionary<string, int> _weaponCounts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly PenetrationViewState _view = PenetrationViewState.Load();
+    private readonly TabControl _tabs = new() { Margin = new Thickness(6, 6, 6, 0), Background = Brushes.Transparent };
+    private bool _restoring = true;
 
     private readonly TextBox _shipSearch = new() { Width = 220, ToolTip = "Rechercher un vaisseau" };
     private readonly ComboBox _showCombo = new() { Width = 260, Margin = new Thickness(10, 0, 0, 0) };
@@ -49,7 +54,7 @@ public sealed class WeaponPenetrationWindow : Window
     public WeaponPenetrationWindow()
     {
         Title = "NovaVox — Pénétration : attaque et défense";
-        Width = 1280;
+        Width = 1400;
         Height = 820;
         MinWidth = 900;
         MinHeight = 500;
@@ -72,13 +77,26 @@ public sealed class WeaponPenetrationWindow : Window
 
         // Deux onglets : « Attaque » (mon arme contre tous les vaisseaux) et
         // « Défense » (mon vaisseau contre tous les attaquants).
-        var tabs = new TabControl { Margin = new Thickness(6, 6, 6, 0), Background = Brushes.Transparent };
-        tabs.Items.Add(new TabItem { Header = "🎯 Attaque : mon arme contre les vaisseaux", Content = root });
-        tabs.Items.Add(new TabItem { Header = "🛡️ Défense : qui peut me faire des dégâts", Content = new DefensePanel(_myShipsStore) });
-        Content = tabs;
+        _tabs.Items.Add(new TabItem { Header = "🎯 Attaque : mon arme contre les vaisseaux", Content = root });
+        _tabs.Items.Add(new TabItem { Header = "🛡️ Défense : qui peut me faire des dégâts", Content = new DefensePanel(_myShipsStore, _view) });
+        _tabs.SelectedIndex = Math.Clamp(_view.Tab, 0, 1);
+        _tabs.SelectionChanged += (_, e) =>
+        {
+            if (e.OriginalSource == _tabs) _view.Tab = _tabs.SelectedIndex;
+        };
+        Content = _tabs;
 
+        _countBox.Text = Math.Clamp(_view.WeaponCount, 1, 99).ToString(CultureInfo.InvariantCulture);
+        _countBox.TextChanged += (_, _) =>
+        {
+            if (_restoring) return;
+            _view.WeaponCount = WeaponCount;
+            RefreshShips();
+        };
         FillFilters();
+        _restoring = false;
         RefreshWeaponList();
+        Closed += (_, _) => _view.Save();
         KeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape) Close();
@@ -139,16 +157,17 @@ public sealed class WeaponPenetrationWindow : Window
 
     private void FillFilters()
     {
-        FillMyShipCombo(null);
+        FillMyShipCombo(null, _view.AttackShipKey);
+        if (_view.Weapon is { } saved) _weapon = CombatDatabase.FindWeapon(saved);
 
         foreach (var (label, kind) in new[] { ("Toutes les armes", ""), ("Canons", "gun"), ("Missiles", "missile"), ("Torpilles", "torpedo") })
             _kindCombo.Items.Add(new ComboBoxItem { Content = label, Tag = kind });
-        _kindCombo.SelectedIndex = 1;
+        _kindCombo.SelectedIndex = Math.Clamp(_view.WeaponKind, 0, _kindCombo.Items.Count - 1);
 
         _sizeCombo.Items.Add(new ComboBoxItem { Content = "Toutes tailles", Tag = 0 });
         foreach (var size in CombatDatabase.Weapons.Select(w => w.Size ?? 0).Where(s => s > 0).Distinct().OrderBy(s => s))
             _sizeCombo.Items.Add(new ComboBoxItem { Content = $"Taille S{size}", Tag = size });
-        _sizeCombo.SelectedIndex = 0;
+        _sizeCombo.SelectedIndex = Math.Clamp(_view.WeaponSize, 0, _sizeCombo.Items.Count - 1);
 
         foreach (var label in new[] { "Tous les vaisseaux", "Seulement ceux que je perce", "Seulement ceux qui résistent" })
             _showCombo.Items.Add(new ComboBoxItem { Content = label });
@@ -156,7 +175,7 @@ public sealed class WeaponPenetrationWindow : Window
     }
 
     /// <summary>« Mon vaisseau » : mes vaisseaux équipés (⭐) puis tous les modèles avec leurs armes d'origine.</summary>
-    private void FillMyShipCombo(string? selectLoadout)
+    private void FillMyShipCombo(string? selectLoadout, string? selectKey = null)
     {
         _updatingWeapons = true;
         _myShipCombo.Items.Clear();
@@ -170,6 +189,8 @@ public sealed class WeaponPenetrationWindow : Window
         }
         foreach (var ship in CombatDatabase.Ships.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
             _myShipCombo.Items.Add(new ComboBoxItem { Content = $"{ship.Name}  (armes d'origine)", Tag = ship });
+        if (toSelect is null && selectKey is not null)
+            toSelect = _myShipCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => PenetrationViewState.KeyOf(i.Tag) == selectKey);
         _myShipCombo.SelectedItem = toSelect ?? _myShipCombo.Items[0];
         _updatingWeapons = false;
     }
@@ -203,11 +224,15 @@ public sealed class WeaponPenetrationWindow : Window
 
     private void RefreshWeaponList()
     {
-        if (_updatingWeapons || _kindCombo.SelectedItem is null || _sizeCombo.SelectedItem is null || _myShipCombo.SelectedItem is null) return;
+        if (_restoring || _updatingWeapons || _kindCombo.SelectedItem is null || _sizeCombo.SelectedItem is null || _myShipCombo.SelectedItem is null) return;
+        _view.AttackShipKey = PenetrationViewState.KeyOf((_myShipCombo.SelectedItem as ComboBoxItem)?.Tag);
+        _view.WeaponKind = _kindCombo.SelectedIndex;
+        _view.WeaponSize = _sizeCombo.SelectedIndex;
         IEnumerable<CombatWeapon> weapons = CombatDatabase.Weapons;
 
         var mine = MyShipWeapons();
-        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var counts = _weaponCounts;
+        counts.Clear();
         if (mine is not null)
         {
             foreach (var (weapon, count) in mine) counts[weapon.Name] = count;
@@ -258,6 +283,18 @@ public sealed class WeaponPenetrationWindow : Window
     private void SelectWeapon(CombatWeapon? weapon)
     {
         _weapon = weapon;
+        if (weapon is not null)
+        {
+            _view.Weapon = weapon.Name;
+            // « Mon vaisseau » : on reprend le nombre d'armes montées.
+            if (_weaponCounts.TryGetValue(weapon.Name, out var n) && n > 0)
+            {
+                _restoring = true;
+                _countBox.Text = n.ToString(CultureInfo.InvariantCulture);
+                _view.WeaponCount = n;
+                _restoring = false;
+            }
+        }
         FillWeaponInfo();
         RefreshShips();
     }
@@ -293,7 +330,15 @@ public sealed class WeaponPenetrationWindow : Window
         }
         InfoLine("Vitesse du projectile", $"{Num(w.Speed, 0)} m/s");
         if (w.Range > 0) InfoLine("Portée", $"{Num(w.Range, 0)} m");
+
+        var countRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+        countRow.Children.Add(Muted(w.IsGun ? "Nombre d'armes qui tirent :" : "Nombre de missiles tirés :", 12, new Thickness(0, 3, 8, 0)));
+        if (_countBox.Parent is Panel old) old.Children.Remove(_countBox);
+        countRow.Children.Add(_countBox);
+        _weaponInfo.Children.Add(countRow);
     }
+
+    private int WeaponCount => int.TryParse(_countBox.Text.Trim(), out var n) ? Math.Clamp(n, 1, 99) : 1;
 
     private void InfoLine(string label, string value)
     {
@@ -345,13 +390,15 @@ public sealed class WeaponPenetrationWindow : Window
         Grid.SetRow(rowsScroll, 4);
         grid.Children.Add(rowsScroll);
 
-        var help = Muted(
-            "Vert : l'arme fait des dégâts. Rouge : les tirs ricochent sur le blindage (les dégâts d'un projectile ne dépassent pas son seuil de déflexion) " +
-            "ou sont absorbés par le bouclier. Bouclier levé : le bouclier absorbe toute l'énergie et toute la distorsion, et 45 % des dégâts physiques " +
-            "quand il est plein (de moins en moins en faiblissant) ; ce qui passe doit encore dépasser le seuil de déflexion. La distorsion ne vise pas " +
-            "le blindage mais les composants : elle ne fait pas de dégâts de coque. Données du jeu " + CombatDatabase.GameVersion + ".",
-            11, new Thickness(0, 8, 0, 0));
-        help.TextWrapping = TextWrapping.Wrap;
+        var help = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        help.Children.Add(Legend.Bar(
+            (PassBrush, "Tes tirs font des dégâts"),
+            (BlockBrush, "Ricochent sur le blindage ou absorbés par le bouclier"),
+            (NeutralBrush, "Distorsion : vise les composants")));
+        help.Children.Add(Muted(
+            "Le bouclier absorbe toute l'énergie et la distorsion, et 45 % du physique quand il est plein : ce qui passe doit encore dépasser la déflexion. " +
+            "« Détruit en » : bouclier, puis blindage, puis structure, avec le nombre d'armes choisi (tous les tirs touchent). Données du jeu " + CombatDatabase.GameVersion + ".",
+            11, new Thickness(0, 4, 0, 0)));
         Grid.SetRow(help, 5);
         grid.Children.Add(help);
 
@@ -376,6 +423,7 @@ public sealed class WeaponPenetrationWindow : Window
             ("Bouclier (PV)", SortColumn.Shield, "Points de vie du bouclier (toutes faces)"),
             ("Bouclier levé", SortColumn.ShieldUp, "Les tirs traversent-ils le bouclier plein, puis le blindage ?"),
             ("Bouclier tombé", SortColumn.ShieldDown, "Les tirs passent-ils le blindage une fois le bouclier tombé ? (×N = marge au-dessus du seuil)"),
+            ("Détruit en", SortColumn.Destroy, "Temps pour détruire ce vaisseau avec le nombre d'armes choisi (bouclier, blindage, puis structure). Pour des missiles : part de sa coque enlevée"),
         };
         for (var i = 0; i < titles.Length; i++)
         {
@@ -456,6 +504,7 @@ public sealed class WeaponPenetrationWindow : Window
             SortColumn.Shield => r => r.Ship.ShieldHp,
             SortColumn.ShieldUp => r => (r.ShieldAndArmorPenetrated ? 2 : r.LeaksThroughShield ? 1 : 0) + Math.Min(r.ArmorMargin, 1000) / 10000,
             SortColumn.ShieldDown => r => Math.Min(r.ArmorMargin, 1000),
+            SortColumn.Destroy => r => DestroyKey(r),
             _ => r => r.Ship.ArmorHp,
         };
         if (_sort == SortColumn.Name)
@@ -485,6 +534,8 @@ public sealed class WeaponPenetrationWindow : Window
         AddCell(row, 5, upText, upBrush);
         var (downText, downBrush) = ShieldDownVerdict(r);
         AddCell(row, 6, downText, downBrush);
+        var (destroyText, destroyBrush) = DestroyText(r);
+        AddCell(row, 7, destroyText, destroyBrush);
         return border;
     }
 
@@ -503,10 +554,42 @@ public sealed class WeaponPenetrationWindow : Window
                 FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
+                ToolTip = text.Length > 14 ? text : null,
             },
         };
         Grid.SetColumn(cell, column);
         row.Children.Add(cell);
+    }
+
+    /// <summary>Ce que fait le nombre d'armes choisi à ce vaisseau (boucliers d'origine).</summary>
+    private AttackOnMe Attack(PenetrationResult r) =>
+        DefenseCalculator.Evaluate(DefenseCalculator.Profile(r.Ship), "", null, new[] { (r.Weapon, WeaponCount) });
+
+    private double DestroyKey(PenetrationResult r)
+    {
+        var a = Attack(r);
+        if (r.Weapon.IsGun) return double.IsInfinity(a.SecondsToDestroy) ? 1e9 : a.SecondsToDestroy;
+        return a.MissileShareOfHull > 0 ? 1e6 / (1 + a.MissileShareOfHull) : 1e9;
+    }
+
+    private (string, Brush?) DestroyText(PenetrationResult r)
+    {
+        var a = Attack(r);
+        if (!r.Weapon.IsGun)
+        {
+            if (a.MissileHullDamage <= 0) return ("—", null);
+            return a.MissileShareOfHull >= 1 ? ("détruit", PassBrush) : ($"{Num(a.MissileShareOfHull * 100, a.MissileShareOfHull < 0.1 ? 1 : 0)} % coque", null);
+        }
+        var seconds = a.SecondsToDestroy;
+        return double.IsInfinity(seconds) ? ("jamais", null) : (Duration(seconds), PassBrush);
+    }
+
+    private static string Duration(double seconds)
+    {
+        if (seconds > 3600 * 10) return "jamais";
+        if (seconds < 60) return $"{Num(seconds, seconds < 10 ? 1 : 0)} s";
+        if (seconds < 3600) return $"{(int)(seconds / 60)} min {(int)(seconds % 60):00}";
+        return $"{(int)(seconds / 3600)} h {(int)(seconds % 3600 / 60):00}";
     }
 
     private static string DeflectionText(PenetrationResult r)
@@ -521,9 +604,9 @@ public sealed class WeaponPenetrationWindow : Window
         if (r.IsDistortionOnly) return ("✖ Absorbé par le bouclier", BlockBrush);
         if (!r.LeaksThroughShield) return ("✖ Absorbé par le bouclier", BlockBrush);
         var best = r.Checks.Where(c => c.AlphaThroughShield > 0).MaxBy(c => c.Deflection <= 0 ? double.MaxValue : c.AlphaThroughShield / c.Deflection)!;
-        var leak = $"{Num(best.ShieldLeak * 100, 0)} % → {Num(best.AlphaThroughShield)}";
+        var leak = Num(best.AlphaThroughShield, 0);
         return r.ShieldAndArmorPenetrated
-            ? ($"✔ Passe ({leak})", PassBrush)
+            ? ($"✔ Passe ({leak} > {Num(best.Deflection, 0)})", PassBrush)
             : ($"✖ Ricoche ({leak} ≤ {Num(best.Deflection, 0)})", BlockBrush);
     }
 
