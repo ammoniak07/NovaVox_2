@@ -116,6 +116,22 @@ for i in items:
     if e['manufacturer'] and 'PLACEHOLDER' in e['manufacturer']: e['manufacturer']=None
     if n not in out_w: out_w[n]=e
 gv=sys.argv[2]
+# Garde-fous : si un patch (ou un changement du parsing de scunpacked)
+# déplace une valeur sur un autre champ, on s'arrête au lieu de produire
+# une base fausse. Les valeurs de référence sont aussi vérifiées par les
+# tests (CombatReferenceValuesTests).
+problems=[]
+if len(out_s)<150: problems.append(f'seulement {len(out_s)} vaisseaux')
+if len(out_w)<120: problems.append(f'seulement {len(out_w)} armes')
+bad_def=[e['name'] for e in out_s.values() if not any(e['deflection']) or max(e['deflection'])>5000]
+if len(bad_def)>len(out_s)*0.05: problems.append(f'déflexion suspecte sur {len(bad_def)} vaisseaux: {bad_def[:10]}')
+no_mounts=[e['name'] for e in out_s.values() if not e['mounts']]
+if len(no_mounts)>len(out_s)*0.15: problems.append(f'{len(no_mounts)} vaisseaux sans emplacement d\'arme')
+guns=[w for w in out_w.values() if w['kind']=='gun']
+bad_guns=[w['name'] for w in guns if not w['rpm'] or not w['speed']]
+if len(bad_guns)>len(guns)*0.05: problems.append(f'cadence/vitesse manquante sur {len(bad_guns)} canons: {bad_guns[:10]}')
+if problems:
+    sys.exit('ARRET, données suspectes :\n- '+'\n- '.join(problems))
 data={'gameVersion':gv,'ships':sorted(out_s.values(),key=lambda e:-e['armorHp']),'weapons':sorted(out_w.values(),key=lambda e:(e['kind'],e['size'] or 0,e['name']))}
 json.dump(data,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
 print('ships',len(out_s),'weapons',len(out_w),collections.Counter(w['kind'] for w in out_w.values()))

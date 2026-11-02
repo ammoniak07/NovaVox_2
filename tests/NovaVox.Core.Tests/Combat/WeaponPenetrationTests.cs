@@ -151,3 +151,73 @@ public class MyShipsTests
         Assert.Equal("Lance-missiles gauche", CombatLabels.French("missile rack left"));
     }
 }
+
+/// <summary>
+/// Test de cohérence avec un autre outil : valeurs relevées dans le tableur
+/// de pénétration de la 1CC (source différente de scunpacked), jeu 4.10.2.
+/// Si un patch ou un changement de parsing déplace la valeur du blindage
+/// sur un autre champ, ces tests le signalent avant la sortie.
+/// </summary>
+public class CombatReferenceValuesTests
+{
+    [Theory]
+    [InlineData("Idris-M", 485, 87516)]
+    [InlineData("Polaris", 418, 48960)]
+    [InlineData("Perseus", 418, 48672)]
+    [InlineData("Reclaimer", 418, 32912)]
+    [InlineData("890 Jump", 342, 32640)]
+    [InlineData("Hammerhead", 380, 25740)]
+    [InlineData("Asgard", 88, 23760)]
+    [InlineData("Hermes", 110, 15840)]
+    [InlineData("Freelancer MIS", 43, 15840)]
+    [InlineData("Corsair", 100, 15120)]
+    [InlineData("Vanguard Hoplite", 40, 14850)]
+    [InlineData("Ares Star Fighter Inferno", 36, 14400)]
+    [InlineData("Constellation Mk IV Taurus", 110, 13440)]
+    [InlineData("C2 Hercules Starlifter", 300, 13000)]
+    [InlineData("Prowler", 39, 12150)]
+    [InlineData("Hull C", 360, 12100)]
+    [InlineData("Zeus Mk II CL", 40, 11520)]
+    [InlineData("MOLE", 40, 11220)]
+    [InlineData("Prospector", 19, 8228)]
+    [InlineData("Cutlass Black", 29, 7290)]
+    [InlineData("Golem", 16, 6732)]
+    [InlineData("Gladius", 9, 3300)]
+    [InlineData("Arrow", 6, 3300)]
+    [InlineData("Talon", 10, 3000)]
+    [InlineData("Khartu-al", 9, 2400)]
+    [InlineData("Mustang Alpha", 9, 2000)]
+    [InlineData("Avenger Stalker", 9, 1232)]
+    [InlineData("P-52 Merlin", 4, 360)]
+    public void ShipArmor_MatchesOtherTool(string ship, double energyDeflection, double armorHp)
+    {
+        var s = CombatDatabase.FindShip(ship);
+        Assert.NotNull(s);
+        Assert.Equal(energyDeflection, s!.DeflectionOf(DamageKind.Energy));
+        Assert.Equal(armorHp, s.ArmorHp);
+    }
+
+    [Fact]
+    public void Ndb30_MatchesOtherTool()
+    {
+        var w = CombatDatabase.FindWeapon("NDB-30 Repeater")!;
+        Assert.Equal(85.5, w.Alpha(DamageKind.Energy), 3);
+        Assert.Equal(500, w.Rpm);
+        Assert.Equal(1258, w.Speed);
+        Assert.Equal(712.5, w.Dps, 1);
+    }
+
+    [Fact]
+    public void Database_HasNoSuspiciousValues()
+    {
+        Assert.True(CombatDatabase.Ships.Count > 150);
+        Assert.All(CombatDatabase.Ships, s =>
+        {
+            Assert.True(s.ArmorHp > 0, s.Name);
+            Assert.Equal(3, s.Deflection.Length);
+            Assert.All(s.Deflection, d => Assert.InRange(d, 0, 5000));
+        });
+        Assert.All(CombatDatabase.Weapons, w => Assert.True(w.AlphaTotal > 0, w.Name));
+        Assert.All(CombatDatabase.Weapons.Where(w => w.IsGun), w => Assert.True(w.Rpm > 0 && w.Speed > 0, w.Name));
+    }
+}
