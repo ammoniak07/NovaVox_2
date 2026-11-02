@@ -270,7 +270,7 @@ public sealed class DefensePanel : Grid
 
         var help = Ui.Muted(
             "Chaque attaquant avec toutes ses armes d'origine (tourelles comprises), ou tes vaisseaux ⭐ avec les armes choisies. " +
-            "Estimations, tous les tirs touchent : le bouclier ne régénère pas sous le feu. Rouge : perce ton blindage (dégâts de coque) ; " +
+            "Estimations, tous les tirs touchent : le bouclier ne régénère pas sous le feu. Rouge : perce ton blindage (dégâts de coque), avec ses canons ou seulement avec ses missiles (une salve, une fois ton bouclier tombé) ; " +
             "orange : perce même à travers ton bouclier plein (balistique) ; vert : ne fait que vider ton bouclier, ses tirs ricochent ensuite. " +
             "Survole une ligne pour voir le détail de ses armes. Données du jeu " + CombatDatabase.GameVersion + ".",
             11, new Thickness(0, 8, 0, 0));
@@ -398,7 +398,13 @@ public sealed class DefensePanel : Grid
             SortColumn.ArmorTime => a => Cap(a.SecondsToStripArmor),
             SortColumn.Leak => a => a.LeakHullDps,
             SortColumn.Missiles => a => a.MissileHullDamage,
-            _ => a => (a.CanHurtHull ? 0 : 1e9) + Cap(a.SecondsTotal),
+            // Les plus dangereux d'abord : touche à travers le bouclier, puis perce
+            // le blindage avec ses canons (le plus rapide d'abord), puis missiles
+            // seulement (la plus grosse salve d'abord), puis ceux qui ricochent.
+            _ => a => a.LeakHullDps > 0 ? Cap(a.SecondsTotal) / 1e9
+                : a.HullDps > 0 ? 1 + Cap(a.SecondsTotal) / 1e9
+                : a.MissileHullDamage > 0 ? 2 + 1 / (1 + a.MissileHullDamage)
+                : 3 + Cap(a.SecondsToDropShield) / 1e9,
         };
         return _sortDescending
             ? attacks.OrderByDescending(key).ThenBy(a => a.Attacker, StringComparer.CurrentCultureIgnoreCase)
@@ -423,13 +429,27 @@ public sealed class DefensePanel : Grid
         AddCell(row, 6, a.LeakHullDps > 0 ? $"⚠ {Num(a.LeakHullDps, 0)}/s" : "—", a.LeakHullDps > 0 ? WarnBrush : null);
         AddCell(row, 7, a.MissileHullDamage > 0 ? Num(a.MissileHullDamage, 0) : "—", null);
 
-        var (text, brush) = a.LeakHullDps > 0
-            ? ($"⚠ Te touche même bouclier levé", WarnBrush)
-            : a.CanHurtHull
-                ? ($"✖ Perce ton blindage ({Duration(a.SecondsTotal)})", DangerBrush)
-                : ("✔ Ricoche sur ton blindage", SafeBrush);
+        var (text, brush) = Verdict(a);
         AddCell(row, 8, text, brush);
         return border;
+    }
+
+    /// <summary>
+    /// Verdict d'un attaquant. Les missiles sont un cas à part : une salve
+    /// unique, sans temps « pour vider le blindage » (contrairement aux canons).
+    /// </summary>
+    private static (string Text, Brush Brush) Verdict(AttackOnMe a)
+    {
+        if (a.LeakHullDps > 0) return ("⚠ Te touche même bouclier levé", WarnBrush);
+        if (a.HullDps > 0) return ($"✖ Perce ton blindage ({Duration(a.SecondsTotal)})", DangerBrush);
+        if (a.MissileHullDamage > 0)
+        {
+            var share = a.ArmorHp > 0 ? a.MissileHullDamage / a.ArmorHp : 1;
+            return share >= 1
+                ? ("✖ Ses missiles peuvent te détruire", DangerBrush)
+                : ($"✖ Missiles seulement ({Num(share * 100, 0)} % du blindage)", DangerBrush);
+        }
+        return ("✔ Ricoche sur ton blindage", SafeBrush);
     }
 
     private static string WeaponsTooltip(AttackOnMe a)

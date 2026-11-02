@@ -3,6 +3,7 @@ NOVAVOX — Notes de mise à jour
 v0.2.2
 ------
 - Pénétration : nouvel onglet « 🛡️ Défense : qui peut me faire des dégâts ». Choisis ton vaisseau (ou un de tes vaisseaux ⭐) et ses générateurs de bouclier : NovaVox affiche ta défense (déflexion, PV du blindage, PV et régénération du bouclier — seuls les 2 générateurs les plus solides fonctionnent en même temps, comme dans le jeu) et, pour chaque vaisseau du jeu avec ses armes d'origine (et tes vaisseaux ⭐ avec leurs armes choisies) : DPS sur ton bouclier, temps pour le faire tomber, DPS sur ton blindage, temps pour le vider, dégâts qui passent même à travers ton bouclier plein (balistique) et dégâts de ses missiles. Rouge : il perce ton blindage ; orange : il te touche même bouclier levé ; vert : ses tirs ricochent sur ton blindage. Survole une ligne pour voir le détail de chacune de ses armes. Les boucliers se choisissent aussi dans « 🛠 Mes vaisseaux ».
+- Pénétration, onglet Défense : un vaisseau dont les canons ricochent sur ton blindage mais dont les missiles le percent est marqué « Missiles seulement », avec la part de ton blindage qu'enlève toute sa salve (ou « Ses missiles peuvent te détruire » si elle suffit).
 
 v0.2.1
 ------
