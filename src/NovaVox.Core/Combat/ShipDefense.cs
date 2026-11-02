@@ -37,8 +37,25 @@ public sealed record AttackOnMe(
 
     public bool CanHurtHull => HullDps > 0 || MissileHullDamage > 0;
 
-    /// <summary>Secondes pour détruire le vaisseau : bouclier, puis blindage, puis structure (canons seulement).</summary>
-    public double SecondsToDestroy => HullDps > 0 ? SecondsToDropShield + (ArmorHp + HullHp) / HullDps : double.PositiveInfinity;
+    /// <summary>
+    /// Secondes pour détruire le vaisseau avec les canons : pendant que le
+    /// bouclier tient, la part qui le traverse (balistique) abîme déjà la
+    /// coque ; une fois tombé, tout ce qui perce le blindage frappe la coque
+    /// (blindage puis structure).
+    /// </summary>
+    public double SecondsToDestroy
+    {
+        get
+        {
+            var hull = ArmorHp + HullHp;
+            var shieldTime = SecondsToDropShield;
+            if (LeakHullDps > 0 && (double.IsInfinity(shieldTime) || LeakHullDps * shieldTime >= hull))
+                return hull / LeakHullDps;
+            if (HullDps <= 0) return double.PositiveInfinity;
+            var leaked = LeakHullDps > 0 ? LeakHullDps * shieldTime : 0;
+            return shieldTime + Math.Max(0, hull - leaked) / HullDps;
+        }
+    }
 
     /// <summary>Part du blindage + structure qu'enlève toute la salve de missiles (bouclier tombé).</summary>
     public double MissileShareOfHull => ArmorHp + HullHp > 0 ? MissileHullDamage / (ArmorHp + HullHp) : 0;

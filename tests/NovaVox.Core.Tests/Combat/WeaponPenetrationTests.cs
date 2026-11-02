@@ -374,3 +374,23 @@ public class DefenseConsistencyTests
             Assert.False(all.Single(a => a.Attacker == name).GunsPierce, name);
     }
 }
+
+public class DefenseLeakTests
+{
+    [Fact]
+    public void Destroy_CountsDamageLeakedWhileShieldHolds()
+    {
+        var a = new AttackOnMe("x", null, Array.Empty<WeaponThreat>(), ShieldDps: 1000, HullDps: 1000, LeakHullDps: 500,
+            MissileHullDamage: 0, ShieldHp: 100_000, ArmorHp: 50_000, HullHp: 100_000);
+        // Bouclier : 100 s, pendant lesquelles 50 000 passent ; reste 100 000 à 1 000/s.
+        Assert.Equal(200, a.SecondsToDestroy, 3);
+    }
+
+    [Fact]
+    public void Destroy_LeakAloneCanFinishBeforeShieldDrops()
+    {
+        var a = new AttackOnMe("x", null, Array.Empty<WeaponThreat>(), ShieldDps: 10, HullDps: 1000, LeakHullDps: 1000,
+            MissileHullDamage: 0, ShieldHp: 100_000, ArmorHp: 5_000, HullHp: 5_000);
+        Assert.Equal(10, a.SecondsToDestroy, 3);
+    }
+}

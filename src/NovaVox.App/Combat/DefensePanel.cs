@@ -408,8 +408,9 @@ public sealed class DefensePanel : Grid
             // Les plus dangereux d'abord : touche à travers le bouclier, puis perce
             // le blindage avec ses canons (le plus rapide d'abord), puis missiles
             // seulement (la plus grosse salve d'abord), puis ceux qui ricochent.
-            _ => a => a.LeakHullDps > 0 ? Cap(a.SecondsToDestroy) / 1e9
-                : a.HullDps > 0 ? 1 + Cap(a.SecondsToDestroy) / 1e9
+            // Les plus dangereux d'abord : ceux qui te détruisent le plus vite avec
+            // leurs canons (bouclier levé ou non), puis missiles, puis les autres.
+            _ => a => a.HullDps > 0 || a.LeakHullDps > 0 ? Cap(a.SecondsToDestroy) / 1e9
                 : a.MissileShareOfHull >= 1 ? 2 + 1 / (1 + a.MissileHullDamage)
                 : a.MissileHullDamage > 0 ? 3 + 1 / (1 + a.MissileHullDamage)
                 : 4 + Cap(a.SecondsToDropShield) / 1e9,
@@ -434,7 +435,7 @@ public sealed class DefensePanel : Grid
         AddCell(row, 3, Duration(a.SecondsToDropShield), null);
         AddCell(row, 4, a.HullDps > 0 ? Num(a.HullDps, 0) : "0", a.HullDps > 0 ? DangerBrush : null);
         AddCell(row, 5, Duration(a.SecondsToStripArmor), null);
-        AddCell(row, 6, Duration(a.SecondsToDestroy), a.HullDps > 0 ? DangerBrush : null);
+        AddCell(row, 6, Duration(a.SecondsToDestroy), a.HullDps > 0 || a.LeakHullDps > 0 ? DangerBrush : null);
         AddCell(row, 7, a.LeakHullDps > 0 ? $"⚠ {Num(a.LeakHullDps, 0)}/s" : "rien", a.LeakHullDps > 0 ? WarnBrush : null);
         AddCell(row, 8, a.MissileHullDamage > 0 ? Num(a.MissileHullDamage, 0) : "rien", null);
 
