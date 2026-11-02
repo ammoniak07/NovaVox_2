@@ -35,6 +35,39 @@ public sealed record CombatWeapon(
     public bool IsGun => Kind == "gun";
 }
 
+/// <summary>
+/// Emplacement d'arme d'un vaisseau : un canon (Kind "gun") ou un
+/// lance-missiles entier (Kind "missile", Count missiles ou torpilles
+/// identiques). Id = identifiant stable du port dans l'équipement du jeu.
+/// </summary>
+public sealed record CombatMount(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("kind")] string Kind,
+    [property: JsonPropertyName("minSize")] int MinSize,
+    [property: JsonPropertyName("maxSize")] int MaxSize,
+    [property: JsonPropertyName("count")] int Count,
+    /// <summary>Arme montée d'origine (null si l'emplacement est vide).</summary>
+    [property: JsonPropertyName("stock")] string? Stock,
+    /// <summary>Faux pour les armes que le jeu ne laisse pas changer (ex. défense rapprochée).</summary>
+    [property: JsonPropertyName("editable")] bool Editable)
+{
+    public bool IsGun => Kind == "gun";
+
+    /// <summary>L'arme peut-elle aller sur cet emplacement (bon type, taille entre min et max) ?</summary>
+    public bool Accepts(CombatWeapon weapon)
+    {
+        var typeOk = IsGun ? weapon.IsGun : !weapon.IsGun;
+        var size = weapon.Size ?? 0;
+        var min = MinSize > 0 ? MinSize : 0;
+        var max = MaxSize > 0 ? MaxSize : int.MaxValue;
+        return typeOk && size >= min && size <= max;
+    }
+
+    /// <summary>Nom lisible en français (« turret top › weapon left » -> « tourelle dessus › arme gauche »).</summary>
+    public string FrenchLabel => CombatLabels.French(Label);
+}
+
 /// <summary>Vaisseau attaquable — blindage et bouclier, une entrée de CombatData.json.</summary>
 public sealed record CombatShip(
     [property: JsonPropertyName("name")] string Name,
@@ -48,8 +81,12 @@ public sealed record CombatShip(
     [property: JsonPropertyName("shieldHp")] double ShieldHp,
     /// <summary>Absorption du bouclier par type, [min, max] : max quand il est plein, min quand il est presque vide.</summary>
     [property: JsonPropertyName("shieldAbsorption")] double[][] ShieldAbsorption,
-    [property: JsonPropertyName("stockWeapons")] IReadOnlyList<string> StockWeapons)
+    [property: JsonPropertyName("stockWeapons")] IReadOnlyList<string> StockWeapons,
+    /// <summary>Emplacements d'armes (canons et lance-missiles), pour équiper « Mes vaisseaux ».</summary>
+    [property: JsonPropertyName("mounts")] IReadOnlyList<CombatMount>? Mounts = null)
 {
+    public IReadOnlyList<CombatMount> MountList => Mounts ?? Array.Empty<CombatMount>();
+
     public double DeflectionOf(DamageKind kind) => (int)kind < Deflection.Length ? Deflection[(int)kind] : 0;
 
     /// <summary>Part des dégâts de ce type que le bouclier PLEIN laisse passer (0 à 1).</summary>
@@ -98,6 +135,13 @@ public static class CombatDatabase
     /// <summary>Armes montées d'origine sur ce vaisseau (celles connues de la base).</summary>
     public static IReadOnlyList<CombatWeapon> StockWeaponsOf(CombatShip ship) =>
         ship.StockWeapons.Select(FindWeapon).OfType<CombatWeapon>().ToList();
+
+    public static CombatShip? FindShip(string name) =>
+        Ships.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Armes qui peuvent aller sur cet emplacement, de la plus petite à la plus grande.</summary>
+    public static IReadOnlyList<CombatWeapon> WeaponsFor(CombatMount mount) =>
+        Weapons.Where(mount.Accepts).OrderBy(w => w.Size ?? 0).ThenBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
     public static CombatData Parse(Stream stream) =>
         JsonSerializer.Deserialize<CombatData>(stream) ?? new CombatData("?", Array.Empty<CombatShip>(), Array.Empty<CombatWeapon>());

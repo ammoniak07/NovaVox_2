@@ -23,6 +23,7 @@ public static class ConfigArchive
         ("audio_config.json", "audio_config.json"),
         ("overlay_config.json", "overlay_config.json"),
         ("orb_config.json", "orb_config.json"),
+        ("my_ships.json", "my_ships.json"),
     };
 
     public static void Export(string baseDir, string destZipPath, bool allProfiles)

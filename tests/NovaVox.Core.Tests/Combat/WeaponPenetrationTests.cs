@@ -92,3 +92,62 @@ public class WeaponPenetrationTests
         Assert.NotEmpty(CombatDatabase.StockWeaponsOf(CombatDatabase.Ships.First(s => s.Name == "Gladius")));
     }
 }
+
+public class MyShipsTests
+{
+    [Fact]
+    public void Mounts_AreLoadedWithStockWeapons()
+    {
+        var cutlass = CombatDatabase.FindShip("Cutlass Black")!;
+        Assert.Contains(cutlass.MountList, m => m.IsGun && m.MaxSize == 3 && m.Stock == "CF-337 Panther Repeater");
+        Assert.Contains(cutlass.MountList, m => !m.IsGun && m.Count == 4);
+    }
+
+    [Fact]
+    public void Mount_AcceptsOnlyRightKindAndSize()
+    {
+        var mount = new CombatMount("x", "gun nose", "gun", 3, 3, 1, null, true);
+        Assert.All(CombatDatabase.WeaponsFor(mount), w => Assert.True(w.IsGun && w.Size == 3));
+        Assert.Contains(CombatDatabase.WeaponsFor(mount), w => w.Name == "NDB-30 Repeater");
+        var rack = new CombatMount("y", "missile rack", "missile", 3, 3, 2, null, true);
+        Assert.All(CombatDatabase.WeaponsFor(rack), w => Assert.False(w.IsGun));
+    }
+
+    [Fact]
+    public void EquippedWeapons_UsesChoicesThenStock_AndCountsMissiles()
+    {
+        var cutlass = CombatDatabase.FindShip("Cutlass Black")!;
+        var loadout = new MyShipLoadout { Name = "Mon Cutlass", Ship = cutlass.Name };
+        foreach (var m in cutlass.MountList.Where(m => m.IsGun)) loadout.Weapons[m.Id] = "NDB-30 Repeater";
+        var equipped = loadout.EquippedWeapons(cutlass);
+        Assert.Equal(6, equipped.Single(e => e.Weapon.Name == "NDB-30 Repeater").Count);
+        Assert.DoesNotContain(equipped, e => e.Weapon.Name == "CF-337 Panther Repeater");
+        Assert.Equal(8, equipped.Single(e => e.Weapon.Name == "Arrester III Missile").Count);
+    }
+
+    [Fact]
+    public void Store_RoundTrips()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "nv_myships_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new MyShipsStore(dir);
+            Assert.Empty(store.Load());
+            store.Save(new[] { new MyShipLoadout { Name = "Chasseur « PvP »", Ship = "Gladius", Weapons = { ["loadout.53.loadout.0"] = "NDB-30 Repeater" } } });
+            var loaded = Assert.Single(store.Load());
+            Assert.Equal("Chasseur « PvP »", loaded.Name);
+            Assert.Equal("NDB-30 Repeater", loaded.Weapons["loadout.53.loadout.0"]);
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Labels_AreTranslated()
+    {
+        Assert.Equal("Tourelle dessus › arme gauche haut", CombatLabels.French("turret top › weapon left upper"));
+        Assert.Equal("Lance-missiles gauche", CombatLabels.French("missile rack left"));
+    }
+}

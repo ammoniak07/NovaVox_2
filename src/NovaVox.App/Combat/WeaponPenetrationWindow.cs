@@ -40,6 +40,7 @@ public sealed class WeaponPenetrationWindow : Window
     private readonly Grid _header = new() { Margin = new Thickness(0, 0, 14, 4) };
     private readonly StackPanel _rows = new();
 
+    private readonly MyShipsStore _myShipsStore = new(NovaVox.Core.NovaVoxPaths.BaseDirectory);
     private CombatWeapon? _weapon;
     private SortColumn _sort = SortColumn.Armor;
     private bool _sortDescending = true;
@@ -91,7 +92,13 @@ public sealed class WeaponPenetrationWindow : Window
 
         var top = new StackPanel();
         top.Children.Add(new TextBlock { Text = "🎯 ARME UTILISÉE", FontSize = 18, FontWeight = FontWeights.Bold });
-        top.Children.Add(Muted("Mon vaisseau (facultatif : ne montre que ses armes d'origine, tourelles, missiles et torpilles compris)", 12, new Thickness(0, 10, 0, 0)));
+        var myShipHeader = new DockPanel { Margin = new Thickness(0, 10, 0, 0), LastChildFill = true };
+        var editShips = new Button { Content = "🛠 Mes vaisseaux…", Padding = new Thickness(8, 2, 8, 2), FontSize = 12, ToolTip = "Crée tes vaisseaux et choisis leurs armes" };
+        editShips.Click += (_, _) => OpenMyShips();
+        DockPanel.SetDock(editShips, Dock.Right);
+        myShipHeader.Children.Add(editShips);
+        myShipHeader.Children.Add(Muted("Mon vaisseau (facultatif : ne montre que ses armes)", 12, new Thickness(0, 0, 8, 0)));
+        top.Children.Add(myShipHeader);
         top.Children.Add(_myShipCombo);
         var filters = new StackPanel { Orientation = Orientation.Horizontal };
         filters.Children.Add(_kindCombo);
@@ -127,10 +134,7 @@ public sealed class WeaponPenetrationWindow : Window
 
     private void FillFilters()
     {
-        _myShipCombo.Items.Add(new ComboBoxItem { Content = "— Toutes les armes —", Tag = null });
-        foreach (var ship in CombatDatabase.Ships.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
-            _myShipCombo.Items.Add(new ComboBoxItem { Content = ship.Name, Tag = ship });
-        _myShipCombo.SelectedIndex = 0;
+        FillMyShipCombo(null);
 
         foreach (var (label, kind) in new[] { ("Toutes les armes", ""), ("Canons", "gun"), ("Missiles", "missile"), ("Torpilles", "torpedo") })
             _kindCombo.Items.Add(new ComboBoxItem { Content = label, Tag = kind });
@@ -146,13 +150,64 @@ public sealed class WeaponPenetrationWindow : Window
         _showCombo.SelectedIndex = 0;
     }
 
+    /// <summary>« Mon vaisseau » : mes vaisseaux équipés (⭐) puis tous les modèles avec leurs armes d'origine.</summary>
+    private void FillMyShipCombo(string? selectLoadout)
+    {
+        _updatingWeapons = true;
+        _myShipCombo.Items.Clear();
+        _myShipCombo.Items.Add(new ComboBoxItem { Content = "— Toutes les armes —", Tag = null });
+        ComboBoxItem? toSelect = null;
+        foreach (var loadout in _myShipsStore.Load())
+        {
+            var item = new ComboBoxItem { Content = $"⭐ {loadout.Name}  ({loadout.Ship})", Tag = loadout };
+            _myShipCombo.Items.Add(item);
+            if (loadout.Name == selectLoadout) toSelect = item;
+        }
+        foreach (var ship in CombatDatabase.Ships.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
+            _myShipCombo.Items.Add(new ComboBoxItem { Content = $"{ship.Name}  (armes d'origine)", Tag = ship });
+        _myShipCombo.SelectedItem = toSelect ?? _myShipCombo.Items[0];
+        _updatingWeapons = false;
+    }
+
+    private void OpenMyShips()
+    {
+        var current = (_myShipCombo.SelectedItem as ComboBoxItem)?.Tag as MyShipLoadout;
+        var window = new MyShipsWindow(_myShipsStore, current?.Name) { Owner = this };
+        window.ShowDialog();
+        FillMyShipCombo(window.Selected?.Name ?? current?.Name);
+        RefreshWeaponList();
+    }
+
+    /// <summary>Armes du vaisseau choisi dans « Mon vaisseau », avec leur nombre (null = pas de vaisseau choisi).</summary>
+    private IReadOnlyList<(CombatWeapon Weapon, int Count)>? MyShipWeapons()
+    {
+        switch ((_myShipCombo.SelectedItem as ComboBoxItem)?.Tag)
+        {
+            case MyShipLoadout loadout:
+                return CombatDatabase.FindShip(loadout.Ship) is { } model
+                    ? loadout.EquippedWeapons(model)
+                    : Array.Empty<(CombatWeapon, int)>();
+            case CombatShip ship:
+                return new MyShipLoadout { Ship = ship.Name }.EquippedWeapons(ship) is { Count: > 0 } stock
+                    ? stock
+                    : CombatDatabase.StockWeaponsOf(ship).Select(w => (w, 0)).ToList();
+            default:
+                return null;
+        }
+    }
+
     private void RefreshWeaponList()
     {
-        if (_kindCombo.SelectedItem is null || _sizeCombo.SelectedItem is null || _myShipCombo.SelectedItem is null) return;
+        if (_updatingWeapons || _kindCombo.SelectedItem is null || _sizeCombo.SelectedItem is null || _myShipCombo.SelectedItem is null) return;
         IEnumerable<CombatWeapon> weapons = CombatDatabase.Weapons;
 
-        if (_myShipCombo.SelectedItem is ComboBoxItem { Tag: CombatShip ship })
-            weapons = CombatDatabase.StockWeaponsOf(ship);
+        var mine = MyShipWeapons();
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (mine is not null)
+        {
+            foreach (var (weapon, count) in mine) counts[weapon.Name] = count;
+            weapons = mine.Select(m => m.Weapon);
+        }
         else if (_kindCombo.SelectedItem is ComboBoxItem { Tag: string kind } && kind.Length > 0)
             weapons = weapons.Where(w => w.Kind == kind);
 
@@ -169,7 +224,8 @@ public sealed class WeaponPenetrationWindow : Window
         foreach (var w in weapons.OrderBy(w => w.Size ?? 0).ThenBy(w => w.Name, StringComparer.CurrentCultureIgnoreCase))
         {
             var content = new StackPanel { Margin = new Thickness(8, 4, 8, 4) };
-            content.Children.Add(new TextBlock { Text = $"S{w.Size} · {w.Name}", FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+            var countText = counts.TryGetValue(w.Name, out var n) && n > 0 ? $"×{n} " : "";
+            content.Children.Add(new TextBlock { Text = $"{countText}S{w.Size} · {w.Name}", FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
             content.Children.Add(Muted($"{w.ItemType} · {DamageTypesText(w)}", 11, default));
             var item = new ListBoxItem { Content = content, Tag = w, Cursor = Cursors.Hand };
             _weaponList.Items.Add(item);
@@ -207,9 +263,12 @@ public sealed class WeaponPenetrationWindow : Window
         var w = _weapon;
         if (w is null)
         {
-            var message = _myShipCombo.SelectedItem is ComboBoxItem { Tag: CombatShip ship } && CombatDatabase.StockWeaponsOf(ship).Count == 0
-                ? $"Le {ship.Name} n'a aucune arme d'origine."
-                : "Aucune arme ne correspond à ces filtres.";
+            var message = (_myShipCombo.SelectedItem as ComboBoxItem)?.Tag switch
+            {
+                MyShipLoadout l when MyShipWeapons() is { Count: 0 } => $"« {l.Name} » n'a aucune arme montée : ouvre « 🛠 Mes vaisseaux… » pour l'équiper.",
+                CombatShip ship when MyShipWeapons() is { Count: 0 } => $"Le {ship.Name} n'a aucune arme d'origine.",
+                _ => "Aucune arme ne correspond à ces filtres.",
+            };
             _weaponInfo.Children.Add(Muted(message, 12, default));
             return;
         }

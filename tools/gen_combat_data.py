@@ -13,6 +13,7 @@ T=['Physical','Energy','Distortion']
 def r(x,n=2): return round(float(x or 0),n)
 bad_cls=re.compile(r'_(Collector|Teach|Showdown|BTALA|Display|BIS\d+|Tutorial|AI|PU_AI|Unmanned|NoInterior)(_|$)',re.I)
 WEAPON_BY_CLASS={}
+ITEM_TYPE={(i.get('className') or '').lower():i.get('type') for i in items if i.get('className')}
 for i in items:
     si=i.get('stdItem') or {}
     if i.get('type') in ('WeaponGun','Missile') and i.get('className') and si.get('Name'):
@@ -49,12 +50,40 @@ for v in ships:
         elif isinstance(o,list):
             for x in o: walk_loadout(x)
     walk_loadout(v.get('Loadout') or [])
+    mounts=[]
+    def pretty(h):
+        h=re.sub(r'^hardpoint_','',h,flags=re.I)
+        return re.sub(r'\s+',' ',h.replace('_',' ')).strip()
+    def walk_mounts(o,labels):
+        if isinstance(o,dict):
+            hp=o.get('HardpointName'); ct=[c.get('Type') for c in o.get('CompatibleTypes') or []]
+            cls=(o.get('ClassName') or '').lower(); it=ITEM_TYPE.get(cls)
+            here=labels+([pretty(hp)] if hp and not re.match(r'(hardpoint_)?class_\d+$',hp,re.I) else [])
+            children=[x for x in (o.get('Loadout') or []) if isinstance(x,dict)]
+            if hp and (it=='WeaponGun' or (not cls and 'WeaponGun' in ct and not children)):
+                mounts.append({'id':o.get('PortId') or hp,'label':' › '.join(here[-2:]) or hp,'kind':'gun',
+                    'minSize':o.get('MinSize') or 0,'maxSize':o.get('MaxSize') or 0,'count':1,
+                    'stock':WEAPON_BY_CLASS.get(cls),'editable':bool(o.get('Editable'))})
+                return
+            if hp and it=='MissileLauncher':
+                slots=[x for x in children if 'Missile' in [c.get('Type') for c in x.get('CompatibleTypes') or []]]
+                if slots:
+                    first=next((WEAPON_BY_CLASS.get((x.get('ClassName') or '').lower()) for x in slots if x.get('ClassName')),None)
+                    mounts.append({'id':o.get('PortId') or hp,'label':' › '.join(here[-2:]),'kind':'missile',
+                        'minSize':slots[0].get('MinSize') or 0,'maxSize':slots[0].get('MaxSize') or 0,'count':len(slots),
+                        'stock':first,'editable':bool(o.get('Editable')) or any(x.get('Editable') for x in slots)})
+                    return
+            for k,x in o.items():
+                if k!='CompatibleTypes': walk_mounts(x,here)
+        elif isinstance(o,list):
+            for x in o: walk_mounts(x,labels)
+    walk_mounts(v.get('Loadout') or [],[])
     e={'name':short,'fullName':name,'manufacturer':man,'size':v.get('Size'),
        'deflection':[r(d.get(t)) for t in T],'armorHp':r(a['Health'],0),
        'armorDamageMultiplier':[r((a.get('DamageMultipliers') or {}).get(t,1)) for t in T],
        'shieldHp':r(v.get('ShieldHp'),0),
        'shieldAbsorption':[[r((sa.get(t) or {}).get('Minimum',1)),r((sa.get(t) or {}).get('Maximum',1))] for t in T],
-       'stockWeapons':sorted(set(weap))}
+       'stockWeapons':sorted(set(weap)),'mounts':mounts}
     key=short
     if key in out_s:
         # même nom : on garde la première (les variantes identiques sont fréquentes)
