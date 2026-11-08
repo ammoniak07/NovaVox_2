@@ -33,19 +33,28 @@ public sealed class ScreenRegionPickerWindow : Window
         Fill = new SolidColorBrush(Color.FromArgb(0x30, 0x2D, 0xD4, 0xFF)),
         Cursor = Cursors.SizeAll,
     };
-    private readonly Button _delete = new()
+    // Pastille dessinée à la main (et non un Button) : le style des boutons du thème
+    // ajoute une marge intérieure qui coupait la croix en deux.
+    private readonly Border _delete = new()
     {
-        Content = "✕",
-        Width = 26,
-        Height = 26,
-        FontSize = 14,
-        FontWeight = FontWeights.Bold,
-        Foreground = Brushes.White,
+        Width = 28,
+        Height = 28,
+        CornerRadius = new CornerRadius(14),
         Background = new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28)),
-        BorderThickness = new Thickness(0),
-        Focusable = false,
+        BorderBrush = Brushes.White,
+        BorderThickness = new Thickness(1.5),
         Cursor = Cursors.Hand,
-        ToolTip = "Supprimer le cadre",
+        ToolTip = "Supprimer le cadre (Suppr)",
+        Child = new TextBlock
+        {
+            Text = "✕",
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Foreground = Brushes.White,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false,
+        },
     };
     private readonly TextBlock _sizeText = new() { Foreground = Brushes.White, FontSize = 12, IsHitTestVisible = false };
     private readonly Dictionary<Rectangle, (int X, int Y)> _handles = new();
@@ -97,7 +106,7 @@ public sealed class ScreenRegionPickerWindow : Window
             _handles[handle] = dir;
             _canvas.Children.Add(handle);
         }
-        _delete.Click += (_, _) => { _rect = Rect.Empty; Layout(); };
+        _delete.MouseLeftButtonDown += (_, e) => { e.Handled = true; _rect = Rect.Empty; Layout(); };
         _canvas.Children.Add(_delete);
 
         var help = new Border
