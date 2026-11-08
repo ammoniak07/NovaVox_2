@@ -46,7 +46,7 @@ public sealed class TargetScanSettingsPanel : StackPanel
         Children.Add(_enabled);
 
         var zoneRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-        var pick = new Button { Content = "📐 Définir la zone du nom…", Padding = new Thickness(10, 3, 10, 3), ToolTip = "Cible un vaisseau en jeu, reviens ici, puis dessine un grand cadre autour du panneau de la cible (nom, FACTION, VITESSE, hologramme) : NovaVox garde la ligne au-dessus de FACTION" };
+        var pick = new Button { Content = "📐 Définir / modifier la zone…", Padding = new Thickness(10, 3, 10, 3), ToolTip = "Cible un vaisseau en jeu, reviens ici, puis dessine un grand cadre autour du panneau de la cible (nom, FACTION, VITESSE, hologramme) : NovaVox garde la ligne au-dessus de FACTION" };
         pick.Click += (_, _) => PickZone();
         zoneRow.Children.Add(pick);
         zoneRow.Children.Add(_zoneText);
@@ -119,13 +119,22 @@ public sealed class TargetScanSettingsPanel : StackPanel
         var current = _config.HasZone ? new System.Drawing.Rectangle(_config.Left, _config.Top, _config.Width, _config.Height) : (System.Drawing.Rectangle?)null;
         var picker = new ScreenRegionPickerWindow(current);
         picker.ShowDialog();
-        if (picker.Result is not { } zone) return;
-        _config.Left = zone.Left;
-        _config.Top = zone.Top;
-        _config.Width = zone.Width;
-        _config.Height = zone.Height;
-        _testText.Text = "Zone enregistrée. Utilise « Tester » avec un vaisseau ciblé pour vérifier la lecture.";
-        Changed();
+        switch (picker.Outcome)
+        {
+            case RegionEditOutcome.Saved when picker.Result is { } zone:
+                _config.Left = zone.Left;
+                _config.Top = zone.Top;
+                _config.Width = zone.Width;
+                _config.Height = zone.Height;
+                _testText.Text = "Zone enregistrée. Utilise « Tester » avec un vaisseau ciblé pour vérifier la lecture.";
+                Changed();
+                break;
+            case RegionEditOutcome.Deleted:
+                _config.Left = _config.Top = _config.Width = _config.Height = 0;
+                _testText.Text = "Zone supprimée : la lecture est en pause jusqu'à ce que tu en dessines une nouvelle (📐).";
+                Changed();
+                break;
+        }
     }
 
     private async Task TestAsync(Button button)
