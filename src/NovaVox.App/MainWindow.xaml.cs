@@ -2139,7 +2139,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log/Schémas de la
+    /// Réduit les boutons Assistant Gemini/Vaisseaux/Game.log/Schémas/Pénétration/Statistiques de la
     /// barre du haut à leur seule icône quand la fenêtre est trop étroite
     /// pour tout afficher confortablement — au-delà, la rangée de boutons
     /// défile horizontalement (ScrollViewer, voir MainWindow.xaml) plutôt
@@ -2161,6 +2161,8 @@ public partial class MainWindow : Window
         SetHeaderButtonLabel(ShipCheatSheetHeaderButton, "🚀 Vaisseaux");
         SetHeaderButtonLabel(SchemasHeaderButton, "📐 Schémas");
         SetHeaderButtonLabel(StatsHeaderButton, "📊 Statistiques");
+        // Pénétration garde son infobulle explicative : seul le texte du bouton change.
+        PenetrationHeaderButton.Content = _headerButtonsCompact ? "🎯" : "🎯 Pénétration";
     }
 
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeaderButtonsCompactMode(e.NewSize.Width);
