@@ -292,6 +292,28 @@
                               VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
                               Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
                 </Grid>
+                <!-- Vaisseau ciblé, lu dans le HUD du jeu par OCR (voir Targeting/TargetScanner) :
+                     masquée par défaut, affichée quand la lecture du HUD est activée. -->
+                <Grid x:Name="RowTarget" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TargetDragHandle" Grid.Column="0" Text="⠿" Tag="target" Style="{StaticResource OverlayRowDragHandleStyle}"
+                               PreviewMouseLeftButtonDown="RowDragHandle_PreviewMouseLeftButtonDown" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="🎯" Width="16" TextAlignment="Center" />
+                        <TextBlock x:Name="TargetLabel" Text="Cible :" Margin="6,0,4,0" Foreground="#DBE4EE" />
+                        <TextBlock x:Name="TargetValue" Text="—" Foreground="#DBE4EE"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="200" />
+                    </StackPanel>
+                    <Button x:Name="TargetColorSwatch" Grid.Column="2" Tag="target" Style="{StaticResource OverlayRowColorSwatchStyle}" VerticalAlignment="Center" Click="RowColorSwatch_Click" />
+                    <CheckBox x:Name="TargetRowCheckbox" Grid.Column="3" Tag="target" Style="{StaticResource OverlayRowCheckboxStyle}"
+                              VerticalAlignment="Center" Margin="8,0,0,0" Visibility="Collapsed"
+                              Checked="RowVisibilityCheckbox_Changed" Unchecked="RowVisibilityCheckbox_Changed" />
+                </Grid>
                 <Grid x:Name="RowShipSheet">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

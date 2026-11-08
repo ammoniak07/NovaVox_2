@@ -544,6 +544,7 @@ public partial class OverlayWindow : Window
         yield return new("juridiction", new[] { JuridictionLabel, JuridictionValue }, JuridictionColorSwatch);
         yield return new("lastCmd", new[] { LastCmdValue }, LastCmdColorSwatch);
         yield return new("shipSheet", new[] { ShipSheetTitle }, ShipSheetColorSwatch);
+        yield return new("target", new[] { TargetLabel, TargetValue }, TargetColorSwatch);
     }
 
     public void ApplyRowVisibility(Dictionary<string, bool> visibleRows)
@@ -557,6 +558,7 @@ public partial class OverlayWindow : Window
         RowJuridiction.Visibility = RowVisibility(visibleRows, "juridiction");
         RowLastCmd.Visibility = RowVisibility(visibleRows, "lastCmd");
         RowShipSheet.Visibility = RowVisibility(visibleRows, "shipSheet");
+        RowTarget.Visibility = RowVisibility(visibleRows, "target");
     }
 
     private static Visibility RowVisibility(Dictionary<string, bool> rows, string key) =>
@@ -595,6 +597,7 @@ public partial class OverlayWindow : Window
         yield return (RowJuridiction, JuridictionRowCheckbox, JuridictionDragHandle, JuridictionColorSwatch, "juridiction");
         yield return (RowLastCmd, LastCmdRowCheckbox, LastCmdDragHandle, LastCmdColorSwatch, "lastCmd");
         yield return (RowShipSheet, ShipSheetRowCheckbox, ShipSheetDragHandle, ShipSheetColorSwatch, "shipSheet");
+        yield return (RowTarget, TargetRowCheckbox, TargetDragHandle, TargetColorSwatch, "target");
     }
 
     /// <summary>
@@ -705,6 +708,9 @@ public partial class OverlayWindow : Window
         ArmisticeIcon.Text = active ? "🚫" : "⚔";
         ArmisticeValue.Text = active ? "Oui" : "Non";
     }
+    /// <summary>Vaisseau ciblé lu dans le HUD (null = aucune cible).</summary>
+    public void SetTarget(string? text) => TargetValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
+
     public void SetLastCommand(string? text) => LastCmdValue.Text = string.IsNullOrEmpty(text) ? "—" : text;
 
     /// <summary>

@@ -709,6 +709,7 @@
                                 <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
                                 <CheckBox x:Name="OverlayEnabledCheckbox" Content="Activer l'overlay" Checked="OverlayEnabledCheckbox_Changed" Unchecked="OverlayEnabledCheckbox_Changed" />
                                 <Button x:Name="ToggleOverlayEditButton" Content="Déplacer l'overlay" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOverlayEditButton_Click" />
+                                <StackPanel x:Name="TargetScanSettingsHost" Margin="0,12,0,0" />
 
                                 <TextBlock Text="Apparence" FontWeight="Bold" Margin="0,16,0,4" />
                                 <StackPanel Orientation="Horizontal">

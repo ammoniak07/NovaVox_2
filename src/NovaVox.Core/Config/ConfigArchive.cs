@@ -24,6 +24,7 @@ public static class ConfigArchive
         ("overlay_config.json", "overlay_config.json"),
         ("orb_config.json", "orb_config.json"),
         ("my_ships.json", "my_ships.json"),
+        ("target_scan.json", "target_scan.json"),
     };
 
     public static void Export(string baseDir, string destZipPath, bool allProfiles)
