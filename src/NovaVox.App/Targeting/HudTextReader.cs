@@ -46,7 +46,12 @@ public sealed class HudTextReader : IDisposable
         token.ThrowIfCancellationRequested();
         using var bitmap = ToSoftwareBitmap(prepared);
         var result = await _engine.RecognizeAsync(bitmap);
-        return result.Lines.Select(l => l.Text).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+        // De haut en bas : le nom de la cible se repère par rapport à la ligne « FACTION » en dessous.
+        return result.Lines
+            .Where(l => !string.IsNullOrWhiteSpace(l.Text) && l.Words.Count > 0)
+            .OrderBy(l => l.Words.Min(w => w.BoundingRect.Y))
+            .Select(l => l.Text)
+            .ToList();
     }
 
     /// <summary>Capture + agrandissement (petit texte) + niveaux de gris inversés et contrastés.</summary>

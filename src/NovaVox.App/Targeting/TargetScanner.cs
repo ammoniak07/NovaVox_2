@@ -105,7 +105,7 @@ public sealed class TargetScanner : IDisposable
         if (!_config.HasZone)
             return new TargetScanResult(null, Array.Empty<string>(), "Zone du nom pas encore définie.");
         var lines = await _reader.ReadAsync(new Rectangle(_config.Left, _config.Top, _config.Width, _config.Height), token);
-        var result = new TargetScanResult(ShipNameMatcher.Match(lines), lines);
+        var result = new TargetScanResult(ShipNameMatcher.MatchTargetPanel(lines), lines);
         Scanned?.Invoke(result);
         return result;
     }

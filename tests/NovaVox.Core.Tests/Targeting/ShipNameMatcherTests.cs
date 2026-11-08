@@ -52,6 +52,53 @@ public class ShipNameMatcherTests
     }
 }
 
+public class ShipNameMatcherTargetPanelTests
+{
+    // Texte tel que l'OCR le lit dans le panneau de cible du HUD (captures en jeu, HUD en français).
+    [Fact]
+    public void TakesTheLineAboveFaction()
+    {
+        var lines = new[] { "7.0K 52.7K 24.7K", "208.9 0.0 0.0", "CRUSADER C1 SPIRIT", "FACTION ▸ INCONNU", "VITESSE ▸ 0M/S (7.77KM)" };
+        Assert.Equal("C1 Spirit", ShipNameMatcher.MatchTargetPanel(lines)?.Ship.Name);
+    }
+
+    [Fact]
+    public void ToleratesOcrMistakes()
+    {
+        var lines = new[] { "289.0", "0RIGIN 125A", "FACTI0N > UEE NAVY", "VITESSE > 0M/S (9.88KM)" };
+        Assert.Equal("125a", ShipNameMatcher.MatchTargetPanel(lines)?.Ship.Name);
+    }
+
+    [Fact]
+    public void IgnoresShipNamesElsewhereInTheZone()
+    {
+        // Un autre nom de vaisseau ailleurs dans la grande zone ne doit pas l'emporter sur la ligne au-dessus de FACTION.
+        var lines = new[] { "DRAKE CUTLASS BLACK", "12.1K", "ANVIL ARROW", "FACTION ▸ INCONNU", "VITESSE ▸ 120M/S" };
+        Assert.Equal("Arrow", ShipNameMatcher.MatchTargetPanel(lines)?.Ship.Name);
+    }
+
+    [Fact]
+    public void NoNameAboveFaction_ReturnsNull()
+    {
+        Assert.Null(ShipNameMatcher.MatchTargetPanel(new[] { "7.0K 52.7K", "FACTION ▸ INCONNU" }));
+        Assert.Null(ShipNameMatcher.MatchTargetPanel(new[] { "QUANTUM", "FACTION ▸ INCONNU" }));
+    }
+
+    [Fact]
+    public void WithoutFactionLine_SearchesTheWholeZone()
+    {
+        Assert.Equal("C1 Spirit", ShipNameMatcher.MatchTargetPanel(new[] { "7.0K", "CRUSADER C1 SPIRIT" })?.Ship.Name);
+    }
+
+    [Theory]
+    [InlineData("FACTION ▸ INCONNU", true)]
+    [InlineData("FACT1ON > UEE NAVY", true)]
+    [InlineData("VITESSE ▸ 0M/S", true)]
+    [InlineData("CRUSADER C1 SPIRIT", false)]
+    [InlineData("ORIGIN 125A", false)]
+    public void RecognizesInfoLines(string line, bool expected) => Assert.Equal(expected, ShipNameMatcher.IsInfoLine(line));
+}
+
 public class ShipNameMatcherSpeedTests
 {
     [Fact]

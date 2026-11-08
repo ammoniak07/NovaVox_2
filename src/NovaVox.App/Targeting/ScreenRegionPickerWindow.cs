@@ -60,8 +60,8 @@ public sealed class ScreenRegionPickerWindow : Window
                 Foreground = Brushes.White,
                 FontSize = 14,
                 TextAlignment = TextAlignment.Center,
-                Text = "Cible un vaisseau en jeu, puis dessine un cadre (cliquer-glisser) autour de l'endroit où son NOM s'affiche dans le HUD.\n" +
-                       "Prends juste le nom, avec un peu de marge.   Relâcher : valider.   Échap : annuler.",
+                Text = "Cible un vaisseau en jeu, puis dessine un cadre (cliquer-glisser) autour du panneau de la cible : son NOM, les lignes FACTION et VITESSE, et l'hologramme.\n" +
+                       "Vois large (le nom monte ou descend selon le vaisseau) : NovaVox garde la ligne au-dessus de FACTION.   Relâcher : valider.   Échap : annuler.",
             },
         };
         _canvas.Children.Add(help);

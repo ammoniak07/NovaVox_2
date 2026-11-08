@@ -34,7 +34,7 @@ public sealed class TargetScanSettingsPanel : StackPanel
 
         Children.Add(new TextBlock { Text = "🎯 Vaisseau ciblé (lecture du HUD)", FontWeight = FontWeights.Bold });
         Children.Add(Muted(
-            "NovaVox lit le nom du vaisseau que tu cibles, là où le jeu l'affiche dans le HUD, et l'affiche dans l'overlay (ligne « 🎯 Cible »). " +
+            "NovaVox lit le nom du vaisseau que tu cibles dans le panneau de la cible du HUD (la ligne au-dessus de « FACTION ») et l'affiche dans l'overlay (ligne « 🎯 Cible »). " +
             "Lecture de texte intégrée à Windows, hors ligne. Le jeu doit être en « fenêtré sans bordure ».", new Thickness(0, 2, 0, 0)));
         if (!scanner.OcrAvailable)
         {
@@ -46,7 +46,7 @@ public sealed class TargetScanSettingsPanel : StackPanel
         Children.Add(_enabled);
 
         var zoneRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-        var pick = new Button { Content = "📐 Définir la zone du nom…", Padding = new Thickness(10, 3, 10, 3), ToolTip = "Cible un vaisseau en jeu, reviens ici, puis dessine un cadre autour de son nom dans le HUD" };
+        var pick = new Button { Content = "📐 Définir la zone du nom…", Padding = new Thickness(10, 3, 10, 3), ToolTip = "Cible un vaisseau en jeu, reviens ici, puis dessine un grand cadre autour du panneau de la cible (nom, FACTION, VITESSE, hologramme) : NovaVox garde la ligne au-dessus de FACTION" };
         pick.Click += (_, _) => PickZone();
         zoneRow.Children.Add(pick);
         zoneRow.Children.Add(_zoneText);

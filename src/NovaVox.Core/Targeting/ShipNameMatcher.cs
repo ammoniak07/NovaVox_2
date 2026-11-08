@@ -136,6 +136,48 @@ public static class ShipNameMatcher
 
     public static ShipMatch? Match(string text) => Match(text.Split('\n'));
 
+    /// <summary>Mots qui suivent le nom de la cible dans le panneau du HUD (« FACTION ▸ … », « VITESSE ▸ … »).</summary>
+    private static readonly string[] InfoLabels = { "FACTION", "VITESSE", "SPEED", "AFFILIATION" };
+
+    /// <summary>Vrai si la ligne est une ligne d'info du panneau de cible (FACTION, VITESSE...), même mal lue.</summary>
+    public static bool IsInfoLine(string line)
+    {
+        foreach (var word in Canonical(line).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            foreach (var label in InfoLabels)
+            {
+                var key = Canonical(label);
+                if (word.Length < key.Length - 1) continue;
+                var head = word.Length > key.Length ? word[..key.Length] : word;
+                if (Similarity(head, key) >= 0.75) return true;
+            }
+        return false;
+    }
+
+    /// <summary>Ligne avec assez de lettres pour être un nom (pas « 7.0K 52.7K » ni « 208.9 »).</summary>
+    private static bool HasWords(string line) => line.Count(char.IsLetter) >= 3;
+
+    /// <summary>
+    /// Version « panneau de cible » : dans le HUD, le nom du vaisseau est la
+    /// ligne juste au-dessus de « FACTION ». Les lignes doivent être triées
+    /// de haut en bas. Si cette ligne d'info est trouvée, seul ce qui la
+    /// précède compte (le reste de la zone, chiffres, hologramme, autre
+    /// texte du HUD, est ignoré) ; sinon, toute la zone est examinée.
+    /// </summary>
+    public static ShipMatch? MatchTargetPanel(IReadOnlyList<string> lines)
+    {
+        var texts = lines.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToList();
+        var anchor = texts.FindIndex(IsInfoLine);
+        if (anchor < 0) return Match(texts);
+
+        var nameIndex = anchor - 1;
+        while (nameIndex >= 0 && (!HasWords(texts[nameIndex]) || IsInfoLine(texts[nameIndex]))) nameIndex--;
+        if (nameIndex < 0) return null;
+
+        // Le nom seul d'abord ; puis avec la ligne du dessus, au cas où il serait coupé en deux.
+        return Match(new[] { texts[nameIndex] })
+            ?? (nameIndex > 0 && HasWords(texts[nameIndex - 1]) ? Match(new[] { texts[nameIndex - 1] + " " + texts[nameIndex] }) : null);
+    }
+
     /// <summary>Similarité entre le nom cherché et le meilleur morceau du texte de même longueur (±2).</summary>
     private static double BestWindowSimilarity(string text, string key)
     {
