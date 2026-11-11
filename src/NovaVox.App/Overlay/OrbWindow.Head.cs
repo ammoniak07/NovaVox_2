@@ -32,6 +32,12 @@ public partial class OrbWindow
     private double _nextHeadBlinkAt = 3, _headBlinkStart = -10;
 
     private readonly Canvas _headCanvas = new();
+    private readonly Canvas _headMeshCanvas = new();
+    private readonly Canvas _headPointCanvas = new();
+    private readonly Path[] _headPointPaths = new Path[HeadLevels];
+    private Path? _headPointGlowPath;
+    private double[] _headPointMouth = Array.Empty<double>(), _headPointEar = Array.Empty<double>(), _headPointBrain = Array.Empty<double>();
+    private double[] _headPointPhase = Array.Empty<double>(), _headPointFreq = Array.Empty<double>();
     private readonly Path[] _headLevelPaths = new Path[HeadLevels];
     private Path? _headBackPath, _headGlowPath, _headDotsPath, _headDotsBrightPath, _headFeaturesPath, _headFeaturesFaintPath;
     private readonly Ellipse[] _headEyes = new Ellipse[2];
@@ -89,28 +95,31 @@ public partial class OrbWindow
         }
 
         HeadLayer.Children.Add(_headCanvas);
+        _headCanvas.Children.Add(_headMeshCanvas);
+        _headCanvas.Children.Add(_headPointCanvas);
+        BuildHeadPoints();
         _headBackPath = new Path { Stroke = _headBackBrush, Opacity = 0.1 };
-        _headCanvas.Children.Add(_headBackPath);
+        _headMeshCanvas.Children.Add(_headBackPath);
         _headGlowPath = new Path
         {
             Stroke = _headLineBrush,
             Opacity = 0.45,
             Effect = new BlurEffect { Radius = 4, KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Performance },
         };
-        _headCanvas.Children.Add(_headGlowPath);
+        _headMeshCanvas.Children.Add(_headGlowPath);
         for (var l = 0; l < HeadLevels; l++)
         {
             _headLevelPaths[l] = new Path { Stroke = l >= HeadLevels - 2 ? _headBrightBrush : _headLineBrush, Opacity = 0.18 + 0.82 * l / (HeadLevels - 1) };
-            _headCanvas.Children.Add(_headLevelPaths[l]);
+            _headMeshCanvas.Children.Add(_headLevelPaths[l]);
         }
         _headFeaturesFaintPath = new Path { Stroke = _headBrightBrush, Opacity = 0.3, StrokeLineJoin = PenLineJoin.Round };
         _headFeaturesPath = new Path { Stroke = _headBrightBrush, Opacity = 0.75, StrokeLineJoin = PenLineJoin.Round };
-        _headCanvas.Children.Add(_headFeaturesFaintPath);
-        _headCanvas.Children.Add(_headFeaturesPath);
+        _headMeshCanvas.Children.Add(_headFeaturesFaintPath);
+        _headMeshCanvas.Children.Add(_headFeaturesPath);
         _headDotsPath = new Path { Fill = _headBrightBrush, Opacity = 0.55 };
         _headDotsBrightPath = new Path { Fill = Brushes.White, Opacity = 0.95 };
-        _headCanvas.Children.Add(_headDotsPath);
-        _headCanvas.Children.Add(_headDotsBrightPath);
+        _headMeshCanvas.Children.Add(_headDotsPath);
+        _headMeshCanvas.Children.Add(_headDotsBrightPath);
 
         for (var i = 0; i < 2; i++)
         {
@@ -127,6 +136,135 @@ public partial class OrbWindow
             };
             _headCanvas.Children.Add(_headEyes[i]);
         }
+    }
+
+    /// <summary>Rendu « nuage de points » : chemins par niveau d'éclat (points = traits de longueur nulle à bouts ronds).</summary>
+    private void BuildHeadPoints()
+    {
+        var cloud = HeadModel3D.PointCloud;
+        var count = cloud.Positions.Length;
+        _headPointMouth = new double[count];
+        _headPointEar = new double[count];
+        _headPointBrain = new double[count];
+        _headPointPhase = new double[count];
+        _headPointFreq = new double[count];
+        for (var i = 0; i < count; i++)
+        {
+            var p = cloud.Positions[i];
+            _headPointMouth[i] = p.DistanceTo(HeadModel3D.Mouth);
+            _headPointEar[i] = Math.Min(p.DistanceTo(HeadModel3D.LeftEar), p.DistanceTo(HeadModel3D.RightEar));
+            _headPointBrain[i] = p.DistanceTo(HeadModel3D.Brain);
+            _headPointPhase[i] = _random.NextDouble() * Math.PI * 2;
+            _headPointFreq[i] = 0.3 + _random.NextDouble() * 1.5;
+        }
+        _headPointGlowPath = new Path
+        {
+            Stroke = _headLineBrush,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            Opacity = 0.5,
+            Effect = new BlurEffect { Radius = 4, KernelType = KernelType.Gaussian, RenderingBias = RenderingBias.Performance },
+        };
+        _headPointCanvas.Children.Add(_headPointGlowPath);
+        for (var l = 0; l < HeadLevels; l++)
+        {
+            _headPointPaths[l] = new Path
+            {
+                Stroke = l >= HeadLevels - 2 ? _headBrightBrush : _headLineBrush,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                Opacity = 0.12 + 0.88 * l / (HeadLevels - 1),
+            };
+            _headPointCanvas.Children.Add(_headPointPaths[l]);
+        }
+    }
+
+    /// <summary>Dessine la tête en points lumineux (rotation faite ici, une seule fois par image pour les sinus/cosinus).</summary>
+    private void RenderHeadPoints(double t, double voice, double jaw, double cx, double cy, double k)
+    {
+        var cloud = HeadModel3D.PointCloud;
+        double cyw = Math.Cos(_headYaw), syw = Math.Sin(_headYaw), cp = Math.Cos(_headPitch), sp = Math.Sin(_headPitch), cr = Math.Cos(_headRoll), sr = Math.Sin(_headRoll);
+        const double camera = 4.0;
+        var speak = _speaking ? Math.Clamp(voice * 1.6, 0, 1) : 0;
+        var sweep = (t - _shimmerStart) / ShimmerDuration;
+        var sweepOn = sweep is >= 0 and <= 1 && _config.ShowReactions;
+        var sweepY = 1.0 - sweep * 2.2;
+        var tiny = Math.Max(0.01, k * 0.0005);
+
+        var geometries = new StreamGeometry[HeadLevels];
+        var contexts = new StreamGeometryContext[HeadLevels];
+        for (var l = 0; l < HeadLevels; l++)
+        {
+            geometries[l] = new StreamGeometry();
+            contexts[l] = geometries[l].Open();
+        }
+        var glow = new StreamGeometry();
+        using (var glowCtx = glow.Open())
+        {
+            for (var i = 0; i < cloud.Positions.Length; i++)
+            {
+                // Normale tournée : de dos, le point n'est qu'un reflet très léger (un sur deux).
+                var n = cloud.Normals[i];
+                var nx1 = n.X * cyw + n.Z * syw;
+                var nz1 = -n.X * syw + n.Z * cyw;
+                var ny2 = n.Y * cp - nz1 * sp;
+                var nz2 = n.Y * sp + nz1 * cp;
+                var rotatedNormal = new Vec3(nx1 * cr - ny2 * sr, nx1 * sr + ny2 * cr, nz2);
+                var back = nz2 < 0;
+                if (back && (i & 1) == 0) continue;
+
+                var q = cloud.Positions[i];
+                var w = cloud.Jaw[i] * jaw;
+                var y0 = q.Y - w * 0.10 + 0.3;
+                var z0 = q.Z - w * 0.03;
+                var x1 = q.X * cyw + z0 * syw;
+                var z1 = -q.X * syw + z0 * cyw;
+                var y2 = y0 * cp - z1 * sp;
+                var z2 = y0 * sp + z1 * cp;
+                var x3 = x1 * cr - y2 * sr;
+                var y3 = x1 * sr + y2 * cr - 0.3;
+                var f = camera / (camera - z2);
+                var point = new Point(cx + x3 * f * k, cy - y3 * f * k);
+
+                double bright;
+                if (back) bright = 0.02;
+                else
+                {
+                    bright = HeadModel3D.PointLight(rotatedNormal) + cloud.Glow[i] * 0.9 * (0.8 + 0.4 * Math.Max(_attention, _level));
+                    var dm = _headPointMouth[i];
+                    bright += speak * Math.Max(0, 1 - dm * 0.9) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 14));
+                    var de = _headPointEar[i];
+                    bright += _attention * Math.Max(0, 1 - de * 1.1) * Math.Max(0, Math.Sin(t * 6 - de * 10)) * 0.8;
+                    var db = _headPointBrain[i];
+                    bright += _thinkingAmount * (0.1 + 0.5 * Math.Max(0, Math.Sin(t * 4 - db * 7)));
+                    if (sweepOn) bright += 0.9 * Math.Exp(-Math.Pow((q.Y - sweepY) / 0.15, 2));
+                    var twinkle = Math.Sin(t * _headPointFreq[i] * (1 + 2 * _thinkingAmount) + _headPointPhase[i]);
+                    if (twinkle > 0.97) bright += 0.5;
+                    bright *= 1 - 0.35 * _sleepiness;
+                }
+                var level = Math.Clamp((int)(bright * HeadLevels), 0, HeadLevels - 1);
+                contexts[level].BeginFigure(point, false, false);
+                contexts[level].LineTo(new Point(point.X + tiny, point.Y), true, false);
+                if (level >= HeadLevels - 2)
+                {
+                    glowCtx.BeginFigure(point, false, false);
+                    glowCtx.LineTo(new Point(point.X + tiny, point.Y), true, false);
+                }
+            }
+        }
+        var dot = Math.Max(0.9, k * 0.016);
+        for (var l = 0; l < HeadLevels; l++)
+        {
+            contexts[l].Close();
+            geometries[l].Freeze();
+            _headPointPaths[l].Data = geometries[l];
+            _headPointPaths[l].StrokeThickness = l >= HeadLevels - 2 ? dot * 1.4 : dot;
+        }
+        glow.Freeze();
+        _headPointGlowPath!.Data = glow;
+        _headPointGlowPath.StrokeThickness = dot * 3.5;
+        ((BlurEffect)_headPointGlowPath.Effect).Radius = Math.Max(2, k * 0.03);
+        _headPointGlowPath.Opacity = 0.4 + 0.3 * Math.Max(_level, _attention);
     }
 
     /// <summary>Ressort amorti (un peu souple) vers la valeur voulue.</summary>
@@ -160,17 +298,14 @@ public partial class OrbWindow
         if (HeadLayer.Visibility != Visibility.Visible) HeadLayer.Visibility = Visibility.Visible;
         if (!_headBuilt) BuildHead();
 
-        var model = HeadModel3D.Default;
         UpdateHeadPose(dt, t, voice);
         var jaw = _speaking ? Math.Clamp(_mouthOpen * 1.5, 0, 1) : 0;
-        model.Project(_headYaw, _headPitch, _headRoll, jaw, _headProjected, _headView);
 
         // Place et taille : la tête (environ 2 unités de haut) remplit la place de la bulle.
         var size = Math.Min(b.Width, b.Height) * 1.15;
         var k = size * 0.43;
         var cx = b.Left + b.Width / 2;
         var cy = b.Top + b.Height / 2 - 0.085 * k;
-        Point P(int i) => new(cx + _headProjected[i].X * k, cy + _headProjected[i].Y * k);
 
         // Couleurs : celles de l'état (repos, écoute, réflexion, parole), plus claires pour les traits.
         var main = _shownColor;
@@ -188,6 +323,21 @@ public partial class OrbWindow
             GlowPath.Data = _headGlowShape;
             GlowPath.Opacity *= 0.5;
         }
+
+        var pointsMode = _config.HeadPoints;
+        _headMeshCanvas.Visibility = pointsMode ? Visibility.Collapsed : Visibility.Visible;
+        _headPointCanvas.Visibility = pointsMode ? Visibility.Visible : Visibility.Collapsed;
+        if (pointsMode) RenderHeadPoints(t, voice, jaw, cx, cy, k);
+        else RenderHeadMesh(t, voice, jaw, cx, cy, k);
+        UpdateHeadEyes(t, jaw, cx, cy, k);
+    }
+
+    /// <summary>Dessine la tête en maillage (triangles, points, traits du visage).</summary>
+    private void RenderHeadMesh(double t, double voice, double jaw, double cx, double cy, double k)
+    {
+        var model = HeadModel3D.Default;
+        model.Project(_headYaw, _headPitch, _headRoll, jaw, _headProjected, _headView);
+        Point P(int i) => new(cx + _headProjected[i].X * k, cy + _headProjected[i].Y * k);
 
         // Triangles visibles et leur éclat (bords lumineux + relief éclairé).
         for (var tri = 0; tri < model.Triangles.Count; tri++)
@@ -321,7 +471,11 @@ public partial class OrbWindow
         _headFeaturesPath.StrokeThickness = _headFeaturesFaintPath.StrokeThickness = Math.Max(0.8, k * 0.011);
         _headFeaturesPath.Opacity = 0.6 + 0.3 * Math.Max(_attention, _level);
 
-        // Yeux : points brillants qui clignent (fermés à moitié quand elle s'endort).
+    }
+
+    /// <summary>Yeux : points brillants qui clignent (fermés à moitié quand elle s'endort).</summary>
+    private void UpdateHeadEyes(double t, double jaw, double cx, double cy, double k)
+    {
         if (t > _nextHeadBlinkAt)
         {
             _headBlinkStart = t;

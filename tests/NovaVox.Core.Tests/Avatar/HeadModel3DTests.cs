@@ -72,4 +72,24 @@ public class HeadModel3DTests
         Assert.Equal(0, HeadModel3D.SurfaceVisibility(HeadModel3D.LeftEye, Math.PI, 0));
         Assert.NotEmpty(Model.FeatureStrokes);
     }
+
+    [Fact]
+    public void PointCloud_CoversTheHeadAndLightsUpTheFace()
+    {
+        var cloud = HeadModel3D.PointCloud;
+        Assert.InRange(cloud.Positions.Length, 3000, 9000);
+        Assert.Equal(cloud.Positions.Length, cloud.Normals.Length);
+        // Normales unitaires et tournées vers l'extérieur.
+        for (var i = 0; i < cloud.Positions.Length; i++)
+        {
+            Assert.InRange(cloud.Normals[i].Length, 0.99, 1.01);
+            var p = cloud.Positions[i];
+            Assert.True(Vec3.Dot(cloud.Normals[i], new Vec3(p.X, 0.3 * p.Y, p.Z)) >= 0);
+        }
+        // Les yeux brillent, le crâne non.
+        var eye = Enumerable.Range(0, cloud.Positions.Length).OrderBy(i => cloud.Positions[i].DistanceTo(new Vec3(0.20, 0.10, 0.6))).First();
+        var skull = Enumerable.Range(0, cloud.Positions.Length).OrderBy(i => cloud.Positions[i].DistanceTo(new Vec3(0, 0.7, -0.5))).First();
+        Assert.True(cloud.Glow[eye] > 0.5);
+        Assert.True(cloud.Glow[skull] < 0.05);
+    }
 }

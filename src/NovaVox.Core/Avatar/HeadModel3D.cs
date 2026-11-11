@@ -45,14 +45,14 @@ public sealed class HeadModel3D
         (-0.02, 0.55, 0.71, 0.66),
         (-0.14, 0.53, 0.72, 0.57),
         (-0.26, 0.50, 0.71, 0.47),
-        (-0.38, 0.465, 0.69, 0.36),
-        (-0.48, 0.43, 0.66, 0.27),
-        (-0.57, 0.33, 0.63, 0.24),
-        (-0.65, 0.21, 0.57, 0.24),
+        (-0.38, 0.475, 0.69, 0.36),
+        (-0.48, 0.45, 0.67, 0.27),
+        (-0.57, 0.36, 0.645, 0.24),
+        (-0.65, 0.24, 0.59, 0.24),
         (-0.72, 0.22, 0.34, 0.27),
         (-0.82, 0.235, 0.20, 0.34),
-        (-0.97, 0.25, 0.18, 0.37),
-        (-1.12, 0.29, 0.19, 0.41),
+        (-0.97, 0.26, 0.18, 0.37),
+        (-1.12, 0.33, 0.20, 0.42),
     };
 
     private const int PointsPerRing = 40;
@@ -161,7 +161,7 @@ public sealed class HeadModel3D
         if (y > 0.45) return 2.15;
         if (y > 0.2) return 2.15 + 0.45 * (0.45 - y) / 0.25;
         if (y > -0.25) return 2.6;
-        if (y > -0.66) return 2.6 - 0.9 * (-0.25 - y) / 0.41;
+        if (y > -0.66) return 2.6 - 0.6 * (-0.25 - y) / 0.41;
         return 2.0;
     }
 
@@ -261,7 +261,8 @@ public sealed class HeadModel3D
         var below = Math.Clamp((MouthLine - 0.01 - n.Y) / 0.04, 0, 1);
         var front = Math.Clamp((n.Z + 0.05) / 0.35, 0, 1);
         var fadeNeck = Math.Clamp((n.Y + 0.85) / 0.15, 0, 1);
-        return below * front * fadeNeck;
+        var center = Math.Exp(-Math.Pow(n.X / 0.30, 2)); // les côtés suivent moins (joues qui s'étirent)
+        return below * front * fadeNeck * center;
     }
 
     /// <summary>Même rotation et perspective que Project(), pour un point isolé (traits du visage, yeux).</summary>
@@ -299,6 +300,99 @@ public sealed class HeadModel3D
 
     private static double G(double v) => Math.Exp(-v * v);
 
+    /// <summary>Nuage de points pour le rendu « points » : position, normale, éclat propre (traits du visage), poids de mâchoire.</summary>
+    public sealed record PointCloudData(Vec3[] Positions, Vec3[] Normals, double[] Glow, double[] Jaw);
+
+    private static readonly Lazy<PointCloudData> SharedCloud = new(BuildPointCloud);
+
+    /// <summary>Nuage de points régulier (rangées horizontales, comme un scan), calculé une fois.</summary>
+    public static PointCloudData PointCloud => SharedCloud.Value;
+
+    private static PointCloudData BuildPointCloud()
+    {
+        const double rowStep = 0.03;
+        const double spacing = 0.034;
+        var positions = new List<Vec3>();
+        var normals = new List<Vec3>();
+        var row = 0;
+        for (var y = Profile[0].Y; y >= Profile[^1].Y - 1e-9; y -= rowStep, row++)
+        {
+            var (_, rx, front, back) = ProfileAt(y);
+            // Nombre de points selon le tour de tête à cette hauteur (densité à peu près constante).
+            var perimeter = Math.PI * (1.5 * (rx + (front + back) / 2) - Math.Sqrt(rx * (front + back) / 2));
+            var count = Math.Max(6, (int)Math.Round(perimeter / spacing));
+            for (var i = 0; i < count; i++)
+            {
+                var phi = -Math.PI + (i + (row % 2) * 0.5) / count * 2 * Math.PI;
+                var p = Surface(y, rx, front, back, phi);
+                // Normale par différences finies sur la surface.
+                const double h = 1e-3;
+                var (_, rx2, f2, b2) = ProfileAt(y - h);
+                var du = Surface(y, rx, front, back, phi + h) - p;
+                var dv = Surface(y - h, rx2, f2, b2, phi) - p;
+                var n = Vec3.Cross(du, dv);
+                var length = n.Length;
+                n = length < 1e-12 ? new Vec3(p.X, 0, p.Z) : n * (1 / length);
+                if (Vec3.Dot(n, new Vec3(p.X, 0.3 * p.Y, p.Z)) < 0) n *= -1;
+                positions.Add(p);
+                normals.Add(n);
+            }
+        }
+        // Sommet du crâne.
+        positions.Add(Top);
+        normals.Add(new Vec3(0, 1, 0));
+
+        var glow = positions.Select(FeatureGlow).ToArray();
+        var jaw = positions.Select(JawWeightAt).ToArray();
+        return new PointCloudData(positions.ToArray(), normals.ToArray(), glow, jaw);
+    }
+
+    /// <summary>
+    /// Éclat propre d'un point (0..1) : contour et intérieur des yeux,
+    /// sourcils, pointe et ailes du nez, ligne des lèvres, oreilles — ce qui
+    /// fait ressortir le visage dans le rendu en points.
+    /// </summary>
+    private static double FeatureGlow(Vec3 p)
+    {
+        double x = p.X, y = p.Y, ax = Math.Abs(x);
+        var glow = 0.0;
+        if (p.Z > 0.25)
+        {
+            var r = Math.Sqrt(Math.Pow((ax - 0.20) / 0.078, 2) + Math.Pow((y - 0.10) / 0.036, 2));
+            glow += G((r - 1) / 0.3) + 0.7 * G(r / 0.55);                            // yeux
+            glow += 0.55 * G((y - 0.205) / 0.022) * G((ax - 0.19) / 0.11);           // sourcils
+            glow += 0.8 * G(x / 0.045) * G((y + 0.18) / 0.03);                       // pointe du nez
+            glow += 0.7 * G((ax - 0.06) / 0.025) * G((y + 0.205) / 0.02);            // narines
+            glow += 0.9 * G((y - MouthLine) / 0.013) * G(x / 0.14);                  // fente des lèvres
+            glow += 0.35 * G((y + 0.36) / 0.015) * G(x / 0.12);                      // bord de la lèvre du haut
+            glow += 0.25 * G((y + 0.585) / 0.03) * G(x / 0.09);                      // menton
+        }
+        var aphi = Math.Abs(Math.Atan2(x, p.Z));
+        glow += 0.5 * G((aphi - 1.72) / 0.12) * G((y - 0.03) / 0.12);                // oreilles
+        return Math.Clamp(glow, 0, 1);
+    }
+
+    /// <summary>Même rotation que ProjectPoint, pour une direction (normale) : renvoie sa composante vers le spectateur et vers la lumière.</summary>
+    public static Vec3 RotateDirection(Vec3 n, double yaw, double pitch, double roll)
+    {
+        double cy = Math.Cos(yaw), sy = Math.Sin(yaw), cp = Math.Cos(pitch), sp = Math.Sin(pitch), cr = Math.Cos(roll), sr = Math.Sin(roll);
+        var x1 = n.X * cy + n.Z * sy;
+        var z1 = -n.X * sy + n.Z * cy;
+        var y2 = n.Y * cp - z1 * sp;
+        var z2 = n.Y * sp + z1 * cp;
+        var x3 = x1 * cr - y2 * sr;
+        var y3 = x1 * sr + y2 * cr;
+        return new Vec3(x3, y3, z2);
+    }
+
+    /// <summary>Éclairage d'un point du nuage (direction déjà tournée) : bords lumineux + lumière d'en haut à gauche.</summary>
+    public static double PointLight(Vec3 rotatedNormal)
+    {
+        var fresnel = Math.Pow(1 - Math.Clamp(rotatedNormal.Z, 0, 1), 1.5);
+        var lambert = Math.Max(0, Vec3.Dot(rotatedNormal, Light));
+        return Math.Clamp(0.15 + 0.5 * fresnel + 0.3 * lambert, 0, 1);
+    }
+
     /// <summary>Reliefs du visage, des tempes, de la mâchoire et des oreilles, appliqués au point de la forme de base.</summary>
     private static Vec3 Face(Vec3 p, double phi)
     {
@@ -306,29 +400,29 @@ public sealed class HeadModel3D
         double ax = Math.Abs(x), sign = Math.Sign(x == 0 ? Math.Sin(phi) : x), aphi = Math.Abs(phi);
         var dx = 0.0;
         // Oreilles : décollées sur les côtés, un peu en arrière, entre les yeux et le nez en hauteur.
-        dx += 0.085 * G((aphi - 1.72) / 0.2) * G((y - 0.03) / 0.12);
+        dx += 0.10 * G((aphi - 1.72) / 0.18) * G((y - 0.03) / 0.13);
         // Tempes un peu creusées, angle de la mâchoire marqué.
         dx -= 0.03 * G((aphi - 1.0) / 0.3) * G((y - 0.25) / 0.12);
-        dx += 0.025 * G((aphi - 1.35) / 0.3) * G((y + 0.47) / 0.07);
+        dx += 0.04 * G((aphi - 1.3) / 0.3) * G((y + 0.47) / 0.07);
         var c = Math.Cos(phi);
         if (c <= 0) return new Vec3(x + sign * dx, y, z);
 
         var front = Math.Pow(c, 1.5);
         var dz = 0.0;
-        dz += 0.045 * G((y - 0.20) / 0.05) * G(x / 0.34);                        // arcades
-        dz -= 0.075 * G((y - 0.10) / 0.06) * G((ax - 0.20) / 0.085);             // orbites
+        dz += 0.06 * G((y - 0.195) / 0.045) * G(x / 0.32);                       // arcades
+        dz -= 0.095 * G((y - 0.10) / 0.06) * G((ax - 0.20) / 0.085);             // orbites
         dz += 0.03 * G((y - 0.10) / 0.035) * G((ax - 0.20) / 0.06);              // globe de l'œil
         dz += 0.045 * G(x / 0.06) * Math.Clamp((0.12 - y) / 0.29, 0, 1) * (y > -0.21 ? 1 : 0.2); // arête du nez
-        dz += 0.08 * G(x / 0.07) * G((y + 0.17) / 0.065);                        // pointe du nez
+        dz += 0.095 * G(x / 0.065) * G((y + 0.17) / 0.07);                       // pointe du nez
         dz += 0.035 * G((ax - 0.06) / 0.035) * G((y + 0.195) / 0.035);           // ailes du nez
-        dz += 0.035 * G((ax - 0.36) / 0.09) * G((y + 0.02) / 0.08);              // pommettes
-        dz -= 0.03 * G((ax - 0.30) / 0.08) * G((y + 0.22) / 0.10);               // joues un peu creuses
+        dz += 0.05 * G((ax - 0.35) / 0.09) * G((y + 0.03) / 0.07);               // pommettes
+        dz -= 0.04 * G((ax - 0.30) / 0.08) * G((y + 0.22) / 0.09);               // joues creuses sous les pommettes
         dz += 0.025 * G(x / 0.03) * G((y + 0.30) / 0.04);                        // sillon au-dessus de la lèvre
         dz += 0.04 * G(x / 0.13) * G((y + 0.37) / 0.03);                         // lèvre du haut
         dz -= 0.02 * G(x / 0.13) * G((y - MouthLine) / 0.015);                   // fente de la bouche
         dz += 0.04 * G(x / 0.12) * G((y + 0.44) / 0.03);                         // lèvre du bas
         dz -= 0.03 * G(x / 0.12) * G((y + 0.50) / 0.03);                         // creux sous la lèvre
-        dz += 0.05 * G(x / 0.11) * G((y + 0.585) / 0.05);                        // menton
+        dz += 0.065 * G(x / 0.13) * G((y + 0.585) / 0.05);                       // menton (carré)
         dx += 0.025 * G((ax - 0.45) / 0.1) * G((y + 0.02) / 0.1) * front;        // pommettes (largeur)
         return new Vec3(x + sign * dx, y, z + dz * front);
     }

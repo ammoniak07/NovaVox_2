@@ -99,6 +99,8 @@ public sealed class OrbConfig
     public bool CatMode { get; set; }
     /// <summary>Avatar « tête holographique » : la bulle devient une tête de profil en maillage lumineux.</summary>
     public bool HeadMode { get; set; }
+    /// <summary>Tête holographique dessinée en nuage de points (comme un scan) au lieu d'un maillage de triangles.</summary>
+    public bool HeadPoints { get; set; }
     /// <summary>Intervalle moyen entre deux gags, en minutes (3..60).</summary>
     public int GagMinutes { get; set; } = DefaultGagMinutes;
     /// <summary>Distance au repos en mètres (1,2..4) pour l'effet de profondeur.</summary>
@@ -148,6 +150,7 @@ public sealed class OrbConfigStore
             config.SpatialSound = GetBool(data["spatial_sound"], true);
             config.CatMode = GetBool(data["roxie_wooki"]);
             config.HeadMode = GetBool(data["avatar_head"]);
+            config.HeadPoints = GetBool(data["avatar_head_points"]);
             config.GagMinutes = Math.Clamp((int)Math.Round(GetDouble(data["gag_minutes"]) ?? OrbConfig.DefaultGagMinutes), OrbConfig.MinGagMinutes, OrbConfig.MaxGagMinutes);
             config.FarDistance = Math.Round(Math.Clamp(GetDouble(data["far_distance"]) ?? OrbConfig.DefaultFarDistance, OrbConfig.MinFarDistance, OrbConfig.MaxFarDistance), 1);
             if (data["forbidden_zones"] is JsonArray zones)
@@ -198,6 +201,7 @@ public sealed class OrbConfigStore
             ["spatial_sound"] = config.SpatialSound,
             ["roxie_wooki"] = config.CatMode,
             ["avatar_head"] = config.HeadMode,
+            ["avatar_head_points"] = config.HeadPoints,
             ["gag_minutes"] = config.GagMinutes,
             ["far_distance"] = config.FarDistance,
             ["forbidden_zones"] = new JsonArray(config.ForbiddenZones

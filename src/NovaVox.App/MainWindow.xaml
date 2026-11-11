@@ -896,6 +896,9 @@
                                 <CheckBox x:Name="OrbHeadCheckbox" Content="Tête holographique 🧠" Margin="0,6,0,0"
                                           ToolTip="L'avatar devient une tête en 3D en maillage lumineux, dans les couleurs de la bulle. De face, elle pivote selon ce qu'elle fait (regarde autour d'elle, se tourne vers toi quand elle t'entend, lève les yeux quand elle réfléchit, hoche la tête en parlant) ; sa mâchoire suit la voix, ses yeux clignent, et des ondes de lumière partent de la bouche, des oreilles ou du crâne."
                                           Checked="OrbHeadCheckbox_Changed" Unchecked="OrbHeadCheckbox_Changed" />
+                                <CheckBox x:Name="OrbHeadPointsCheckbox" Content="Tête en nuage de points" Margin="20,4,0,0"
+                                          ToolTip="La tête holographique est dessinée en points lumineux (comme un scan 3D) au lieu de triangles : yeux, nez et lèvres brillent davantage"
+                                          Checked="OrbHeadPointsCheckbox_Changed" Unchecked="OrbHeadPointsCheckbox_Changed" />
                                 <CheckBox x:Name="OrbCatCheckbox" Content="ROxieWOOki 🐱" Margin="0,6,0,0"
                                           ToolTip="La bulle devient une petite tête de chat rose : oreilles de chat qui frémissent, moustaches qui frétillent quand elle parle, petit nez et bouche « ω », tons roses à la place des couleurs réglées"
                                           Checked="OrbCatCheckbox_Changed" Unchecked="OrbCatCheckbox_Changed" />
