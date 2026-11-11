@@ -307,8 +307,8 @@ public sealed class HeadModel3D
         _glowLines.Add((Line(LeftBrowTop), 0.25));
         _glowLines.Add((Line(LipsOuter), 0.55));
         _glowLines.Add((Line(LipsInner), 0.9));
-        _glowLines.Add((Line(NoseBridge), 0.3));
-        _glowLines.Add((Line(NoseBase), 0.6));
+        _glowLines.Add((Line(NoseBridge), 0.12));
+        _glowLines.Add((Line(NoseBase), 0.85));
         foreach (var rim in earRims) _glowLines.Add((rim, 0.4));
     }
 
@@ -646,7 +646,7 @@ public sealed class HeadModel3D
     {
         var fresnel = Math.Pow(1 - Math.Clamp(rotatedNormal.Z, 0, 1), 1.5);
         var lambert = Math.Max(0, Vec3.Dot(rotatedNormal, Light));
-        return Math.Clamp(0.08 + 0.4 * fresnel + 0.6 * Math.Pow(lambert, 1.4), 0, 1);
+        return Math.Clamp(0.22 + 0.4 * fresnel + 0.28 * lambert, 0, 1);
     }
 
     // ---------- Nuage de points ----------
@@ -659,63 +659,79 @@ public sealed class HeadModel3D
     /// <summary>Points répartis sur toute la surface (plus serrés sur le visage), calculés une fois.</summary>
     public static PointCloudData PointCloud => SharedCloud.Value;
 
+    /// <summary>Écart entre deux rangées de points, et entre deux points d'une rangée (au plus large de la tête).</summary>
+    private const double PointRowStep = 0.026;
+    private const int PointsPerRow = 132;
+
+    /// <summary>
+    /// Points rangés comme un scan 3D : la tête est coupée en tranches
+    /// horizontales régulières et, sur chaque tranche, un point est posé à
+    /// angles égaux autour de la tête (le plus à l'extérieur de la surface
+    /// dans cette direction). Les rangées sont donc parfaitement
+    /// horizontales et les colonnes suivent les courbes du visage.
+    /// </summary>
     private PointCloudData BuildPointCloud()
     {
-        // Points répartis régulièrement (aucun trop près d'un autre, comme un scan) :
-        // beaucoup de candidats tirés au hasard, gardés seulement s'ils ont de la place.
-        var random = new Random(4557);
-        const double faceGap = 0.019, skullGap = 0.026;
         var positions = new List<Vec3>();
         var normals = new List<Vec3>();
         var onFaceList = new List<bool>();
-        var grid = new Dictionary<(int, int, int), List<int>>();
-        const double cell = skullGap;
-        (int, int, int) Cell(Vec3 p) => ((int)Math.Floor(p.X / cell), (int)Math.Floor(p.Y / cell), (int)Math.Floor(p.Z / cell));
+        const double axisZ = -0.05;
 
-        bool HasRoom(Vec3 p, double gap)
+        var minY = Nodes.Min(n => n.Y);
+        var maxY = Nodes.Max(n => n.Y);
+        var row = 0;
+        for (var y = maxY - PointRowStep * 0.5; y > minY + 0.01; y -= PointRowStep, row++)
         {
-            var (cx, cy, cz) = Cell(p);
-            for (var dx = -1; dx <= 1; dx++)
-                for (var dy = -1; dy <= 1; dy++)
-                    for (var dz = -1; dz <= 1; dz++)
-                        if (grid.TryGetValue((cx + dx, cy + dy, cz + dz), out var list))
-                            foreach (var j in list)
-                                if (positions[j].DistanceTo(p) < gap) return false;
-            return true;
-        }
-
-        void Add(Vec3 p, Vec3 n, bool onFace)
-        {
-            positions.Add(p);
-            normals.Add(n);
-            onFaceList.Add(onFace);
-            var key = Cell(p);
-            if (!grid.TryGetValue(key, out var list)) grid[key] = list = new List<int>();
-            list.Add(positions.Count - 1);
-        }
-
-        // Le visage d'abord (points plus serrés), puis le reste.
-        foreach (var faceFirst in new[] { true, false })
-        {
-            foreach (var (a, b, c) in Triangles)
+            // Coupe de la tête à cette hauteur : un segment par triangle traversé.
+            var cuts = new List<(Vec3 A, Vec3 B, Vec3 NA, Vec3 NB, bool Face)>();
+            for (var t = 0; t < Triangles.Count; t++)
             {
-                var onFace = a < FaceNodeCount && b < FaceNodeCount && c < FaceNodeCount;
-                if (onFace != faceFirst) continue;
-                var gap = onFace ? faceGap : skullGap;
-                var pa = Nodes[a];
-                var pb = Nodes[b];
-                var pc = Nodes[c];
-                var area = Vec3.Cross(pb - pa, pc - pa).Length / 2;
-                var candidates = (int)Math.Ceiling(area / (gap * gap) * 4);
-                for (var k = 0; k < candidates; k++)
+                var (a, b, c) = Triangles[t];
+                var ends = new List<(Vec3 P, Vec3 N)>(2);
+                foreach (var (i, j) in new[] { (a, b), (b, c), (c, a) })
                 {
-                    var r1 = random.NextDouble();
-                    var r2 = random.NextDouble();
-                    if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
-                    var p = pa + (pb - pa) * r1 + (pc - pa) * r2;
-                    if (!HasRoom(p, gap)) continue;
-                    Add(p, (NodeNormals[a] * (1 - r1 - r2) + NodeNormals[b] * r1 + NodeNormals[c] * r2).Normalized(), onFace);
+                    var pi = Nodes[i];
+                    var pj = Nodes[j];
+                    if ((pi.Y - y) * (pj.Y - y) > 0 || Math.Abs(pi.Y - pj.Y) < 1e-12) continue;
+                    var f = (y - pi.Y) / (pj.Y - pi.Y);
+                    if (f < 0 || f > 1) continue;
+                    ends.Add((pi + (pj - pi) * f, NodeNormals[i] * (1 - f) + NodeNormals[j] * f));
+                    if (ends.Count == 2) break;
                 }
+                if (ends.Count == 2) cuts.Add((ends[0].P, ends[1].P, ends[0].N, ends[1].N, FaceTriangle[t]));
+            }
+            if (cuts.Count == 0) continue;
+
+            // Moins de points sur les petites tranches (sommet du crâne) pour garder le même écart.
+            var reach = cuts.Max(cu => Math.Max(new Vec3(cu.A.X, 0, cu.A.Z - axisZ).Length, new Vec3(cu.B.X, 0, cu.B.Z - axisZ).Length));
+            var count = Math.Clamp((int)Math.Round(2 * Math.PI * reach * 0.85 / PointRowStep), 8, PointsPerRow);
+            for (var k = 0; k < count; k++)
+            {
+                // Colonnes alignées d'une rangée à l'autre (même angle de départ).
+                var phi = -Math.PI + (k + 0.5) / count * 2 * Math.PI;
+                double dx = Math.Sin(phi), dz = Math.Cos(phi);
+                var best = -1.0;
+                Vec3 hit = default, normal = default;
+                var face = false;
+                foreach (var cu in cuts)
+                {
+                    // Rayon horizontal depuis l'axe de la tête : on garde la surface la plus à l'extérieur.
+                    double ex = cu.B.X - cu.A.X, ez = cu.B.Z - cu.A.Z;
+                    var denom = dx * ez - dz * ex;
+                    if (Math.Abs(denom) < 1e-12) continue;
+                    double ox = cu.A.X, oz = cu.A.Z - axisZ;
+                    var tRay = (ox * ez - oz * ex) / denom;
+                    var u = (ox * dz - oz * dx) / denom;
+                    if (tRay <= 0 || u < 0 || u > 1 || tRay <= best) continue;
+                    best = tRay;
+                    hit = cu.A + (cu.B - cu.A) * u;
+                    normal = cu.NA * (1 - u) + cu.NB * u;
+                    face = cu.Face;
+                }
+                if (best < 0) continue;
+                positions.Add(hit);
+                normals.Add(normal.Normalized());
+                onFaceList.Add(face);
             }
         }
         var glow = positions.Select(FeatureGlow).ToArray();
