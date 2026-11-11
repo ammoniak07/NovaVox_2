@@ -131,11 +131,11 @@ public partial class OrbWindow : Window
         _thinkingColor = ParseColor(config.ThinkingColor);
         _listeningColor = ParseColor(config.ListeningColor);
         _inactiveColor = ParseColor(config.InactiveColor);
-        var size = Math.Clamp(config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
-        var margin = size * GlowMarginRatio;
+        var size = OrbSize;
+        var margin = GlowMargin(size);
         Width = size + 2 * margin;
         Height = size * 1.2 + 2 * margin + CaptionHeight;
-        GlowBlur.Radius = Math.Max(10, size * 0.3);
+        GlowBlur.Radius = Math.Max(10, Math.Min(size * 0.3, margin * 0.8));
         RimPath.StrokeThickness = Math.Max(6, size * 0.075);
         RimBlur.Radius = Math.Max(4, size * 0.04);
         // Transparence : la bulle et son halo seulement, le texte reste lisible.
@@ -337,8 +337,8 @@ public partial class OrbWindow : Window
 
     private Geometry BuildBlob(double t)
     {
-        var size = Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
-        var margin = size * GlowMarginRatio;
+        var size = OrbSize;
+        var margin = GlowMargin(size);
         var center = new Point(Width / 2, margin + size * 0.6);
         // Presque aussi large que haute, comme une goutte souple.
         var rx = size * 0.46;

@@ -12,6 +12,7 @@ public sealed class OrbConfig
 {
     public const double DefaultSize = 160;
     public const double MinSize = 60;
+    /// <summary>Taille maximale réglable ; à l'affichage, elle est en plus limitée à ce qui tient dans la hauteur de l'écran.</summary>
     public const double MaxSize = 1000;
     /// <summary>Couleur au repos (bleu-cyan).</summary>
     public const string DefaultIdleColor = "#38bdf8";

@@ -157,13 +157,34 @@ public partial class OrbWindow
     {
         var size = OrbSize;
         var cx = Width / 2;
-        var cy = size * GlowMarginRatio + size * 0.6;
+        var cy = GlowMargin(size) + size * 0.6;
         var halfWidth = size * 0.55 * _passScale * _depthScale;
         var halfHeight = size * 0.62 * _passScale * _depthScale;
         return new Box(topLeft.X + cx - halfWidth, topLeft.Y + cy - halfHeight, 2 * halfWidth, 2 * halfHeight);
     }
 
-    private double OrbSize => Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
+    /// <summary>
+    /// Taille réglée, limitée pour que l'avatar et sa marge tiennent dans la hauteur de l'écran
+    /// (Windows ne laisse pas une fenêtre dépasser l'écran : au-delà, le bas était coupé).
+    /// </summary>
+    private double OrbSize
+    {
+        get
+        {
+            var size = Math.Clamp(_config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
+            var screenHeight = _screenDips.Height > 200 ? _screenDips.Height : SystemParameters.PrimaryScreenHeight;
+            for (var i = 0; i < 4; i++)
+            {
+                var fit = (screenHeight - 2 * GlowMargin(size) - CaptionHeight) / 1.2;
+                if (size <= fit) break;
+                size = Math.Max(OrbConfig.MinSize, fit);
+            }
+            return size;
+        }
+    }
+
+    /// <summary>Marge autour de l'avatar pour son halo : proportionnelle, mais plafonnée pour les grandes tailles.</summary>
+    private static double GlowMargin(double size) => Math.Min(size * GlowMarginRatio, 130);
 
     private void RefreshScreen(double t)
     {
