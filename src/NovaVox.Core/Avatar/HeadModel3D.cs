@@ -597,10 +597,10 @@ public sealed class HeadModel3D
         // Visage long, mâchoire et menton larges et forts, cou épais strié de tendons.
         y -= 0.05 * Smooth((-0.3 - y) / 0.4);
         // Menton grand : plus long vers le bas, large et en avant.
-        var chin = G(x / 0.22) * Smooth((-0.55 - y) / 0.12) * (1 - neck) * front;
-        y -= 0.09 * chin;
-        x *= 1 + 0.12 * chin;
-        z += 0.07 * G(x / 0.22) * G((y + 0.75) / 0.1) * front;
+        var chin = G(x / 0.24) * Smooth((-0.5 - y) / 0.14) * (1 - neck) * front;
+        y -= 0.2 * chin;
+        x *= 1 + 0.15 * chin;
+        z += 0.12 * G(x / 0.24) * G((y + 0.82) / 0.13) * front;
         x *= 1 + 0.06 * G((y + 0.55) / 0.15) * (1 - neck);                        // mâchoire large
         x *= 1 + 0.08 * neck;
         z = -0.07 + (z + 0.07) * (1 + 0.04 * neck);
@@ -650,6 +650,7 @@ public sealed class HeadModel3D
             var band = 0.2 - 0.04 * Smooth((y - 0.3) / 0.6);
             var along = Smooth((y + 0.85) / 0.12) * Smooth((1.4 - y) / 0.2);
             var w = 0.9 * G(x / band) * along * Smooth((z + 0.3) / 0.4);
+            w *= 1 - 0.8 * Smooth((mouth.Y - 0.08 - y) / 0.12); // le menton dépasse de la ligne
             z += (lineZ - z) * w;
         }
 
