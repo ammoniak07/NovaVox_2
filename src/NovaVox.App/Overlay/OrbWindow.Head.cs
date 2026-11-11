@@ -323,7 +323,7 @@ public partial class OrbWindow
         CurrentHeadModel();
 
         UpdateHeadPose(dt, t, voice);
-        var jaw = _speaking ? Math.Clamp(_mouthOpen * 1.5, 0, 1) : 0;
+        var jaw = _speaking ? Math.Clamp(_mouthOpen * 2.2, 0, 1) : 0;
 
         // Place et taille : la tête (environ 2 unités de haut) remplit la place de la bulle.
         var size = Math.Min(b.Width, b.Height) * 1.15;
@@ -494,7 +494,7 @@ public partial class OrbWindow
                 var ctx = visibility > 0.6 ? strong : weak;
                 for (var i = 0; i < stroke.Length; i++)
                 {
-                    var (x, y, _) = HeadModel3D.ProjectPoint(stroke[i], HeadModel3D.JawWeightAt(stroke[i]), _headYaw, _headPitch, _headRoll, jaw);
+                    var (x, y, _) = HeadModel3D.ProjectPoint(stroke[i], model.JawWeightOf(stroke[i]), _headYaw, _headPitch, _headRoll, jaw);
                     var point = new Point(cx + x * k, cy + y * k);
                     if (i == 0) ctx.BeginFigure(point, false, false);
                     else ctx.LineTo(point, true, true);

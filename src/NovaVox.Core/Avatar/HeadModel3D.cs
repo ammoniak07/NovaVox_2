@@ -331,7 +331,6 @@ public sealed class HeadModel3D
         Triangles = oriented;
         Edges = edgeTris.Keys.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToList();
         EdgeTriangles = Edges.Select(e => edgeTris[e].ToArray()).ToList();
-        JawWeight = nodes.Select(JawWeightAt).ToList();
         NodeNormals = normals;
         NodeShade = shades;
         FaceTriangle = oriented.Select(t => t.Item1 < FaceNodeCount && t.Item2 < FaceNodeCount && t.Item3 < FaceNodeCount).ToList();
@@ -342,6 +341,8 @@ public sealed class HeadModel3D
         EyeLeft = Average(LeftEyeLoop.Select(i => nodes[i])) + new Vec3(0, 0, 0.01);
         EyeRight = Average(RightEyeLoop.Select(i => nodes[i])) + new Vec3(0, 0, 0.01);
         MouthPoint = (nodes[13] + nodes[14]) * 0.5;
+        // Lèvres : calées sur la vraie bouche de ce visage (déplacée pour les visages remodelés).
+        JawWeight = nodes.Select(JawWeightOf).ToList();
         var featureStrokes = species == HeadSpecies.Banu
             ? new List<Vec3[]> { Line(RightEyeLoop), Line(LeftEyeLoop), Line(LipsInner) } // ni sourcils ni contour de lèvres
             : new List<Vec3[]> { Line(RightEyeLoop), Line(LeftEyeLoop), Line(RightBrow), Line(LeftBrow), Line(LipsOuter), Line(LipsInner) };
@@ -765,25 +766,30 @@ public sealed class HeadModel3D
     // ---------- Mâchoire, projection, éclairage ----------
 
     /// <summary>Descente maximale de la lèvre du bas quand la bouche est grande ouverte (unités de la tête).</summary>
-    public const double LipOpening = 0.04;
+    public const double LipOpening = 0.06;
 
     /// <summary>
     /// Mouvement des lèvres pour un point : 1 = descend avec la lèvre du
     /// bas, négatif = remonte un peu avec la lèvre du haut, 0 = immobile.
     /// Seules les lèvres bougent (le menton suit à peine), comme quand on parle.
     /// </summary>
-    public static double JawWeightAt(Vec3 n)
+    public static double JawWeightAt(Vec3 n) => JawWeightAt(n, MouthLine);
+
+    /// <summary>Mouvement des lèvres d'un point pour la bouche de cette tête-ci.</summary>
+    public double JawWeightOf(Vec3 n) => JawWeightAt(n, MouthPoint.Y);
+
+    private static double JawWeightAt(Vec3 n, double mouthLine)
     {
         if (n.Z < 0.2) return 0.0;
-        var width = Math.Exp(-Math.Pow(n.X / 0.16, 2)); // largeur de la bouche
-        if (n.Y >= MouthLine - 0.004)
+        var width = Math.Exp(-Math.Pow(n.X / 0.17, 2)); // largeur de la bouche
+        if (n.Y >= mouthLine - 0.004)
         {
             // Lèvre du haut : remonte d'un tiers du mouvement de celle du bas.
-            return -0.35 * width * Math.Exp(-Math.Pow((n.Y - (MouthLine + 0.02)) / 0.03, 2));
+            return -0.35 * width * Math.Exp(-Math.Pow((n.Y - (mouthLine + 0.02)) / 0.03, 2));
         }
-        var below = Math.Clamp((MouthLine - 0.004 - n.Y) / 0.015, 0, 1);
+        var below = Math.Clamp((mouthLine - 0.004 - n.Y) / 0.015, 0, 1);
         // Lèvre du bas entière, puis le menton ne suit presque plus.
-        var depth = MouthLine - n.Y;
+        var depth = mouthLine - n.Y;
         var falloff = depth < 0.07 ? 1.0 : Math.Max(0, 1 - (depth - 0.07) / 0.12) * 0.6;
         return below * width * falloff;
     }
@@ -988,7 +994,7 @@ public sealed class HeadModel3D
         }
         // Les creux (fentes de la crête) sont assombris : éclat négatif.
         var glow = positions.Select((p, i) => FeatureGlow(p) - 0.9 * shadeList[i]).ToArray();
-        var jaw = positions.Select(JawWeightAt).ToArray();
+        var jaw = positions.Select(JawWeightOf).ToArray();
         return new PointCloudData(positions.ToArray(), normals.ToArray(), glow, jaw, onFaceList.ToArray());
     }
 

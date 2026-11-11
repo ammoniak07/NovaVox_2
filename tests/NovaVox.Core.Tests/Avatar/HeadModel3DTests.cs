@@ -60,7 +60,7 @@ public class HeadModel3DTests
         Model.Project(0, 0, 0, 1, open);
         // Repères MediaPipe (premiers sommets du maillage) : 14 lèvre du bas, 13 lèvre du haut, 152 menton, 1 nez.
         double Move(int i) => open[i].Y - closed[i].Y; // y écran vers le bas
-        Assert.InRange(Move(14), 0.03, 0.06);   // la lèvre du bas descend un peu
+        Assert.InRange(Move(14), 0.04, 0.09);   // la lèvre du bas descend un peu
         Assert.True(Move(13) < 0);              // la lèvre du haut remonte légèrement
         Assert.InRange(Move(152), -0.001, 0.02); // le menton bouge à peine
         Assert.Equal(closed[1].Y, open[1].Y, 6); // le nez ne bouge pas
@@ -159,5 +159,21 @@ public class HeadModel3DTests
         Assert.True(banu.Nodes.Count < human.Nodes.Count);
         Assert.Equal(banu.FaceStrokeCount, banu.FeatureStrokes.Count);
         Assert.InRange(banu.Points.Positions.Length, 4000, 12000);
+    }
+
+    [Theory]
+    [InlineData(HeadSpecies.Male)]
+    [InlineData(HeadSpecies.Female)]
+    [InlineData(HeadSpecies.Banu)]
+    public void LipsMove_OnEveryFace(HeadSpecies species)
+    {
+        // Les visages remodelés (femme, Banu) ont leur bouche ailleurs : les lèvres doivent quand même bouger.
+        var m = HeadModel3D.For(species);
+        var closed = new ProjectedNode[m.Nodes.Count];
+        var open = new ProjectedNode[m.Nodes.Count];
+        m.Project(0, 0, 0, 0, closed);
+        m.Project(0, 0, 0, 1, open);
+        Assert.True(open[14].Y - closed[14].Y > 0.035, "la lèvre du bas descend");
+        Assert.True(open[13].Y < closed[13].Y, "la lèvre du haut remonte");
     }
 }
