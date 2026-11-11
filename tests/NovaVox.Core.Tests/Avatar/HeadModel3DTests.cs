@@ -52,16 +52,18 @@ public class HeadModel3DTests
     }
 
     [Fact]
-    public void OpeningTheJaw_MovesTheChinDownButNotTheEyes()
+    public void Speaking_MovesOnlyTheLips()
     {
         var closed = new ProjectedNode[Model.Nodes.Count];
         var open = new ProjectedNode[Model.Nodes.Count];
         Model.Project(0, 0, 0, 0, closed);
         Model.Project(0, 0, 0, 1, open);
-        var chin = Enumerable.Range(0, Model.Nodes.Count)
-            .Where(i => Model.Nodes[i].Y < -0.5 && Model.Nodes[i].Y > -0.7)
-            .OrderByDescending(i => Model.Nodes[i].Z).First();
-        Assert.True(open[chin].Y > closed[chin].Y + 0.05, "le menton descend (y écran vers le bas)");
+        // Repères MediaPipe (premiers sommets du maillage) : 14 lèvre du bas, 13 lèvre du haut, 152 menton, 1 nez.
+        double Move(int i) => open[i].Y - closed[i].Y; // y écran vers le bas
+        Assert.InRange(Move(14), 0.03, 0.06);   // la lèvre du bas descend un peu
+        Assert.True(Move(13) < 0);              // la lèvre du haut remonte légèrement
+        Assert.InRange(Move(152), -0.001, 0.02); // le menton bouge à peine
+        Assert.Equal(closed[1].Y, open[1].Y, 6); // le nez ne bouge pas
         for (var i = 0; i < Model.Nodes.Count; i++)
             if (Model.Nodes[i].Y > 0) Assert.Equal(closed[i].Y, open[i].Y, 6);
     }

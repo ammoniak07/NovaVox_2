@@ -217,8 +217,8 @@ public partial class OrbWindow
 
                 var q = cloud.Positions[i];
                 var w = cloud.Jaw[i] * jaw;
-                var y0 = q.Y - w * 0.10 + 0.3;
-                var z0 = q.Z - w * 0.03;
+                var y0 = q.Y - w * HeadModel3D.LipOpening + 0.3;
+                var z0 = q.Z - Math.Abs(w) * 0.008;
                 var x1 = q.X * cyw + z0 * syw;
                 var z1 = -q.X * syw + z0 * cyw;
                 var y2 = y0 * cp - z1 * sp;

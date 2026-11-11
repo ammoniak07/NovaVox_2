@@ -532,15 +532,28 @@ public sealed class HeadModel3D
 
     // ---------- Mâchoire, projection, éclairage ----------
 
-    /// <summary>Poids de la mâchoire pour un point (0 = immobile, 1 = suit le menton).</summary>
+    /// <summary>Descente maximale de la lèvre du bas quand la bouche est grande ouverte (unités de la tête).</summary>
+    public const double LipOpening = 0.04;
+
+    /// <summary>
+    /// Mouvement des lèvres pour un point : 1 = descend avec la lèvre du
+    /// bas, négatif = remonte un peu avec la lèvre du haut, 0 = immobile.
+    /// Seules les lèvres bougent (le menton suit à peine), comme quand on parle.
+    /// </summary>
     public static double JawWeightAt(Vec3 n)
     {
-        if (n.Y > MouthLine - 0.004 || n.Y < -1.0) return 0.0;
-        var below = Math.Clamp((MouthLine - 0.004 - n.Y) / 0.02, 0, 1);
-        var front = Math.Clamp((n.Z + 0.1) / 0.35, 0, 1);
-        var fadeNeck = Math.Clamp((n.Y + 1.0) / 0.2, 0, 1);
-        var center = Math.Exp(-Math.Pow(n.X / 0.33, 2)); // les côtés suivent moins (joues qui s'étirent)
-        return below * front * fadeNeck * center;
+        if (n.Z < 0.2) return 0.0;
+        var width = Math.Exp(-Math.Pow(n.X / 0.16, 2)); // largeur de la bouche
+        if (n.Y >= MouthLine - 0.004)
+        {
+            // Lèvre du haut : remonte d'un tiers du mouvement de celle du bas.
+            return -0.35 * width * Math.Exp(-Math.Pow((n.Y - (MouthLine + 0.02)) / 0.03, 2));
+        }
+        var below = Math.Clamp((MouthLine - 0.004 - n.Y) / 0.015, 0, 1);
+        // Lèvre du bas entière, puis le menton ne suit presque plus.
+        var depth = MouthLine - n.Y;
+        var falloff = depth < 0.07 ? 1.0 : Math.Max(0, 1 - (depth - 0.07) / 0.12) * 0.6;
+        return below * width * falloff;
     }
 
     private const double Camera = 4.0;
@@ -549,8 +562,8 @@ public sealed class HeadModel3D
     public static (double X, double Y, double Z) ProjectPoint(Vec3 n, double jawWeight, double yaw, double pitch, double roll, double jawOpen)
     {
         double cy = Math.Cos(yaw), sy = Math.Sin(yaw), cp = Math.Cos(pitch), sp = Math.Sin(pitch), cr = Math.Cos(roll), sr = Math.Sin(roll);
-        var y0 = n.Y - jawWeight * jawOpen * 0.10 + 0.3;
-        var z0 = n.Z - jawWeight * jawOpen * 0.03;
+        var y0 = n.Y - jawWeight * jawOpen * LipOpening + 0.3;
+        var z0 = n.Z - Math.Abs(jawWeight) * jawOpen * 0.008;
         var x1 = n.X * cy + z0 * sy;
         var z1 = -n.X * sy + z0 * cy;
         var y2 = y0 * cp - z1 * sp;
