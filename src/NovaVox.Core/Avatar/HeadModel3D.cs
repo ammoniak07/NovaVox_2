@@ -560,29 +560,47 @@ public sealed class HeadModel3D
         var ax = Math.Abs(x);
         var neck = Smooth((-0.8 - y) / 0.15);
 
-        // Crâne étiré en diagonale vers le haut et l'arrière, et resserré sur les côtés :
-        // il forme une grande crête (comme une corne vue de profil).
-        var high = Smooth((y - 0.2) / 0.75);
-        y += 0.32 * Math.Pow(high, 1.4);
-        z -= 0.3 * high * high;
-        x *= 1 - 0.38 * high;
-        // Sillons verticaux sur tout le crâne et le front (rayonnent depuis l'axe de la tête).
+        // Crâne plus haut, arrière de la tête très bombé (grosse boîte crânienne vers l'arrière).
+        var high = Smooth((y - 0.15) / 0.7);
+        var backSide = Smooth((0.05 - z) / 0.45);
+        y += 0.16 * high;
+        z -= 0.2 * backSide * G((y - 0.6) / 0.3);
+        y += 0.08 * backSide * high;
+        x *= 1 - 0.1 * high;
+        // Crête : une lame au milieu du haut du crâne, en pointe vers le haut, côté front.
+        var finZone = G(x / (0.07 + 0.08 * Smooth((0.9 - y) / 0.4))) * Smooth((y - 0.5) / 0.4) * G((z - 0.1) / 0.32);
+        y += 0.3 * finZone;
+        z += 0.08 * finZone;
+        // Sillons verticaux sur le crâne et le front (rayonnent depuis l'axe de la tête).
         var phi = Math.Atan2(x, z + 0.1);
-        var grooves = Smooth((y + 0.05) / 0.35) * (0.6 + 0.4 * high);
-        var groove = 0.045 * grooves * (Math.Sin(phi * 9 + 0.6 * Math.Sin(y * 6)) * 0.75 + Math.Sin(phi * 19 + 1) * 0.25);
+        var grooves = Smooth((y + 0.05) / 0.35) * (1 - 0.7 * finZone);
+        var groove = 0.035 * grooves * (Math.Sin(phi * 9 + 0.6 * Math.Sin(y * 6)) * 0.75 + Math.Sin(phi * 19 + 1) * 0.25);
         var radial = Math.Sqrt(x * x + (z + 0.1) * (z + 0.1));
         if (radial > 1e-6)
         {
             x += x / radial * groove;
             z += (z + 0.1) / radial * groove;
         }
-        var top = high;
+        var top = high * 0.5;
 
-        // Visage plus long et étroit, menton pointu, cou long et fin.
-        x *= 1 - 0.1 * Smooth((0.2 - y) / 0.5) - 0.12 * Smooth((-0.45 - y) / 0.3) * (1 - neck);
+        // Visage long, mâchoire et menton larges et forts, cou épais strié de tendons.
         y -= 0.05 * Smooth((-0.3 - y) / 0.4);
-        x *= 1 - 0.22 * neck;
-        z = -0.07 + (z + 0.07) * (1 - 0.18 * neck);
+        z += 0.045 * G(x / 0.2) * G((y + 0.72) / 0.09) * front;                  // menton fort
+        x *= 1 + 0.06 * G((y + 0.55) / 0.15) * (1 - neck);                        // mâchoire large
+        x *= 1 + 0.08 * neck;
+        z = -0.07 + (z + 0.07) * (1 + 0.04 * neck);
+        var neckPhi = Math.Atan2(x, z + 0.07);
+        var tendon = 0.03 * neck * Math.Max(0, Math.Sin(neckPhi * 7));
+        var neckR = Math.Sqrt(x * x + (z + 0.07) * (z + 0.07));
+        if (neckR > 1e-6)
+        {
+            x += x / neckR * tendon;
+            z += (z + 0.07) / neckR * tendon;
+        }
+
+        // Lourdes arcades qui surplombent les yeux.
+        foreach (var eye in eyes)
+            z += 0.1 * G((y - eye.Y - 0.08) / 0.045) * G((x - eye.X) / 0.13) * front;
 
         // Nez aplati (narines en fentes) puis arête centrale : du bout du nez jusqu'en haut de la
         // crête, une seule ligne en relief, à peu près à la même hauteur que le nez.
@@ -604,10 +622,11 @@ public sealed class HeadModel3D
         z += 0.09 * G((ax - 0.33) / 0.09) * G((y + 0.02) / 0.08) * front;
         x += Math.Sign(x) * 0.07 * G((ax - 0.42) / 0.11) * G((y + 0.02) / 0.09) * front;
         z -= 0.08 * G((ax - 0.27) / 0.09) * G((y + 0.26) / 0.1) * front;
-        // Lèvres fines, bouche tombante.
-        var lips = G(x / 0.14) * G((y - mouth.Y) / 0.05) * front;
-        y -= (y - mouth.Y) * 0.5 * lips;
-        y -= 0.015 * G((ax - 0.12) / 0.05) * G((y - mouth.Y) / 0.03) * front;
+        // Bouche large aux lèvres épaisses, coins tombants.
+        var lips = G(x / 0.16) * G((y - mouth.Y) / 0.06) * front;
+        x += x * 0.18 * lips;                                                      // bouche large
+        z += 0.03 * lips;                                                          // lèvres épaisses
+        y -= 0.015 * G((ax - 0.14) / 0.05) * G((y - mouth.Y) / 0.03) * front;      // coins tombants
         // Rides et sillons verticaux sur le front, le crâne et les joues.
         var wrinkleZone = front * (1 - top);
         var wrinkles = Math.Sin(x * 30 + 0.5 * Math.Sin(y * 9)) * 0.65 + Math.Sin(x * 17 + 1.3) * 0.35;
