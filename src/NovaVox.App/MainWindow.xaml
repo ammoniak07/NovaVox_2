@@ -708,48 +708,51 @@
                             <StackPanel Margin="10">
                                 <TextBlock Text="Overlay en jeu" FontWeight="Bold" Margin="0,0,0,6" />
                                 <CheckBox x:Name="OverlayEnabledCheckbox" Content="Activer l'overlay" Checked="OverlayEnabledCheckbox_Changed" Unchecked="OverlayEnabledCheckbox_Changed" />
-                                <Button x:Name="ToggleOverlayEditButton" Content="Déplacer l'overlay" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOverlayEditButton_Click" />
-                                <StackPanel x:Name="TargetScanSettingsHost" Margin="0,12,0,0" />
+                                <!-- Réglages de l'overlay : visibles seulement quand il est activé. -->
+                                <StackPanel x:Name="OverlayOptionsPanel">
+                                    <Button x:Name="ToggleOverlayEditButton" Content="Déplacer l'overlay" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOverlayEditButton_Click" />
+                                    <StackPanel x:Name="TargetScanSettingsHost" Margin="0,12,0,0" />
 
-                                <TextBlock Text="Apparence" FontWeight="Bold" Margin="0,16,0,4" />
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Fond :" VerticalAlignment="Center" />
-                                    <Button x:Name="OverlayBgColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
-                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
-                                            Click="OverlayBgColorSwatch_Click" />
-                                    <TextBox x:Name="OverlayBgColorBox" Width="80" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
-                                    <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
-                                    <Slider x:Name="OverlayBgOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Texte :" VerticalAlignment="Center" />
-                                    <Button x:Name="OverlayTextColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
-                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
-                                            Click="OverlayTextColorSwatch_Click" />
-                                    <TextBox x:Name="OverlayTextColorBox" Width="80" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
-                                    <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
-                                    <Slider x:Name="OverlayTextOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
-                                </StackPanel>
-                                <!-- Une seule échelle pour tout l'overlay (texte, icônes, espacements) —
-                                     voir OverlayWindow.ApplyScale (ScaleTransform), pas de FontSize
-                                     séparé à gérer : agrandir la règle agrandit tout proportionnellement,
-                                     comme demandé ("overlay plus grand, texte plus grand"). -->
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Taille :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OverlayScaleSlider" Minimum="0.7" Maximum="1.6" SmallChange="0.05" LargeChange="0.1"
-                                            Width="140" Margin="6,0" ValueChanged="OverlayScale_Changed" />
-                                    <TextBlock x:Name="OverlayScaleValueText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <!-- Largeur MINIMALE (pas fixe) de la colonne principale par défaut —
-                                     voir OverlayConfig.BaseWidth/OverlayWindow.ApplyBaseWidth : un texte
-                                     plus long que cette largeur continue de faire grandir la colonne
-                                     au-delà, cette valeur ne fait qu'éviter un overlay trop étroit par
-                                     défaut. -->
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Largeur :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OverlayBaseWidthSlider" Minimum="150" Maximum="600" SmallChange="10" LargeChange="30"
-                                            Width="140" Margin="6,0" ValueChanged="OverlayBaseWidth_Changed" />
-                                    <TextBlock x:Name="OverlayBaseWidthValueText" Text="330px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    <TextBlock Text="Apparence" FontWeight="Bold" Margin="0,16,0,4" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Fond :" VerticalAlignment="Center" />
+                                        <Button x:Name="OverlayBgColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                Click="OverlayBgColorSwatch_Click" />
+                                        <TextBox x:Name="OverlayBgColorBox" Width="80" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
+                                        <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        <Slider x:Name="OverlayBgOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="Texte :" VerticalAlignment="Center" />
+                                        <Button x:Name="OverlayTextColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                Click="OverlayTextColorSwatch_Click" />
+                                        <TextBox x:Name="OverlayTextColorBox" Width="80" Margin="6,0" LostFocus="OverlayAppearance_Changed" />
+                                        <TextBlock Text="Opacité :" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        <Slider x:Name="OverlayTextOpacitySlider" Minimum="0" Maximum="100" Width="100" Margin="6,0" ValueChanged="OverlayAppearance_Changed" />
+                                    </StackPanel>
+                                    <!-- Une seule échelle pour tout l'overlay (texte, icônes, espacements) —
+                                         voir OverlayWindow.ApplyScale (ScaleTransform), pas de FontSize
+                                         séparé à gérer : agrandir la règle agrandit tout proportionnellement,
+                                         comme demandé ("overlay plus grand, texte plus grand"). -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="Taille :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OverlayScaleSlider" Minimum="0.7" Maximum="1.6" SmallChange="0.05" LargeChange="0.1"
+                                                Width="140" Margin="6,0" ValueChanged="OverlayScale_Changed" />
+                                        <TextBlock x:Name="OverlayScaleValueText" Text="100%" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    </StackPanel>
+                                    <!-- Largeur MINIMALE (pas fixe) de la colonne principale par défaut —
+                                         voir OverlayConfig.BaseWidth/OverlayWindow.ApplyBaseWidth : un texte
+                                         plus long que cette largeur continue de faire grandir la colonne
+                                         au-delà, cette valeur ne fait qu'éviter un overlay trop étroit par
+                                         défaut. -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="Largeur :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OverlayBaseWidthSlider" Minimum="150" Maximum="600" SmallChange="10" LargeChange="30"
+                                                Width="140" Margin="6,0" ValueChanged="OverlayBaseWidth_Changed" />
+                                        <TextBlock x:Name="OverlayBaseWidthValueText" Text="330px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <!-- Deuxième overlay : bulle animée (voir Overlay/OrbWindow). -->
@@ -757,156 +760,174 @@
                                 <TextBlock Text="Une goutte lumineuse, séparée de l'overlay, qui s'anime au rythme de la voix : une couleur au repos, une quand NovaVox parle, une pendant que Gemini réfléchit et une quand elle t'entend parler au micro — toutes réglables ci-dessous."
                                            Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <CheckBox x:Name="OrbEnabledCheckbox" Content="Afficher la bulle animée" Checked="OrbEnabledCheckbox_Changed" Unchecked="OrbEnabledCheckbox_Changed" />
-                                <Button x:Name="ToggleOrbMoveButton" Content="Déplacer la bulle" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOrbMoveButton_Click" />
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <TextBlock Text="Taille :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OrbSizeSlider" Minimum="60" Maximum="400" SmallChange="10" LargeChange="40"
-                                            Width="140" Margin="6,0" ValueChanged="OrbSizeSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbSizeValueText" Text="160px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
-                                            ToolTip="La bulle rétrécit à cette taille quand elle est au repos (couleur de repos, écoute arrêtée ou endormie), et reprend sa taille dès qu'elle t'entend, parle ou réfléchit">
-                                    <TextBlock Text="Taille au repos :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OrbRestSizeSlider" Minimum="30" Maximum="100" SmallChange="5" LargeChange="10"
-                                            Width="140" Margin="6,0" ValueChanged="OrbRestSizeSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbRestSizeValueText" Text="60 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Opacité :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OrbOpacitySlider" Minimum="10" Maximum="100" SmallChange="5" LargeChange="10"
-                                            Width="140" Margin="6,0" ValueChanged="OrbOpacitySlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbOpacityValueText" Text="100 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Couleur au repos :" VerticalAlignment="Center" />
-                                    <Button x:Name="OrbIdleColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
-                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
-                                            Click="OrbIdleColorSwatch_Click" />
-                                    <TextBox x:Name="OrbIdleColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Couleur quand elle parle :" VerticalAlignment="Center" />
-                                    <Button x:Name="OrbSpeakingColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
-                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
-                                            Click="OrbSpeakingColorSwatch_Click" />
-                                    <TextBox x:Name="OrbSpeakingColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Couleur quand elle réfléchit :" VerticalAlignment="Center" />
-                                    <Button x:Name="OrbThinkingColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
-                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
-                                            Click="OrbThinkingColorSwatch_Click" />
-                                    <TextBox x:Name="OrbThinkingColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Couleur quand elle t'entend :" VerticalAlignment="Center" />
-                                    <Button x:Name="OrbListeningColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
-                                            Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
-                                            Click="OrbListeningColorSwatch_Click" />
-                                    <TextBox x:Name="OrbListeningColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
-                                </StackPanel>
-                                <TextBlock Text="Profondeur :" Margin="0,10,0,0" FontWeight="SemiBold" />
-                                <CheckBox x:Name="OrbDepthCheckbox" Content="Effet de profondeur (elle s'approche pour parler)" Margin="0,6,0,0"
-                                          ToolTip="Tu es au centre de l'écran : au repos, la bulle flotte plus loin (plus petite) ; quand elle parle ou t'entend, elle s'approche à 1 m (sa taille réglée) et s'écarte un peu du centre, comme en 3D. Remplace la « Taille au repos »"
-                                          Checked="OrbDepthCheckbox_Changed" Unchecked="OrbDepthCheckbox_Changed" />
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                    <TextBlock Text="Distance au repos :" VerticalAlignment="Center" />
-                                    <Slider x:Name="OrbFarDistanceSlider" Minimum="1.2" Maximum="4" SmallChange="0.1" LargeChange="0.5"
-                                            Width="140" Margin="6,0" ValueChanged="OrbFarDistanceSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbFarDistanceValueText" Text="2,0 m" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <CheckBox x:Name="OrbSpatialSoundCheckbox" Content="Son spatialisé (la voix vient du côté de la bulle)" Margin="0,6,0,0"
-                                          ToolTip="La voix de Nova et les sons de la bulle viennent de son côté de l'écran (gauche/droite) et suivent ses déplacements ; plus faibles et un peu étouffés quand elle est loin. Plus net avec un casque"
-                                          Checked="OrbSpatialSoundCheckbox_Changed" Unchecked="OrbSpatialSoundCheckbox_Changed" />
-                                <TextBlock Text="Déplacements :" Margin="0,10,0,0" FontWeight="SemiBold" />
-                                <CheckBox x:Name="OrbRoamCheckbox" Content="Se balade dans l'écran" Margin="0,6,0,0"
-                                          ToolTip="La bulle va de place en place sur l'écran où tu l'as placée, sans jamais entrer dans les zones interdites. Elle s'arrête quand elle t'écoute ou réfléchit et ralentit quand elle parle"
-                                          Checked="OrbRoamCheckbox_Changed" Unchecked="OrbRoamCheckbox_Changed" />
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0"
-                                            ToolTip="Chaque trajet prend une vitesse au hasard entre le minimum et le maximum (mets les deux au même nombre pour une vitesse fixe)">
-                                    <TextBlock Text="Vitesse min :" VerticalAlignment="Center" Width="80" />
-                                    <Slider x:Name="OrbRoamSpeedMinSlider" Minimum="25" Maximum="1000" SmallChange="5" LargeChange="50"
-                                            Width="160" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbRoamSpeedMinValueText" Text="60 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0"
-                                            ToolTip="Chaque trajet prend une vitesse au hasard entre le minimum et le maximum (mets les deux au même nombre pour une vitesse fixe)">
-                                    <TextBlock Text="Vitesse max :" VerticalAlignment="Center" Width="80" />
-                                    <Slider x:Name="OrbRoamSpeedMaxSlider" Minimum="25" Maximum="1000" SmallChange="5" LargeChange="50"
-                                            Width="160" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
-                                    <TextBlock x:Name="OrbRoamSpeedMaxValueText" Text="150 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                    <Button x:Name="OrbZonesButton" Content="Définir les zones interdites…" Click="OrbZonesButton_Click"
-                                            ToolTip="Ouvre un voile sur l'écran de la bulle : dessine à la souris les cadres où elle ne doit jamais aller (radar, HUD, chat...)" />
-                                    <TextBlock x:Name="OrbZonesCountText" Text="Aucune zone" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource MutedBrush}" />
-                                </StackPanel>
-                                <CheckBox x:Name="OrbHideAtRestCheckbox" Content="Disparaît au repos" Margin="0,6,0,0"
-                                          ToolTip="La bulle s'efface après quelques secondes sans activité et réapparaît dès qu'elle t'entend, parle ou réfléchit (ailleurs sur l'écran si elle se balade)"
-                                          Checked="OrbHideAtRestCheckbox_Changed" Unchecked="OrbHideAtRestCheckbox_Changed" />
-                                <!-- Section secrète : affichée en cliquant 5 fois de suite sur le titre « Bulle animée ». -->
-                                <StackPanel x:Name="OrbHumourPanel" Visibility="Collapsed">
-                                    <TextBlock Text="Humour :" Margin="0,10,0,0" FontWeight="SemiBold" />
-                                    <CheckBox x:Name="OrbGagsCheckbox" Content="Petits gags quand elle s'ennuie (pet discret, hoquet, éternuement…)" Margin="0,6,0,0"
-                                              ToolTip="De temps en temps, seulement au calme (jamais pendant une conversation) : petit pet puis « C'est pas moi », hoquet, éternuement, bâillement, répliques Star Citizen, ronflement quand elle dort"
-                                              Checked="OrbGagsCheckbox_Changed" Unchecked="OrbGagsCheckbox_Changed" />
-                                    <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                        <TextBlock Text="Fréquence :" VerticalAlignment="Center" />
-                                        <Slider x:Name="OrbGagMinutesSlider" Minimum="3" Maximum="60" SmallChange="1" LargeChange="5"
-                                                Width="140" Margin="6,0" ValueChanged="OrbGagMinutesSlider_ValueChanged" />
-                                        <TextBlock x:Name="OrbGagMinutesValueText" Text="toutes les 15 min environ" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                <!-- Réglages de la bulle : visibles seulement quand elle est affichée. -->
+                                <StackPanel x:Name="OrbOptionsPanel">
+                                    <Button x:Name="ToggleOrbMoveButton" Content="Déplacer la bulle" Margin="0,8,0,0" HorizontalAlignment="Left" Click="ToggleOrbMoveButton_Click" />
+                                    <TextBlock Text="Forme de l'avatar :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <RadioButton x:Name="OrbStyleBubbleRadio" GroupName="OrbStyle" Content="Bulle" Checked="OrbStyleRadio_Checked"
+                                                     ToolTip="Une goutte lumineuse qui s'anime au rythme de la voix" />
+                                        <RadioButton x:Name="OrbStyleHeadRadio" GroupName="OrbStyle" Content="Tête holographique 🧠" Margin="16,0,0,0" Checked="OrbStyleRadio_Checked"
+                                                     ToolTip="Une tête en 3D en maillage lumineux, dans les couleurs de la bulle. De face, elle pivote selon ce qu'elle fait (regarde autour d'elle, se tourne vers toi quand elle t'entend, lève les yeux quand elle réfléchit, hoche la tête en parlant) ; sa mâchoire suit la voix, ses yeux clignent, et des ondes de lumière partent de la bouche, des oreilles ou du crâne." />
+                                        <RadioButton x:Name="OrbStyleCatRadio" GroupName="OrbStyle" Content="ROxieWOOki 🐱" Margin="16,0,0,0" Checked="OrbStyleRadio_Checked"
+                                                     ToolTip="La bulle devient une petite tête de chat rose : oreilles de chat qui frémissent, moustaches qui frétillent quand elle parle, petit nez et bouche « ω », tons roses à la place des couleurs réglées" />
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                        <Button x:Name="OrbGagTestButton" Content="▶ Tester un gag" Click="OrbGagTestButton_Click"
-                                                ToolTip="Joue un gag au hasard tout de suite (la bulle doit être affichée)" />
-                                        <Button x:Name="OrbGagTestAllButton" Content="▶▶ Tester tous les gags" Margin="8,0,0,0" Click="OrbGagTestAllButton_Click"
-                                                ToolTip="Enchaîne tous les gags à la suite (environ 35 secondes) : pet, hoquet, éternuement, bâillement, réplique Star Citizen, ronflement" />
+                                    <StackPanel x:Name="OrbHeadOptionsPanel">
+                                        <CheckBox x:Name="OrbHeadPointsCheckbox" Content="Tête en nuage de points" Margin="20,6,0,0"
+                                                  ToolTip="La tête holographique est dessinée en points lumineux (comme un scan 3D) au lieu de triangles : yeux, nez et lèvres brillent davantage"
+                                                  Checked="OrbHeadPointsCheckbox_Changed" Unchecked="OrbHeadPointsCheckbox_Changed" />
                                     </StackPanel>
-                                    <TextBlock Text="Sons par blague (dossier « sons_gags » à côté de NovaVox) :" Margin="20,10,0,0" />
-                                    <StackPanel x:Name="OrbGagSoundsPanel" Margin="20,4,0,0" />
-                                    <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
-                                        <Button Content="📂 Ouvrir le dossier des sons" Click="OrbGagFolderButton_Click"
-                                                ToolTip="Dépose tes sons ici : pet1.wav, hoquet1.mp3, eternuement1.wav, baillement1.wav, ronflement1.wav..." />
-                                        <Button Content="🔄 Actualiser" Margin="8,0,0,0" Click="OrbGagRefreshButton_Click"
-                                                ToolTip="Relit le dossier après avoir ajouté ou retiré des sons" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBlock Text="Taille :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OrbSizeSlider" Minimum="60" Maximum="400" SmallChange="10" LargeChange="40"
+                                                Width="140" Margin="6,0" ValueChanged="OrbSizeSlider_ValueChanged" />
+                                        <TextBlock x:Name="OrbSizeValueText" Text="160px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                     </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                                                ToolTip="La bulle rétrécit à cette taille quand elle est au repos (couleur de repos, écoute arrêtée ou endormie), et reprend sa taille dès qu'elle t'entend, parle ou réfléchit">
+                                        <TextBlock Text="Taille au repos :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OrbRestSizeSlider" Minimum="30" Maximum="100" SmallChange="5" LargeChange="10"
+                                                Width="140" Margin="6,0" ValueChanged="OrbRestSizeSlider_ValueChanged" />
+                                        <TextBlock x:Name="OrbRestSizeValueText" Text="60 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <TextBlock Text="Opacité :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OrbOpacitySlider" Minimum="10" Maximum="100" SmallChange="5" LargeChange="10"
+                                                Width="140" Margin="6,0" ValueChanged="OrbOpacitySlider_ValueChanged" />
+                                        <TextBlock x:Name="OrbOpacityValueText" Text="100 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    </StackPanel>
+                                    <!-- Couleurs : sans effet en ROxieWOOki (tons roses à elle). -->
+                                    <StackPanel x:Name="OrbColorsPanel">
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="Couleur au repos :" VerticalAlignment="Center" />
+                                            <Button x:Name="OrbIdleColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                    Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                    Click="OrbIdleColorSwatch_Click" />
+                                            <TextBox x:Name="OrbIdleColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="Couleur quand elle parle :" VerticalAlignment="Center" />
+                                            <Button x:Name="OrbSpeakingColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                    Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                    Click="OrbSpeakingColorSwatch_Click" />
+                                            <TextBox x:Name="OrbSpeakingColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="Couleur quand elle réfléchit :" VerticalAlignment="Center" />
+                                            <Button x:Name="OrbThinkingColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                    Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                    Click="OrbThinkingColorSwatch_Click" />
+                                            <TextBox x:Name="OrbThinkingColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="Couleur quand elle t'entend :" VerticalAlignment="Center" />
+                                            <Button x:Name="OrbListeningColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                    Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                    Click="OrbListeningColorSwatch_Click" />
+                                            <TextBox x:Name="OrbListeningColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <TextBlock Text="Profondeur :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                    <CheckBox x:Name="OrbDepthCheckbox" Content="Effet de profondeur (elle s'approche pour parler)" Margin="0,6,0,0"
+                                              ToolTip="Tu es au centre de l'écran : au repos, la bulle flotte plus loin (plus petite) ; quand elle parle ou t'entend, elle s'approche à 1 m (sa taille réglée) et s'écarte un peu du centre, comme en 3D. Remplace la « Taille au repos »"
+                                              Checked="OrbDepthCheckbox_Changed" Unchecked="OrbDepthCheckbox_Changed" />
+                                    <StackPanel x:Name="OrbFarDistanceRow" Orientation="Horizontal" Margin="20,6,0,0">
+                                        <TextBlock Text="Distance au repos :" VerticalAlignment="Center" />
+                                        <Slider x:Name="OrbFarDistanceSlider" Minimum="1.2" Maximum="4" SmallChange="0.1" LargeChange="0.5"
+                                                Width="140" Margin="6,0" ValueChanged="OrbFarDistanceSlider_ValueChanged" />
+                                        <TextBlock x:Name="OrbFarDistanceValueText" Text="2,0 m" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                    </StackPanel>
+                                    <CheckBox x:Name="OrbSpatialSoundCheckbox" Content="Son spatialisé (la voix vient du côté de la bulle)" Margin="0,6,0,0"
+                                              ToolTip="La voix de Nova et les sons de la bulle viennent de son côté de l'écran (gauche/droite) et suivent ses déplacements ; plus faibles et un peu étouffés quand elle est loin. Plus net avec un casque"
+                                              Checked="OrbSpatialSoundCheckbox_Changed" Unchecked="OrbSpatialSoundCheckbox_Changed" />
+                                    <TextBlock Text="Déplacements :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                    <CheckBox x:Name="OrbRoamCheckbox" Content="Se balade dans l'écran" Margin="0,6,0,0"
+                                              ToolTip="La bulle va de place en place sur l'écran où tu l'as placée, sans jamais entrer dans les zones interdites. Elle s'arrête quand elle t'écoute ou réfléchit et ralentit quand elle parle"
+                                              Checked="OrbRoamCheckbox_Changed" Unchecked="OrbRoamCheckbox_Changed" />
+                                    <StackPanel x:Name="OrbRoamOptionsPanel">
+                                        <StackPanel Orientation="Horizontal" Margin="20,6,0,0"
+                                                    ToolTip="Chaque trajet prend une vitesse au hasard entre le minimum et le maximum (mets les deux au même nombre pour une vitesse fixe)">
+                                            <TextBlock Text="Vitesse min :" VerticalAlignment="Center" Width="80" />
+                                            <Slider x:Name="OrbRoamSpeedMinSlider" Minimum="25" Maximum="1000" SmallChange="5" LargeChange="50"
+                                                    Width="160" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
+                                            <TextBlock x:Name="OrbRoamSpeedMinValueText" Text="60 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="20,6,0,0"
+                                                    ToolTip="Chaque trajet prend une vitesse au hasard entre le minimum et le maximum (mets les deux au même nombre pour une vitesse fixe)">
+                                            <TextBlock Text="Vitesse max :" VerticalAlignment="Center" Width="80" />
+                                            <Slider x:Name="OrbRoamSpeedMaxSlider" Minimum="25" Maximum="1000" SmallChange="5" LargeChange="50"
+                                                    Width="160" Margin="6,0" ValueChanged="OrbRoamSpeedSlider_ValueChanged" />
+                                            <TextBlock x:Name="OrbRoamSpeedMaxValueText" Text="150 %" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                            <Button x:Name="OrbZonesButton" Content="Définir les zones interdites…" Click="OrbZonesButton_Click"
+                                                    ToolTip="Ouvre un voile sur l'écran de la bulle : dessine à la souris les cadres où elle ne doit jamais aller (radar, HUD, chat...)" />
+                                            <TextBlock x:Name="OrbZonesCountText" Text="Aucune zone" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <CheckBox x:Name="OrbHideAtRestCheckbox" Content="Disparaît au repos" Margin="0,6,0,0"
+                                              ToolTip="La bulle s'efface après quelques secondes sans activité et réapparaît dès qu'elle t'entend, parle ou réfléchit (ailleurs sur l'écran si elle se balade)"
+                                              Checked="OrbHideAtRestCheckbox_Changed" Unchecked="OrbHideAtRestCheckbox_Changed" />
+                                    <!-- Section secrète : affichée en cliquant 5 fois de suite sur le titre « Bulle animée ». -->
+                                    <StackPanel x:Name="OrbHumourPanel" Visibility="Collapsed">
+                                        <TextBlock Text="Humour :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                        <CheckBox x:Name="OrbGagsCheckbox" Content="Petits gags quand elle s'ennuie (pet discret, hoquet, éternuement…)" Margin="0,6,0,0"
+                                                  ToolTip="De temps en temps, seulement au calme (jamais pendant une conversation) : petit pet puis « C'est pas moi », hoquet, éternuement, bâillement, répliques Star Citizen, ronflement quand elle dort"
+                                                  Checked="OrbGagsCheckbox_Changed" Unchecked="OrbGagsCheckbox_Changed" />
+                                        <StackPanel x:Name="OrbGagOptionsPanel">
+                                            <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                                <TextBlock Text="Fréquence :" VerticalAlignment="Center" />
+                                                <Slider x:Name="OrbGagMinutesSlider" Minimum="3" Maximum="60" SmallChange="1" LargeChange="5"
+                                                        Width="140" Margin="6,0" ValueChanged="OrbGagMinutesSlider_ValueChanged" />
+                                                <TextBlock x:Name="OrbGagMinutesValueText" Text="toutes les 15 min environ" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                                <Button x:Name="OrbGagTestButton" Content="▶ Tester un gag" Click="OrbGagTestButton_Click"
+                                                        ToolTip="Joue un gag au hasard tout de suite (la bulle doit être affichée)" />
+                                                <Button x:Name="OrbGagTestAllButton" Content="▶▶ Tester tous les gags" Margin="8,0,0,0" Click="OrbGagTestAllButton_Click"
+                                                        ToolTip="Enchaîne tous les gags à la suite (environ 35 secondes) : pet, hoquet, éternuement, bâillement, réplique Star Citizen, ronflement" />
+                                            </StackPanel>
+                                            <TextBlock Text="Sons par blague (dossier « sons_gags » à côté de NovaVox) :" Margin="20,10,0,0" />
+                                            <StackPanel x:Name="OrbGagSoundsPanel" Margin="20,4,0,0" />
+                                            <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                                <Button Content="📂 Ouvrir le dossier des sons" Click="OrbGagFolderButton_Click"
+                                                        ToolTip="Dépose tes sons ici : pet1.wav, hoquet1.mp3, eternuement1.wav, baillement1.wav, ronflement1.wav..." />
+                                                <Button Content="🔄 Actualiser" Margin="8,0,0,0" Click="OrbGagRefreshButton_Click"
+                                                        ToolTip="Relit le dossier après avoir ajouté ou retiré des sons" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel x:Name="OrbBubbleEffectsPanel">
+                                        <TextBlock Text="Effets de la bulle :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                        <CheckBox x:Name="OrbCoreCheckbox" Content="Noyau lumineux (la présence de Nova)" Margin="0,6,0,0"
+                                                  ToolTip="Un cœur d'énergie au centre : il pulse, s'intensifie quand Nova parle, regarde autour de lui et cligne"
+                                                  Checked="OrbCoreCheckbox_Changed" Unchecked="OrbCoreCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbWaveCheckbox" Content="Onde de voix" Margin="0,6,0,0"
+                                                  ToolTip="Une onde sonore traverse la bulle au rythme de la voix de Nova (masquée si la bouche est activée)"
+                                                  Checked="OrbWaveCheckbox_Changed" Unchecked="OrbWaveCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbRingsCheckbox" Content="Ondes d'écoute" Margin="0,6,0,0"
+                                                  ToolTip="Des ondes type sonar partent de la bulle quand elle t'entend, plus fortes quand tu parles fort"
+                                                  Checked="OrbRingsCheckbox_Changed" Unchecked="OrbRingsCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbRingsInsideCheckbox" Content="Ondes d'écoute à l'intérieur de la bulle" Margin="20,4,0,0"
+                                                  ToolTip="Coché : les ondes partent du noyau vers le bord, dans la bulle. Décoché : elles partent de la bulle vers l'extérieur"
+                                                  Checked="OrbRingsInsideCheckbox_Changed" Unchecked="OrbRingsInsideCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbThinkingCheckbox" Content="Réseau en réflexion" Margin="0,6,0,0"
+                                                  ToolTip="Particules reliées et satellites en orbite pendant qu'elle réfléchit"
+                                                  Checked="OrbThinkingCheckbox_Changed" Unchecked="OrbThinkingCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbMouthCheckbox" Content="Bouche qui parle" Margin="0,8,0,0"
+                                                  ToolTip="Une bouche s'ouvre et se ferme au rythme de la voix quand NovaVox parle"
+                                                  Checked="OrbMouthCheckbox_Changed" Unchecked="OrbMouthCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbEarsCheckbox" Content="Oreilles qui écoutent" Margin="0,6,0,0"
+                                                  ToolTip="Deux oreilles sortent des côtés de la bulle quand elle t'entend parler au micro"
+                                                  Checked="OrbEarsCheckbox_Changed" Unchecked="OrbEarsCheckbox_Changed" />
+                                    </StackPanel>
+                                    <TextBlock Text="Effets :" Margin="0,10,0,0" FontWeight="SemiBold" />
+                                    <CheckBox x:Name="OrbReactionsCheckbox" Content="Réactions (commande, erreur)" Margin="0,6,0,0"
+                                              ToolTip="Reflet lumineux quand une commande est exécutée, glitch holographique en cas d'erreur"
+                                              Checked="OrbReactionsCheckbox_Changed" Unchecked="OrbReactionsCheckbox_Changed" />
+                                    <CheckBox x:Name="OrbCaptionCheckbox" Content="Afficher « Je réfléchis… » pendant une question à Gemini" Margin="0,8,0,0"
+                                              Checked="OrbCaptionCheckbox_Changed" Unchecked="OrbCaptionCheckbox_Changed" />
                                 </StackPanel>
-                                <TextBlock Text="Effets « IA » :" Margin="0,10,0,0" FontWeight="SemiBold" />
-                                <CheckBox x:Name="OrbCoreCheckbox" Content="Noyau lumineux (la présence de Nova)" Margin="0,6,0,0"
-                                          ToolTip="Un cœur d'énergie au centre : il pulse, s'intensifie quand Nova parle, regarde autour de lui et cligne"
-                                          Checked="OrbCoreCheckbox_Changed" Unchecked="OrbCoreCheckbox_Changed" />
-                                <CheckBox x:Name="OrbWaveCheckbox" Content="Onde de voix" Margin="0,6,0,0"
-                                          ToolTip="Une onde sonore traverse la bulle au rythme de la voix de Nova (masquée si la bouche est activée)"
-                                          Checked="OrbWaveCheckbox_Changed" Unchecked="OrbWaveCheckbox_Changed" />
-                                <CheckBox x:Name="OrbRingsCheckbox" Content="Ondes d'écoute" Margin="0,6,0,0"
-                                          ToolTip="Des ondes type sonar partent de la bulle quand elle t'entend, plus fortes quand tu parles fort"
-                                          Checked="OrbRingsCheckbox_Changed" Unchecked="OrbRingsCheckbox_Changed" />
-                                <CheckBox x:Name="OrbRingsInsideCheckbox" Content="Ondes d'écoute à l'intérieur de la bulle" Margin="20,4,0,0"
-                                          ToolTip="Coché : les ondes partent du noyau vers le bord, dans la bulle. Décoché : elles partent de la bulle vers l'extérieur"
-                                          Checked="OrbRingsInsideCheckbox_Changed" Unchecked="OrbRingsInsideCheckbox_Changed" />
-                                <CheckBox x:Name="OrbThinkingCheckbox" Content="Réseau en réflexion" Margin="0,6,0,0"
-                                          ToolTip="Particules reliées et satellites en orbite pendant qu'elle réfléchit"
-                                          Checked="OrbThinkingCheckbox_Changed" Unchecked="OrbThinkingCheckbox_Changed" />
-                                <CheckBox x:Name="OrbReactionsCheckbox" Content="Réactions (commande, erreur)" Margin="0,6,0,0"
-                                          ToolTip="Reflet lumineux quand une commande est exécutée, glitch holographique en cas d'erreur"
-                                          Checked="OrbReactionsCheckbox_Changed" Unchecked="OrbReactionsCheckbox_Changed" />
-                                <CheckBox x:Name="OrbMouthCheckbox" Content="Bouche qui parle" Margin="0,8,0,0"
-                                          ToolTip="Une bouche s'ouvre et se ferme au rythme de la voix quand NovaVox parle"
-                                          Checked="OrbMouthCheckbox_Changed" Unchecked="OrbMouthCheckbox_Changed" />
-                                <CheckBox x:Name="OrbHeadCheckbox" Content="Tête holographique 🧠" Margin="0,6,0,0"
-                                          ToolTip="L'avatar devient une tête en 3D en maillage lumineux, dans les couleurs de la bulle. De face, elle pivote selon ce qu'elle fait (regarde autour d'elle, se tourne vers toi quand elle t'entend, lève les yeux quand elle réfléchit, hoche la tête en parlant) ; sa mâchoire suit la voix, ses yeux clignent, et des ondes de lumière partent de la bouche, des oreilles ou du crâne."
-                                          Checked="OrbHeadCheckbox_Changed" Unchecked="OrbHeadCheckbox_Changed" />
-                                <CheckBox x:Name="OrbHeadPointsCheckbox" Content="Tête en nuage de points" Margin="20,4,0,0"
-                                          ToolTip="La tête holographique est dessinée en points lumineux (comme un scan 3D) au lieu de triangles : yeux, nez et lèvres brillent davantage"
-                                          Checked="OrbHeadPointsCheckbox_Changed" Unchecked="OrbHeadPointsCheckbox_Changed" />
-                                <CheckBox x:Name="OrbCatCheckbox" Content="ROxieWOOki 🐱" Margin="0,6,0,0"
-                                          ToolTip="La bulle devient une petite tête de chat rose : oreilles de chat qui frémissent, moustaches qui frétillent quand elle parle, petit nez et bouche « ω », tons roses à la place des couleurs réglées"
-                                          Checked="OrbCatCheckbox_Changed" Unchecked="OrbCatCheckbox_Changed" />
-                                <CheckBox x:Name="OrbEarsCheckbox" Content="Oreilles qui écoutent" Margin="0,6,0,0"
-                                          ToolTip="Deux oreilles sortent des côtés de la bulle quand elle t'entend parler au micro"
-                                          Checked="OrbEarsCheckbox_Changed" Unchecked="OrbEarsCheckbox_Changed" />
-                                <CheckBox x:Name="OrbCaptionCheckbox" Content="Afficher « Je réfléchis… » pendant une question à Gemini" Margin="0,8,0,0"
-                                          Checked="OrbCaptionCheckbox_Changed" Unchecked="OrbCaptionCheckbox_Changed" />
                             </StackPanel>
                             </ScrollViewer>
                         </TabItem>

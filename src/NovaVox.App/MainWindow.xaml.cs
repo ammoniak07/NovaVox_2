@@ -134,6 +134,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        HookOverlayOptionsVisibility();
         MinWidth = WindowConfigStore.MinSize.W;
         MinHeight = WindowConfigStore.MinSize.H;
 
@@ -4007,8 +4008,9 @@ public partial class MainWindow : Window
         OrbCaptionCheckbox.IsChecked = orb.ShowCaption;
         OrbMouthCheckbox.IsChecked = orb.ShowMouth;
         OrbEarsCheckbox.IsChecked = orb.ShowEars;
-        OrbCatCheckbox.IsChecked = orb.CatMode;
-        OrbHeadCheckbox.IsChecked = orb.HeadMode;
+        OrbStyleHeadRadio.IsChecked = orb.HeadMode;
+        OrbStyleCatRadio.IsChecked = !orb.HeadMode && orb.CatMode;
+        OrbStyleBubbleRadio.IsChecked = !orb.HeadMode && !orb.CatMode;
         OrbHeadPointsCheckbox.IsChecked = orb.HeadPoints;
         OrbCoreCheckbox.IsChecked = orb.ShowCore;
         OrbWaveCheckbox.IsChecked = orb.ShowVoiceWave;
@@ -4016,6 +4018,43 @@ public partial class MainWindow : Window
         OrbRingsInsideCheckbox.IsChecked = orb.ListenRingsInside;
         OrbThinkingCheckbox.IsChecked = orb.ShowThinkingFx;
         OrbReactionsCheckbox.IsChecked = orb.ShowReactions;
+        UpdateOverlayOptionsVisibility();
+    }
+
+    /// <summary>
+    /// Onglet Overlay rangé : les réglages d'une fonction ne s'affichent que
+    /// si elle est activée (overlay, bulle, profondeur, balade, ondes, gags),
+    /// et seuls ceux de la forme d'avatar choisie sont visibles.
+    /// </summary>
+    private void UpdateOverlayOptionsVisibility()
+    {
+        static Visibility Show(bool? visible) => visible == true ? Visibility.Visible : Visibility.Collapsed;
+        var head = OrbStyleHeadRadio.IsChecked == true;
+        var cat = OrbStyleCatRadio.IsChecked == true;
+        OverlayOptionsPanel.Visibility = Show(OverlayEnabledCheckbox.IsChecked);
+        OrbOptionsPanel.Visibility = Show(OrbEnabledCheckbox.IsChecked);
+        OrbHeadOptionsPanel.Visibility = Show(head);
+        OrbBubbleEffectsPanel.Visibility = Show(!head);
+        OrbMouthCheckbox.Visibility = Show(!head && !cat); // ROxieWOOki a sa propre bouche
+        OrbColorsPanel.Visibility = Show(!cat);              // ROxieWOOki garde ses tons roses
+        OrbFarDistanceRow.Visibility = Show(OrbDepthCheckbox.IsChecked);
+        OrbRoamOptionsPanel.Visibility = Show(OrbRoamCheckbox.IsChecked);
+        OrbRingsInsideCheckbox.Visibility = Show(OrbRingsCheckbox.IsChecked);
+        OrbGagOptionsPanel.Visibility = Show(OrbGagsCheckbox.IsChecked);
+    }
+
+    /// <summary>Les cases qui commandent l'affichage d'autres réglages les montrent ou les cachent aussitôt.</summary>
+    private void HookOverlayOptionsVisibility()
+    {
+        foreach (var toggle in new System.Windows.Controls.Primitives.ToggleButton[]
+                 {
+                     OverlayEnabledCheckbox, OrbEnabledCheckbox, OrbDepthCheckbox, OrbRoamCheckbox, OrbRingsCheckbox, OrbGagsCheckbox,
+                     OrbStyleBubbleRadio, OrbStyleHeadRadio, OrbStyleCatRadio,
+                 })
+        {
+            toggle.Checked += (_, _) => UpdateOverlayOptionsVisibility();
+            toggle.Unchecked += (_, _) => UpdateOverlayOptionsVisibility();
+        }
     }
 
     private void SaveAndApplyOrb()
@@ -4345,13 +4384,6 @@ public partial class MainWindow : Window
         SaveAndApplyOrb();
     }
 
-    private void OrbHeadCheckbox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_loadingSettings) return;
-        _state.Orb.HeadMode = OrbHeadCheckbox.IsChecked ?? false;
-        SaveAndApplyOrb();
-    }
-
     private void OrbHeadPointsCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
@@ -4359,10 +4391,12 @@ public partial class MainWindow : Window
         SaveAndApplyOrb();
     }
 
-    private void OrbCatCheckbox_Changed(object sender, RoutedEventArgs e)
+    private void OrbStyleRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
-        _state.Orb.CatMode = OrbCatCheckbox.IsChecked ?? false;
+        // Une seule forme à la fois : la tête l'emporte sur ROxieWOOki, qui l'emporte sur la bulle.
+        _state.Orb.HeadMode = OrbStyleHeadRadio.IsChecked == true;
+        _state.Orb.CatMode = OrbStyleCatRadio.IsChecked == true;
         SaveAndApplyOrb();
     }
 

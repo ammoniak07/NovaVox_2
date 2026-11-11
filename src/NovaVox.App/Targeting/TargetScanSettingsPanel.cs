@@ -45,30 +45,35 @@ public sealed class TargetScanSettingsPanel : StackPanel
 
         Children.Add(_enabled);
 
+        // Le reste n'apparaît que quand la lecture est activée.
+        var details = new StackPanel();
         var zoneRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
         var pick = new Button { Content = "📐 Définir / modifier la zone…", Padding = new Thickness(10, 3, 10, 3), ToolTip = "Cible un vaisseau en jeu, reviens ici, puis dessine un grand cadre autour du panneau de la cible (nom, FACTION, VITESSE, hologramme) : NovaVox garde la ligne au-dessus de FACTION" };
         pick.Click += (_, _) => PickZone();
         zoneRow.Children.Add(pick);
         zoneRow.Children.Add(_zoneText);
-        Children.Add(zoneRow);
+        details.Children.Add(zoneRow);
 
         var testRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
         var test = new Button { Content = "🔍 Tester (dans 3 s)", Padding = new Thickness(10, 3, 10, 3), ToolTip = "Clique, puis reviens dans le jeu avec un vaisseau ciblé : NovaVox lit la zone 3 secondes plus tard" };
         test.Click += async (_, _) => await TestAsync(test);
         testRow.Children.Add(test);
-        Children.Add(testRow);
-        Children.Add(_testText);
+        details.Children.Add(testRow);
+        details.Children.Add(_testText);
 
-        Children.Add(_onlyFocused);
-        Children.Add(_speak);
+        details.Children.Add(_onlyFocused);
+        details.Children.Add(_speak);
 
         var intervalRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
         intervalRow.Children.Add(new TextBlock { Text = "Lire toutes les", VerticalAlignment = VerticalAlignment.Center });
         intervalRow.Children.Add(_interval);
         intervalRow.Children.Add(_intervalText);
-        Children.Add(intervalRow);
+        details.Children.Add(intervalRow);
+
+        Children.Add(details);
 
         _enabled.IsChecked = config.Enabled;
+        details.Visibility = config.Enabled ? Visibility.Visible : Visibility.Collapsed;
         _onlyFocused.IsChecked = config.OnlyWhenGameFocused;
         _speak.IsChecked = config.Speak;
         _interval.Value = Math.Round(config.IntervalMs / 500.0) * 0.5;
@@ -78,6 +83,7 @@ public sealed class TargetScanSettingsPanel : StackPanel
         _enabled.Click += (_, _) =>
         {
             _config.Enabled = _enabled.IsChecked == true;
+            details.Visibility = _config.Enabled ? Visibility.Visible : Visibility.Collapsed;
             if (_config.Enabled && !_config.HasZone) _testText.Text = "Définis d'abord la zone du nom (📐) pour que la lecture démarre.";
             Changed();
         };
