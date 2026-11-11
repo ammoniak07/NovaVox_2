@@ -87,6 +87,10 @@ public sealed class HeadModel3D
     public IReadOnlyList<Vec3[]> FeatureStrokes { get; }
     /// <summary>Nombre de sommets qui viennent du visage MediaPipe (les premiers de Nodes).</summary>
     public int FaceNodeCount { get; }
+    /// <summary>Pour chaque triangle : vrai s'il fait partie du visage (option « visage seul »).</summary>
+    public IReadOnlyList<bool> FaceTriangle { get; }
+    /// <summary>Nombre de traits du visage (les premiers de FeatureStrokes ; les suivants sont les oreilles).</summary>
+    public int FaceStrokeCount { get; }
 
     private Vec3 TopPoint { get; }
     private Vec3 EyeLeft { get; }
@@ -278,6 +282,7 @@ public sealed class HeadModel3D
         EdgeTriangles = Edges.Select(e => edgeTris[e].ToArray()).ToList();
         JawWeight = nodes.Select(JawWeightAt).ToList();
         NodeNormals = normals;
+        FaceTriangle = oriented.Select(t => t.Item1 < FaceNodeCount && t.Item2 < FaceNodeCount && t.Item3 < FaceNodeCount).ToList();
 
         // 5) Repères et traits du visage (légèrement devant la peau).
         Vec3 Lift(int i) => face[i] + normals[i] * 0.008;
@@ -289,6 +294,7 @@ public sealed class HeadModel3D
         {
             Line(RightEyeLoop), Line(LeftEyeLoop), Line(RightBrow), Line(LeftBrow), Line(LipsOuter), Line(LipsInner),
         };
+        FaceStrokeCount = featureStrokes.Count;
         featureStrokes.AddRange(earRims);
         FeatureStrokes = featureStrokes;
 
@@ -646,7 +652,7 @@ public sealed class HeadModel3D
     // ---------- Nuage de points ----------
 
     /// <summary>Nuage de points pour le rendu « points » : position, normale, éclat propre (traits du visage), poids de mâchoire.</summary>
-    public sealed record PointCloudData(Vec3[] Positions, Vec3[] Normals, double[] Glow, double[] Jaw);
+    public sealed record PointCloudData(Vec3[] Positions, Vec3[] Normals, double[] Glow, double[] Jaw, bool[] OnFace);
 
     private static readonly Lazy<PointCloudData> SharedCloud = new(() => Default.BuildPointCloud());
 
@@ -661,6 +667,7 @@ public sealed class HeadModel3D
         const double faceGap = 0.019, skullGap = 0.026;
         var positions = new List<Vec3>();
         var normals = new List<Vec3>();
+        var onFaceList = new List<bool>();
         var grid = new Dictionary<(int, int, int), List<int>>();
         const double cell = skullGap;
         (int, int, int) Cell(Vec3 p) => ((int)Math.Floor(p.X / cell), (int)Math.Floor(p.Y / cell), (int)Math.Floor(p.Z / cell));
@@ -677,10 +684,11 @@ public sealed class HeadModel3D
             return true;
         }
 
-        void Add(Vec3 p, Vec3 n)
+        void Add(Vec3 p, Vec3 n, bool onFace)
         {
             positions.Add(p);
             normals.Add(n);
+            onFaceList.Add(onFace);
             var key = Cell(p);
             if (!grid.TryGetValue(key, out var list)) grid[key] = list = new List<int>();
             list.Add(positions.Count - 1);
@@ -706,13 +714,13 @@ public sealed class HeadModel3D
                     if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
                     var p = pa + (pb - pa) * r1 + (pc - pa) * r2;
                     if (!HasRoom(p, gap)) continue;
-                    Add(p, (NodeNormals[a] * (1 - r1 - r2) + NodeNormals[b] * r1 + NodeNormals[c] * r2).Normalized());
+                    Add(p, (NodeNormals[a] * (1 - r1 - r2) + NodeNormals[b] * r1 + NodeNormals[c] * r2).Normalized(), onFace);
                 }
             }
         }
         var glow = positions.Select(FeatureGlow).ToArray();
         var jaw = positions.Select(JawWeightAt).ToArray();
-        return new PointCloudData(positions.ToArray(), normals.ToArray(), glow, jaw);
+        return new PointCloudData(positions.ToArray(), normals.ToArray(), glow, jaw, onFaceList.ToArray());
     }
 
     /// <summary>Éclat propre d'un point (0..1) : près des yeux, sourcils, nez, lèvres et oreilles.</summary>

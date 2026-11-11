@@ -201,8 +201,10 @@ public partial class OrbWindow
         var glow = new StreamGeometry();
         using (var glowCtx = glow.Open())
         {
+            var faceOnly = _config.HeadFaceOnly;
             for (var i = 0; i < cloud.Positions.Length; i++)
             {
+                if (faceOnly && !cloud.OnFace[i]) continue;
                 // Normale tournée : de dos, le point n'est qu'un reflet très léger (un sur deux).
                 var n = cloud.Normals[i];
                 var nx1 = n.X * cyw + n.Z * syw;
@@ -303,7 +305,8 @@ public partial class OrbWindow
 
         // Place et taille : la tête (environ 2 unités de haut) remplit la place de la bulle.
         var size = Math.Min(b.Width, b.Height) * 1.15;
-        var k = size * 0.43;
+        // Visage seul : agrandi pour remplir la place de la tête.
+        var k = size * (_config.HeadFaceOnly ? 0.62 : 0.43);
         var cx = b.Left + b.Width / 2;
         var cy = b.Top + b.Height / 2 - 0.13 * k;
 
@@ -315,9 +318,9 @@ public partial class OrbWindow
         _headEyeEdge.Color = WithAlpha(Lerp(main, Colors.White, 0.4), 0);
 
         // Halo flouté (GlowPath) : un ovale autour de la tête.
-        _headGlowShape.Center = new Point(cx, cy + 0.05 * k);
-        _headGlowShape.RadiusX = 0.7 * k;
-        _headGlowShape.RadiusY = 0.98 * k;
+        _headGlowShape.Center = new Point(cx, cy + (_config.HeadFaceOnly ? 0.13 : 0.05) * k);
+        _headGlowShape.RadiusX = (_config.HeadFaceOnly ? 0.6 : 0.7) * k;
+        _headGlowShape.RadiusY = (_config.HeadFaceOnly ? 0.72 : 0.98) * k;
         if (HeadMode)
         {
             GlowPath.Data = _headGlowShape;
@@ -364,12 +367,14 @@ public partial class OrbWindow
         using (var glowCtx = glow.Open())
         using (var backCtx = back.Open())
         {
+            var faceOnly = _config.HeadFaceOnly;
             for (var e = 0; e < model.Edges.Count; e++)
             {
                 var (a, c) = model.Edges[e];
+                if (faceOnly && (a >= model.FaceNodeCount || c >= model.FaceNodeCount)) continue;
                 var bright = -1.0;
                 foreach (var tri in model.EdgeTriangles[e])
-                    if (_headTriVisible[tri]) bright = Math.Max(bright, _headTriBright[tri]);
+                    if (_headTriVisible[tri] && (!faceOnly || model.FaceTriangle[tri])) bright = Math.Max(bright, _headTriBright[tri]);
                 if (bright < 0)
                 {
                     backCtx.BeginFigure(P(a), false, false);
@@ -425,6 +430,7 @@ public partial class OrbWindow
             // Un point sur trois : avec un maillage aussi fin, tous les points feraient une masse blanche.
             for (var i = 0; i < model.Nodes.Count; i += 3)
             {
+                if (_config.HeadFaceOnly && i >= model.FaceNodeCount) break;
                 var visible = HeadModel3D.SurfaceVisibility(model.Nodes[i], _headYaw, _headPitch);
                 if (visible < 0.3) continue;
                 var twinkle = Math.Pow(Math.Max(0, Math.Sin(t * _headNodeFreq[i] * (1 + 2 * _thinkingAmount) + _headNodePhase[i])), 6);
@@ -448,8 +454,10 @@ public partial class OrbWindow
         using (var strong = features.Open())
         using (var weak = faint.Open())
         {
-            foreach (var stroke in model.FeatureStrokes)
+            for (var s = 0; s < model.FeatureStrokes.Count; s++)
             {
+                if (_config.HeadFaceOnly && s >= model.FaceStrokeCount) break; // oreilles
+                var stroke = model.FeatureStrokes[s];
                 var visibility = 0.0;
                 foreach (var q in stroke) visibility += HeadModel3D.SurfaceVisibility(q, _headYaw, _headPitch);
                 visibility /= stroke.Length;
@@ -529,7 +537,9 @@ public partial class OrbWindow
                     + _speakingAmount * 0.05 * Math.Sin(t * 5.3) * (0.3 + voice)
                     - 0.35 * _sleepiness;
         var roll = _thinkingAmount * 0.12 * Math.Sin(t * 0.7) + 0.15 * _sleepiness + 0.04 * Math.Sin(t * 0.37);
-        Spring(ref _headYaw, ref _headYawVel, Math.Clamp(yaw, -1.2, 1.2), dt, 22, 8);
+        // Visage seul : il ne tourne pas trop, pour ne jamais se montrer de profil (un masque vu par la tranche).
+        var maxYaw = _config.HeadFaceOnly ? 0.6 : 1.2;
+        Spring(ref _headYaw, ref _headYawVel, Math.Clamp(yaw, -maxYaw, maxYaw), dt, 22, 8);
         Spring(ref _headPitch, ref _headPitchVel, Math.Clamp(pitch, -0.5, 0.4), dt, 26, 8);
         Spring(ref _headRoll, ref _headRollVel, roll, dt, 18, 7);
     }

@@ -776,6 +776,9 @@
                                         <CheckBox x:Name="OrbHeadPointsCheckbox" Content="Tête en nuage de points" Margin="20,6,0,0"
                                                   ToolTip="La tête holographique est dessinée en points lumineux (comme un scan 3D) au lieu de triangles : yeux, nez et lèvres brillent davantage"
                                                   Checked="OrbHeadPointsCheckbox_Changed" Unchecked="OrbHeadPointsCheckbox_Changed" />
+                                        <CheckBox x:Name="OrbHeadFaceOnlyCheckbox" Content="Visage seul (sans crâne, oreilles ni cou)" Margin="20,4,0,0"
+                                                  ToolTip="Seul le visage est affiché, comme un masque holographique, agrandi pour remplir la place de la tête"
+                                                  Checked="OrbHeadFaceOnlyCheckbox_Changed" Unchecked="OrbHeadFaceOnlyCheckbox_Changed" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                         <TextBlock Text="Taille :" VerticalAlignment="Center" />
