@@ -2,6 +2,9 @@ NOVAVOX — Notes de mise à jour
 ==============================
 V0.2.4
 ------
+- Tête holographique : nouveau visage « Banu 👽 » (à côté de Homme / Femme), inspiré des extraterrestres de Star Citizen : large crête au sommet plat, arrière du crâne bombé, crête, nez, bouche et menton alignés de profil, fentes de part et d'autre de l'arête du front, lourdes arcades, yeux enfoncés, pommettes saillantes, joues très creuses, grand menton, sillons sur le crâne et cou strié, sans oreilles. En « Visage seul », le Banu garde sa crête.
+- Avatar de Nova : taille réglable jusqu'à 1000 px (au lieu de 400). L'avatar n'est plus coupé en bas aux grandes tailles : il est limité à ce qui tient dans la hauteur de l'écran.
+- Tête holographique : plus de lueur quand Nova parle (seules les lèvres bougent), et les lèvres bougent maintenant aussi sur le visage « Femme » (elles restaient presque immobiles).
 
 v0.2.3
 ------
