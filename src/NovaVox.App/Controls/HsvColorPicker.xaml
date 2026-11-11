@@ -61,8 +61,10 @@
         <!-- Bande de teinte (arc-en-ciel complet, 0 à 360°) — un dégradé à 7
              arrêts (rouge -> jaune -> vert -> cyan -> bleu -> magenta ->
              rouge) couvre tout le cercle chromatique en une seule fois. -->
+        <!-- Background="Transparent" : sans fond, une Border n'est pas cliquable (ses
+             rectangles sont IsHitTestVisible="False"), les clics passaient au travers. -->
         <Border x:Name="HueStripBorder" Grid.Column="2" Width="16" Height="110" CornerRadius="3"
-                ClipToBounds="True" Cursor="Hand"
+                ClipToBounds="True" Cursor="Hand" Background="Transparent"
                 MouseLeftButtonDown="HueStrip_MouseLeftButtonDown"
                 MouseMove="HueStrip_MouseMove"
                 MouseLeftButtonUp="HueStrip_MouseLeftButtonUp">
