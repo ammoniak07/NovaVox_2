@@ -11,8 +11,8 @@ public class HeadModel3DTests
     public void HasAReasonableNumberOfPointsAndLines()
     {
         // Assez pour un visage lisible, pas trop pour rester léger à animer à chaque image.
-        Assert.InRange(Model.Nodes.Count, 150, 400);
-        Assert.InRange(Model.Edges.Count, 400, 1200);
+        Assert.InRange(Model.Nodes.Count, 400, 900);
+        Assert.InRange(Model.Edges.Count, 1200, 2800);
         Assert.All(Model.EdgeTriangles, t => Assert.InRange(t.Length, 1, 2));
     }
 

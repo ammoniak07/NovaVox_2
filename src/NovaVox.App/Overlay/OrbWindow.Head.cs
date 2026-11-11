@@ -89,7 +89,7 @@ public partial class OrbWindow
         }
 
         HeadLayer.Children.Add(_headCanvas);
-        _headBackPath = new Path { Stroke = _headBackBrush, Opacity = 0.14 };
+        _headBackPath = new Path { Stroke = _headBackBrush, Opacity = 0.1 };
         _headCanvas.Children.Add(_headBackPath);
         _headGlowPath = new Path
         {
@@ -227,7 +227,7 @@ public partial class OrbWindow
                     continue;
                 }
                 var dm = _headEdgeMouth[e];
-                bright += speak * Math.Max(0, 1 - dm * 0.9) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 11));
+                bright += speak * Math.Max(0, 1 - dm * 0.9) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 14));
                 var de = _headEdgeEar[e];
                 bright += _attention * Math.Max(0, 1 - de * 1.1) * Math.Max(0, Math.Sin(t * 6 - de * 10)) * 0.8;
                 var db = _headEdgeBrain[e];
@@ -248,7 +248,7 @@ public partial class OrbWindow
                 }
             }
         }
-        var thickness = Math.Max(0.7, k * 0.012);
+        var thickness = Math.Max(0.6, k * 0.0085);
         for (var l = 0; l < HeadLevels; l++)
         {
             contexts[l].Close();
@@ -268,7 +268,7 @@ public partial class OrbWindow
         // Points du maillage : ceux du côté visible, qui scintillent.
         var dots = new StreamGeometry();
         var brightDots = new StreamGeometry();
-        var radius = Math.Max(0.8, k * 0.014);
+        var radius = Math.Max(0.7, k * 0.0095);
         using (var dotCtx = dots.Open())
         using (var brightCtx = brightDots.Open())
         {

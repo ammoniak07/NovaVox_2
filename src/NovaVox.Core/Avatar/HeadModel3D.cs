@@ -50,7 +50,9 @@ public sealed class HeadModel3D
         (-1.10, 0.31, 0.29, 0.33),
     };
 
-    private const int PointsPerRing = 16;
+    private const int PointsPerRing = 26;
+    /// <summary>Écart vertical entre deux anneaux du maillage (le profil ci-dessus est interpolé).</summary>
+    private const double RingStep = 0.08;
 
     public static readonly Vec3 Top = new(0, 0.93, -0.02);
     public static readonly Vec3 LeftEye = new(-0.24, 0.10, 0.60);
@@ -79,17 +81,19 @@ public sealed class HeadModel3D
         var nodes = new List<Vec3> { Top };
         var rings = new List<int[]>();
 
-        for (var r = 0; r < Profile.Length; r++)
+        var levels = new List<double>();
+        for (var level = Profile[0].Y; level >= Profile[^1].Y - 1e-9; level -= RingStep) levels.Add(level);
+        for (var r = 0; r < levels.Count; r++)
         {
-            var (y, rx, front, back) = Profile[r];
+            var (y, rx, front, back) = ProfileAt(levels[r]);
             var ring = new int[PointsPerRing];
             for (var i = 0; i < PointsPerRing; i++)
             {
                 // Plus de points sur le visage que derrière la tête ; anneaux décalés d'un demi-pas.
                 var u = ((i + (r % 2) * 0.5) / PointsPerRing) * 2 - 1; // -1..1, 0 = face
                 var phi = Math.Sign(u) * Math.PI * Math.Pow(Math.Abs(u), 1.25);
-                phi += (random.NextDouble() - 0.5) * 0.16;
-                var yy = y + (random.NextDouble() - 0.5) * (r == 0 ? 0.02 : 0.07);
+                phi += (random.NextDouble() - 0.5) * 0.09;
+                var yy = y + (random.NextDouble() - 0.5) * (r == 0 ? 0.01 : 0.04);
                 nodes.Add(Surface(yy, rx, front, back, phi));
                 ring[i] = nodes.Count - 1;
             }
@@ -154,16 +158,21 @@ public sealed class HeadModel3D
     }
 
     /// <summary>Point de la surface du visage à (x, y), légèrement devant (pour les traits dessinés dessus).</summary>
-    public static Vec3 OnFace(double x, double y, double lift = 0.012)
+    /// <summary>Largeur et profondeurs de la tête à la hauteur y (interpolation douce du profil).</summary>
+    private static (double Y, double Rx, double Front, double Back) ProfileAt(double y)
     {
         var i = 0;
         while (i + 2 < Profile.Length && Profile[i + 1].Y > y) i++;
         var (y0, rx0, f0, b0) = Profile[i];
         var (y1, rx1, f1, b1) = Profile[i + 1];
         var k = Math.Clamp((y0 - y) / (y0 - y1), 0, 1);
-        var rx = rx0 + (rx1 - rx0) * k;
-        var front = f0 + (f1 - f0) * k;
-        var back = b0 + (b1 - b0) * k;
+        k = k * k * (3 - 2 * k) * 0.5 + k * 0.5; // à mi-chemin entre linéaire et lissé : pas de cassure aux anneaux du profil
+        return (y, rx0 + (rx1 - rx0) * k, f0 + (f1 - f0) * k, b0 + (b1 - b0) * k);
+    }
+
+    public static Vec3 OnFace(double x, double y, double lift = 0.012)
+    {
+        var (_, rx, front, back) = ProfileAt(y);
         var phi = Math.Asin(Math.Clamp(x / rx, -1, 1));
         var p = Surface(y, rx, front, back, phi);
         return new Vec3(p.X, p.Y, p.Z + lift);
