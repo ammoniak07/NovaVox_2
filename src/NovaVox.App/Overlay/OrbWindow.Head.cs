@@ -234,6 +234,7 @@ public partial class OrbWindow
                 var rotatedNormal = new Vec3(nx1 * cr - ny2 * sr, nx1 * sr + ny2 * cr, nz2);
                 var back = nz2 < 0;
                 if (back && (i & 1) == 0) continue;
+                if (cloud.Glow[i] < -0.3) continue; // fond des fentes de la crête (Banu) : vide
 
                 var q = cloud.Positions[i];
                 var w = cloud.Jaw[i] * jaw;
@@ -414,6 +415,13 @@ public partial class OrbWindow
                     bright += 0.9 * Math.Exp(-Math.Pow((y - sweepY) / 0.15, 2));
                 }
                 bright *= 1 - 0.35 * _sleepiness;
+                if (model.NodeShade.Count > 0)
+                {
+                    // Fentes de la crête (Banu) : vides au fond, assombries sur les bords.
+                    var shade = Math.Max(model.NodeShade[a], model.NodeShade[c]);
+                    if (shade > 0.6) continue;
+                    bright *= 1 - 0.85 * Math.Max(model.NodeShade[a], model.NodeShade[c]);
+                }
                 var level = Math.Clamp((int)(bright * HeadLevels), 0, HeadLevels - 1);
                 contexts[level].BeginFigure(P(a), false, false);
                 contexts[level].LineTo(P(c), true, false);

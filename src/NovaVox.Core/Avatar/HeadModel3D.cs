@@ -92,6 +92,8 @@ public sealed class HeadModel3D
     public IReadOnlyList<double> JawWeight { get; }
     /// <summary>Normale de chaque sommet (vers l'extérieur).</summary>
     public IReadOnlyList<Vec3> NodeNormals { get; }
+    /// <summary>Ombre de chaque sommet (0 = normal, 1 = au fond d'un creux : fentes de la crête des Banu).</summary>
+    public IReadOnlyList<double> NodeShade { get; private set; } = Array.Empty<double>();
     /// <summary>Traits du visage (yeux, sourcils, lèvres, oreilles), dessinés plus lumineux sur le maillage.</summary>
     public IReadOnlyList<Vec3[]> FeatureStrokes { get; }
     /// <summary>Nombre de sommets qui viennent du visage MediaPipe (les premiers de Nodes).</summary>
@@ -270,7 +272,12 @@ public sealed class HeadModel3D
         Vec3 Shape(Vec3 p) => species == HeadSpecies.Banu
             ? MorphBanu(p, eyeCenters, mouthCenter, noseTip)
             : Morph(p, female, eyeCenters, mouthCenter, noseTip);
-        for (var i = 0; i < nodes.Count; i++) nodes[i] = Shape(nodes[i]);
+        var shades = new double[nodes.Count];
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            if (species == HeadSpecies.Banu) nodes[i] = MorphBanu(nodes[i], eyeCenters, mouthCenter, noseTip, out shades[i]);
+            else nodes[i] = Shape(nodes[i]);
+        }
         EarLeft = Shape(EarLeft);
         EarRight = Shape(EarRight);
         earRims = earRims.Select(rim => rim.Select(Shape).ToArray()).ToList();
@@ -326,6 +333,7 @@ public sealed class HeadModel3D
         EdgeTriangles = Edges.Select(e => edgeTris[e].ToArray()).ToList();
         JawWeight = nodes.Select(JawWeightAt).ToList();
         NodeNormals = normals;
+        NodeShade = shades;
         FaceTriangle = oriented.Select(t => t.Item1 < FaceNodeCount && t.Item2 < FaceNodeCount && t.Item3 < FaceNodeCount).ToList();
 
         // 5) Repères et traits du visage (légèrement devant la peau).
@@ -542,7 +550,10 @@ public sealed class HeadModel3D
     /// lèvres fines, menton étroit, cou long et fin. Un peu réduite pour
     /// que la crête tienne dans la place de l'avatar.
     /// </summary>
-    private static Vec3 MorphBanu(Vec3 p, Vec3[] eyes, Vec3 mouth, Vec3 nose)
+    private static Vec3 MorphBanu(Vec3 p, Vec3[] eyes, Vec3 mouth, Vec3 nose) => MorphBanu(p, eyes, mouth, nose, out _);
+
+    /// <summary>Idem, avec l'ombre du point (1 = au fond d'une fente de la crête, dessiné plus sombre).</summary>
+    private static Vec3 MorphBanu(Vec3 p, Vec3[] eyes, Vec3 mouth, Vec3 nose, out double shade)
     {
         double x = p.X, y = p.Y, z = p.Z;
         var front = Math.Clamp((z + 0.05) / 0.4, 0, 1);
@@ -573,18 +584,26 @@ public sealed class HeadModel3D
         x *= 1 - 0.22 * neck;
         z = -0.07 + (z + 0.07) * (1 - 0.18 * neck);
 
-        // Arête centrale : du nez jusqu'à la crête, en relief.
-        z += 0.06 * G(x / 0.05) * Smooth((y - nose.Y) / 0.25) * front;
-        // Nez aplati, narines en fentes.
-        z -= 0.05 * G(x / 0.08) * G((y - nose.Y) / 0.08) * front;
+        // Nez aplati (narines en fentes) puis arête centrale : du bout du nez jusqu'en haut de la
+        // crête, une seule ligne en relief, à peu près à la même hauteur que le nez.
+        z -= 0.045 * G(x / 0.08) * G((y - nose.Y) / 0.07) * front;
+        var ridgeZ = nose.Z - 0.03 - 0.06 * (y - nose.Y) - 0.27 * top * top;
+        var ridge = G(x / 0.05) * Smooth((y - nose.Y + 0.06) / 0.06) * Smooth((1.15 - y) / 0.25) * Smooth((z + 0.2) / 0.3);
+        if (z < ridgeZ) z += (ridgeZ - z) * ridge;
+        // Fentes de chaque côté de l'arête, dans le front et la crête.
+        var slit = G((ax - 0.1) / 0.05) * Smooth((y - 0.2) / 0.12) * Smooth((0.95 - y) / 0.2) * Smooth((z + 0.2) / 0.3);
+        z -= 0.11 * slit;
+        shade = Math.Clamp(slit * 1.6, 0, 1);
         // Yeux enfoncés, orbites marquées.
         foreach (var eye in eyes)
         {
             var d = Math.Sqrt((x - eye.X) * (x - eye.X) + (y - eye.Y) * (y - eye.Y));
             z -= 0.03 * G(d / 0.09) * front;
         }
-        // Joues creuses sous les pommettes.
-        z -= 0.045 * G((ax - 0.27) / 0.08) * G((y + 0.2) / 0.12) * front;
+        // Pommettes saillantes (en avant et sur les côtés), joues bien creuses dessous.
+        z += 0.09 * G((ax - 0.33) / 0.09) * G((y + 0.02) / 0.08) * front;
+        x += Math.Sign(x) * 0.07 * G((ax - 0.42) / 0.11) * G((y + 0.02) / 0.09) * front;
+        z -= 0.08 * G((ax - 0.27) / 0.09) * G((y + 0.26) / 0.1) * front;
         // Lèvres fines, bouche tombante.
         var lips = G(x / 0.14) * G((y - mouth.Y) / 0.05) * front;
         y -= (y - mouth.Y) * 0.5 * lips;
@@ -869,6 +888,7 @@ public sealed class HeadModel3D
         var positions = new List<Vec3>();
         var normals = new List<Vec3>();
         var onFaceList = new List<bool>();
+        var shadeList = new List<double>();
         const double axisZ = -0.05;
 
         var minY = Nodes.Min(n => n.Y);
@@ -877,11 +897,11 @@ public sealed class HeadModel3D
         for (var y = maxY - PointRowStep * 0.5; y > minY + 0.01; y -= PointRowStep, row++)
         {
             // Coupe de la tête à cette hauteur : un segment par triangle traversé.
-            var cuts = new List<(Vec3 A, Vec3 B, Vec3 NA, Vec3 NB, bool Face)>();
+            var cuts = new List<(Vec3 A, Vec3 B, Vec3 NA, Vec3 NB, bool Face, double SA, double SB)>();
             for (var t = 0; t < Triangles.Count; t++)
             {
                 var (a, b, c) = Triangles[t];
-                var ends = new List<(Vec3 P, Vec3 N)>(2);
+                var ends = new List<(Vec3 P, Vec3 N, double S)>(2);
                 foreach (var (i, j) in new[] { (a, b), (b, c), (c, a) })
                 {
                     var pi = Nodes[i];
@@ -889,10 +909,10 @@ public sealed class HeadModel3D
                     if ((pi.Y - y) * (pj.Y - y) > 0 || Math.Abs(pi.Y - pj.Y) < 1e-12) continue;
                     var f = (y - pi.Y) / (pj.Y - pi.Y);
                     if (f < 0 || f > 1) continue;
-                    ends.Add((pi + (pj - pi) * f, NodeNormals[i] * (1 - f) + NodeNormals[j] * f));
+                    ends.Add((pi + (pj - pi) * f, NodeNormals[i] * (1 - f) + NodeNormals[j] * f, NodeShade[i] * (1 - f) + NodeShade[j] * f));
                     if (ends.Count == 2) break;
                 }
-                if (ends.Count == 2) cuts.Add((ends[0].P, ends[1].P, ends[0].N, ends[1].N, FaceTriangle[t]));
+                if (ends.Count == 2) cuts.Add((ends[0].P, ends[1].P, ends[0].N, ends[1].N, FaceTriangle[t], ends[0].S, ends[1].S));
             }
             if (cuts.Count == 0) continue;
 
@@ -906,6 +926,7 @@ public sealed class HeadModel3D
                 double dx = Math.Sin(phi), dz = Math.Cos(phi);
                 var best = -1.0;
                 Vec3 hit = default, normal = default;
+                var shade = 0.0;
                 var face = false;
                 foreach (var cu in cuts)
                 {
@@ -921,14 +942,17 @@ public sealed class HeadModel3D
                     hit = cu.A + (cu.B - cu.A) * u;
                     normal = cu.NA * (1 - u) + cu.NB * u;
                     face = cu.Face;
+                    shade = cu.SA * (1 - u) + cu.SB * u;
                 }
                 if (best < 0) continue;
                 positions.Add(hit);
                 normals.Add(normal.Normalized());
                 onFaceList.Add(face);
+                shadeList.Add(shade);
             }
         }
-        var glow = positions.Select(FeatureGlow).ToArray();
+        // Les creux (fentes de la crête) sont assombris : éclat négatif.
+        var glow = positions.Select((p, i) => FeatureGlow(p) - 0.9 * shadeList[i]).ToArray();
         var jaw = positions.Select(JawWeightAt).ToArray();
         return new PointCloudData(positions.ToArray(), normals.ToArray(), glow, jaw, onFaceList.ToArray());
     }
