@@ -121,4 +121,23 @@ public class HeadModel3DTests
         var visible = faceTriangles.Count(t => Model.FacesViewer(t, projected));
         Assert.True(visible > faceTriangles.Count * 0.85, $"{visible}/{faceTriangles.Count}");
     }
+
+    [Fact]
+    public void FemaleAndMaleFaces_AreVisiblyDifferent()
+    {
+        var male = HeadModel3D.For(female: false);
+        var female = HeadModel3D.For(female: true);
+        Assert.False(male.Female);
+        Assert.True(female.Female);
+        Assert.Equal(male.Nodes.Count, female.Nodes.Count); // même maillage, formes différentes
+
+        double WidthAt(HeadModel3D m, double y) => m.Nodes.Where(n => Math.Abs(n.Y - y) < 0.03).Max(n => Math.Abs(n.X));
+        // Cou et mâchoire nettement plus fins chez la femme.
+        Assert.True(WidthAt(female, -1.0) < WidthAt(male, -1.0) * 0.8, "cou");
+        Assert.True(WidthAt(female, -0.55) < WidthAt(male, -0.55) * 0.9, "mâchoire");
+        // Cils en plus sur le visage de femme.
+        Assert.True(female.FaceStrokeCount > male.FaceStrokeCount);
+        // Les deux restent des têtes complètes, avec leur nuage de points.
+        Assert.InRange(female.Points.Positions.Length, 4000, 12000);
+    }
 }

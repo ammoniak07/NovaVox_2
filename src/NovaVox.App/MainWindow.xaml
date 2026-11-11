@@ -773,6 +773,13 @@
                                                      ToolTip="La bulle devient une petite tête de chat rose : oreilles de chat qui frémissent, moustaches qui frétillent quand elle parle, petit nez et bouche « ω », tons roses à la place des couleurs réglées" />
                                     </StackPanel>
                                     <StackPanel x:Name="OrbHeadOptionsPanel">
+                                        <StackPanel Orientation="Horizontal" Margin="20,6,0,0">
+                                            <TextBlock Text="Visage :" VerticalAlignment="Center" />
+                                            <RadioButton x:Name="OrbHeadMaleRadio" GroupName="OrbHeadGender" Content="Homme" Margin="10,0,0,0" VerticalAlignment="Center" Checked="OrbHeadGenderRadio_Checked"
+                                                         ToolTip="Arcades et mâchoire marquées, menton carré, cou épais, pomme d'Adam" />
+                                            <RadioButton x:Name="OrbHeadFemaleRadio" GroupName="OrbHeadGender" Content="Femme" Margin="16,0,0,0" VerticalAlignment="Center" Checked="OrbHeadGenderRadio_Checked"
+                                                         ToolTip="Traits plus fins : yeux plus grands avec des cils, lèvres plus pleines, nez plus petit, pommettes hautes, mâchoire étroite, petit menton, cou fin" />
+                                        </StackPanel>
                                         <CheckBox x:Name="OrbHeadPointsCheckbox" Content="Tête en nuage de points" Margin="20,6,0,0"
                                                   ToolTip="La tête holographique est dessinée en points lumineux (comme un scan 3D) au lieu de triangles : yeux, nez et lèvres brillent davantage"
                                                   Checked="OrbHeadPointsCheckbox_Changed" Unchecked="OrbHeadPointsCheckbox_Changed" />

@@ -65,10 +65,19 @@ public partial class OrbWindow
         ShimmerPath, MouthGroup, Highlight, EarGroup, CatBackGroup, CatFrontGroup, GlitchRed, GlitchCyan,
     };
 
-    private void BuildHead()
+    /// <summary>Tête affichée (homme ou femme) et ses tableaux de travail, refaits quand on change de visage.</summary>
+    private HeadModel3D? _headModel;
+
+    private HeadModel3D CurrentHeadModel()
     {
-        _headBuilt = true;
-        var model = HeadModel3D.Default;
+        var model = HeadModel3D.For(_config.HeadFemale);
+        if (!ReferenceEquals(model, _headModel)) PrepareHeadModel(model);
+        return model;
+    }
+
+    private void PrepareHeadModel(HeadModel3D model)
+    {
+        _headModel = model;
         var count = model.Nodes.Count;
         _headProjected = new ProjectedNode[count];
         _headView = new Vec3[count];
@@ -89,11 +98,17 @@ public partial class OrbWindow
         {
             var (a, b) = model.Edges[e];
             var mid = (model.Nodes[a] + model.Nodes[b]) * 0.5;
-            _headEdgeMouth[e] = mid.DistanceTo(HeadModel3D.Mouth);
-            _headEdgeEar[e] = Math.Min(mid.DistanceTo(HeadModel3D.LeftEar), mid.DistanceTo(HeadModel3D.RightEar));
+            _headEdgeMouth[e] = mid.DistanceTo(model.MouthPoint);
+            _headEdgeEar[e] = Math.Min(mid.DistanceTo(model.EarLeft), mid.DistanceTo(model.EarRight));
             _headEdgeBrain[e] = mid.DistanceTo(HeadModel3D.Brain);
         }
 
+        PrepareHeadPoints(model);
+    }
+
+    private void BuildHead()
+    {
+        _headBuilt = true;
         HeadLayer.Children.Add(_headCanvas);
         _headCanvas.Children.Add(_headMeshCanvas);
         _headCanvas.Children.Add(_headPointCanvas);
@@ -139,9 +154,10 @@ public partial class OrbWindow
     }
 
     /// <summary>Rendu « nuage de points » : chemins par niveau d'éclat (points = traits de longueur nulle à bouts ronds).</summary>
-    private void BuildHeadPoints()
+    /// <summary>Distances et phases de chaque point du nuage (pour les ondes et le scintillement).</summary>
+    private void PrepareHeadPoints(HeadModel3D model)
     {
-        var cloud = HeadModel3D.PointCloud;
+        var cloud = model.Points;
         var count = cloud.Positions.Length;
         _headPointMouth = new double[count];
         _headPointEar = new double[count];
@@ -151,12 +167,16 @@ public partial class OrbWindow
         for (var i = 0; i < count; i++)
         {
             var p = cloud.Positions[i];
-            _headPointMouth[i] = p.DistanceTo(HeadModel3D.Mouth);
-            _headPointEar[i] = Math.Min(p.DistanceTo(HeadModel3D.LeftEar), p.DistanceTo(HeadModel3D.RightEar));
+            _headPointMouth[i] = p.DistanceTo(model.MouthPoint);
+            _headPointEar[i] = Math.Min(p.DistanceTo(model.EarLeft), p.DistanceTo(model.EarRight));
             _headPointBrain[i] = p.DistanceTo(HeadModel3D.Brain);
             _headPointPhase[i] = _random.NextDouble() * Math.PI * 2;
             _headPointFreq[i] = 0.3 + _random.NextDouble() * 1.5;
         }
+    }
+
+    private void BuildHeadPoints()
+    {
         _headPointGlowPath = new Path
         {
             Stroke = _headLineBrush,
@@ -182,7 +202,7 @@ public partial class OrbWindow
     /// <summary>Dessine la tête en points lumineux (rotation faite ici, une seule fois par image pour les sinus/cosinus).</summary>
     private void RenderHeadPoints(double t, double voice, double jaw, double cx, double cy, double k)
     {
-        var cloud = HeadModel3D.PointCloud;
+        var cloud = _headModel!.Points;
         double cyw = Math.Cos(_headYaw), syw = Math.Sin(_headYaw), cp = Math.Cos(_headPitch), sp = Math.Sin(_headPitch), cr = Math.Cos(_headRoll), sr = Math.Sin(_headRoll);
         const double camera = 4.0;
         var speak = _speaking ? Math.Clamp(voice * 1.6, 0, 1) : 0;
@@ -299,6 +319,7 @@ public partial class OrbWindow
         }
         if (HeadLayer.Visibility != Visibility.Visible) HeadLayer.Visibility = Visibility.Visible;
         if (!_headBuilt) BuildHead();
+        CurrentHeadModel();
 
         UpdateHeadPose(dt, t, voice);
         var jaw = _speaking ? Math.Clamp(_mouthOpen * 1.5, 0, 1) : 0;
@@ -338,7 +359,7 @@ public partial class OrbWindow
     /// <summary>Dessine la tête en maillage (triangles, points, traits du visage).</summary>
     private void RenderHeadMesh(double t, double voice, double jaw, double cx, double cy, double k)
     {
-        var model = HeadModel3D.Default;
+        var model = _headModel!;
         model.Project(_headYaw, _headPitch, _headRoll, jaw, _headProjected, _headView);
         Point P(int i) => new(cx + _headProjected[i].X * k, cy + _headProjected[i].Y * k);
 
@@ -491,7 +512,7 @@ public partial class OrbWindow
         }
         var blink = t - _headBlinkStart < 0.16 ? Math.Sin(Math.PI * (t - _headBlinkStart) / 0.16) : 0;
         var eyeSize = k * (0.16 + 0.03 * _attention + 0.03 * _level);
-        var eyes = new[] { HeadModel3D.LeftEye, HeadModel3D.RightEye };
+        var eyes = new[] { _headModel!.EyeLeft, _headModel.EyeRight };
         for (var i = 0; i < 2; i++)
         {
             var eye = eyes[i];

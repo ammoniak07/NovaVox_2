@@ -92,16 +92,26 @@ public sealed class HeadModel3D
     /// <summary>Nombre de traits du visage (les premiers de FeatureStrokes ; les suivants sont les oreilles).</summary>
     public int FaceStrokeCount { get; }
 
-    private Vec3 TopPoint { get; }
-    private Vec3 EyeLeft { get; }
-    private Vec3 EyeRight { get; }
-    private Vec3 MouthPoint { get; }
-    private Vec3 EarLeft { get; }
-    private Vec3 EarRight { get; }
+    /// <summary>Visage de femme (sinon d'homme).</summary>
+    public bool Female { get; }
+    public Vec3 TopPoint { get; }
+    public Vec3 EyeLeft { get; }
+    public Vec3 EyeRight { get; }
+    public Vec3 MouthPoint { get; }
+    public Vec3 EarLeft { get; private set; }
+    public Vec3 EarRight { get; private set; }
     private readonly List<(Vec3[] Line, double Weight)> _glowLines = new();
 
-    private static readonly Lazy<HeadModel3D> Shared = new(() => new HeadModel3D());
-    public static HeadModel3D Default => Shared.Value;
+    private static readonly Lazy<HeadModel3D> SharedMale = new(() => new HeadModel3D(female: false));
+    private static readonly Lazy<HeadModel3D> SharedFemale = new(() => new HeadModel3D(female: true));
+    /// <summary>Tête d'homme (modèle par défaut).</summary>
+    public static HeadModel3D Default => SharedMale.Value;
+    /// <summary>Tête d'homme ou de femme (chacune calculée une fois).</summary>
+    public static HeadModel3D For(bool female) => female ? SharedFemale.Value : SharedMale.Value;
+
+    // Paupières du haut (pour les cils du visage de femme).
+    private static readonly int[] RightUpperLid = { 33, 246, 161, 160, 159, 158, 157, 173, 133 };
+    private static readonly int[] LeftUpperLid = { 263, 466, 388, 387, 386, 385, 384, 398, 362 };
 
     // Repères du modèle MediaPipe (numéros de ses 468 points).
     private static readonly int[] RightEyeLoop = { 33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246, 33 };
@@ -115,8 +125,9 @@ public sealed class HeadModel3D
     private static readonly int[] NoseBridge = { 168, 6, 197, 195, 5, 4, 1 };
     private static readonly int[] NoseBase = { 98, 97, 2, 326, 327 };
 
-    private HeadModel3D()
+    private HeadModel3D(bool female)
     {
+        Female = female;
         var random = new Random(4557);
 
         // 1) Visage MediaPipe, mis à l'échelle : milieu des yeux et milieu de la bouche
@@ -168,7 +179,6 @@ public sealed class HeadModel3D
         var top = new Vec3(0, Profile[0].Y + 0.035, -0.04);
         nodes.Add(top);
         var topIndex = nodes.Count - 1;
-        TopPoint = top;
 
         // Lissage de la jonction : les points du crâne proches du visage suivent l'écart
         // entre le contour du visage et la surface du crâne.
@@ -232,6 +242,16 @@ public sealed class HeadModel3D
             else EarRight = center;
         }
 
+        // 3 bis) Homme ou femme : le visage et le cou sont remodelés (voir Morph).
+        var eyeCenters = new[] { Average(LeftEyeLoop.Select(i => nodes[i])), Average(RightEyeLoop.Select(i => nodes[i])) };
+        var mouthCenter = (nodes[13] + nodes[14]) * 0.5;
+        var noseTip = nodes[1];
+        for (var i = 0; i < nodes.Count; i++) nodes[i] = Morph(nodes[i], female, eyeCenters, mouthCenter, noseTip);
+        EarLeft = Morph(EarLeft, female, eyeCenters, mouthCenter, noseTip);
+        EarRight = Morph(EarRight, female, eyeCenters, mouthCenter, noseTip);
+        earRims = earRims.Select(rim => rim.Select(p => Morph(p, female, eyeCenters, mouthCenter, noseTip)).ToArray()).ToList();
+        TopPoint = nodes[topIndex];
+
         // 4) Orientation : chaque triangle tourné vers l'extérieur (normale = (b-a)×(c-a)).
         var oriented = new List<(int, int, int)>(triangles.Count);
         foreach (var (a, b, c) in triangles)
@@ -285,15 +305,27 @@ public sealed class HeadModel3D
         FaceTriangle = oriented.Select(t => t.Item1 < FaceNodeCount && t.Item2 < FaceNodeCount && t.Item3 < FaceNodeCount).ToList();
 
         // 5) Repères et traits du visage (légèrement devant la peau).
-        Vec3 Lift(int i) => face[i] + normals[i] * 0.008;
+        Vec3 Lift(int i) => nodes[i] + normals[i] * 0.008;
         Vec3[] Line(int[] ids) => ids.Select(Lift).ToArray();
-        EyeLeft = Average(LeftEyeLoop.Select(i => face[i])) + new Vec3(0, 0, 0.01);
-        EyeRight = Average(RightEyeLoop.Select(i => face[i])) + new Vec3(0, 0, 0.01);
-        MouthPoint = (face[13] + face[14]) * 0.5;
+        EyeLeft = Average(LeftEyeLoop.Select(i => nodes[i])) + new Vec3(0, 0, 0.01);
+        EyeRight = Average(RightEyeLoop.Select(i => nodes[i])) + new Vec3(0, 0, 0.01);
+        MouthPoint = (nodes[13] + nodes[14]) * 0.5;
         var featureStrokes = new List<Vec3[]>
         {
             Line(RightEyeLoop), Line(LeftEyeLoop), Line(RightBrow), Line(LeftBrow), Line(LipsOuter), Line(LipsInner),
         };
+        if (female)
+        {
+            // Cils : trait au-dessus de la paupière du haut, prolongé en petite virgule au coin extérieur.
+            foreach (var (lid, side) in new[] { (RightUpperLid, -1.0), (LeftUpperLid, 1.0) })
+            {
+                var lash = lid.Select(i => Lift(i) + new Vec3(0, 0.008, 0.006)).ToList();
+                var corner = lash[0];
+                lash.Insert(0, corner + new Vec3(side * 0.03, 0.018, -0.01));
+                featureStrokes.Add(lash.ToArray());
+                _glowLines.Add((lash.ToArray(), 0.8));
+            }
+        }
         FaceStrokeCount = featureStrokes.Count;
         featureStrokes.AddRange(earRims);
         FeatureStrokes = featureStrokes;
@@ -471,6 +503,63 @@ public sealed class HeadModel3D
     }
 
     private static double G(double v) => Math.Exp(-v * v);
+
+    private static double Smooth(double v)
+    {
+        v = Math.Clamp(v, 0, 1);
+        return v * v * (3 - 2 * v);
+    }
+
+    /// <summary>
+    /// Différences homme / femme (proportions moyennes) appliquées à la tête
+    /// construite. Femme : arcades effacées, yeux un peu plus grands, lèvres
+    /// plus pleines, nez plus petit, pommettes plus hautes, mâchoire plus
+    /// étroite, menton plus petit, bas du visage plus court, cou plus fin,
+    /// tête un peu plus petite. Homme : arcades et nez plus marqués,
+    /// mâchoire plus large, menton plus carré, cou plus épais, pomme d'Adam.
+    /// </summary>
+    private static Vec3 Morph(Vec3 p, bool female, Vec3[] eyes, Vec3 mouth, Vec3 nose)
+    {
+        double x = p.X, y = p.Y, z = p.Z;
+        var front = Math.Clamp((z + 0.05) / 0.4, 0, 1);
+        var ax = Math.Abs(x);
+        var noseZone = G(x / 0.07) * G((y - nose.Y) / 0.09) * front;
+        var jawZone = G((y + 0.55) / 0.16);
+        var neck = Smooth((-0.8 - y) / 0.15);
+        if (female)
+        {
+            z -= 0.035 * G((y - 0.20) / 0.05) * G(x / 0.32) * front;                 // arcades effacées
+            foreach (var eye in eyes)
+            {
+                var d = Math.Sqrt((x - eye.X) * (x - eye.X) + (y - eye.Y) * (y - eye.Y));
+                var w = G(d / 0.075) * front;
+                x += (x - eye.X) * 0.22 * w;                                         // yeux plus grands
+                y += (y - eye.Y) * 0.3 * w;
+            }
+            var lips = G(x / 0.14) * G((y - mouth.Y) / 0.055) * front;
+            y += (y - mouth.Y) * 0.35 * lips;                                        // lèvres plus pleines
+            z += 0.025 * lips;
+            z -= 0.035 * noseZone;                                                   // nez plus petit
+            x *= 1 - 0.18 * G(x / 0.08) * G((y - nose.Y + 0.03) / 0.05) * front;
+            z += 0.025 * G((ax - 0.3) / 0.1) * G((y - 0.02) / 0.08) * front;         // pommettes hautes
+            x *= 1 - 0.17 * Smooth((-0.25 - y) / 0.45) * (1 - neck);                 // mâchoire étroite, visage en cœur
+            z -= 0.03 * G(x / 0.13) * G((y + 0.72) / 0.08) * front;                  // menton plus petit
+            y += 0.04 * Smooth((-0.45 - y) / 0.3);                                   // bas du visage plus court
+            x *= 1 - 0.25 * neck;                                                    // cou fin
+            z = -0.07 + (z + 0.07) * (1 - 0.2 * neck);
+            const double scale = 0.95;                                               // tête un peu plus petite
+            return new Vec3(x * scale, -0.1 + (y + 0.1) * scale, z * scale);
+        }
+        z += 0.02 * G((y - 0.20) / 0.05) * G(x / 0.32) * front;                      // arcades marquées
+        z += 0.01 * noseZone;                                                        // nez un peu plus fort
+        x *= 1 + 0.11 * jawZone * Smooth((-0.3 - y) / 0.2);                          // mâchoire large
+        z += 0.02 * G(x / 0.18) * G((y + 0.7) / 0.07) * front;                       // menton carré
+        x *= 1 + 0.25 * G(x / 0.2) * G((y + 0.72) / 0.06) * front * (Math.Abs(x) > 0.05 ? 1 : 0); // menton large
+        x *= 1 + 0.18 * neck;                                                        // cou épais
+        z = -0.07 + (z + 0.07) * (1 + 0.12 * neck);
+        if (z > 0) z += 0.03 * G(x / 0.045) * G((y + 0.97) / 0.05);                  // pomme d'Adam
+        return new Vec3(x, y, z);
+    }
 
     // ---------- Oreilles ----------
 
@@ -667,10 +756,13 @@ public sealed class HeadModel3D
     /// <summary>Nuage de points pour le rendu « points » : position, normale, éclat propre (traits du visage), poids de mâchoire.</summary>
     public sealed record PointCloudData(Vec3[] Positions, Vec3[] Normals, double[] Glow, double[] Jaw, bool[] OnFace);
 
-    private static readonly Lazy<PointCloudData> SharedCloud = new(() => Default.BuildPointCloud());
+    private PointCloudData? _points;
+
+    /// <summary>Nuage de points de cette tête (calculé à la première demande).</summary>
+    public PointCloudData Points => _points ??= BuildPointCloud();
 
     /// <summary>Points répartis sur toute la surface (plus serrés sur le visage), calculés une fois.</summary>
-    public static PointCloudData PointCloud => SharedCloud.Value;
+    public static PointCloudData PointCloud => Default.Points;
 
     /// <summary>Écart entre deux rangées de points, et entre deux points d'une rangée (au plus large de la tête).</summary>
     private const double PointRowStep = 0.026;
