@@ -790,8 +790,8 @@
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                         <TextBlock Text="Taille :" VerticalAlignment="Center" />
-                                        <Slider x:Name="OrbSizeSlider" Minimum="60" Maximum="400" SmallChange="10" LargeChange="40"
-                                                Width="140" Margin="6,0" ValueChanged="OrbSizeSlider_ValueChanged" />
+                                        <Slider x:Name="OrbSizeSlider" Minimum="60" Maximum="1000" SmallChange="10" LargeChange="50"
+                                                Width="220" Margin="6,0" ValueChanged="OrbSizeSlider_ValueChanged" />
                                         <TextBlock x:Name="OrbSizeValueText" Text="160px" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource MutedBrush}" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0"

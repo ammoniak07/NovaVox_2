@@ -12,7 +12,7 @@ public sealed class OrbConfig
 {
     public const double DefaultSize = 160;
     public const double MinSize = 60;
-    public const double MaxSize = 400;
+    public const double MaxSize = 1000;
     /// <summary>Couleur au repos (bleu-cyan).</summary>
     public const string DefaultIdleColor = "#38bdf8";
     /// <summary>Couleur quand NovaVox parle (orange-rouge).</summary>
