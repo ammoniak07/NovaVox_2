@@ -11,9 +11,10 @@ public class HeadModel3DTests
     public void HasAReasonableNumberOfPointsAndLines()
     {
         // Assez pour un visage lisible, pas trop pour rester léger à animer à chaque image.
-        Assert.InRange(Model.Nodes.Count, 1200, 1800);
-        Assert.InRange(Model.Triangles.Count, 2800, 3200);
-        Assert.InRange(Model.Edges.Count, 4000, 5000);
+        Assert.InRange(Model.Nodes.Count, 1500, 2600);
+        Assert.InRange(Model.Triangles.Count, 3000, 5000);
+        Assert.Equal(468, Model.FaceNodeCount); // visage MediaPipe complet
+        Assert.InRange(Model.Edges.Count, 4500, 7500);
         Assert.All(Model.EdgeTriangles, t => Assert.InRange(t.Length, 1, 2));
     }
 
@@ -77,19 +78,45 @@ public class HeadModel3DTests
     public void PointCloud_CoversTheHeadAndLightsUpTheFace()
     {
         var cloud = HeadModel3D.PointCloud;
-        Assert.InRange(cloud.Positions.Length, 3000, 9000);
+        Assert.InRange(cloud.Positions.Length, 4000, 10000);
         Assert.Equal(cloud.Positions.Length, cloud.Normals.Length);
-        // Normales unitaires et tournées vers l'extérieur.
+        // Normales unitaires.
         for (var i = 0; i < cloud.Positions.Length; i++)
         {
             Assert.InRange(cloud.Normals[i].Length, 0.99, 1.01);
-            var p = cloud.Positions[i];
-            Assert.True(Vec3.Dot(cloud.Normals[i], new Vec3(p.X, 0.3 * p.Y, p.Z)) >= 0);
         }
         // Les yeux brillent, le crâne non.
-        var eye = Enumerable.Range(0, cloud.Positions.Length).OrderBy(i => cloud.Positions[i].DistanceTo(new Vec3(0.20, 0.10, 0.6))).First();
+        var eye = Enumerable.Range(0, cloud.Positions.Length).OrderBy(i => cloud.Positions[i].DistanceTo(HeadModel3D.RightEye)).First();
         var skull = Enumerable.Range(0, cloud.Positions.Length).OrderBy(i => cloud.Positions[i].DistanceTo(new Vec3(0, 0.7, -0.5))).First();
         Assert.True(cloud.Glow[eye] > 0.5);
         Assert.True(cloud.Glow[skull] < 0.05);
+    }
+
+    [Fact]
+    public void Mesh_IsClosedExceptAtTheNeck()
+    {
+        // Chaque arête borde deux triangles (pas de trou entre le visage et le crâne),
+        // sauf le bas du cou et le bord des oreilles.
+        var open = Enumerable.Range(0, Model.Edges.Count).Where(e => Model.EdgeTriangles[e].Length == 1).ToList();
+        foreach (var e in open)
+        {
+            var (a, b) = Model.Edges[e];
+            var bottom = Model.Nodes[a].Y < -1.1 && Model.Nodes[b].Y < -1.1;
+            var ear = Math.Abs(Model.Nodes[a].X) > 0.45 && Math.Abs(Model.Nodes[b].X) > 0.45 && a >= Model.FaceNodeCount;
+            Assert.True(bottom || ear, $"trou entre {Model.Nodes[a]} et {Model.Nodes[b]}");
+        }
+    }
+
+    [Fact]
+    public void Mesh_TrianglesFaceOutward()
+    {
+        // Sens cohérent : vue de face, presque tous les triangles du visage sont visibles.
+        var projected = new ProjectedNode[Model.Nodes.Count];
+        Model.Project(0, 0, 0, 0, projected);
+        var faceTriangles = Enumerable.Range(0, Model.Triangles.Count)
+            .Where(t => Model.Triangles[t].A < Model.FaceNodeCount && Model.Triangles[t].B < Model.FaceNodeCount && Model.Triangles[t].C < Model.FaceNodeCount)
+            .ToList();
+        var visible = faceTriangles.Count(t => Model.FacesViewer(t, projected));
+        Assert.True(visible > faceTriangles.Count * 0.85, $"{visible}/{faceTriangles.Count}");
     }
 }

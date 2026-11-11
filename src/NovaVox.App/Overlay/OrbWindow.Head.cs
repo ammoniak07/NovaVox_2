@@ -305,7 +305,7 @@ public partial class OrbWindow
         var size = Math.Min(b.Width, b.Height) * 1.15;
         var k = size * 0.43;
         var cx = b.Left + b.Width / 2;
-        var cy = b.Top + b.Height / 2 - 0.085 * k;
+        var cy = b.Top + b.Height / 2 - 0.13 * k;
 
         // Couleurs : celles de l'état (repos, écoute, réflexion, parole), plus claires pour les traits.
         var main = _shownColor;
@@ -486,7 +486,7 @@ public partial class OrbWindow
         var eyes = new[] { HeadModel3D.LeftEye, HeadModel3D.RightEye };
         for (var i = 0; i < 2; i++)
         {
-            var eye = HeadModel3D.OnFace(eyes[i].X, eyes[i].Y);
+            var eye = eyes[i];
             var (x, y, _) = HeadModel3D.ProjectPoint(eye, 0, _headYaw, _headPitch, _headRoll, jaw);
             var shape = _headEyes[i];
             shape.Width = shape.Height = eyeSize;

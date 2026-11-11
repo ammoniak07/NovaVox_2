@@ -35,6 +35,9 @@
     <EmbeddedResource Include="GameLog\SchemaNameLocalizationKeys.json" />
     <!-- Armes de vaisseau, blindage et boucliers (tableau « 🎯 Pénétration », voir CombatDatabase). -->
     <EmbeddedResource Include="Combat\CombatData.json" />
+    <EmbeddedResource Include="Avatar\canonical_face_model.obj" />
+    <!-- Licence Apache 2.0 du visage MediaPipe, livrée avec l'application. -->
+    <None Include="Avatar\canonical_face_model.LICENSE.txt" Link="licenses\mediapipe_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
