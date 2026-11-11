@@ -244,6 +244,8 @@
                     </Path.Effect>
                 </Path>
             </Canvas>
+            <!-- Avatar « tête holographique » (à la place de la bulle) : construit dans OrbWindow.Head.cs. -->
+            <Canvas x:Name="HeadLayer" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False" />
             <!-- Petit reflet brillant en haut à gauche. -->
             <Ellipse x:Name="Highlight" Width="30" Height="22">
                 <Ellipse.Fill>

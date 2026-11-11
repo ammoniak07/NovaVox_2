@@ -297,7 +297,7 @@ public partial class OrbWindow : Window
         var restColor = _listeningActive ? _idleColor : InactiveColor;
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : restColor;
         // ROxieWOOki : petite tête de chat rose, avec ses propres tons roses.
-        if (CatMode) targetColor = CatTargetColor(hearing);
+        if (CatMode && !HeadMode) targetColor = CatTargetColor(hearing);
         _color = Lerp(_color, targetColor, 1 - Math.Exp(-dt * 5));
         // En parlant : la couleur choisie varie, tantôt plus foncée, tantôt
         // plus claire, au fil des syllabes (comme une lumière qui pulse).
@@ -330,6 +330,7 @@ public partial class OrbWindow : Window
         // Endormie, elle pâlit un peu (en plus de l'opacité choisie dans les réglages).
         GlowPath.Opacity = 0.55 * (1 - 0.45 * _sleepiness) + 0.15 * _level;
         OrbCanvas.Opacity = Math.Clamp(_config.Opacity, OrbConfig.MinOpacity, 100) / 100.0 * (1 - 0.25 * _sleepiness);
+        UpdateHead(blob.Bounds, dt, t, _speaking ? target : 0, hearing);
         UpdateCaption();
     }
 
