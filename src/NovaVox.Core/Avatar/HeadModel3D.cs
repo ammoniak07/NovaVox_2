@@ -100,6 +100,8 @@ public sealed class HeadModel3D
     public int FaceNodeCount { get; }
     /// <summary>Pour chaque triangle : vrai s'il fait partie du visage (option « visage seul »).</summary>
     public IReadOnlyList<bool> FaceTriangle { get; }
+    /// <summary>Pour chaque sommet : vrai s'il est affiché en « visage seul » (le visage, plus le haut du crâne et la crête pour les Banu).</summary>
+    public IReadOnlyList<bool> InFaceOnly { get; private set; } = Array.Empty<bool>();
     /// <summary>Nombre de traits du visage (les premiers de FeatureStrokes ; les suivants sont les oreilles).</summary>
     public int FaceStrokeCount { get; }
 
@@ -333,7 +335,10 @@ public sealed class HeadModel3D
         EdgeTriangles = Edges.Select(e => edgeTris[e].ToArray()).ToList();
         NodeNormals = normals;
         NodeShade = shades;
-        FaceTriangle = oriented.Select(t => t.Item1 < FaceNodeCount && t.Item2 < FaceNodeCount && t.Item3 < FaceNodeCount).ToList();
+        // Visage seul : le masque du visage ; pour les Banu, aussi le dessus de la tête (la crête fait partie du visage).
+        var inFace = nodes.Select((n, i) => i < FaceNodeCount || (species == HeadSpecies.Banu && n.Y > 0.28 && n.Z > -0.2)).ToArray();
+        InFaceOnly = inFace;
+        FaceTriangle = oriented.Select(t => inFace[t.Item1] && inFace[t.Item2] && inFace[t.Item3]).ToList();
 
         // 5) Repères et traits du visage (légèrement devant la peau).
         Vec3 Lift(int i) => nodes[i] + normals[i] * 0.008;
@@ -591,7 +596,11 @@ public sealed class HeadModel3D
 
         // Visage long, mâchoire et menton larges et forts, cou épais strié de tendons.
         y -= 0.05 * Smooth((-0.3 - y) / 0.4);
-        z += 0.045 * G(x / 0.2) * G((y + 0.72) / 0.09) * front;                  // menton fort
+        // Menton grand : plus long vers le bas, large et en avant.
+        var chin = G(x / 0.22) * Smooth((-0.55 - y) / 0.12) * (1 - neck) * front;
+        y -= 0.09 * chin;
+        x *= 1 + 0.12 * chin;
+        z += 0.07 * G(x / 0.22) * G((y + 0.75) / 0.1) * front;
         x *= 1 + 0.06 * G((y + 0.55) / 0.15) * (1 - neck);                        // mâchoire large
         x *= 1 + 0.08 * neck;
         z = -0.07 + (z + 0.07) * (1 + 0.04 * neck);
@@ -627,7 +636,7 @@ public sealed class HeadModel3D
         // Pommettes saillantes (en avant et sur les côtés), joues bien creuses dessous.
         z += 0.09 * G((ax - 0.33) / 0.09) * G((y + 0.02) / 0.08) * front;
         x += Math.Sign(x) * 0.07 * G((ax - 0.42) / 0.11) * G((y + 0.02) / 0.09) * front;
-        z -= 0.08 * G((ax - 0.27) / 0.09) * G((y + 0.26) / 0.1) * front;
+        z -= 0.14 * G((ax - 0.28) / 0.1) * G((y + 0.27) / 0.11) * front;          // joues très creusées
         // Bouche large aux lèvres épaisses, coins tombants.
         var lips = G(x / 0.16) * G((y - mouth.Y) / 0.06) * front;
         x += x * 0.18 * lips;                                                      // bouche large

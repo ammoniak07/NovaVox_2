@@ -328,7 +328,8 @@ public partial class OrbWindow
         // Place et taille : la tête (environ 2 unités de haut) remplit la place de la bulle.
         var size = Math.Min(b.Width, b.Height) * 1.15;
         // Visage seul : agrandi pour remplir la place de la tête.
-        var k = size * (_config.HeadFaceOnly ? 0.62 : 0.43);
+        // (Banu : un peu moins agrandi, la crête fait partie du visage.)
+        var k = size * (_config.HeadFaceOnly ? (_config.HeadBanu ? 0.5 : 0.62) : 0.43);
         var cx = b.Left + b.Width / 2;
         var cy = b.Top + b.Height / 2 - 0.13 * k;
 
@@ -393,7 +394,7 @@ public partial class OrbWindow
             for (var e = 0; e < model.Edges.Count; e++)
             {
                 var (a, c) = model.Edges[e];
-                if (faceOnly && (a >= model.FaceNodeCount || c >= model.FaceNodeCount)) continue;
+                if (faceOnly && (!model.InFaceOnly[a] || !model.InFaceOnly[c])) continue;
                 var bright = -1.0;
                 foreach (var tri in model.EdgeTriangles[e])
                     if (_headTriVisible[tri] && (!faceOnly || model.FaceTriangle[tri])) bright = Math.Max(bright, _headTriBright[tri]);
@@ -459,7 +460,7 @@ public partial class OrbWindow
             // Un point sur trois : avec un maillage aussi fin, tous les points feraient une masse blanche.
             for (var i = 0; i < model.Nodes.Count; i += 3)
             {
-                if (_config.HeadFaceOnly && i >= model.FaceNodeCount) break;
+                if (_config.HeadFaceOnly && !model.InFaceOnly[i]) continue;
                 var visible = HeadModel3D.SurfaceVisibility(model.Nodes[i], _headYaw, _headPitch);
                 if (visible < 0.3) continue;
                 var twinkle = Math.Pow(Math.Max(0, Math.Sin(t * _headNodeFreq[i] * (1 + 2 * _thinkingAmount) + _headNodePhase[i])), 6);
