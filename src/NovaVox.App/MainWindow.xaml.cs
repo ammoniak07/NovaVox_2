@@ -3972,8 +3972,9 @@ public partial class MainWindow : Window
         OrbStyleBubbleRadio.IsChecked = !orb.HeadMode && !orb.CatMode;
         OrbHeadPointsCheckbox.IsChecked = orb.HeadPoints;
         OrbHeadFaceOnlyCheckbox.IsChecked = orb.HeadFaceOnly;
-        OrbHeadFemaleRadio.IsChecked = orb.HeadFemale;
-        OrbHeadMaleRadio.IsChecked = !orb.HeadFemale;
+        OrbHeadBanuRadio.IsChecked = orb.HeadBanu;
+        OrbHeadFemaleRadio.IsChecked = !orb.HeadBanu && orb.HeadFemale;
+        OrbHeadMaleRadio.IsChecked = !orb.HeadBanu && !orb.HeadFemale;
         OrbCoreCheckbox.IsChecked = orb.ShowCore;
         OrbWaveCheckbox.IsChecked = orb.ShowVoiceWave;
         OrbRingsCheckbox.IsChecked = orb.ShowListenRings;
@@ -4350,6 +4351,7 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings) return;
         _state.Orb.HeadFemale = OrbHeadFemaleRadio.IsChecked == true;
+        _state.Orb.HeadBanu = OrbHeadBanuRadio.IsChecked == true;
         SaveAndApplyOrb();
     }
 

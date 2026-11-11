@@ -15,6 +15,15 @@ public readonly record struct Vec3(double X, double Y, double Z)
     public Vec3 Normalized() => Length < 1e-12 ? this : this * (1 / Length);
 }
 
+/// <summary>Visage de la tête holographique.</summary>
+public enum HeadSpecies
+{
+    Male,
+    Female,
+    /// <summary>Extraterrestre inspiré des Banu de Star Citizen : crâne en crête, visage ridé, pas d'oreilles.</summary>
+    Banu,
+}
+
 /// <summary>Sommet projeté à l'écran : position (unités de l'avatar), profondeur.</summary>
 public struct ProjectedNode
 {
@@ -93,7 +102,8 @@ public sealed class HeadModel3D
     public int FaceStrokeCount { get; }
 
     /// <summary>Visage de femme (sinon d'homme).</summary>
-    public bool Female { get; }
+    public bool Female => Species == HeadSpecies.Female;
+    public HeadSpecies Species { get; }
     public Vec3 TopPoint { get; }
     public Vec3 EyeLeft { get; }
     public Vec3 EyeRight { get; }
@@ -102,12 +112,20 @@ public sealed class HeadModel3D
     public Vec3 EarRight { get; private set; }
     private readonly List<(Vec3[] Line, double Weight)> _glowLines = new();
 
-    private static readonly Lazy<HeadModel3D> SharedMale = new(() => new HeadModel3D(female: false));
-    private static readonly Lazy<HeadModel3D> SharedFemale = new(() => new HeadModel3D(female: true));
+    private static readonly Lazy<HeadModel3D> SharedMale = new(() => new HeadModel3D(HeadSpecies.Male));
+    private static readonly Lazy<HeadModel3D> SharedFemale = new(() => new HeadModel3D(HeadSpecies.Female));
+    private static readonly Lazy<HeadModel3D> SharedBanu = new(() => new HeadModel3D(HeadSpecies.Banu));
     /// <summary>Tête d'homme (modèle par défaut).</summary>
     public static HeadModel3D Default => SharedMale.Value;
     /// <summary>Tête d'homme ou de femme (chacune calculée une fois).</summary>
     public static HeadModel3D For(bool female) => female ? SharedFemale.Value : SharedMale.Value;
+    /// <summary>Tête du visage demandé (chacune calculée une fois).</summary>
+    public static HeadModel3D For(HeadSpecies species) => species switch
+    {
+        HeadSpecies.Female => SharedFemale.Value,
+        HeadSpecies.Banu => SharedBanu.Value,
+        _ => SharedMale.Value,
+    };
 
     // Paupières du haut (pour les cils du visage de femme).
     private static readonly int[] RightUpperLid = { 33, 246, 161, 160, 159, 158, 157, 173, 133 };
@@ -125,9 +143,10 @@ public sealed class HeadModel3D
     private static readonly int[] NoseBridge = { 168, 6, 197, 195, 5, 4, 1 };
     private static readonly int[] NoseBase = { 98, 97, 2, 326, 327 };
 
-    private HeadModel3D(bool female)
+    private HeadModel3D(HeadSpecies species)
     {
-        Female = female;
+        Species = species;
+        var female = species == HeadSpecies.Female;
         var random = new Random(4557);
 
         // 1) Visage MediaPipe, mis à l'échelle : milieu des yeux et milieu de la bouche
@@ -230,9 +249,11 @@ public sealed class HeadModel3D
             if (seen.Add(Sorted(na, nb, nc))) triangles.Add((na, nb, nc));
         }
 
-        // 3) Oreilles : petits pavillons en relief collés sur les côtés.
+        // 3) Oreilles : petits pavillons en relief collés sur les côtés (les Banu n'en ont pas).
         var earRims = new List<Vec3[]>();
-        foreach (var side in new[] { -1.0, 1.0 })
+        EarLeft = new Vec3(-0.56, 0.03, -0.08);
+        EarRight = new Vec3(0.56, 0.03, -0.08);
+        foreach (var side in species == HeadSpecies.Banu ? Array.Empty<double>() : new[] { -1.0, 1.0 })
         {
             var (earNodes, earTriangles, rim, center) = BuildEar(side, nodes.Count);
             nodes.AddRange(earNodes);
@@ -246,10 +267,13 @@ public sealed class HeadModel3D
         var eyeCenters = new[] { Average(LeftEyeLoop.Select(i => nodes[i])), Average(RightEyeLoop.Select(i => nodes[i])) };
         var mouthCenter = (nodes[13] + nodes[14]) * 0.5;
         var noseTip = nodes[1];
-        for (var i = 0; i < nodes.Count; i++) nodes[i] = Morph(nodes[i], female, eyeCenters, mouthCenter, noseTip);
-        EarLeft = Morph(EarLeft, female, eyeCenters, mouthCenter, noseTip);
-        EarRight = Morph(EarRight, female, eyeCenters, mouthCenter, noseTip);
-        earRims = earRims.Select(rim => rim.Select(p => Morph(p, female, eyeCenters, mouthCenter, noseTip)).ToArray()).ToList();
+        Vec3 Shape(Vec3 p) => species == HeadSpecies.Banu
+            ? MorphBanu(p, eyeCenters, mouthCenter, noseTip)
+            : Morph(p, female, eyeCenters, mouthCenter, noseTip);
+        for (var i = 0; i < nodes.Count; i++) nodes[i] = Shape(nodes[i]);
+        EarLeft = Shape(EarLeft);
+        EarRight = Shape(EarRight);
+        earRims = earRims.Select(rim => rim.Select(Shape).ToArray()).ToList();
         TopPoint = nodes[topIndex];
 
         // 4) Orientation : chaque triangle tourné vers l'extérieur (normale = (b-a)×(c-a)).
@@ -310,10 +334,9 @@ public sealed class HeadModel3D
         EyeLeft = Average(LeftEyeLoop.Select(i => nodes[i])) + new Vec3(0, 0, 0.01);
         EyeRight = Average(RightEyeLoop.Select(i => nodes[i])) + new Vec3(0, 0, 0.01);
         MouthPoint = (nodes[13] + nodes[14]) * 0.5;
-        var featureStrokes = new List<Vec3[]>
-        {
-            Line(RightEyeLoop), Line(LeftEyeLoop), Line(RightBrow), Line(LeftBrow), Line(LipsOuter), Line(LipsInner),
-        };
+        var featureStrokes = species == HeadSpecies.Banu
+            ? new List<Vec3[]> { Line(RightEyeLoop), Line(LeftEyeLoop), Line(LipsInner) } // ni sourcils ni contour de lèvres
+            : new List<Vec3[]> { Line(RightEyeLoop), Line(LeftEyeLoop), Line(RightBrow), Line(LeftBrow), Line(LipsOuter), Line(LipsInner) };
         if (female)
         {
             // Cils : trait au-dessus de la paupière du haut, prolongé en petite virgule au coin extérieur.
@@ -333,11 +356,12 @@ public sealed class HeadModel3D
         // Éclat propre des traits pour le rendu en points.
         _glowLines.Add((Line(RightEyeLoop), 1.0));
         _glowLines.Add((Line(LeftEyeLoop), 1.0));
-        _glowLines.Add((Line(RightBrow), 0.45));
-        _glowLines.Add((Line(LeftBrow), 0.45));
-        _glowLines.Add((Line(RightBrowTop), 0.25));
-        _glowLines.Add((Line(LeftBrowTop), 0.25));
-        _glowLines.Add((Line(LipsOuter), 0.55));
+        var banu = species == HeadSpecies.Banu;
+        _glowLines.Add((Line(RightBrow), banu ? 0 : 0.45));
+        _glowLines.Add((Line(LeftBrow), banu ? 0 : 0.45));
+        _glowLines.Add((Line(RightBrowTop), banu ? 0 : 0.25));
+        _glowLines.Add((Line(LeftBrowTop), banu ? 0 : 0.25));
+        _glowLines.Add((Line(LipsOuter), banu ? 0.15 : 0.55));
         _glowLines.Add((Line(LipsInner), 0.9));
         _glowLines.Add((Line(NoseBridge), 0.12));
         _glowLines.Add((Line(NoseBase), 0.85));
@@ -508,6 +532,71 @@ public sealed class HeadModel3D
     {
         v = Math.Clamp(v, 0, 1);
         return v * v * (3 - 2 * v);
+    }
+
+    /// <summary>
+    /// Tête de Banu (inspirée de l'espèce extraterrestre de Star Citizen) :
+    /// crâne qui s'allonge en crête vers le haut et l'arrière, tempes et
+    /// visage étroits, front et joues creusés de rides verticales, arête
+    /// qui part du nez et monte sur le front, nez aplati, yeux enfoncés,
+    /// lèvres fines, menton étroit, cou long et fin. Un peu réduite pour
+    /// que la crête tienne dans la place de l'avatar.
+    /// </summary>
+    private static Vec3 MorphBanu(Vec3 p, Vec3[] eyes, Vec3 mouth, Vec3 nose)
+    {
+        double x = p.X, y = p.Y, z = p.Z;
+        var front = Math.Clamp((z + 0.05) / 0.4, 0, 1);
+        var ax = Math.Abs(x);
+        var neck = Smooth((-0.8 - y) / 0.15);
+
+        // Crâne étiré en diagonale vers le haut et l'arrière, et resserré sur les côtés :
+        // il forme une grande crête (comme une corne vue de profil).
+        var high = Smooth((y - 0.2) / 0.75);
+        y += 0.32 * Math.Pow(high, 1.4);
+        z -= 0.3 * high * high;
+        x *= 1 - 0.38 * high;
+        // Sillons verticaux sur tout le crâne et le front (rayonnent depuis l'axe de la tête).
+        var phi = Math.Atan2(x, z + 0.1);
+        var grooves = Smooth((y + 0.05) / 0.35) * (0.6 + 0.4 * high);
+        var groove = 0.045 * grooves * (Math.Sin(phi * 9 + 0.6 * Math.Sin(y * 6)) * 0.75 + Math.Sin(phi * 19 + 1) * 0.25);
+        var radial = Math.Sqrt(x * x + (z + 0.1) * (z + 0.1));
+        if (radial > 1e-6)
+        {
+            x += x / radial * groove;
+            z += (z + 0.1) / radial * groove;
+        }
+        var top = high;
+
+        // Visage plus long et étroit, menton pointu, cou long et fin.
+        x *= 1 - 0.1 * Smooth((0.2 - y) / 0.5) - 0.12 * Smooth((-0.45 - y) / 0.3) * (1 - neck);
+        y -= 0.05 * Smooth((-0.3 - y) / 0.4);
+        x *= 1 - 0.22 * neck;
+        z = -0.07 + (z + 0.07) * (1 - 0.18 * neck);
+
+        // Arête centrale : du nez jusqu'à la crête, en relief.
+        z += 0.06 * G(x / 0.05) * Smooth((y - nose.Y) / 0.25) * front;
+        // Nez aplati, narines en fentes.
+        z -= 0.05 * G(x / 0.08) * G((y - nose.Y) / 0.08) * front;
+        // Yeux enfoncés, orbites marquées.
+        foreach (var eye in eyes)
+        {
+            var d = Math.Sqrt((x - eye.X) * (x - eye.X) + (y - eye.Y) * (y - eye.Y));
+            z -= 0.03 * G(d / 0.09) * front;
+        }
+        // Joues creuses sous les pommettes.
+        z -= 0.045 * G((ax - 0.27) / 0.08) * G((y + 0.2) / 0.12) * front;
+        // Lèvres fines, bouche tombante.
+        var lips = G(x / 0.14) * G((y - mouth.Y) / 0.05) * front;
+        y -= (y - mouth.Y) * 0.5 * lips;
+        y -= 0.015 * G((ax - 0.12) / 0.05) * G((y - mouth.Y) / 0.03) * front;
+        // Rides et sillons verticaux sur le front, le crâne et les joues.
+        var wrinkleZone = front * (1 - top);
+        var wrinkles = Math.Sin(x * 30 + 0.5 * Math.Sin(y * 9)) * 0.65 + Math.Sin(x * 17 + 1.3) * 0.35;
+        var calm = 1 - G((y - mouth.Y) / 0.08) * G(x / 0.2) - 0.7 * G(((x - eyes[0].X) * (x - eyes[0].X) + (y - eyes[0].Y) * (y - eyes[0].Y)) / 0.012) - 0.7 * G(((x - eyes[1].X) * (x - eyes[1].X) + (y - eyes[1].Y) * (y - eyes[1].Y)) / 0.012);
+        z += 0.035 * wrinkles * wrinkleZone * Math.Clamp(calm, 0, 1) * (1 - neck);
+
+        const double scale = 0.84;
+        return new Vec3(x * scale, -0.15 + (y + 0.15) * scale, z * scale);
     }
 
     /// <summary>

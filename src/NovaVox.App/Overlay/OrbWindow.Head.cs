@@ -70,7 +70,7 @@ public partial class OrbWindow
 
     private HeadModel3D CurrentHeadModel()
     {
-        var model = HeadModel3D.For(_config.HeadFemale);
+        var model = HeadModel3D.For(_config.HeadBanu ? HeadSpecies.Banu : _config.HeadFemale ? HeadSpecies.Female : HeadSpecies.Male);
         if (!ReferenceEquals(model, _headModel)) PrepareHeadModel(model);
         return model;
     }

@@ -108,6 +108,8 @@ public sealed class OrbConfig
     public bool HeadFaceOnly { get; set; }
     /// <summary>Tête holographique avec un visage de femme (sinon d'homme).</summary>
     public bool HeadFemale { get; set; }
+    /// <summary>Tête holographique de Banu (extraterrestre de Star Citizen) au lieu d'un visage humain.</summary>
+    public bool HeadBanu { get; set; }
     /// <summary>Intervalle moyen entre deux gags, en minutes (3..60).</summary>
     public int GagMinutes { get; set; } = DefaultGagMinutes;
     /// <summary>Distance au repos en mètres (1,2..4) pour l'effet de profondeur.</summary>
@@ -161,6 +163,7 @@ public sealed class OrbConfigStore
             config.HeadPoints = GetBool(data["avatar_head_points"]);
             config.HeadFaceOnly = GetBool(data["avatar_head_face_only"]);
             config.HeadFemale = GetBool(data["avatar_head_female"]);
+            config.HeadBanu = GetBool(data["avatar_head_banu"]);
             config.GagMinutes = Math.Clamp((int)Math.Round(GetDouble(data["gag_minutes"]) ?? OrbConfig.DefaultGagMinutes), OrbConfig.MinGagMinutes, OrbConfig.MaxGagMinutes);
             config.FarDistance = Math.Round(Math.Clamp(GetDouble(data["far_distance"]) ?? OrbConfig.DefaultFarDistance, OrbConfig.MinFarDistance, OrbConfig.MaxFarDistance), 1);
             if (data["forbidden_zones"] is JsonArray zones)
@@ -215,6 +218,7 @@ public sealed class OrbConfigStore
             ["avatar_head_points"] = config.HeadPoints,
             ["avatar_head_face_only"] = config.HeadFaceOnly,
             ["avatar_head_female"] = config.HeadFemale,
+            ["avatar_head_banu"] = config.HeadBanu,
             ["gag_minutes"] = config.GagMinutes,
             ["far_distance"] = config.FarDistance,
             ["forbidden_zones"] = new JsonArray(config.ForbiddenZones

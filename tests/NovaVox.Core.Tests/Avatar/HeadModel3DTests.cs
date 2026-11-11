@@ -140,4 +140,21 @@ public class HeadModel3DTests
         // Les deux restent des têtes complètes, avec leur nuage de points.
         Assert.InRange(female.Points.Positions.Length, 4000, 12000);
     }
+
+    [Fact]
+    public void BanuHead_HasACrestAndNoEars()
+    {
+        var human = HeadModel3D.For(HeadSpecies.Male);
+        var banu = HeadModel3D.For(HeadSpecies.Banu);
+        Assert.Equal(HeadSpecies.Banu, banu.Species);
+        // Le crâne monte plus haut et part plus loin vers l'arrière (crête).
+        double TopOf(HeadModel3D m) => m.Nodes.Max(n => n.Y);
+        double TopDepth(HeadModel3D m) => m.Nodes.OrderByDescending(n => n.Y).First().Z;
+        Assert.True(TopOf(banu) > TopOf(human));
+        Assert.True(TopDepth(banu) < TopDepth(human) - 0.1, "le sommet du crâne part vers l'arrière");
+        // Pas d'oreilles : moins de sommets, et pas de contour d'oreille dans les traits.
+        Assert.True(banu.Nodes.Count < human.Nodes.Count);
+        Assert.Equal(banu.FaceStrokeCount, banu.FeatureStrokes.Count);
+        Assert.InRange(banu.Points.Positions.Length, 4000, 12000);
+    }
 }

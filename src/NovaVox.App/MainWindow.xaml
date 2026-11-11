@@ -778,6 +778,8 @@
                                                          ToolTip="Arcades et mâchoire marquées, menton carré, cou épais, pomme d'Adam" />
                                             <RadioButton x:Name="OrbHeadFemaleRadio" GroupName="OrbHeadGender" Content="Femme" Margin="16,0,0,0" VerticalAlignment="Center" Checked="OrbHeadGenderRadio_Checked"
                                                          ToolTip="Traits plus fins : yeux plus grands avec des cils, lèvres plus pleines, nez plus petit, pommettes hautes, mâchoire étroite, petit menton, cou fin" />
+                                            <RadioButton x:Name="OrbHeadBanuRadio" GroupName="OrbHeadGender" Content="Banu 👽" Margin="16,0,0,0" VerticalAlignment="Center" Checked="OrbHeadGenderRadio_Checked"
+                                                         ToolTip="Tête d'extraterrestre inspirée des Banu de Star Citizen : crâne étiré en crête vers l'arrière, sillons sur le crâne, visage ridé, nez aplati, yeux enfoncés, pas d'oreilles" />
                                         </StackPanel>
                                         <CheckBox x:Name="OrbHeadPointsCheckbox" Content="Tête en nuage de points" Margin="20,6,0,0"
                                                   ToolTip="La tête holographique est dessinée en points lumineux (comme un scan 3D) au lieu de triangles : yeux, nez et lèvres brillent davantage"
