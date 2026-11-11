@@ -287,7 +287,7 @@ public partial class OrbWindow
         _headPointGlowPath!.Data = glow;
         _headPointGlowPath.StrokeThickness = dot * 3.5;
         ((BlurEffect)_headPointGlowPath.Effect).Radius = Math.Max(2, k * 0.03);
-        _headPointGlowPath.Opacity = 0.4 + 0.3 * Math.Max(_level, _attention);
+        _headPointGlowPath.Opacity = 0.18 + 0.2 * Math.Max(_level, _attention);
     }
 
     /// <summary>Ressort amorti (un peu souple) vers la valeur voulue.</summary>
@@ -346,7 +346,7 @@ public partial class OrbWindow
         if (HeadMode)
         {
             GlowPath.Data = _headGlowShape;
-            GlowPath.Opacity *= 0.5;
+            GlowPath.Opacity *= 0.25;
         }
 
         var pointsMode = _config.HeadPoints;
@@ -445,7 +445,7 @@ public partial class OrbWindow
         _headGlowPath!.Data = glow;
         _headGlowPath.StrokeThickness = thickness * 2.6;
         ((BlurEffect)_headGlowPath.Effect).Radius = Math.Max(2, k * 0.035);
-        _headGlowPath.Opacity = 0.35 + 0.3 * Math.Max(_level, _attention);
+        _headGlowPath.Opacity = 0.18 + 0.2 * Math.Max(_level, _attention);
         _headBackPath!.Data = back;
         _headBackPath.StrokeThickness = thickness * 0.7;
 

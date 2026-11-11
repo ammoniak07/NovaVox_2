@@ -627,6 +627,17 @@ public sealed class HeadModel3D
         x += x * 0.18 * lips;                                                      // bouche large
         z += 0.03 * lips;                                                          // lèvres épaisses
         y -= 0.015 * G((ax - 0.14) / 0.05) * G((y - mouth.Y) / 0.03) * front;      // coins tombants
+        // Profil plat : crête, nez, centre de la bouche et menton sur une même ligne presque
+        // verticale (un peu plus en avant en haut). Le milieu du visage est ramené sur cette ligne :
+        // le nez recule, le front et la crête avancent.
+        {
+            var lineZ = nose.Z - 0.05 + 0.04 * (y - nose.Y);
+            var band = 0.2 - 0.12 * Smooth((y - 0.3) / 0.6);
+            var along = Smooth((y + 0.85) / 0.12) * Smooth((1.4 - y) / 0.2);
+            var w = 0.9 * G(x / band) * along * Smooth((z + 0.3) / 0.4);
+            z += (lineZ - z) * w;
+        }
+
         // Rides et sillons verticaux sur le front, le crâne et les joues.
         var wrinkleZone = front * (1 - top);
         var wrinkles = Math.Sin(x * 30 + 0.5 * Math.Sin(y * 9)) * 0.65 + Math.Sin(x * 17 + 1.3) * 0.35;
