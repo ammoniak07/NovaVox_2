@@ -254,7 +254,7 @@ public partial class OrbWindow
                 }
             }
         }
-        var dot = Math.Max(0.9, k * 0.016);
+        var dot = Math.Max(0.6, k * 0.0095);
         for (var l = 0; l < HeadLevels; l++)
         {
             contexts[l].Close();
@@ -423,7 +423,7 @@ public partial class OrbWindow
         // Points du maillage : ceux du côté visible, qui scintillent.
         var dots = new StreamGeometry();
         var brightDots = new StreamGeometry();
-        var radius = Math.Max(0.6, k * 0.008);
+        var radius = Math.Max(0.45, k * 0.0055);
         using (var dotCtx = dots.Open())
         using (var brightCtx = brightDots.Open())
         {
