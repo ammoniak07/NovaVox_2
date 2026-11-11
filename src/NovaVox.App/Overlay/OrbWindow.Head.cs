@@ -248,7 +248,7 @@ public partial class OrbWindow
                 }
             }
         }
-        var thickness = Math.Max(0.6, k * 0.0085);
+        var thickness = Math.Max(0.5, k * 0.007);
         for (var l = 0; l < HeadLevels; l++)
         {
             contexts[l].Close();
@@ -268,11 +268,12 @@ public partial class OrbWindow
         // Points du maillage : ceux du côté visible, qui scintillent.
         var dots = new StreamGeometry();
         var brightDots = new StreamGeometry();
-        var radius = Math.Max(0.7, k * 0.0095);
+        var radius = Math.Max(0.6, k * 0.008);
         using (var dotCtx = dots.Open())
         using (var brightCtx = brightDots.Open())
         {
-            for (var i = 0; i < model.Nodes.Count; i++)
+            // Un point sur trois : avec un maillage aussi fin, tous les points feraient une masse blanche.
+            for (var i = 0; i < model.Nodes.Count; i += 3)
             {
                 var visible = HeadModel3D.SurfaceVisibility(model.Nodes[i], _headYaw, _headPitch);
                 if (visible < 0.3) continue;

@@ -30,37 +30,42 @@ public struct ProjectedNode
 /// </summary>
 public sealed class HeadModel3D
 {
-    // Profil de révolution : hauteur, demi-largeur, profondeur avant, profondeur arrière.
+    // Profil de la tête : hauteur, demi-largeur, profondeur avant, profondeur arrière.
+    // Proportions d'une vraie tête (largeur ≈ 2/3 de la hauteur, crâne long vers
+    // l'arrière, mâchoire qui se resserre vers le menton, cou placé en arrière).
     private static readonly (double Y, double Rx, double Front, double Back)[] Profile =
     {
-        (0.85, 0.32, 0.32, 0.36),
-        (0.72, 0.50, 0.50, 0.57),
-        (0.56, 0.61, 0.61, 0.69),
-        (0.38, 0.66, 0.66, 0.74),
-        (0.22, 0.66, 0.70, 0.73),
-        (0.08, 0.65, 0.72, 0.71),
-        (-0.06, 0.62, 0.73, 0.67),
-        (-0.20, 0.58, 0.72, 0.60),
-        (-0.33, 0.53, 0.70, 0.52),
-        (-0.46, 0.46, 0.67, 0.43),
-        (-0.58, 0.36, 0.60, 0.35),
-        (-0.68, 0.27, 0.46, 0.30),
-        (-0.80, 0.25, 0.27, 0.30),
-        (-0.95, 0.27, 0.27, 0.31),
-        (-1.10, 0.31, 0.29, 0.33),
+        (0.885, 0.20, 0.22, 0.28),
+        (0.80, 0.37, 0.44, 0.50),
+        (0.68, 0.48, 0.58, 0.63),
+        (0.52, 0.545, 0.65, 0.68),
+        (0.36, 0.56, 0.68, 0.725),
+        (0.22, 0.555, 0.69, 0.74),
+        (0.10, 0.545, 0.70, 0.72),
+        (-0.02, 0.55, 0.71, 0.66),
+        (-0.14, 0.53, 0.72, 0.57),
+        (-0.26, 0.50, 0.71, 0.47),
+        (-0.38, 0.465, 0.69, 0.36),
+        (-0.48, 0.43, 0.66, 0.27),
+        (-0.57, 0.33, 0.63, 0.24),
+        (-0.65, 0.21, 0.57, 0.24),
+        (-0.72, 0.22, 0.34, 0.27),
+        (-0.82, 0.235, 0.20, 0.34),
+        (-0.97, 0.25, 0.18, 0.37),
+        (-1.12, 0.29, 0.19, 0.41),
     };
 
-    private const int PointsPerRing = 26;
+    private const int PointsPerRing = 40;
     /// <summary>Écart vertical entre deux anneaux du maillage (le profil ci-dessus est interpolé).</summary>
-    private const double RingStep = 0.08;
+    private const double RingStep = 0.054;
 
-    public static readonly Vec3 Top = new(0, 0.93, -0.02);
-    public static readonly Vec3 LeftEye = new(-0.24, 0.10, 0.60);
-    public static readonly Vec3 RightEye = new(0.24, 0.10, 0.60);
+    public static readonly Vec3 Top = new(0, 0.925, -0.05);
+    public static readonly Vec3 LeftEye = new(-0.20, 0.10, 0.62);
+    public static readonly Vec3 RightEye = new(0.20, 0.10, 0.62);
     public static readonly Vec3 Mouth = new(0, -0.40, 0.70);
-    public static readonly Vec3 LeftEar = new(-0.66, 0.02, 0.0);
-    public static readonly Vec3 RightEar = new(0.66, 0.02, 0.0);
-    public static readonly Vec3 Brain = new(0, 0.55, 0.0);
+    public static readonly Vec3 LeftEar = new(-0.60, 0.03, -0.08);
+    public static readonly Vec3 RightEar = new(0.60, 0.03, -0.08);
+    public static readonly Vec3 Brain = new(0, 0.50, -0.05);
     /// <summary>Ligne des lèvres : sous cette hauteur, le bas du visage descend quand la mâchoire s'ouvre.</summary>
     public const double MouthLine = -0.40;
 
@@ -92,8 +97,8 @@ public sealed class HeadModel3D
                 // Plus de points sur le visage que derrière la tête ; anneaux décalés d'un demi-pas.
                 var u = ((i + (r % 2) * 0.5) / PointsPerRing) * 2 - 1; // -1..1, 0 = face
                 var phi = Math.Sign(u) * Math.PI * Math.Pow(Math.Abs(u), 1.25);
-                phi += (random.NextDouble() - 0.5) * 0.09;
-                var yy = y + (random.NextDouble() - 0.5) * (r == 0 ? 0.01 : 0.04);
+                phi += (random.NextDouble() - 0.5) * 0.05;
+                var yy = y + (random.NextDouble() - 0.5) * (r == 0 ? 0.008 : 0.022);
                 nodes.Add(Surface(yy, rx, front, back, phi));
                 ring[i] = nodes.Count - 1;
             }
@@ -146,18 +151,30 @@ public sealed class HeadModel3D
 
     private static (int, int) Ordered(int a, int b) => a < b ? (a, b) : (b, a);
 
+    /// <summary>
+    /// Arrondi de la coupe horizontale (superellipse) : plus de 2 = plus
+    /// carré (visage plat, côtés qui tournent vite), moins de 2 = en pointe
+    /// (menton). L'arrière reste une ellipse.
+    /// </summary>
+    private static double FrontRoundness(double y)
+    {
+        if (y > 0.45) return 2.15;
+        if (y > 0.2) return 2.15 + 0.45 * (0.45 - y) / 0.25;
+        if (y > -0.25) return 2.6;
+        if (y > -0.66) return 2.6 - 0.9 * (-0.25 - y) / 0.41;
+        return 2.0;
+    }
+
     /// <summary>Point de la surface à la hauteur y et à l'angle phi autour de la tête (0 = face).</summary>
     private static Vec3 Surface(double y, double rx, double front, double back, double phi)
     {
-        var x = rx * Math.Sin(phi);
-        var c = Math.Cos(phi);
-        var z = (c > 0 ? front : back) * c;
-        // Visage un peu aplati (moins rond qu'une ellipse), côtés plus droits.
-        if (c > 0) z *= 1 - 0.12 * Math.Pow(Math.Sin(phi), 2);
-        return Face(new Vec3(x, y, z), c);
+        double s = Math.Sin(phi), c = Math.Cos(phi);
+        var n = c > 0 ? FrontRoundness(y) : 2.1;
+        var x = rx * Math.Sign(s) * Math.Pow(Math.Abs(s), 2 / n);
+        var z = (c > 0 ? front : back) * Math.Sign(c) * Math.Pow(Math.Abs(c), 2 / n);
+        return Face(new Vec3(x, y, z), phi);
     }
 
-    /// <summary>Point de la surface du visage à (x, y), légèrement devant (pour les traits dessinés dessus).</summary>
     /// <summary>Largeur et profondeurs de la tête à la hauteur y (interpolation douce du profil).</summary>
     private static (double Y, double Rx, double Front, double Back) ProfileAt(double y)
     {
@@ -170,15 +187,26 @@ public sealed class HeadModel3D
         return (y, rx0 + (rx1 - rx0) * k, f0 + (f1 - f0) * k, b0 + (b1 - b0) * k);
     }
 
+    /// <summary>Point de la surface du visage à (x, y), légèrement devant (pour les traits dessinés dessus).</summary>
     public static Vec3 OnFace(double x, double y, double lift = 0.012)
     {
         var (_, rx, front, back) = ProfileAt(y);
-        var phi = Math.Asin(Math.Clamp(x / rx, -1, 1));
+        var n = FrontRoundness(y);
+        var ratio = Math.Clamp(Math.Abs(x) / rx, 0, 1);
+        var phi = Math.Sign(x) * Math.Asin(Math.Pow(ratio, n / 2));
         var p = Surface(y, rx, front, back, phi);
         return new Vec3(p.X, p.Y, p.Z + lift);
     }
 
-    /// <summary>Traits du visage (yeux, sourcils, nez, lèvres), dessinés plus lumineux sur le maillage.</summary>
+    /// <summary>Point de la surface sur le côté de la tête (angle phi), un peu en dehors.</summary>
+    private static Vec3 OnSide(double phi, double y, double lift = 0.012)
+    {
+        var (_, rx, front, back) = ProfileAt(y);
+        var p = Surface(y, rx, front, back, phi);
+        return new Vec3(p.X + Math.Sign(p.X) * lift, p.Y, p.Z);
+    }
+
+    /// <summary>Traits du visage (yeux, sourcils, nez, lèvres, oreilles), dessinés plus lumineux sur le maillage.</summary>
     public IReadOnlyList<Vec3[]> FeatureStrokes { get; } = BuildStrokes();
 
     private static List<Vec3[]> BuildStrokes()
@@ -187,26 +215,42 @@ public sealed class HeadModel3D
         Vec3[] Line(params (double X, double Y)[] pts) => pts.Select(p => OnFace(p.X, p.Y)).ToArray();
         foreach (var side in new[] { -1.0, 1.0 })
         {
-            // Œil en amande.
+            // Œil en amande (coin intérieur plus bas, paupière du haut plus bombée).
             var eye = new List<(double, double)>();
-            for (var k = 0; k <= 12; k++)
+            for (var k = 0; k <= 14; k++)
             {
-                var a = k / 12.0 * Math.PI * 2;
-                var lid = Math.Sin(a) > 0 ? 0.045 : 0.035;
-                eye.Add((side * (0.24 + 0.095 * Math.Cos(a)), 0.10 + lid * Math.Sin(a) * (1 - 0.25 * side * Math.Cos(a))));
+                var a = k / 14.0 * Math.PI * 2;
+                var lid = Math.Sin(a) > 0 ? 0.038 : 0.026;
+                var cx = Math.Cos(a);
+                eye.Add((side * (0.20 + 0.075 * cx), 0.10 + lid * Math.Sin(a) + 0.008 * side * cx * side));
             }
             strokes.Add(Line(eye.ToArray()));
+            // Pli de la paupière.
+            strokes.Add(Line((side * 0.13, 0.13), (side * 0.18, 0.152), (side * 0.235, 0.152), (side * 0.275, 0.135)));
             // Sourcil.
-            strokes.Add(Line((side * 0.12, 0.215), (side * 0.22, 0.245), (side * 0.32, 0.24), (side * 0.39, 0.205)));
-            // Aile du nez.
-            strokes.Add(Line((side * 0.03, -0.22), (side * 0.085, -0.205), (side * 0.10, -0.17), (side * 0.07, -0.13)));
+            strokes.Add(Line((side * 0.085, 0.19), (side * 0.15, 0.215), (side * 0.23, 0.225), (side * 0.31, 0.205)));
+            // Aile du nez et narine.
+            strokes.Add(Line((side * 0.02, -0.215), (side * 0.06, -0.21), (side * 0.085, -0.19), (side * 0.075, -0.155), (side * 0.045, -0.135)));
+            // Pli entre nez et coin de la bouche.
+            strokes.Add(Line((side * 0.10, -0.20), (side * 0.15, -0.28), (side * 0.175, -0.37)));
+            // Oreille : contour en « C » sur le côté de la tête et son pli intérieur.
+            var ear = new List<Vec3>();
+            foreach (var (dPhi, y) in new[] { (0.0, 0.17), (0.12, 0.15), (0.2, 0.08), (0.2, -0.02), (0.12, -0.10), (0.0, -0.12), (-0.08, -0.08) })
+                ear.Add(OnSide(side * (1.62 + dPhi), y, 0.012));
+            strokes.Add(ear.ToArray());
+            var fold = new List<Vec3>();
+            foreach (var (dPhi, y) in new[] { (0.02, 0.11), (0.1, 0.06), (0.1, -0.02), (0.03, -0.06) })
+                fold.Add(OnSide(side * (1.62 + dPhi), y, 0.016));
+            strokes.Add(fold.ToArray());
         }
-        // Arête du nez.
-        strokes.Add(Line((0, 0.12), (0, 0.0), (0, -0.12), (0, -0.19)));
+        // Arête du nez (de l'entre-deux yeux à la pointe).
+        strokes.Add(Line((0, 0.12), (0, 0.02), (0, -0.08), (0, -0.17), (0, -0.205)));
         // Lèvres : contour du haut (arc de Cupidon), fente, lèvre du bas.
-        strokes.Add(Line((-0.17, -0.40), (-0.09, -0.355), (-0.03, -0.35), (0, -0.36), (0.03, -0.35), (0.09, -0.355), (0.17, -0.40)));
-        strokes.Add(Line((-0.17, -0.40), (-0.08, -0.405), (0, -0.40), (0.08, -0.405), (0.17, -0.40)));
-        strokes.Add(Line((-0.17, -0.40), (-0.09, -0.445), (0, -0.46), (0.09, -0.445), (0.17, -0.40)));
+        strokes.Add(Line((-0.15, -0.40), (-0.08, -0.36), (-0.025, -0.353), (0, -0.362), (0.025, -0.353), (0.08, -0.36), (0.15, -0.40)));
+        strokes.Add(Line((-0.15, -0.40), (-0.07, -0.403), (0, -0.40), (0.07, -0.403), (0.15, -0.40)));
+        strokes.Add(Line((-0.15, -0.40), (-0.08, -0.44), (0, -0.452), (0.08, -0.44), (0.15, -0.40)));
+        // Creux sous la lèvre et menton.
+        strokes.Add(Line((-0.07, -0.50), (0, -0.495), (0.07, -0.50)));
         return strokes;
     }
 
@@ -215,7 +259,7 @@ public sealed class HeadModel3D
     {
         if (n.Y > MouthLine - 0.01 || n.Y < -0.85) return 0.0;
         var below = Math.Clamp((MouthLine - 0.01 - n.Y) / 0.04, 0, 1);
-        var front = Math.Clamp(n.Z / 0.35, 0, 1);
+        var front = Math.Clamp((n.Z + 0.05) / 0.35, 0, 1);
         var fadeNeck = Math.Clamp((n.Y + 0.85) / 0.15, 0, 1);
         return below * front * fadeNeck;
     }
@@ -255,25 +299,38 @@ public sealed class HeadModel3D
 
     private static double G(double v) => Math.Exp(-v * v);
 
-    /// <summary>Reliefs du visage, appliqués au point de la forme de base (c = cos de l'angle autour de la tête, 1 = face).</summary>
-    private static Vec3 Face(Vec3 p, double c)
+    /// <summary>Reliefs du visage, des tempes, de la mâchoire et des oreilles, appliqués au point de la forme de base.</summary>
+    private static Vec3 Face(Vec3 p, double phi)
     {
-        if (c <= 0) return p;
-        var front = Math.Pow(c, 2);
         double x = p.X, y = p.Y, z = p.Z;
-        double ax = Math.Abs(x);
+        double ax = Math.Abs(x), sign = Math.Sign(x == 0 ? Math.Sin(phi) : x), aphi = Math.Abs(phi);
+        var dx = 0.0;
+        // Oreilles : décollées sur les côtés, un peu en arrière, entre les yeux et le nez en hauteur.
+        dx += 0.085 * G((aphi - 1.72) / 0.2) * G((y - 0.03) / 0.12);
+        // Tempes un peu creusées, angle de la mâchoire marqué.
+        dx -= 0.03 * G((aphi - 1.0) / 0.3) * G((y - 0.25) / 0.12);
+        dx += 0.025 * G((aphi - 1.35) / 0.3) * G((y + 0.47) / 0.07);
+        var c = Math.Cos(phi);
+        if (c <= 0) return new Vec3(x + sign * dx, y, z);
+
+        var front = Math.Pow(c, 1.5);
         var dz = 0.0;
-        dz += 0.05 * G((y - 0.22) / 0.06) * G(x / 0.38);                       // arcades
-        dz -= 0.08 * G((y - 0.10) / 0.07) * G((ax - 0.24) / 0.10);             // orbites
-        dz += 0.11 * G(x / 0.075) * G((y + 0.15) / 0.09);                      // nez
-        dz += 0.07 * G(x / 0.07) * Math.Clamp((0.10 - y) / 0.24, 0, 1) * (y > -0.24 ? 1 : 0); // arête du nez
-        dz += 0.04 * G((ax - 0.40) / 0.10) * G((y + 0.08) / 0.10);             // pommettes
-        dz += 0.035 * G(x / 0.16) * G((y + 0.36) / 0.035);                     // lèvre du haut
-        dz -= 0.02 * G(x / 0.14) * G((y - MouthLine) / 0.02);                  // fente de la bouche
-        dz += 0.035 * G(x / 0.15) * G((y + 0.45) / 0.04);                      // lèvre du bas
-        dz += 0.05 * G(x / 0.14) * G((y + 0.60) / 0.06);                       // menton
-        var dx = 0.03 * Math.Sign(x) * G((ax - 0.48) / 0.12) * G((y + 0.05) / 0.12); // pommettes (largeur)
-        return new Vec3(x + dx * front, y, z + dz * front);
+        dz += 0.045 * G((y - 0.20) / 0.05) * G(x / 0.34);                        // arcades
+        dz -= 0.075 * G((y - 0.10) / 0.06) * G((ax - 0.20) / 0.085);             // orbites
+        dz += 0.03 * G((y - 0.10) / 0.035) * G((ax - 0.20) / 0.06);              // globe de l'œil
+        dz += 0.045 * G(x / 0.06) * Math.Clamp((0.12 - y) / 0.29, 0, 1) * (y > -0.21 ? 1 : 0.2); // arête du nez
+        dz += 0.08 * G(x / 0.07) * G((y + 0.17) / 0.065);                        // pointe du nez
+        dz += 0.035 * G((ax - 0.06) / 0.035) * G((y + 0.195) / 0.035);           // ailes du nez
+        dz += 0.035 * G((ax - 0.36) / 0.09) * G((y + 0.02) / 0.08);              // pommettes
+        dz -= 0.03 * G((ax - 0.30) / 0.08) * G((y + 0.22) / 0.10);               // joues un peu creuses
+        dz += 0.025 * G(x / 0.03) * G((y + 0.30) / 0.04);                        // sillon au-dessus de la lèvre
+        dz += 0.04 * G(x / 0.13) * G((y + 0.37) / 0.03);                         // lèvre du haut
+        dz -= 0.02 * G(x / 0.13) * G((y - MouthLine) / 0.015);                   // fente de la bouche
+        dz += 0.04 * G(x / 0.12) * G((y + 0.44) / 0.03);                         // lèvre du bas
+        dz -= 0.03 * G(x / 0.12) * G((y + 0.50) / 0.03);                         // creux sous la lèvre
+        dz += 0.05 * G(x / 0.11) * G((y + 0.585) / 0.05);                        // menton
+        dx += 0.025 * G((ax - 0.45) / 0.1) * G((y + 0.02) / 0.1) * front;        // pommettes (largeur)
+        return new Vec3(x + sign * dx, y, z + dz * front);
     }
 
     /// <summary>
