@@ -829,6 +829,14 @@
                                                     Click="OrbListeningColorSwatch_Click" />
                                             <TextBox x:Name="OrbListeningColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
                                         </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                                                    ToolTip="Couleur au repos tant que l'écoute n'est pas lancée (elle reprend ses couleurs dès qu'elle parle ou réfléchit)">
+                                            <TextBlock Text="Couleur quand l'écoute est arrêtée :" VerticalAlignment="Center" />
+                                            <Button x:Name="OrbInactiveColorSwatch" Width="26" Height="26" Margin="6,0,0,0"
+                                                    Style="{StaticResource ColorSwatchButtonStyle}" ToolTip="Choisir une couleur"
+                                                    Click="OrbInactiveColorSwatch_Click" />
+                                            <TextBox x:Name="OrbInactiveColorBox" Width="80" Margin="6,0" LostFocus="OrbColorBox_LostFocus" />
+                                        </StackPanel>
                                     </StackPanel>
                                     <TextBlock Text="Profondeur :" Margin="0,10,0,0" FontWeight="SemiBold" />
                                     <CheckBox x:Name="OrbDepthCheckbox" Content="Effet de profondeur (elle s'approche pour parler)" Margin="0,6,0,0"

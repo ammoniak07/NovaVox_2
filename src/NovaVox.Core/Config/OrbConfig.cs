@@ -25,6 +25,8 @@ public sealed class OrbConfig
     public const string DefaultThinkingColor = "#a855f7";
     /// <summary>Couleur quand la bulle entend le joueur parler au micro (vert).</summary>
     public const string DefaultListeningColor = "#34d399";
+    /// <summary>Couleur au repos quand l'écoute est arrêtée (gris).</summary>
+    public const string DefaultInactiveColor = "#8a929e";
 
     /// <summary>Taille au repos en % de la taille normale (écoute arrêtée, ou bulle endormie).</summary>
     public const int DefaultRestSize = 60;
@@ -61,6 +63,7 @@ public sealed class OrbConfig
     public string SpeakingColor { get; set; } = DefaultSpeakingColor;
     public string ThinkingColor { get; set; } = DefaultThinkingColor;
     public string ListeningColor { get; set; } = DefaultListeningColor;
+    public string InactiveColor { get; set; } = DefaultInactiveColor;
     /// <summary>Affiche "Je réfléchis…" sous la bulle pendant une question à Gemini.</summary>
     public bool ShowCaption { get; set; } = true;
     /// <summary>(Test) Bouche qui s'ouvre et se ferme au rythme de la voix quand NovaVox parle.</summary>
@@ -135,6 +138,7 @@ public sealed class OrbConfigStore
             config.SpeakingColor = OrbConfig.MigrateSpeakingColor(OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["speaking_color"]), OrbConfig.DefaultSpeakingColor));
             config.ThinkingColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["thinking_color"]), OrbConfig.DefaultThinkingColor);
             config.ListeningColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["listening_color"]), OrbConfig.DefaultListeningColor);
+            config.InactiveColor = OverlayConfigStore.ValidateHexColor(GetStringOrNull(data["inactive_color"]), OrbConfig.DefaultInactiveColor);
             config.ShowCaption = GetBool(data["show_caption"], true);
             config.ShowMouth = GetBool(data["show_mouth"]);
             config.ShowEars = GetBool(data["show_ears"]);
@@ -191,6 +195,7 @@ public sealed class OrbConfigStore
             ["speaking_color"] = config.SpeakingColor,
             ["thinking_color"] = config.ThinkingColor,
             ["listening_color"] = config.ListeningColor,
+            ["inactive_color"] = config.InactiveColor,
             ["show_caption"] = config.ShowCaption,
             ["show_mouth"] = config.ShowMouth,
             ["show_ears"] = config.ShowEars,

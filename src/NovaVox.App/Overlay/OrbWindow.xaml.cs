@@ -81,7 +81,7 @@ public partial class OrbWindow : Window
     private double _rest;
     private bool _listeningActive;
     /// <summary>Couleur au repos quand l'écoute n'est pas lancée.</summary>
-    private static readonly Color InactiveColor = Color.FromRgb(0x8a, 0x92, 0x9e);
+    private Color _inactiveColor = Color.FromRgb(0x8a, 0x92, 0x9e);
 
     /// <summary>Fin d'un glisser-déposer en mode déplacement : nouvelle position (Left, Top) à enregistrer.</summary>
     public event EventHandler<Point>? PositionChanged;
@@ -130,6 +130,7 @@ public partial class OrbWindow : Window
         _speakingColor = ParseColor(config.SpeakingColor);
         _thinkingColor = ParseColor(config.ThinkingColor);
         _listeningColor = ParseColor(config.ListeningColor);
+        _inactiveColor = ParseColor(config.InactiveColor);
         var size = Math.Clamp(config.Size, OrbConfig.MinSize, OrbConfig.MaxSize);
         var margin = size * GlowMarginRatio;
         Width = size + 2 * margin;
@@ -294,7 +295,7 @@ public partial class OrbWindow : Window
         var restTarget = _engaged || t - _lastActivityAt < 0.6 ? 0.0 : 1.0;
         _rest += (restTarget - _rest) * (1 - Math.Exp(-dt * (restTarget > _rest ? 4.5 : 6)));
         // Écoute arrêtée : grise au repos (elle reprend sa couleur si elle parle ou réfléchit).
-        var restColor = _listeningActive ? _idleColor : InactiveColor;
+        var restColor = _listeningActive ? _idleColor : _inactiveColor;
         var targetColor = _speaking ? _speakingColor : _thinking ? _thinkingColor : hearing ? _listeningColor : restColor;
         // ROxieWOOki : petite tête de chat rose, avec ses propres tons roses.
         if (CatMode && !HeadMode) targetColor = CatTargetColor(hearing);
