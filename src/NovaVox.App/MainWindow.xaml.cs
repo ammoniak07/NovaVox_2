@@ -83,8 +83,6 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<PiperVoiceRowVm> _piperVoiceRows = new();
     private const int MaxLogParagraphs = 300;
     private PiperTtsEngine? _testTts;
-    private readonly NovaVox.App.Targeting.TargetScanner _targetScanner = new();
-    private NovaVox.Core.Targeting.TargetScanConfig _targetScanConfig = new();
 
     private GeminiClient? _chatGeminiClient;
     private readonly ObservableCollection<GeminiMessageVm> _geminiMessages = new();
@@ -217,7 +215,6 @@ public partial class MainWindow : Window
         InitializeProfiles();
         BuildVirtualKeyboard();
         InitializeOverlay();
-        InitializeTargetScan();
         InitializeOrb();
         InitializeKeyPressReading();
         LoadSettingsIntoControls();
@@ -487,45 +484,6 @@ public partial class MainWindow : Window
         _state.SaveAi();
         _aiSettingsLogTimer.Stop();
         _aiSettingsLogTimer.Start();
-    }
-
-    /// <summary>
-    /// Vaisseau ciblé : lecture du nom dans le HUD (OCR Windows) et
-    /// affichage dans la ligne « 🎯 Cible » de l'overlay.
-    /// </summary>
-    private void InitializeTargetScan()
-    {
-        var store = new NovaVox.Core.Targeting.TargetScanConfigStore(NovaVoxPaths.BaseDirectory);
-        _targetScanConfig = store.Load();
-
-        var panel = new NovaVox.App.Targeting.TargetScanSettingsPanel(_targetScanConfig, _targetScanner);
-        panel.ConfigChanged += config =>
-        {
-            _targetScanConfig = config;
-            store.Save(config);
-            _targetScanner.Apply(config);
-            if (_state.Overlay.VisibleRows.GetValueOrDefault("target", false) != config.Enabled)
-            {
-                _state.Overlay.VisibleRows["target"] = config.Enabled;
-                SaveOverlayAndLog();
-                _overlayWindow?.SetRowVisible("target", config.Enabled);
-            }
-            if (!config.Enabled) _overlayWindow?.SetTarget(null);
-        };
-        TargetScanSettingsHost.Children.Add(panel);
-
-        _targetScanner.TargetChanged += match => Dispatcher.BeginInvoke(() =>
-        {
-            _overlayWindow?.SetTarget(match?.Ship.Name);
-            if (match is null) return;
-            AppendLog($"🎯 Cible : {match.Ship.Name}", "diagnostic");
-            if (_targetScanConfig.Speak)
-            {
-                EnsureTestTts();
-                _testTts!.Speak(match.Ship.Name);
-            }
-        });
-        _targetScanner.Apply(_targetScanConfig);
     }
 
     private void SaveOverlayAndLog()
@@ -1412,7 +1370,6 @@ public partial class MainWindow : Window
         FlushLiveStats();
         _voiceOrchestrator?.Dispose();
         _testTts?.Dispose();
-        _targetScanner.Dispose();
         _micLevelMonitor.Dispose();
         _gameLogWatcher?.Dispose();
         _overlayWindow?.Close();

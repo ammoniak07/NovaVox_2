@@ -15,7 +15,7 @@ public sealed class OverlayConfig
     /// RowKeys pour "visible_rows").
     /// </summary>
     public static readonly string[] RowKeys =
-        { "time", "listening", "mic", "phrase", "zone", "armistice", "juridiction", "lastCmd", "shipSheet", "target" };
+        { "time", "listening", "mic", "phrase", "zone", "armistice", "juridiction", "lastCmd", "shipSheet" };
 
     public const string DefaultBgColor = "#0a0e14";
     public const int DefaultBgOpacity = 72;
@@ -32,8 +32,7 @@ public sealed class OverlayConfig
     public bool Enabled { get; set; }
     public int? X { get; set; }
     public int? Y { get; set; }
-    /// <summary>« target » (vaisseau ciblé lu dans le HUD) est masquée par défaut : elle ne sert que si la lecture du HUD est activée.</summary>
-    public Dictionary<string, bool> VisibleRows { get; set; } = RowKeys.ToDictionary(k => k, k => k != "target");
+    public Dictionary<string, bool> VisibleRows { get; set; } = RowKeys.ToDictionary(k => k, _ => true);
     public string BgColor { get; set; } = DefaultBgColor;
     public int BgOpacity { get; set; } = DefaultBgOpacity;
     public string TextColor { get; set; } = DefaultTextColor;
