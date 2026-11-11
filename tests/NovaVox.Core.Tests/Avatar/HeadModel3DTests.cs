@@ -151,7 +151,9 @@ public class HeadModel3DTests
         double TopOf(HeadModel3D m) => m.Nodes.Max(n => n.Y);
         double BackOf(HeadModel3D m) => m.Nodes.Where(n => n.Y > 0.3).Min(n => n.Z);
         double Depth(HeadModel3D m) => m.Nodes.Where(n => n.Y > -0.5).Max(n => n.Z) - m.Nodes.Where(n => n.Y > -0.5).Min(n => n.Z);
-        Assert.True(TopOf(banu) > TopOf(human), "crête au sommet");
+        // Crête large au sommet plat : près du haut, la tête reste large (pas de pointe).
+        double WidthNearTop(HeadModel3D m) { var top = TopOf(m); return m.Nodes.Where(n => n.Y > top - 0.06).Max(n => Math.Abs(n.X)) / top; }
+        Assert.True(WidthNearTop(banu) > WidthNearTop(human), "sommet plat et large");
         Assert.True(-BackOf(banu) / Depth(banu) > -BackOf(human) / Depth(human), "arrière du crâne bombé");
         // Pas d'oreilles : moins de sommets, et pas de contour d'oreille dans les traits.
         Assert.True(banu.Nodes.Count < human.Nodes.Count);
