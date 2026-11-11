@@ -253,9 +253,9 @@ public partial class OrbWindow
                 if (back) bright = 0.02;
                 else
                 {
-                    bright = HeadModel3D.PointLight(rotatedNormal) + cloud.Glow[i] * 0.9 * (0.8 + 0.4 * Math.Max(_attention, _level));
+                    bright = HeadModel3D.PointLight(rotatedNormal) + cloud.Glow[i] * 0.9 * (0.8 + 0.4 * _attention);
                     var dm = _headPointMouth[i];
-                    bright += speak * Math.Max(0, 1 - dm * 0.9) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 14));
+                    bright += 0.12 * speak * Math.Max(0, 1 - dm * 1.6) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 14)); // très léger : pas de lueur quand elle parle
                     var de = _headPointEar[i];
                     bright += _attention * Math.Max(0, 1 - de * 1.1) * Math.Max(0, Math.Sin(t * 6 - de * 10)) * 0.8;
                     var db = _headPointBrain[i];
@@ -287,7 +287,7 @@ public partial class OrbWindow
         _headPointGlowPath!.Data = glow;
         _headPointGlowPath.StrokeThickness = dot * 3.5;
         ((BlurEffect)_headPointGlowPath.Effect).Radius = Math.Max(2, k * 0.03);
-        _headPointGlowPath.Opacity = 0.18 + 0.2 * Math.Max(_level, _attention);
+        _headPointGlowPath.Opacity = 0.18 + 0.2 * _attention;
     }
 
     /// <summary>Ressort amorti (un peu souple) vers la valeur voulue.</summary>
@@ -404,7 +404,7 @@ public partial class OrbWindow
                     continue;
                 }
                 var dm = _headEdgeMouth[e];
-                bright += speak * Math.Max(0, 1 - dm * 0.9) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 14));
+                bright += 0.12 * speak * Math.Max(0, 1 - dm * 1.6) * (0.45 + 0.55 * Math.Sin(t * 9 - dm * 14)); // très léger : pas de lueur quand elle parle
                 var de = _headEdgeEar[e];
                 bright += _attention * Math.Max(0, 1 - de * 1.1) * Math.Max(0, Math.Sin(t * 6 - de * 10)) * 0.8;
                 var db = _headEdgeBrain[e];
@@ -445,7 +445,7 @@ public partial class OrbWindow
         _headGlowPath!.Data = glow;
         _headGlowPath.StrokeThickness = thickness * 2.6;
         ((BlurEffect)_headGlowPath.Effect).Radius = Math.Max(2, k * 0.035);
-        _headGlowPath.Opacity = 0.18 + 0.2 * Math.Max(_level, _attention);
+        _headGlowPath.Opacity = 0.18 + 0.2 * _attention;
         _headBackPath!.Data = back;
         _headBackPath.StrokeThickness = thickness * 0.7;
 
@@ -475,7 +475,7 @@ public partial class OrbWindow
         brightDots.Freeze();
         _headDotsPath!.Data = dots;
         _headDotsBrightPath!.Data = brightDots;
-        _headDotsPath.Opacity = 0.5 + 0.2 * _level - 0.2 * _sleepiness;
+        _headDotsPath.Opacity = 0.5 - 0.2 * _sleepiness;
 
         // Traits du visage (yeux, sourcils, nez, lèvres) : nets de face, estompés sur les côtés.
         var features = new StreamGeometry();
@@ -506,7 +506,7 @@ public partial class OrbWindow
         _headFeaturesPath!.Data = features;
         _headFeaturesFaintPath!.Data = faint;
         _headFeaturesPath.StrokeThickness = _headFeaturesFaintPath.StrokeThickness = Math.Max(0.8, k * 0.011);
-        _headFeaturesPath.Opacity = 0.6 + 0.3 * Math.Max(_attention, _level);
+        _headFeaturesPath.Opacity = 0.6 + 0.3 * _attention;
 
     }
 
@@ -519,7 +519,7 @@ public partial class OrbWindow
             _nextHeadBlinkAt = t + 2.5 + _random.NextDouble() * 4;
         }
         var blink = t - _headBlinkStart < 0.16 ? Math.Sin(Math.PI * (t - _headBlinkStart) / 0.16) : 0;
-        var eyeSize = k * (0.16 + 0.03 * _attention + 0.03 * _level);
+        var eyeSize = k * (0.16 + 0.03 * _attention);
         var eyes = new[] { _headModel!.EyeLeft, _headModel.EyeRight };
         for (var i = 0; i < 2; i++)
         {
@@ -529,7 +529,7 @@ public partial class OrbWindow
             shape.Width = shape.Height = eyeSize;
             Canvas.SetLeft(shape, cx + x * k - eyeSize / 2);
             Canvas.SetTop(shape, cy + y * k - eyeSize / 2);
-            shape.Opacity = HeadModel3D.SurfaceVisibility(eye, _headYaw, _headPitch) * (0.8 + 0.2 * Math.Max(_attention, _level));
+            shape.Opacity = HeadModel3D.SurfaceVisibility(eye, _headYaw, _headPitch) * (0.8 + 0.2 * _attention);
             _headEyeScales[i].ScaleY = Math.Max(0.08, (1 - 0.9 * blink) * (1 - 0.8 * _sleepiness));
         }
     }

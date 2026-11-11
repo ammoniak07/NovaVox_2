@@ -329,7 +329,7 @@ public partial class OrbWindow : Window
         RimBrush.EndPoint = new Point(0.5 - 0.5 * Math.Cos(rimAngle), 0.5 - 0.5 * Math.Sin(rimAngle));
         RimPath.Opacity = Math.Clamp(0.5 + 0.1 * Math.Sin(t * 0.9) + 0.35 * _level + 0.15 * _thinkingAmount - 0.25 * _sleepiness, 0, 1);
         // Endormie, elle pâlit un peu (en plus de l'opacité choisie dans les réglages).
-        GlowPath.Opacity = 0.55 * (1 - 0.45 * _sleepiness) + 0.15 * _level;
+        GlowPath.Opacity = 0.55 * (1 - 0.45 * _sleepiness) + 0.02 * _level;
         OrbCanvas.Opacity = Math.Clamp(_config.Opacity, OrbConfig.MinOpacity, 100) / 100.0 * (1 - 0.25 * _sleepiness);
         UpdateHead(blob.Bounds, dt, t, _speaking ? target : 0, hearing);
         UpdateCaption();
