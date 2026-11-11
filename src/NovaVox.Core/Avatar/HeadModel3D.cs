@@ -568,9 +568,14 @@ public sealed class HeadModel3D
         y += 0.08 * backSide * high;
         x *= 1 - 0.1 * high;
         // Crête : une lame au milieu du haut du crâne, en pointe vers le haut, côté front.
-        var finZone = G(x / (0.07 + 0.08 * Smooth((0.9 - y) / 0.4))) * Smooth((y - 0.5) / 0.4) * G((z - 0.1) / 0.32);
+        // Lame large au sommet plat : plateau sur toute sa largeur, bords qui retombent franchement.
+        var finHalf = 0.17 + 0.06 * Smooth((0.9 - y) / 0.4);
+        var finZone = Smooth((finHalf - Math.Abs(x)) / 0.07) * Smooth((y - 0.5) / 0.4) * G((z - 0.1) / 0.32);
         y += 0.3 * finZone;
         z += 0.08 * finZone;
+        // Dessus plat : au-delà d'une hauteur, la crête ne monte presque plus (plateau, pas de pointe).
+        const double plateau = 1.02;
+        if (y > plateau) y = plateau + (y - plateau) * 0.12;
         // Sillons verticaux sur le crâne et le front (rayonnent depuis l'axe de la tête).
         var phi = Math.Atan2(x, z + 0.1);
         var grooves = Smooth((y + 0.05) / 0.35) * (1 - 0.7 * finZone);
@@ -632,7 +637,7 @@ public sealed class HeadModel3D
         // le nez recule, le front et la crête avancent.
         {
             var lineZ = nose.Z - 0.05 + 0.04 * (y - nose.Y);
-            var band = 0.2 - 0.12 * Smooth((y - 0.3) / 0.6);
+            var band = 0.2 - 0.04 * Smooth((y - 0.3) / 0.6);
             var along = Smooth((y + 0.85) / 0.12) * Smooth((1.4 - y) / 0.2);
             var w = 0.9 * G(x / band) * along * Smooth((z + 0.3) / 0.4);
             z += (lineZ - z) * w;
