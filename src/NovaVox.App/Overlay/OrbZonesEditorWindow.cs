@@ -10,8 +10,9 @@ namespace NovaVox.App.Overlay;
 /// <summary>
 /// Éditeur plein écran des zones interdites de la bulle baladeuse : un voile
 /// sombre par-dessus l'écran (le jeu reste visible derrière s'il est en
-/// fenêtré sans bordure). Cliquer-glisser dessine un cadre, clic droit sur
-/// un cadre le supprime, Entrée valide, Échap annule.
+/// fenêtré sans bordure). Cliquer-glisser dessine un cadre ; glisser un cadre
+/// le déplace, glisser un de ses bords ou coins le redimensionne ; ✖ ou clic
+/// droit le supprime ; Entrée valide, Échap annule.
 /// </summary>
 public sealed class OrbZonesEditorWindow : Window
 {
@@ -23,6 +24,13 @@ public sealed class OrbZonesEditorWindow : Window
     /// <summary>Cadre en cours de déplacement (maintien du clic sur un cadre), et décalage souris/coin.</summary>
     private Rectangle? _moving;
     private Vector _moveOffset;
+    /// <summary>Cadre en cours de redimensionnement, bords saisis (-1 gauche/haut, 1 droite/bas, 0 aucun) et rectangle de départ.</summary>
+    private Rectangle? _resizing;
+    private (int X, int Y) _resizeEdges;
+    private Rect _resizeStart;
+    /// <summary>Largeur (px) de la bande, sur le bord d'un cadre, qui sert à le redimensionner.</summary>
+    private const double Grip = 10;
+    private const double MinZoneSize = 12;
     /// <summary>Bouton ✖ de chaque cadre (supprime ce cadre seulement).</summary>
     private readonly Dictionary<Rectangle, Button> _deleteButtons = new();
 
@@ -110,7 +118,7 @@ public sealed class OrbZonesEditorWindow : Window
         var panel = new StackPanel { Orientation = Orientation.Vertical };
         panel.Children.Add(new TextBlock
         {
-            Text = "Dessine les cadres où la bulle ne doit jamais aller (cliquer-glisser dans le vide).\nMaintenir le clic sur un cadre : le déplacer.  ✖ ou clic droit sur un cadre : le supprimer.  Entrée : valider.  Échap : annuler.",
+            Text = "Dessine les cadres où la bulle ne doit jamais aller (cliquer-glisser dans le vide).\nGlisser un cadre : le déplacer.  Glisser un bord ou un coin : changer sa taille.  ✖ ou clic droit sur un cadre : le supprimer.  Entrée : valider.  Échap : annuler.",
             Foreground = Brushes.White,
             FontSize = 14,
             TextAlignment = TextAlignment.Center,
@@ -206,6 +214,17 @@ public sealed class OrbZonesEditorWindow : Window
         // Clic sur un cadre existant : on le déplace (tant que le clic est maintenu).
         if (e.OriginalSource is Rectangle shape && _zones.Contains(shape))
         {
+            // Sur un bord ou un coin : on change sa taille.
+            var edges = EdgesAt(shape, p);
+            if (edges != (0, 0))
+            {
+                _resizing = shape;
+                _resizeEdges = edges;
+                _resizeStart = new Rect(Canvas.GetLeft(shape), Canvas.GetTop(shape), shape.Width, shape.Height);
+                Panel.SetZIndex(shape, 1);
+                CaptureMouse();
+                return;
+            }
             _moving = shape;
             _moveOffset = p - new Point(Canvas.GetLeft(shape), Canvas.GetTop(shape));
             Panel.SetZIndex(shape, 1);
@@ -221,6 +240,18 @@ public sealed class OrbZonesEditorWindow : Window
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         var p = e.GetPosition(_canvas);
+        if (_resizing is not null)
+        {
+            ResizeTo(_resizing, p);
+            return;
+        }
+        if (_moving is null && _drawing is null)
+        {
+            // Survol : le curseur montre si l'on va déplacer ou redimensionner.
+            if (e.OriginalSource is Rectangle hover && _zones.Contains(hover))
+                hover.Cursor = CursorFor(EdgesAt(hover, p));
+            return;
+        }
         if (_moving is not null)
         {
             // Le cadre reste entier dans l'écran.
@@ -241,6 +272,13 @@ public sealed class OrbZonesEditorWindow : Window
 
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_resizing is not null)
+        {
+            Panel.SetZIndex(_resizing, 0);
+            _resizing = null;
+            ReleaseMouseCapture();
+            return;
+        }
         if (_moving is not null)
         {
             Panel.SetZIndex(_moving, 0);
@@ -251,8 +289,45 @@ public sealed class OrbZonesEditorWindow : Window
         if (_drawing is null) return;
         ReleaseMouseCapture();
         // Simple clic sans glisser : pas de cadre minuscule.
-        if (_drawing.Width < 12 || _drawing.Height < 12) RemoveZone(_drawing);
+        if (_drawing.Width < MinZoneSize || _drawing.Height < MinZoneSize) RemoveZone(_drawing);
         _drawing = null;
+    }
+
+    /// <summary>Bords du cadre sous la souris (bande de Grip px à l'intérieur ; plus étroite sur un petit cadre).</summary>
+    private static (int X, int Y) EdgesAt(Rectangle shape, Point p)
+    {
+        double left = Canvas.GetLeft(shape), top = Canvas.GetTop(shape);
+        var gripX = Math.Min(Grip, shape.Width / 4);
+        var gripY = Math.Min(Grip, shape.Height / 4);
+        var x = p.X - left <= gripX ? -1 : left + shape.Width - p.X <= gripX ? 1 : 0;
+        var y = p.Y - top <= gripY ? -1 : top + shape.Height - p.Y <= gripY ? 1 : 0;
+        return (x, y);
+    }
+
+    private static Cursor CursorFor((int X, int Y) edges) => edges switch
+    {
+        (0, 0) => Cursors.SizeAll,
+        (0, _) => Cursors.SizeNS,
+        (_, 0) => Cursors.SizeWE,
+        (-1, -1) or (1, 1) => Cursors.SizeNWSE,
+        _ => Cursors.SizeNESW,
+    };
+
+    /// <summary>Déplace le ou les bords saisis jusqu'à la souris, sans sortir de l'écran ni passer sous la taille minimale.</summary>
+    private void ResizeTo(Rectangle shape, Point p)
+    {
+        double left = _resizeStart.Left, top = _resizeStart.Top, right = _resizeStart.Right, bottom = _resizeStart.Bottom;
+        var x = Math.Clamp(p.X, 0, Width);
+        var y = Math.Clamp(p.Y, 0, Height);
+        if (_resizeEdges.X < 0) left = Math.Min(x, right - MinZoneSize);
+        if (_resizeEdges.X > 0) right = Math.Max(x, left + MinZoneSize);
+        if (_resizeEdges.Y < 0) top = Math.Min(y, bottom - MinZoneSize);
+        if (_resizeEdges.Y > 0) bottom = Math.Max(y, top + MinZoneSize);
+        Canvas.SetLeft(shape, left);
+        Canvas.SetTop(shape, top);
+        shape.Width = right - left;
+        shape.Height = bottom - top;
+        SyncDeleteButton(shape);
     }
 
     private void Validate()
