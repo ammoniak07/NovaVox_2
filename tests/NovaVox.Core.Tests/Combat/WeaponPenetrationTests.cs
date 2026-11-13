@@ -163,7 +163,7 @@ public class CombatReferenceValuesTests
 {
     [Theory]
     [InlineData("Idris-M", 485, 87516)]
-    [InlineData("Polaris", 418, 48960)]
+    [InlineData("Polaris", 460, 48960)]    // 4.10.3 : déflexion énergie 418 -> 460 (patch du jeu)
     [InlineData("Perseus", 418, 48672)]
     [InlineData("Reclaimer", 418, 32912)]
     [InlineData("890 Jump", 342, 32640)]
