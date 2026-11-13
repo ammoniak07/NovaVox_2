@@ -46,4 +46,23 @@ public class SchemaFrenchLabelsTests
         Assert.StartsWith("Agricium 0,36 SCU", recipe);
         Assert.Null(SchemaFrenchLabels.Recipe(Array.Empty<SchemaIngredient>()));
     }
+
+    [Fact]
+    public void QualityEffects_ShowRangeFromWorstToBestQuality()
+    {
+        var omnisky = SchemaFrenchLabels.QualityEffects(SchemaDatabase.Find("Omnisky III Cannon")!.QualityEffects);
+        Assert.Equal("Intégrité −10 % → +10 % (Agricium) · Force d'impact −5 % → +5 % (Hadanite, Dolivine)", omnisky);
+        // Points d'énergie : ajoutés, pas multipliés.
+        var lumaCore = SchemaFrenchLabels.QualityEffects(SchemaDatabase.Find("LumaCore")!.QualityEffects)!;
+        Assert.Contains("Points d'énergie −2 → +2 (Laranite)", lumaCore);
+        Assert.Null(SchemaFrenchLabels.QualityEffects(null));
+    }
+
+    [Fact]
+    public void Recipe_ShowsMinimumQuality()
+    {
+        var recipe = SchemaFrenchLabels.Recipe(SchemaDatabase.Find("TH-01 Propulsor")!.Ingredients);
+        Assert.Contains("Aluminium", recipe);
+        Assert.Contains("(qualité ≥ 600)", recipe);
+    }
 }

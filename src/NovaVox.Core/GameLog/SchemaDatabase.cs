@@ -10,7 +10,22 @@ public sealed record SchemaIngredient(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("amount")] double Amount,
     /// <summary>"SCU" (ressource brute, ex. Agricium) ou "pcs" (objet discret, ex. un autre composant déjà fabriqué).</summary>
-    [property: JsonPropertyName("unit")] string Unit);
+    [property: JsonPropertyName("unit")] string Unit,
+    /// <summary>Qualité minimale exigée pour cet ingrédient (0 à 1000), null si aucune.</summary>
+    [property: JsonPropertyName("minQuality")] int? MinQuality = null);
+
+/// <summary>
+/// Effet de la qualité d'un ingrédient (0 à 1000) sur une caractéristique de
+/// l'objet fabriqué : valeur à qualité 0 (<see cref="From"/>) et à qualité
+/// 1000 (<see cref="To"/>). Multiplicateur (0,9 -> 1,1 = -10 % à +10 %), ou
+/// points ajoutés quand <see cref="Additive"/> (Power Pips : -2 à +2).
+/// </summary>
+public sealed record SchemaQualityEffect(
+    [property: JsonPropertyName("stat")] string Stat,
+    [property: JsonPropertyName("from")] double From,
+    [property: JsonPropertyName("to")] double To,
+    [property: JsonPropertyName("additive")] bool Additive,
+    [property: JsonPropertyName("ingredients")] IReadOnlyList<string> Ingredients);
 
 public sealed record SchemaStat(
     [property: JsonPropertyName("label")] string Label,
@@ -31,7 +46,8 @@ public sealed record SchemaInfo(
     [property: JsonPropertyName("capacityMicroScu")] int? CapacityMicroScu,
     [property: JsonPropertyName("itemType")] string? ItemType,
     [property: JsonPropertyName("stats")] IReadOnlyList<SchemaStat>? Stats,
-    [property: JsonPropertyName("ingredients")] IReadOnlyList<SchemaIngredient> Ingredients);
+    [property: JsonPropertyName("ingredients")] IReadOnlyList<SchemaIngredient> Ingredients,
+    [property: JsonPropertyName("qualityEffects")] IReadOnlyList<SchemaQualityEffect>? QualityEffects = null);
 
 /// <summary>
 /// Base de données locale (hors-ligne) des schémas de fabrication du jeu —

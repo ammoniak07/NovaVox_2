@@ -172,10 +172,67 @@ public static class SchemaFrenchLabels
         if (ingredients is not { Count: > 0 }) return null;
         var parts = ingredients
             .GroupBy(i => (i.Name, Unit: i.Unit.ToUpperInvariant()))
-            .Select(g => (g.Key.Name, g.Key.Unit, Amount: g.Sum(i => i.Amount)))
-            .Select(i => i.Unit == "SCU"
+            .Select(g => (g.Key.Name, g.Key.Unit, Amount: g.Sum(i => i.Amount), MinQuality: g.Max(i => i.MinQuality)))
+            .Select(i => (i.Unit == "SCU"
                 ? $"{Resource(i.Name)} {Math.Round(i.Amount, 3).ToString("0.###", FrenchCulture)} SCU"
-                : $"{Resource(i.Name)} ×{Math.Round(i.Amount, 3).ToString("0.###", FrenchCulture)}");
+                : $"{Resource(i.Name)} ×{Math.Round(i.Amount, 3).ToString("0.###", FrenchCulture)}")
+                + (i.MinQuality is > 1 ? $" (qualité ≥ {i.MinQuality})" : ""));
         return string.Join(" · ", parts);
+    }
+
+    private static readonly Dictionary<string, string> QualityStats = new()
+    {
+        ["Integrity"] = "Intégrité",
+        ["Impact Force"] = "Force d'impact",
+        ["Damage Mitigation"] = "Réduction des dégâts",
+        ["Min Temp"] = "Temp. minimale supportée",
+        ["Max Temp"] = "Temp. maximale supportée",
+        ["Recoil Smoothness"] = "Fluidité du recul",
+        ["Recoil Handling"] = "Maîtrise du recul",
+        ["Recoil Kick"] = "Force du recul",
+        ["Coolant Rating"] = "Refroidissement",
+        ["Fire Rate"] = "Cadence de tir",
+        ["Power Pips"] = "Points d'énergie",
+        ["Max. Shield Strength"] = "Puissance max. du bouclier",
+        ["Min. Assist Distance"] = "Distance d'assistance min.",
+        ["Max. Assist Distance"] = "Distance d'assistance max.",
+        ["Quantum Speed"] = "Vitesse quantique",
+        ["Quantum Fuel Burn"] = "Consommation de carburant quantique",
+        ["Laser Power"] = "Puissance du laser",
+        ["Full Strength Dist."] = "Portée à pleine puissance",
+        ["Max. Distance"] = "Portée max.",
+        ["Beam Force"] = "Force du rayon",
+        ["Max. Volume"] = "Volume max.",
+        ["Radius"] = "Rayon",
+        ["Speed"] = "Vitesse",
+        ["Efficiency"] = "Efficacité",
+        ["Radiation Dissipation"] = "Dissipation des radiations",
+    };
+
+    /// <summary>
+    /// Effet de la qualité des ingrédients sur l'objet fabriqué, en une ligne :
+    /// « Intégrité −10 % → +10 % (Agricium) · Points d'énergie −2 → +2
+    /// (Laranite) » — de la qualité 0 à la qualité 1000 de l'ingrédient.
+    /// Null si la qualité ne change rien.
+    /// </summary>
+    public static string? QualityEffects(IReadOnlyList<SchemaQualityEffect>? effects)
+    {
+        if (effects is not { Count: > 0 }) return null;
+        return string.Join(" · ", effects.Select(e =>
+        {
+            var range = e.Additive
+                ? $"{Signed(e.From)} → {Signed(e.To)}"
+                : $"{Signed((e.From - 1) * 100)} % → {Signed((e.To - 1) * 100)} %";
+            var ingredients = e.Ingredients.Count > 0 ? $" ({string.Join(", ", e.Ingredients.Select(Resource))})" : "";
+            return $"{QualityStats.GetValueOrDefault(e.Stat, e.Stat)} {range}{ingredients}";
+        }));
+    }
+
+    private static string Signed(double value)
+    {
+        var rounded = Math.Round(value, 1);
+        if (rounded == 0) return "0";
+        var text = Math.Abs(rounded).ToString("0.#", FrenchCulture);
+        return rounded > 0 ? "+" + text : "−" + text;
     }
 }

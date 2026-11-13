@@ -39,6 +39,10 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public bool HasStats => !string.IsNullOrEmpty(Stats);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
     public bool HasRecipe => !string.IsNullOrEmpty(Recipe);
+
+    /// <summary>Effet de la qualité des ingrédients (0 à 1000) sur l'objet fabriqué — voir SchemaFrenchLabels.QualityEffects.</summary>
+    public string? Quality { get; init; }
+    public bool HasQuality => !string.IsNullOrEmpty(Quality);
     public bool HasImage => ImagePath is not null;
 
     /// <summary>Correspond à la recherche du panneau Schémas — voir RefreshSchemasSearchVisibility, MainWindow.xaml.cs.</summary>
@@ -63,6 +67,8 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
             Stats = info?.Stats is { Count: > 0 } stats ? string.Join(" · ", stats.Select(SchemaFrenchLabels.Stat)) : null,
             Description = info?.Description,
             Recipe = SchemaFrenchLabels.Recipe(info?.Ingredients) is { } recipe ? $"Recette : {recipe}" : null,
+            Quality = SchemaFrenchLabels.QualityEffects(info?.QualityEffects) is { } quality
+                ? $"Qualité des ingrédients (de 0 à 1000) : {quality}" : null,
             ImagePath = info is null ? null : SchemaImages.FindPath(AppContext.BaseDirectory, info.Name),
         };
     }
