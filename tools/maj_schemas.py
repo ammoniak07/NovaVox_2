@@ -127,19 +127,31 @@ def quality_effects(bp):
             for m in node.get('Modifiers') or []:
                 segs = m.get('ValueSegments') or []
                 additive = m.get('ValueRangeType') == 'linear_integer_additive'
+                curve = []  # [qualité début, qualité fin, valeur au début, valeur à la fin]
                 if segs:
-                    segs = sorted(segs, key=lambda g: g.get('QualityMin', 0))
                     k0, k1 = ('AdditiveAtStart', 'AdditiveAtEnd') if additive else ('ModifierAtStart', 'ModifierAtEnd')
-                    lo, hi = segs[0].get(k0), segs[-1].get(k1)
-                elif isinstance(m.get('ModifierRange'), dict):
-                    lo, hi = m['ModifierRange'].get('AtMinQuality'), m['ModifierRange'].get('AtMaxQuality')
+                    for g in sorted(segs, key=lambda g: g.get('QualityMin', 0)):
+                        curve.append([g.get('QualityMin', 0), g.get('QualityMax', 1000), g.get(k0), g.get(k1)])
+                elif isinstance(m.get('ModifierRange'), dict) and isinstance(m.get('QualityRange'), dict):
+                    a, b = m['ModifierRange'].get('AtMinQuality'), m['ModifierRange'].get('AtMaxQuality')
+                    qmin, qmax = m['QualityRange'].get('Min', 0), m['QualityRange'].get('Max', 1000)
+                    if qmin > 0:
+                        curve.append([0, qmin, a, a])  # pas d'effet supplémentaire avant qmin
+                    curve.append([qmin, qmax, a, b])
+                    if qmax < 1000:
+                        curve.append([qmax, 1000, b, b])
                 else:
                     continue
+                if any(v is None for c in curve for v in c[2:]):
+                    continue
+                curve = [[c[0], c[1], round(c[2], 4), round(c[3], 4)] for c in curve]
+                lo, hi = curve[0][2], curve[-1][3]
                 if lo is None or hi is None or lo == hi:
                     continue
-                eff = {'stat': m.get('Name'), 'from': round(lo, 4), 'to': round(hi, 4)}
+                eff = {'stat': m.get('Name'), 'from': lo, 'to': hi}
                 if additive:
                     eff['additive'] = True
+                eff['curve'] = curve
                 same = next((x for x in out if {k: v for k, v in x.items() if k != 'ingredients'} == eff), None)
                 if same:
                     same['ingredients'] += [i for i in ings if i not in same['ingredients']]

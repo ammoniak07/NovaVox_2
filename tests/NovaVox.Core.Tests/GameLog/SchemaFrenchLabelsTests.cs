@@ -70,7 +70,7 @@ public class SchemaFrenchLabelsTests
     public void RecipeLines_OneLinePerIngredient_WithQualityEffectOrNone()
     {
         var info = SchemaDatabase.Find("Monde Helmet Delta Camo")!;
-        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!;
+        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!.Select(l => l.Text);
         Assert.Equal(new[]
         {
             "• Ouratite 0,03 SCU : Réduction des dégâts −10 % → +10 %",
@@ -83,8 +83,49 @@ public class SchemaFrenchLabelsTests
     public void RecipeLines_IngredientUsedInTwoParts_ListsBothEffects()
     {
         var info = SchemaDatabase.Find("QuikCool")!;
-        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!;
+        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!.Select(l => l.Text).ToList();
         Assert.Equal("• Fer 0,26 SCU : Intégrité −20 % → +20 % ; Refroidissement −5 % → +5 %", lines[0]);
         Assert.Equal("• Glace pressurisée 0,16 SCU : Refroidissement −15 % → +15 %", lines[1]);
+    }
+
+    [Fact]
+    public void QualityEffect_ValueAt_FollowsExactCurve()
+    {
+        // Linéaire de 0 à 1000 : 125 -> -7,5 %, 520 -> +0,4 %.
+        var omnisky = SchemaDatabase.Find("Omnisky III Cannon")!.QualityEffects!;
+        var integrity = omnisky.First(e => e.Stat == "Integrity");
+        Assert.Equal(0.925, integrity.ValueAt(125), 6);
+        Assert.Equal(1.004, integrity.ValueAt(520), 6);
+        // Paliers (points d'énergie du LumaCore, Laranite).
+        var pips = SchemaDatabase.Find("LumaCore")!.QualityEffects!.First(e => e.Ingredients.Contains("Laranite"));
+        Assert.Equal(-2, pips.ValueAt(125));
+        Assert.Equal(-1, pips.ValueAt(300));
+        Assert.Equal(0, pips.ValueAt(520));
+        Assert.Equal(2, pips.ValueAt(950));
+        // Effet seulement au-dessus de 500 (températures du torse Aves, Aslarite).
+        var temp = SchemaDatabase.Find("Aves Core")!.QualityEffects!.First(e => e.Stat == "Min Temp");
+        Assert.Equal(1.0, temp.ValueAt(125), 6);
+        Assert.Equal(1.1, temp.ValueAt(750), 6);
+    }
+
+    [Fact]
+    public void RecipeLines_ToolTipShowsQualityTable()
+    {
+        var info = SchemaDatabase.Find("Monde Helmet Delta Camo")!;
+        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!;
+        var aslarite = lines[1].ToolTip!;
+        Assert.Contains("Températures supportées", aslarite);
+        Assert.Contains("  100   −16 %", aslarite);
+        Assert.Contains("1000   +20 %", aslarite);
+        Assert.Contains("ne change rien", lines[2].ToolTip);
+
+        var aves = SchemaDatabase.Find("Aves Core")!;
+        var avesLines = SchemaFrenchLabels.RecipeLines(aves.Ingredients, aves.QualityEffects)!;
+        Assert.Contains(avesLines, l => l.Text.Contains("(à partir de 500)") && l.ToolTip!.Contains("aucun effet en dessous de 500"));
+
+        var luma = SchemaDatabase.Find("LumaCore")!;
+        var laranite = SchemaFrenchLabels.RecipeLines(luma.Ingredients, luma.QualityEffects)!.First(l => l.Text.Contains("Laranite"));
+        Assert.DoesNotContain("à partir de", laranite.Text);
+        Assert.Contains("par paliers : 0–249 : −2 · 250–499 : −1 · 500–699 : 0 · 700–899 : +1 · 900–1000 : +2", laranite.ToolTip);
     }
 }

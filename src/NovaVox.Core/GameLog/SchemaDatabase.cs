@@ -25,7 +25,24 @@ public sealed record SchemaQualityEffect(
     [property: JsonPropertyName("from")] double From,
     [property: JsonPropertyName("to")] double To,
     [property: JsonPropertyName("additive")] bool Additive,
-    [property: JsonPropertyName("ingredients")] IReadOnlyList<string> Ingredients);
+    [property: JsonPropertyName("ingredients")] IReadOnlyList<string> Ingredients,
+    /// <summary>Courbe exacte : segments [qualité début, qualité fin, valeur au début, valeur à la fin] (paliers, effet seulement au-dessus d'un seuil...). Null = droite de From à To.</summary>
+    [property: JsonPropertyName("curve")] IReadOnlyList<double[]>? Curve = null)
+{
+    /// <summary>Valeur de l'effet pour un ingrédient de qualité <paramref name="quality"/> (0 à 1000) : multiplicateur, ou points ajoutés si <see cref="Additive"/>.</summary>
+    public double ValueAt(double quality)
+    {
+        quality = Math.Clamp(quality, 0, 1000);
+        if (Curve is not { Count: > 0 }) return From + (To - From) * quality / 1000;
+        // Dernier segment qui commence avant cette qualité (les segments se suivent :
+        // 0-249, 250-499... ; une qualité entre deux, ex. 500,5 entre 0-500 et 501-1000, prend le précédent).
+        var seg = Curve.LastOrDefault(c => c.Length >= 4 && c[0] <= quality) ?? Curve[0];
+        var span = seg[1] - seg[0];
+        var t = span <= 0 ? 0 : Math.Clamp((quality - seg[0]) / span, 0, 1);
+        var value = seg[2] + (seg[3] - seg[2]) * t;
+        return Additive ? Math.Round(value) : value;
+    }
+}
 
 public sealed record SchemaStat(
     [property: JsonPropertyName("label")] string Label,

@@ -251,11 +251,12 @@ public static class SchemaFrenchLabels
     /// • Ouratite 0,03 SCU : Réduction des dégâts −10 % → +10 %
     /// • Savrilium 0,03 SCU : qualité sans effet
     /// </code>
+    /// avec, en info-bulle, le détail qualité par qualité (voir QualityTable).
     /// Sans aucun effet de qualité pour tout le schéma, les lignes n'ont que
     /// l'ingrédient (l'en-tête de la fiche le dit une fois pour toutes).
     /// Null si la recette est vide.
     /// </summary>
-    public static IReadOnlyList<string>? RecipeLines(IReadOnlyList<SchemaIngredient>? ingredients, IReadOnlyList<SchemaQualityEffect>? effects)
+    public static IReadOnlyList<SchemaRecipeLine>? RecipeLines(IReadOnlyList<SchemaIngredient>? ingredients, IReadOnlyList<SchemaQualityEffect>? effects)
     {
         if (ingredients is not { Count: > 0 }) return null;
         var known = effects is { Count: > 0 };
@@ -265,35 +266,100 @@ public static class SchemaFrenchLabels
             {
                 var amount = Math.Round(g.Sum(i => i.Amount), 3).ToString("0.###", FrenchCulture);
                 var line = g.Key.Unit == "SCU" ? $"{Resource(g.Key.Name)} {amount} SCU" : $"{Resource(g.Key.Name)} ×{amount}";
-                if (g.Max(i => i.MinQuality) is > 1 and var min) line += $" (qualité ≥ {min})";
-                if (!known) return "• " + line;
+                var minQuality = g.Max(i => i.MinQuality);
+                if (minQuality is > 1) line += $" (qualité ≥ {minQuality})";
+                if (!known) return new SchemaRecipeLine("• " + line, null);
                 var mine = effects!.Where(e => e.Ingredients.Contains(g.Key.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-                return $"• {line} : {(mine.Count == 0 ? "qualité sans effet" : DescribeEffects(mine))}";
+                return new SchemaRecipeLine(
+                    $"• {line} : {(mine.Count == 0 ? "qualité sans effet" : DescribeEffects(mine))}",
+                    QualityTable(g.Key.Name, mine, minQuality));
             })
             .ToList();
     }
+
+    /// <summary>
+    /// Tableau de l'effet de la qualité d'un ingrédient, de 0 à 1000 par pas
+    /// de 100, une colonne par caractéristique (celles qui varient pareil
+    /// regroupées), plus les paliers exacts des effets en points :
+    /// <code>
+    /// Qualité de l'Ouratite → effet sur l'objet
+    /// Qualité   Réduction des dégâts
+    ///       0   −10 %
+    ///     100   −8 %
+    /// </code>
+    /// À afficher en police à chasse fixe (colonnes alignées).
+    /// </summary>
+    public static string QualityTable(string ingredient, IReadOnlyList<SchemaQualityEffect> effects, int? minQuality = null)
+    {
+        var name = Resource(ingredient);
+        if (effects.Count == 0)
+            return $"La qualité de « {name} » ne change rien à cet objet." + (minQuality is > 1 ? $"\nQualité minimale exigée : {minQuality}." : "");
+
+        // Colonnes : effets de même courbe regroupés sous un seul nom.
+        var columns = new List<(string Label, SchemaQualityEffect Effect)>();
+        foreach (var same in effects.GroupBy(CurveKey))
+            columns.Add((GroupLabel(same.Select(e => e.Stat).Distinct().ToList()), same.First()));
+
+        var qualities = Enumerable.Range(0, 11).Select(i => i * 100).ToList();
+        var rows = new List<string[]> { new[] { "Qualité" }.Concat(columns.Select(c => c.Label)).ToArray() };
+        foreach (var q in qualities)
+            rows.Add(new[] { q.ToString(FrenchCulture) }.Concat(columns.Select(c => Format(c.Effect, c.Effect.ValueAt(q)))).ToArray());
+        var widths = Enumerable.Range(0, rows[0].Length).Select(c => rows.Max(r => r[c].Length)).ToArray();
+
+        var lines = new List<string> { $"Qualité de « {name} » → effet sur l'objet fabriqué" };
+        if (minQuality is > 1) lines.Add($"Qualité minimale exigée : {minQuality}");
+        lines.Add("");
+        foreach (var (row, index) in rows.Select((r, i) => (r, i)))
+            lines.Add(string.Join("   ", row.Select((cell, c) => c == 0 && index > 0 ? cell.PadLeft(widths[c]) : cell.PadRight(widths[c]))).TrimEnd());
+        foreach (var (label, effect) in columns.Where(c => c.Effect.Additive && c.Effect.Curve is { Count: > 1 }))
+            lines.Add("\n" + label + " par paliers : " + string.Join(" · ",
+                effect.Curve!.Select(seg => $"{seg[0]:0}–{seg[1]:0} : {Signed(seg[2])}")));
+        foreach (var (label, effect) in columns.Where(c => !c.Effect.Additive))
+            if (StartsAt(effect) is { } start) lines.Add($"\n{label} : aucun effet en dessous de {start}.");
+        return string.Join("\n", lines);
+    }
+
+    private static string CurveKey(SchemaQualityEffect e) =>
+        e.Additive + "|" + (e.Curve is null ? $"{e.From}>{e.To}" : string.Join(";", e.Curve.Select(c => string.Join(",", c))));
+
+    private static string GroupLabel(List<string> stats)
+    {
+        var labels = new List<string>();
+        foreach (var (group, label) in QualityStatGroups)
+        {
+            if (!group.All(stats.Contains)) continue;
+            labels.Add(label);
+            stats.RemoveAll(group.Contains);
+        }
+        labels.InsertRange(0, stats.Select(st => QualityStats.GetValueOrDefault(st, st)));
+        return string.Join(", ", labels);
+    }
+
+    private static string Format(SchemaQualityEffect e, double value) =>
+        e.Additive ? Signed(value) : $"{Signed((value - 1) * 100)} %";
+
+    /// <summary>Qualité à partir de laquelle un effet multiplicatif commence (premier segment plat, ex. rien avant 500), sinon null.</summary>
+    private static int? StartsAt(SchemaQualityEffect e) =>
+        !e.Additive && e.Curve is { Count: > 1 } c && c[0][2] == c[0][3] && c[0][1] > 0 ? (int)c[0][1] : null;
 
     private static string DescribeEffects(List<SchemaQualityEffect> effects)
     {
         var parts = new List<string>();
         // Même plage de valeurs : regroupées (« Températures supportées −20 % → +20 % »).
         foreach (var byRange in effects.GroupBy(Range))
-        {
-            var stats = byRange.Select(e => e.Stat).Distinct().ToList();
-            var labels = new List<string>();
-            foreach (var (group, label) in QualityStatGroups)
-            {
-                if (!group.All(stats.Contains)) continue;
-                labels.Add(label);
-                stats.RemoveAll(group.Contains);
-            }
-            labels.InsertRange(0, stats.Select(st => QualityStats.GetValueOrDefault(st, st)));
-            parts.Add($"{string.Join(", ", labels)} {byRange.Key}");
-        }
+            parts.Add($"{GroupLabel(byRange.Select(e => e.Stat).Distinct().ToList())} {byRange.Key}");
         return string.Join(" ; ", parts);
     }
 
-    private static string Range(SchemaQualityEffect e) => e.Additive
-        ? $"{Signed(e.From)} → {Signed(e.To)}"
-        : $"{Signed((e.From - 1) * 100)} % → {Signed((e.To - 1) * 100)} %";
+    private static string Range(SchemaQualityEffect e) =>
+        (e.Additive
+            ? $"{Signed(e.From)} → {Signed(e.To)}"
+            : $"{Signed((e.From - 1) * 100)} % → {Signed((e.To - 1) * 100)} %")
+        + (StartsAt(e) is { } start ? $" (à partir de {start})" : "");
+}
+
+/// <summary>Une ligne de recette affichée (« • Ouratite 0,03 SCU : ... ») et son info-bulle (effet qualité par qualité), null si sans objet.</summary>
+public sealed record SchemaRecipeLine(string Text, string? ToolTip)
+{
+    public bool HasToolTip => !string.IsNullOrEmpty(ToolTip);
 }

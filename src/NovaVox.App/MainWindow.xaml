@@ -1652,8 +1652,27 @@
                                                                Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" Margin="0,2,0,0" TextWrapping="Wrap" />
                                                     <TextBlock Text="{Binding Stats}" Visibility="{Binding HasStats, Converter={StaticResource BoolToVis}}"
                                                                FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
-                                                    <TextBlock Text="{Binding Recipe}" Visibility="{Binding HasRecipe, Converter={StaticResource BoolToVis}}"
-                                                               FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="16" />
+                                                    <!-- Recette : une ligne par ingrédient ; au survol, l'effet de sa qualité de 0 à 1000 (voir SchemaFrenchLabels.QualityTable). -->
+                                                    <StackPanel Visibility="{Binding HasRecipe, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
+                                                        <TextBlock Text="{Binding RecipeHeader}" FontSize="11" TextWrapping="Wrap" />
+                                                        <ItemsControl ItemsSource="{Binding RecipeLines}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding Text}" FontSize="11" TextWrapping="Wrap" Margin="0,1,0,0"
+                                                                               Background="Transparent"
+                                                                               ToolTipService.IsEnabled="{Binding HasToolTip}"
+                                                                               ToolTipService.InitialShowDelay="150"
+                                                                               ToolTipService.ShowDuration="60000">
+                                                                        <TextBlock.ToolTip>
+                                                                            <ToolTip>
+                                                                                <TextBlock Text="{Binding ToolTip}" FontFamily="Consolas" FontSize="12" />
+                                                                            </ToolTip>
+                                                                        </TextBlock.ToolTip>
+                                                                    </TextBlock>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
                                                     <TextBlock Text="{Binding Description}" Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}}"
                                                                Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                                                 </StackPanel>
