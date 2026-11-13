@@ -235,4 +235,65 @@ public static class SchemaFrenchLabels
         var text = Math.Abs(rounded).ToString("0.#", FrenchCulture);
         return rounded > 0 ? "+" + text : "−" + text;
     }
+
+    /// <summary>Caractéristiques qui vont ensemble, affichées sous un seul nom quand elles ont le même effet.</summary>
+    private static readonly (string[] Stats, string Label)[] QualityStatGroups =
+    {
+        (new[] { "Min Temp", "Max Temp" }, "Températures supportées"),
+        (new[] { "Recoil Smoothness", "Recoil Handling", "Recoil Kick" }, "Recul (fluidité, maîtrise, force)"),
+        (new[] { "Min. Assist Distance", "Max. Assist Distance" }, "Distance d'assistance (min. et max.)"),
+    };
+
+    /// <summary>
+    /// Recette et effet de la qualité des ingrédients, une ligne par
+    /// ingrédient (quantités additionnées), pour la fiche d'un schéma :
+    /// <code>
+    /// • Ouratite 0,03 SCU : Réduction des dégâts −10 % → +10 %
+    /// • Savrilium 0,03 SCU : qualité sans effet
+    /// </code>
+    /// Sans aucun effet de qualité pour tout le schéma, les lignes n'ont que
+    /// l'ingrédient (l'en-tête de la fiche le dit une fois pour toutes).
+    /// Null si la recette est vide.
+    /// </summary>
+    public static IReadOnlyList<string>? RecipeLines(IReadOnlyList<SchemaIngredient>? ingredients, IReadOnlyList<SchemaQualityEffect>? effects)
+    {
+        if (ingredients is not { Count: > 0 }) return null;
+        var known = effects is { Count: > 0 };
+        return ingredients
+            .GroupBy(i => (i.Name, Unit: i.Unit.ToUpperInvariant()))
+            .Select(g =>
+            {
+                var amount = Math.Round(g.Sum(i => i.Amount), 3).ToString("0.###", FrenchCulture);
+                var line = g.Key.Unit == "SCU" ? $"{Resource(g.Key.Name)} {amount} SCU" : $"{Resource(g.Key.Name)} ×{amount}";
+                if (g.Max(i => i.MinQuality) is > 1 and var min) line += $" (qualité ≥ {min})";
+                if (!known) return "• " + line;
+                var mine = effects!.Where(e => e.Ingredients.Contains(g.Key.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+                return $"• {line} : {(mine.Count == 0 ? "qualité sans effet" : DescribeEffects(mine))}";
+            })
+            .ToList();
+    }
+
+    private static string DescribeEffects(List<SchemaQualityEffect> effects)
+    {
+        var parts = new List<string>();
+        // Même plage de valeurs : regroupées (« Températures supportées −20 % → +20 % »).
+        foreach (var byRange in effects.GroupBy(Range))
+        {
+            var stats = byRange.Select(e => e.Stat).Distinct().ToList();
+            var labels = new List<string>();
+            foreach (var (group, label) in QualityStatGroups)
+            {
+                if (!group.All(stats.Contains)) continue;
+                labels.Add(label);
+                stats.RemoveAll(group.Contains);
+            }
+            labels.InsertRange(0, stats.Select(st => QualityStats.GetValueOrDefault(st, st)));
+            parts.Add($"{string.Join(", ", labels)} {byRange.Key}");
+        }
+        return string.Join(" ; ", parts);
+    }
+
+    private static string Range(SchemaQualityEffect e) => e.Additive
+        ? $"{Signed(e.From)} → {Signed(e.To)}"
+        : $"{Signed((e.From - 1) * 100)} % → {Signed((e.To - 1) * 100)} %";
 }

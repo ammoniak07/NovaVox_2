@@ -31,7 +31,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public string? Stats { get; init; }
     public string? Description { get; init; }
 
-    /// <summary>Ingrédients de fabrication en une ligne (« Recette : Fer 0,26 SCU · ... ») — voir SchemaFrenchLabels.Recipe.</summary>
+    /// <summary>Recette, une ligne par ingrédient avec l'effet de sa qualité sur l'objet fabriqué — voir SchemaFrenchLabels.RecipeLines.</summary>
     public string? Recipe { get; init; }
     public string? ImagePath { get; init; }
 
@@ -39,10 +39,6 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public bool HasStats => !string.IsNullOrEmpty(Stats);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
     public bool HasRecipe => !string.IsNullOrEmpty(Recipe);
-
-    /// <summary>Effet de la qualité des ingrédients (0 à 1000) sur l'objet fabriqué — voir SchemaFrenchLabels.QualityEffects.</summary>
-    public string? Quality { get; init; }
-    public bool HasQuality => !string.IsNullOrEmpty(Quality);
     public bool HasImage => ImagePath is not null;
 
     /// <summary>Correspond à la recherche du panneau Schémas — voir RefreshSchemasSearchVisibility, MainWindow.xaml.cs.</summary>
@@ -66,11 +62,18 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
             Subtitle = BuildSubtitle(info),
             Stats = info?.Stats is { Count: > 0 } stats ? string.Join(" · ", stats.Select(SchemaFrenchLabels.Stat)) : null,
             Description = info?.Description,
-            Recipe = SchemaFrenchLabels.Recipe(info?.Ingredients) is { } recipe ? $"Recette : {recipe}" : null,
-            Quality = SchemaFrenchLabels.QualityEffects(info?.QualityEffects) is { } quality
-                ? $"Qualité des ingrédients (de 0 à 1000) : {quality}" : null,
+            Recipe = BuildRecipe(info),
             ImagePath = info is null ? null : SchemaImages.FindPath(AppContext.BaseDirectory, info.Name),
         };
+    }
+
+    private static string? BuildRecipe(SchemaInfo? info)
+    {
+        if (SchemaFrenchLabels.RecipeLines(info?.Ingredients, info?.QualityEffects) is not { } lines) return null;
+        var header = info!.QualityEffects is { Count: > 0 }
+            ? "Recette (effet de la qualité du minerai, de 0 à 1000) :"
+            : "Recette (la qualité du minerai n'a aucun effet sur cet objet) :";
+        return header + "\n" + string.Join("\n", lines);
     }
 
     private static string? BuildSubtitle(SchemaInfo? info)

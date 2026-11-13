@@ -65,4 +65,26 @@ public class SchemaFrenchLabelsTests
         Assert.Contains("Aluminium", recipe);
         Assert.Contains("(qualité ≥ 600)", recipe);
     }
+
+    [Fact]
+    public void RecipeLines_OneLinePerIngredient_WithQualityEffectOrNone()
+    {
+        var info = SchemaDatabase.Find("Monde Helmet Delta Camo")!;
+        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!;
+        Assert.Equal(new[]
+        {
+            "• Ouratite 0,03 SCU : Réduction des dégâts −10 % → +10 %",
+            "• Aslarite 0,01 SCU : Températures supportées −20 % → +20 %",
+            "• Savrilium 0,03 SCU : qualité sans effet",
+        }, lines);
+    }
+
+    [Fact]
+    public void RecipeLines_IngredientUsedInTwoParts_ListsBothEffects()
+    {
+        var info = SchemaDatabase.Find("QuikCool")!;
+        var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!;
+        Assert.Equal("• Fer 0,26 SCU : Intégrité −20 % → +20 % ; Refroidissement −5 % → +5 %", lines[0]);
+        Assert.Equal("• Glace pressurisée 0,16 SCU : Refroidissement −15 % → +15 %", lines[1]);
+    }
 }
