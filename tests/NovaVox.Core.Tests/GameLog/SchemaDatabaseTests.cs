@@ -356,4 +356,27 @@ public class SchemaDatabaseTests
             SchemaDatabase.RegisterLiveDescriptions(new Dictionary<string, string>());
         }
     }
+
+    [Fact]
+    public void RawLocalizationKey_ResolvesToKnownSchema()
+    {
+        // Le jeu écrit la clé brute quand le global.ini installé est plus ancien que le patch.
+        Assert.Equal("Skarnov Rifle Battery (30 cap)", SchemaDatabase.NameFromLocalizationKey("@item_Namelbco_rifle_energy_01_mag"));
+        Assert.Equal("Skarnov \"Raider Camo\" Rifle", SchemaDatabase.Find("@item_Namelbco_rifle_energy_01_mr01")!.Name);
+        Assert.Equal("Palatino Arms Raider Camo", SchemaDatabase.NameFromLocalizationKey("@item_Name_qrt_utility_heavy_arms_01_04_01"));
+        Assert.Null(SchemaDatabase.NameFromLocalizationKey("@item_Name_inconnu_99"));
+        Assert.Equal("Skarnov Rifle Battery (30 cap)",
+            GameLogAnnouncer.TryExtractReceivedSchemaName("Schémas reçu : @item_Namelbco_rifle_energy_01_mag"));
+    }
+
+    [Fact]
+    public void ResolveRawKeyNames_ReplacesWithoutDuplicates()
+    {
+        var received = new List<string> { "Skarnov Rifle Battery (30 cap)", "@item_Namelbco_rifle_energy_01_mag", "@item_Namelbco_rifle_energy_01_mr01", "@item_Name_inconnu_99" };
+        var unseen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "@item_Namelbco_rifle_energy_01_mr01" };
+        Assert.True(SchemaDatabase.ResolveRawKeyNames(received, unseen));
+        Assert.Equal(new[] { "Skarnov Rifle Battery (30 cap)", "Skarnov \"Raider Camo\" Rifle", "@item_Name_inconnu_99" }, received);
+        Assert.Contains("Skarnov \"Raider Camo\" Rifle", unseen);
+        Assert.False(SchemaDatabase.ResolveRawKeyNames(received, unseen));
+    }
 }

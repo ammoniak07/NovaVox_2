@@ -2579,6 +2579,9 @@ public partial class MainWindow : Window
         // Les plus récents en haut : SchemasReceived est dans l'ordre de
         // réception (plus ancien d'abord), donc on le parcourt à l'envers, et
         // les schémas pas encore vus ("nouveau") passent avant tous les autres.
+        // Schémas reçus sous forme de clé brute ("@item_Name...", global.ini
+        // plus ancien que le patch) : remplacés par leur nom dès qu'il est connu.
+        SchemaDatabase.ResolveRawKeyNames(_state.Ai.SchemasReceived, _state.Ai.SchemasUnseen);
         foreach (var name in OrderSchemasNewestFirst(_state.Ai.SchemasReceived, _state.Ai.SchemasUnseen))
             _schemaRows.Add(SchemaRowVm.Create(name, _state.Ai.UiLanguage, _state.Ai.SchemasUnseen.Contains(name)));
         SchemasList.ItemsSource = _schemaRows;
@@ -2796,7 +2799,7 @@ public partial class MainWindow : Window
             row.RowVisible = (category is null || row.Category == category)
                 && (subcategory is null || row.Subcategory == subcategory)
                 && (query.Length == 0
-                    || NormalizeForSearch(row.Name).Contains(query, StringComparison.Ordinal)
+                    || NormalizeForSearch(row.DisplayName).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.CategoryLabel).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Subtitle).Contains(query, StringComparison.Ordinal)
                     || NormalizeForSearch(row.Stats).Contains(query, StringComparison.Ordinal)

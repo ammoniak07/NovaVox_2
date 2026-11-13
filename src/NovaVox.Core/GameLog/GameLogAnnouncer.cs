@@ -606,6 +606,9 @@ public static partial class GameLogAnnouncer
         var match = SchemaReceivedRegex().Match(hudText);
         if (!match.Success) return null;
         var name = match.Groups["name"].Value.Trim();
+        // Clé brute ("@item_Name...") quand le global.ini installé n'a pas
+        // encore le texte de cet objet : on garde le nom connu de la base.
+        if (name.StartsWith('@')) name = SchemaDatabase.NameFromLocalizationKey(name) ?? name;
         return name.Length == 0 ? null : name;
     }
 

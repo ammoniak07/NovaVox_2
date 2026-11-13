@@ -17,6 +17,9 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     private void Raise([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     public required string Name { get; init; }
+
+    /// <summary>Nom affiché : celui de la base quand le schéma a été reçu sous forme de clé brute ("@item_Name..."), sinon <see cref="Name"/> (nom enregistré, utilisé pour la suppression).</summary>
+    public string DisplayName { get; init; } = "";
     public required string Category { get; init; }
 
     /// <summary>Partie du corps pour une armure ou un vêtement (Casque, Torse, Bras...), sinon null — voir SchemaCategories.SubcategoryOf.</summary>
@@ -52,6 +55,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
         return new SchemaRowVm
         {
             Name = name,
+            DisplayName = name.StartsWith('@') && info is not null ? info.Name : name,
             IsNew = isNew,
             Category = SchemaCategories.Of(info?.Type),
             Subcategory = SchemaCategories.SubcategoryOf(info?.Type),

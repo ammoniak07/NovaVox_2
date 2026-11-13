@@ -89,6 +89,47 @@ public static class SchemaDatabase
     private static readonly Lazy<HashSet<string>> LocalizationKeySet =
         new(() => new HashSet<string>(NameToLocalizationKey.Value.Values, StringComparer.Ordinal));
 
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> LocalizationKeyToNameIgnoreCase =
+        new(() => NameToLocalizationKey.Value
+            .GroupBy(kv => kv.Value.EndsWith(",P", StringComparison.Ordinal) ? kv.Value[..^2] : kv.Value, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Nom canonique d'un schéma reçu sous forme de clé brute
+    /// ("@item_Namelbco_rifle_energy_01_mag") — ce que le jeu écrit quand le
+    /// global.ini installé n'a pas encore le texte de cet objet (traduction
+    /// plus ancienne que le patch). Null si la clé est inconnue de la base.
+    /// </summary>
+    public static string? NameFromLocalizationKey(string? rawKey)
+    {
+        if (string.IsNullOrWhiteSpace(rawKey)) return null;
+        var key = rawKey.Trim().TrimStart('@');
+        if (key.EndsWith(",P", StringComparison.Ordinal)) key = key[..^2];
+        return LocalizationKeyToNameIgnoreCase.Value.GetValueOrDefault(key);
+    }
+
+    /// <summary>
+    /// Remplace, dans la liste des schémas reçus, les clés brutes
+    /// ("@item_Name...") dont le nom est connu de la base par ce nom, sans
+    /// doublon (un schéma déjà présent sous son vrai nom garde sa place) ;
+    /// idem pour les schémas « nouveaux ». True si la liste a changé.
+    /// </summary>
+    public static bool ResolveRawKeyNames(List<string> received, ISet<string> unseen)
+    {
+        var changed = false;
+        for (var i = received.Count - 1; i >= 0; i--)
+        {
+            if (!received[i].StartsWith('@') || NameFromLocalizationKey(received[i]) is not { } name) continue;
+            var raw = received[i];
+            var wasUnseen = unseen.Remove(raw);
+            if (received.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase))) received.RemoveAt(i);
+            else received[i] = name;
+            if (wasUnseen) unseen.Add(name);
+            changed = true;
+        }
+        return changed;
+    }
+
     /// <summary>Noms traduits trouvés dans le global.ini du joueur pour la session en cours — voir RegisterLiveNameAliases.</summary>
     private static readonly ConcurrentDictionary<string, string> LiveNameAliases = new(StringComparer.OrdinalIgnoreCase);
 
@@ -327,6 +368,7 @@ public static class SchemaDatabase
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         var trimmed = name.Trim();
+        if (trimmed.StartsWith('@') && NameFromLocalizationKey(trimmed) is { } fromKey) trimmed = fromKey;
 
         var info = LookupEntry(trimmed);
         if (info is null)
