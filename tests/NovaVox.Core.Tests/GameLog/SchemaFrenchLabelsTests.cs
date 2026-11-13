@@ -48,17 +48,6 @@ public class SchemaFrenchLabelsTests
     }
 
     [Fact]
-    public void QualityEffects_ShowRangeFromWorstToBestQuality()
-    {
-        var omnisky = SchemaFrenchLabels.QualityEffects(SchemaDatabase.Find("Omnisky III Cannon")!.QualityEffects);
-        Assert.Equal("Intégrité −10 % → +10 % (Agricium) · Force d'impact −5 % → +5 % (Hadanite, Dolivine)", omnisky);
-        // Points d'énergie : ajoutés, pas multipliés.
-        var lumaCore = SchemaFrenchLabels.QualityEffects(SchemaDatabase.Find("LumaCore")!.QualityEffects)!;
-        Assert.Contains("Points d'énergie −2 → +2 (Laranite)", lumaCore);
-        Assert.Null(SchemaFrenchLabels.QualityEffects(null));
-    }
-
-    [Fact]
     public void Recipe_ShowsMinimumQuality()
     {
         var recipe = SchemaFrenchLabels.Recipe(SchemaDatabase.Find("TH-01 Propulsor")!.Ingredients);
@@ -73,8 +62,8 @@ public class SchemaFrenchLabelsTests
         var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!.Select(l => l.Text);
         Assert.Equal(new[]
         {
-            "• Ouratite 0,03 SCU : Réduction des dégâts −10 % → +10 %",
-            "• Aslarite 0,01 SCU : Températures supportées −20 % → +20 %",
+            "• Ouratite 0,03 SCU : Réduction des dégâts −3,8 % → +10 %",
+            "• Aslarite 0,01 SCU : Températures supportées −8,5 % → +20 %",
             "• Savrilium 0,03 SCU : qualité sans effet",
         }, lines);
     }
@@ -84,8 +73,8 @@ public class SchemaFrenchLabelsTests
     {
         var info = SchemaDatabase.Find("QuikCool")!;
         var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!.Select(l => l.Text).ToList();
-        Assert.Equal("• Fer 0,26 SCU : Intégrité −20 % → +20 % ; Refroidissement −5 % → +5 %", lines[0]);
-        Assert.Equal("• Glace pressurisée 0,16 SCU : Refroidissement −15 % → +15 %", lines[1]);
+        Assert.Equal("• Fer 0,26 SCU : Intégrité −7 % → +20 % ; Refroidissement −1,8 % → +5 %", lines[0]);
+        Assert.Equal("• Glace pressurisée 0,16 SCU : Refroidissement −5,3 % → +15 %", lines[1]);
     }
 
     [Fact]
@@ -109,23 +98,35 @@ public class SchemaFrenchLabelsTests
     }
 
     [Fact]
-    public void RecipeLines_ToolTipShowsQualityTable()
+    public void RecipeLines_UseGameQualityBands()
     {
+        // Aslarite : 0-399 compte comme 287, 400-599 comme 575... (quantization_aslarite.xml).
+        Assert.Equal(287, ResourceQualityBands.Retained("Aslarite", 125));
+        Assert.Equal(575, ResourceQualityBands.Retained("Aslarite", 520));
+        Assert.Equal(1000, ResourceQualityBands.Retained("Aslarite", 999));
+        Assert.NotNull(ResourceQualityBands.For("Pressurized Ice"));
+        Assert.NotNull(ResourceQualityBands.For("Yormandi Eye"));
+
         var info = SchemaDatabase.Find("Monde Helmet Delta Camo")!;
         var lines = SchemaFrenchLabels.RecipeLines(info.Ingredients, info.QualityEffects)!;
         var aslarite = lines[1].ToolTip!;
-        Assert.Contains("Températures supportées", aslarite);
-        Assert.Contains("  100   −16 %", aslarite);
-        Assert.Contains("1000   +20 %", aslarite);
+        Assert.Contains("par tranches", aslarite);
+        Assert.Matches(@"0–399\s+287\s+−8,5 %", aslarite);
+        Assert.Matches(@"400–599\s+575\s+\+3 %", aslarite);
+        Assert.Matches(@"999–1000\s+1000\s+\+20 %", aslarite);
         Assert.Contains("ne change rien", lines[2].ToolTip);
 
-        var aves = SchemaDatabase.Find("Aves Core")!;
-        var avesLines = SchemaFrenchLabels.RecipeLines(aves.Ingredients, aves.QualityEffects)!;
-        Assert.Contains(avesLines, l => l.Text.Contains("(à partir de 500)") && l.ToolTip!.Contains("aucun effet en dessous de 500"));
-
+        // Paliers des points d'énergie appliqués à la qualité retenue : la Laranite
+        // la plus basse compte comme 298, donc −1 (jamais −2).
         var luma = SchemaDatabase.Find("LumaCore")!;
         var laranite = SchemaFrenchLabels.RecipeLines(luma.Ingredients, luma.QualityEffects)!.First(l => l.Text.Contains("Laranite"));
-        Assert.DoesNotContain("à partir de", laranite.Text);
-        Assert.Contains("par paliers : 0–249 : −2 · 250–499 : −1 · 500–699 : 0 · 700–899 : +1 · 900–1000 : +2", laranite.ToolTip);
+        Assert.Contains("Points d'énergie −1 → +2", laranite.Text);
+        Assert.Matches(@"400–599\s+510\s+0", laranite.ToolTip!);
+
+        // Effet seulement au-dessus de 500 (torse Aves) : la tranche 0-399 (287) ne donne rien.
+        var aves = SchemaDatabase.Find("Aves Core")!;
+        var avesAslarite = SchemaFrenchLabels.RecipeLines(aves.Ingredients, aves.QualityEffects)!.First(l => l.Text.Contains("Aslarite"));
+        Assert.Contains("Températures supportées 0 % → +20 %", avesAslarite.Text);
+        Assert.Matches(@"0–399\s+287\s+0 %", avesAslarite.ToolTip!);
     }
 }

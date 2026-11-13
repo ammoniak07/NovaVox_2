@@ -209,25 +209,6 @@ public static class SchemaFrenchLabels
         ["Radiation Dissipation"] = "Dissipation des radiations",
     };
 
-    /// <summary>
-    /// Effet de la qualité des ingrédients sur l'objet fabriqué, en une ligne :
-    /// « Intégrité −10 % → +10 % (Agricium) · Points d'énergie −2 → +2
-    /// (Laranite) » — de la qualité 0 à la qualité 1000 de l'ingrédient.
-    /// Null si la qualité ne change rien.
-    /// </summary>
-    public static string? QualityEffects(IReadOnlyList<SchemaQualityEffect>? effects)
-    {
-        if (effects is not { Count: > 0 }) return null;
-        return string.Join(" · ", effects.Select(e =>
-        {
-            var range = e.Additive
-                ? $"{Signed(e.From)} → {Signed(e.To)}"
-                : $"{Signed((e.From - 1) * 100)} % → {Signed((e.To - 1) * 100)} %";
-            var ingredients = e.Ingredients.Count > 0 ? $" ({string.Join(", ", e.Ingredients.Select(Resource))})" : "";
-            return $"{QualityStats.GetValueOrDefault(e.Stat, e.Stat)} {range}{ingredients}";
-        }));
-    }
-
     private static string Signed(double value)
     {
         var rounded = Math.Round(value, 1);
@@ -270,9 +251,10 @@ public static class SchemaFrenchLabels
                 if (minQuality is > 1) line += $" (qualité ≥ {minQuality})";
                 if (!known) return new SchemaRecipeLine("• " + line, null);
                 var mine = effects!.Where(e => e.Ingredients.Contains(g.Key.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+                var bands = ResourceQualityBands.For(g.Key.Name);
                 return new SchemaRecipeLine(
-                    $"• {line} : {(mine.Count == 0 ? "qualité sans effet" : DescribeEffects(mine))}",
-                    QualityTable(g.Key.Name, mine, minQuality));
+                    $"• {line} : {(mine.Count == 0 ? "qualité sans effet" : DescribeEffects(mine, bands))}",
+                    QualityTable(g.Key.Name, mine, minQuality, bands));
             })
             .ToList();
     }
@@ -289,8 +271,9 @@ public static class SchemaFrenchLabels
     /// </code>
     /// À afficher en police à chasse fixe (colonnes alignées).
     /// </summary>
-    public static string QualityTable(string ingredient, IReadOnlyList<SchemaQualityEffect> effects, int? minQuality = null)
+    public static string QualityTable(string ingredient, IReadOnlyList<SchemaQualityEffect> effects, int? minQuality = null, IReadOnlyList<QualityBand>? bands = null)
     {
+        if (effects.Count > 0 && bands is { Count: > 0 }) return BandTable(ingredient, effects, minQuality, bands);
         var name = Resource(ingredient);
         if (effects.Count == 0)
             return $"La qualité de « {name} » ne change rien à cet objet." + (minQuality is > 1 ? $"\nQualité minimale exigée : {minQuality}." : "");
@@ -319,6 +302,37 @@ public static class SchemaFrenchLabels
         return string.Join("\n", lines);
     }
 
+    /// <summary>
+    /// Tableau par tranche de qualité du jeu : la qualité du minerai, la valeur
+    /// que le jeu retient pour toute la tranche, et l'effet qui en découle.
+    /// </summary>
+    private static string BandTable(string ingredient, IReadOnlyList<SchemaQualityEffect> effects, int? minQuality, IReadOnlyList<QualityBand> bands)
+    {
+        var columns = effects.GroupBy(CurveKey)
+            .Select(same => (Label: GroupLabel(same.Select(e => e.Stat).Distinct().ToList()), Effect: same.First()))
+            .ToList();
+        var rows = new List<string[]> { new[] { "Qualité du minerai", "Compte comme" }.Concat(columns.Select(c => c.Label)).ToArray() };
+        foreach (var band in bands)
+        {
+            if (minQuality is > 1 && band.End < minQuality) continue; // tranche refusée par la recette
+            var range = band.Start == band.End ? $"{band.Start}" : $"{band.Start}–{band.End}";
+            rows.Add(new[] { range, band.Value.ToString(FrenchCulture) }
+                .Concat(columns.Select(c => Format(c.Effect, c.Effect.ValueAt(band.Value)))).ToArray());
+        }
+        var widths = Enumerable.Range(0, rows[0].Length).Select(c => rows.Max(r => r[c].Length)).ToArray();
+        var lines = new List<string>
+        {
+            $"Qualité de « {Resource(ingredient)} » → effet sur l'objet fabriqué",
+            "Le jeu range la qualité du minerai par tranches :",
+            "toute la tranche compte comme la qualité retenue.",
+        };
+        if (minQuality is > 1) lines.Add($"Qualité minimale exigée : {minQuality}");
+        lines.Add("");
+        foreach (var row in rows)
+            lines.Add(string.Join("   ", row.Select((cell, c) => cell.PadRight(widths[c]))).TrimEnd());
+        return string.Join("\n", lines);
+    }
+
     private static string CurveKey(SchemaQualityEffect e) =>
         e.Additive + "|" + (e.Curve is null ? $"{e.From}>{e.To}" : string.Join(";", e.Curve.Select(c => string.Join(",", c))));
 
@@ -342,20 +356,29 @@ public static class SchemaFrenchLabels
     private static int? StartsAt(SchemaQualityEffect e) =>
         !e.Additive && e.Curve is { Count: > 1 } c && c[0][2] == c[0][3] && c[0][1] > 0 ? (int)c[0][1] : null;
 
-    private static string DescribeEffects(List<SchemaQualityEffect> effects)
+    private static string DescribeEffects(List<SchemaQualityEffect> effects, IReadOnlyList<QualityBand>? bands)
     {
         var parts = new List<string>();
-        // Même plage de valeurs : regroupées (« Températures supportées −20 % → +20 % »).
-        foreach (var byRange in effects.GroupBy(Range))
+        // Même plage de valeurs : regroupées (« Températures supportées −8,5 % → +20 % »).
+        foreach (var byRange in effects.GroupBy(e => Range(e, bands)))
             parts.Add($"{GroupLabel(byRange.Select(e => e.Stat).Distinct().ToList())} {byRange.Key}");
         return string.Join(" ; ", parts);
     }
 
-    private static string Range(SchemaQualityEffect e) =>
-        (e.Additive
-            ? $"{Signed(e.From)} → {Signed(e.To)}"
-            : $"{Signed((e.From - 1) * 100)} % → {Signed((e.To - 1) * 100)} %")
-        + (StartsAt(e) is { } start ? $" (à partir de {start})" : "");
+    /// <summary>
+    /// Plage de l'effet : de la plus basse à la plus haute qualité RETENUE par
+    /// le jeu (tranches, voir ResourceQualityBands) — ex. Aslarite : 287 à 1000,
+    /// donc −8,5 % → +20 % et non −20 % → +20 % (aucun minerai ne compte comme 0).
+    /// Sans tranches connues, de 0 à 1000.
+    /// </summary>
+    private static string Range(SchemaQualityEffect e, IReadOnlyList<QualityBand>? bands)
+    {
+        double lowQ = bands is { Count: > 0 } ? bands[0].Value : 0, highQ = bands is { Count: > 0 } ? bands[^1].Value : 1000;
+        var low = e.ValueAt(lowQ);
+        var high = e.ValueAt(highQ);
+        return $"{Format(e, low)} → {Format(e, high)}"
+            + (bands is null && StartsAt(e) is { } start ? $" (à partir de {start})" : "");
+    }
 }
 
 /// <summary>Une ligne de recette affichée (« • Ouratite 0,03 SCU : ... ») et son info-bulle (effet qualité par qualité), null si sans objet.</summary>

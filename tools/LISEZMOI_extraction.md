@@ -42,6 +42,7 @@ celles du patch.
 python tools/normaliser_fabricants.py <ancien> <nouveau>
 python tools/gen_combat_data.py <nouveau> <version du jeu> src/NovaVox.Core/Combat/CombatData.json
 python tools/maj_schemas.py <ancien> <nouveau>
+python tools/gen_tranches_qualite.py C:\scdata\import\Data\libs\foundry\records\crafting C:\scdata\export\resources
 dotnet test tests/NovaVox.Core.Tests
 ```
 
@@ -51,6 +52,10 @@ dotnet test tests/NovaVox.Core.Tests
 - `maj_schemas.py` n'applique que les différences (schémas ajoutés,
   renommés, retirés, recettes changées) : la base actuelle et ses
   corrections manuelles sont conservées.
+- `gen_tranches_qualite.py` relit les tranches de qualité des minerais
+  (`qualityquantization/*.xml` : une qualité de 0 à 399 compte comme 287...)
+  et les rattache aux ingrédients des recettes, vérifiées par les qualités
+  atteignables de chaque minerai (`resources.json`).
 - Les tests `CombatReferenceValuesTests` contiennent des valeurs de
   référence d'une version précise : un écart après un patch peut être un
   vrai changement du jeu (ex. Polaris en 4.10.3).
