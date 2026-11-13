@@ -1,0 +1,2 @@
+StarBreaker CLI (https://github.com/diogotr7/StarBreaker, licence dans le dépôt d'origine), compilé pour Windows depuis le commit 7d3f01e (15/10/2026), avec dcb extract --combined.
+Outil temporaire pour extraire les données du jeu ; branche à supprimer ensuite.
