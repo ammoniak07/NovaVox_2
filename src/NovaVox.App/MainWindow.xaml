@@ -1652,6 +1652,8 @@
                                                                Foreground="{DynamicResource AccentBrush}" FontSize="11" FontWeight="Bold" Margin="0,2,0,0" TextWrapping="Wrap" />
                                                     <TextBlock Text="{Binding Stats}" Visibility="{Binding HasStats, Converter={StaticResource BoolToVis}}"
                                                                FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Recipe}" Visibility="{Binding HasRecipe, Converter={StaticResource BoolToVis}}"
+                                                               FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" />
                                                     <TextBlock Text="{Binding Description}" Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}}"
                                                                Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                                                 </StackPanel>

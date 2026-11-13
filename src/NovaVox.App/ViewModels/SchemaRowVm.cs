@@ -27,11 +27,15 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
     public string? Subtitle { get; init; }
     public string? Stats { get; init; }
     public string? Description { get; init; }
+
+    /// <summary>Ingrédients de fabrication en une ligne (« Recette : Fer 0,26 SCU · ... ») — voir SchemaFrenchLabels.Recipe.</summary>
+    public string? Recipe { get; init; }
     public string? ImagePath { get; init; }
 
     public bool HasSubtitle => !string.IsNullOrEmpty(Subtitle);
     public bool HasStats => !string.IsNullOrEmpty(Stats);
     public bool HasDescription => !string.IsNullOrEmpty(Description);
+    public bool HasRecipe => !string.IsNullOrEmpty(Recipe);
     public bool HasImage => ImagePath is not null;
 
     /// <summary>Correspond à la recherche du panneau Schémas — voir RefreshSchemasSearchVisibility, MainWindow.xaml.cs.</summary>
@@ -54,6 +58,7 @@ public sealed class SchemaRowVm : INotifyPropertyChanged
             Subtitle = BuildSubtitle(info),
             Stats = info?.Stats is { Count: > 0 } stats ? string.Join(" · ", stats.Select(SchemaFrenchLabels.Stat)) : null,
             Description = info?.Description,
+            Recipe = SchemaFrenchLabels.Recipe(info?.Ingredients) is { } recipe ? $"Recette : {recipe}" : null,
             ImagePath = info is null ? null : SchemaImages.FindPath(AppContext.BaseDirectory, info.Name),
         };
     }

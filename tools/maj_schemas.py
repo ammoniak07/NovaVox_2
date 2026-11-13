@@ -42,11 +42,23 @@ def ingredients(node, out):
 
 
 def clean_desc(d):
-    d = (d or '').replace('\r', '')
-    head, sep, body = d.partition('\n\n')
-    if sep and re.match(r'^[^\n:]+:', head):  # en-tête « Item Type: ... »
-        d = body
-    return d.replace('…', '...').translate(PUNCT).strip()
+    # Retire le ou les blocs d'en-tête « Item Type: ... » (lignes courtes
+    # « Libellé: valeur », séparés par des lignes vides), comme
+    # SchemaDatabase.CleanIniDescription côté appli.
+    blocks = (d or '').replace('\r', '').split('\n')
+    lines = [l.rstrip() for l in blocks]
+    i = 0
+    while i < len(lines):
+        if not lines[i].strip():
+            i += 1
+            continue
+        end = i
+        while end < len(lines) and lines[end].strip():
+            end += 1
+        if not all(len(l) <= 80 and re.match(r'^[^:]{1,40}:\s*\S', l.strip()) for l in lines[i:end]):
+            break
+        i = end
+    return '\n'.join(lines[i:]).replace('…', '...').translate(PUNCT).strip()
 
 
 def num(v):

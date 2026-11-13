@@ -7,6 +7,7 @@ V0.2.4
 - Tête holographique : plus de lueur quand Nova parle (seules les lèvres bougent), et les lèvres bougent maintenant aussi sur le visage « Femme » (elles restaient presque immobiles).
 - Zones interdites de la bulle : les cadres rouges se redimensionnent en glissant un bord ou un coin (le curseur l'indique au survol), en plus de se déplacer et de se supprimer.
 - Données du jeu passées en 4.10.3 (extraites directement des fichiers du jeu). Pénétration : nouveaux vaisseaux Galaxy, Hyun, Liberator et Marauder, canons M3A/M4A/M5A Raider Camo, bouclier Deterrent du Polaris (qui s'appelait Glacis, comme celui du 890 Jump) ; valeurs changées par le patch, par exemple la déflexion énergie du Polaris (418 → 460) et de l'Idris-P, le blindage du Constellation Mk V Centaurus et de l'Idris-P, les boucliers du Hammerhead et des PYAM Exec, et les armes d'origine de plusieurs vaisseaux (Meteor, Stingray, Vanguard). Schémas : 18 nouveaux (armures Corbel, Palatino et Tailwind Raider Camo, fusil Skarnov et sa batterie, canons M3A/M4A/M5A Raider Camo, radar Lephari, bouclier Deterrent).
+- Schémas : chaque fiche affiche maintenant sa recette de fabrication (ex. « Recette : Fer 0,26 SCU · Glace pressurisée 0,16 SCU · Hadanite ×7 »). Quand un même ingrédient sert à plusieurs étapes, les quantités sont additionnées.
 
 v0.2.3
 ------

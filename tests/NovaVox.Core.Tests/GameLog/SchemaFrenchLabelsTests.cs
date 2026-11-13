@@ -29,4 +29,21 @@ public class SchemaFrenchLabelsTests
         Assert.Equal("Sniper Rifle", info.ItemType);
         Assert.Contains(info.Stats!, s => s.Label == "Effective Range");
     }
+
+    [Fact]
+    public void Recipe_SumsRepeatedIngredientsAndTranslatesCommonOnes()
+    {
+        // QuikCool : du fer pour la coque (0,16) et pour la pompe (0,10).
+        var info = SchemaDatabase.Find("QuikCool")!;
+        Assert.Equal("Fer 0,26 SCU · Glace pressurisée 0,16 SCU", SchemaFrenchLabels.Recipe(info.Ingredients));
+    }
+
+    [Fact]
+    public void Recipe_CountsDiscreteItemsAndIsNullWhenEmpty()
+    {
+        var recipe = SchemaFrenchLabels.Recipe(SchemaDatabase.Find("M3A Cannon")!.Ingredients);
+        Assert.Contains("Hadanite ×7", recipe);
+        Assert.StartsWith("Agricium 0,36 SCU", recipe);
+        Assert.Null(SchemaFrenchLabels.Recipe(Array.Empty<SchemaIngredient>()));
+    }
 }

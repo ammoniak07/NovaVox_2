@@ -137,4 +137,45 @@ public static class SchemaFrenchLabels
         };
         return $"{StatLabels.GetValueOrDefault(stat.Label, stat.Label)} : {DecimalPoint.Replace(value, "$1,$2")}";
     }
+
+    private static readonly Dictionary<string, string> Resources = new()
+    {
+        ["Aluminum"] = "Aluminium",
+        ["Beryl"] = "Béryl",
+        ["Copper"] = "Cuivre",
+        ["Corundum"] = "Corindon",
+        ["Gold"] = "Or",
+        ["Iron"] = "Fer",
+        ["Pressurized Ice"] = "Glace pressurisée",
+        ["Saldynium (Ore)"] = "Saldynium (minerai)",
+        ["Silicon"] = "Silicium",
+        ["Tin"] = "Étain",
+        ["Titanium"] = "Titane",
+        ["Tungsten"] = "Tungstène",
+        ["Yormandi Eye"] = "Œil de Yormandi",
+    };
+
+    private static readonly System.Globalization.CultureInfo FrenchCulture = new("fr-FR");
+
+    /// <summary>Nom français d'un ingrédient (les minerais propres au jeu gardent leur nom).</summary>
+    public static string Resource(string name) => Resources.GetValueOrDefault(name, name);
+
+    /// <summary>
+    /// Recette d'un schéma en une ligne : « Fer 0,26 SCU · Glace pressurisée
+    /// 0,16 SCU · Hadanite ×7 ». Un même ingrédient peut servir à plusieurs
+    /// étapes de la recette (Fer 0,16 pour la coque + 0,10 pour la pompe) :
+    /// les quantités sont additionnées, dans l'ordre de première apparition.
+    /// Null si la recette est vide.
+    /// </summary>
+    public static string? Recipe(IReadOnlyList<SchemaIngredient>? ingredients)
+    {
+        if (ingredients is not { Count: > 0 }) return null;
+        var parts = ingredients
+            .GroupBy(i => (i.Name, Unit: i.Unit.ToUpperInvariant()))
+            .Select(g => (g.Key.Name, g.Key.Unit, Amount: g.Sum(i => i.Amount)))
+            .Select(i => i.Unit == "SCU"
+                ? $"{Resource(i.Name)} {Math.Round(i.Amount, 3).ToString("0.###", FrenchCulture)} SCU"
+                : $"{Resource(i.Name)} ×{Math.Round(i.Amount, 3).ToString("0.###", FrenchCulture)}");
+        return string.Join(" · ", parts);
+    }
 }
