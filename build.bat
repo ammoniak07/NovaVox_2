@@ -62,7 +62,7 @@ echo      pas de copie manuelle necessaire ici, contrairement a PyInstaller.
 echo.
 echo Extraction de la version depuis patch_maj.txt...
 set APPVER=0.0.0
-for /f "tokens=1 delims= " %%v in ('findstr /r "^v[0-9]" patch_maj.txt') do (
+for /f "tokens=1 delims= " %%v in ('findstr /r /i "^v[0-9]" patch_maj.txt') do (
     set APPVER=%%v
     goto :gotver
 )
