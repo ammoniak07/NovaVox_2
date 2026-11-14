@@ -1,5 +1,8 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.2.5
+------
+
 v0.2.4
 ------
 - Tête holographique : nouveau visage « Banu 👽 » (à côté de Homme / Femme), inspiré des extraterrestres de Star Citizen : large crête au sommet plat, arrière du crâne bombé, crête, nez, bouche et menton alignés de profil, fentes de part et d'autre de l'arête du front, lourdes arcades, yeux enfoncés, pommettes saillantes, joues très creuses, grand menton, sillons sur le crâne et cou strié, sans oreilles. En « Visage seul », le Banu garde sa crête.
