@@ -98,4 +98,14 @@ public class VersionUtilTests : IDisposable
     {
         Assert.Empty(VersionUtil.ParsePatchNotes(""));
     }
+
+    [Fact]
+    public void VersionHeader_UppercaseVIsRecognized()
+    {
+        var path = Path.Combine(_dir, "patch_upper.txt");
+        File.WriteAllText(path, "NOVAVOX\n=====\nV0.2.4\n------\n- nouveau\n\nv0.2.3\n------\n- ancien\n");
+        Assert.Equal("0.2.4", VersionUtil.GetAppVersion(path));
+        var versions = VersionUtil.ParsePatchNotes(File.ReadAllText(path));
+        Assert.Equal(new[] { "0.2.4", "0.2.3" }, versions.Select(v => v.Version).ToArray());
+    }
 }

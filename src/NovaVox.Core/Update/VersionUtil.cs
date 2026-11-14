@@ -15,7 +15,7 @@ public static partial class VersionUtil
     [GeneratedRegex(@"\d+")]
     private static partial Regex DigitsRegex();
 
-    [GeneratedRegex(@"^v(\d+\.\d+(?:\.\d+)?)", RegexOptions.Multiline)]
+    [GeneratedRegex(@"^v(\d+\.\d+(?:\.\d+)?)", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
     private static partial Regex VersionLineRegex();
 
     /// <summary>Convertit "0.1.2" en [0, 1, 2] pour une comparaison fiable (une comparaison de chaînes échouerait sur "0.9" vs "0.10").</summary>
@@ -80,7 +80,7 @@ public static partial class VersionUtil
     public sealed record PatchNoteItem(string Text, IReadOnlyList<string> Subs);
     public sealed record PatchNoteVersion(string Version, IReadOnlyList<PatchNoteItem> Items);
 
-    [GeneratedRegex(@"^v(\d+\.\d+(?:\.\d+)?)\s*$")]
+    [GeneratedRegex(@"^v(\d+\.\d+(?:\.\d+)?)\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex VersionOnlyLineRegex();
 
     [GeneratedRegex(@"^[=\-]{3,}$")]
