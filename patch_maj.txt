@@ -3,6 +3,7 @@ NOVAVOX — Notes de mise à jour
 v0.2.5
 ------
 - Destinations : Nova reconnaît d'elle-même les balises de mission et les sites numérotés, sans qu'il faille les nommer un par un dans « Alias de destinations ». Balises : « Balise de détresse (vaisseau attaqué) », « Balise quantique d'exploration », « Balise quantique de récupération (courte portée) », « Balise de prime », etc. Sites où seul le numéro change : « Station d'extraction QV 19 (Nyx) », « Installation ASD Delve 7 (Wala) ». Aussi « Membre du groupe » (route vers un équipier) et « QV Logistics » (Nyx). Les alias de ces destinations restés tels que détectés disparaissent de la liste ; ceux que tu as renommés sont gardés.
+- Schémas : vérifiés avec les données 4.10.3 publiées par la communauté (scunpacked-data, 13/11) : recettes, noms et descriptions identiques à ceux de NovaVox. Descriptions en français pour les 18 schémas arrivés avec la 4.10.3 (canons M3A/M4A/M5A, fusil Skarnov et sa batterie et armures Corbel, Palatino et Tailwind en Raider Camo, radar Lephari, bouclier Deterrent). Fabricant ajouté sur 23 fiches qui n'en avaient pas (casques Geist, Palatino, DustUp, Corbel Crush, Pembroke, Testudo Clanguard ; refroidisseurs Algid et Exotherm, bouclier RS-Barrier et moteur quantique Frontline d'Aegis, moteur quantique Allegro d'ArcCorp). Images ajoutées pour le Lumin V, le P4-AR et le S-38 « SecondWind ».
 
 v0.2.4
 ------
