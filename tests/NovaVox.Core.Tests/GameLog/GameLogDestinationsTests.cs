@@ -12,7 +12,7 @@ public class GameLogDestinationsTests
     [InlineData("rs_ext_pyro-stan_jp1", "Stanton Gateway (Pyro)")]
     [InlineData("OOC_Stanton_1d_Ita", "Ita")]
     [InlineData("ab_mine_stanton3_med_005", "Base minière DYV-JKE")]
-    [InlineData("MISSION_QT_Quantum_Beacon_732699457697", "Quantum Beacon")]
+    [InlineData("MISSION_QT_Quantum_Beacon_732699457697", "Balise quantique")]
     [InlineData("rs_ext_cru-leo1", "Seraphim Station")]
     [InlineData("rs_ext_pyro5_l2", "Gaslight")]
     [InlineData("Stanton4_NewBabbage", "NewBabbage")]
@@ -62,6 +62,20 @@ public class GameLogDestinationsTests
     [InlineData("Stanton2c_ArcCorpMining_Area157", "Mine ArcCorp Area157")]
     [InlineData("Stanton1_HurDynMining_HDMSPinewood", "HDMS Pinewood")]
     [InlineData("Stanton4_RayariHydro_Deltana", "Rayari Deltana Research")]
+    [InlineData("Nyx_TSG_QVExtractionStation_019", "Station d'extraction QV 19 (Nyx)")]
+    [InlineData("Nyx_TSG_QVExtractionStation_014", "Station d'extraction QV 14 (Nyx)")]
+    [InlineData("Stanton3b_ASD_Delve_Facility_007", "Installation ASD Delve 7")]
+    [InlineData("MISSION_QT_Distress_Beacon_SupportAttackedShip", "Balise de détresse (vaisseau attaqué)")]
+    [InlineData("MISSION_QT_Distress_Beacon_MinningAsteroidBase", "Balise de détresse (base minière sur astéroïde)")]
+    [InlineData("MISSION_QT_Quantum_Beacon_ExplorationRange", "Balise quantique d'exploration")]
+    [InlineData("MISSION_QT_Quantum_Beacon_ShortRange_Salvage", "Balise quantique de récupération (courte portée)")]
+    [InlineData("MISSION_QT_Quantum_Beacon_LongRange", "Balise quantique (longue portée)")]
+    [InlineData("MISSION_QT_Quantum_Beacon_TSG", "Balise quantique TSG")]
+    [InlineData("MISSION_QT_Quantum_Beacon_SomethingNew", "Balise quantique")]
+    [InlineData("MISSION_QT_Bounty_Beacon_816657711603", "Balise de prime")]
+    [InlineData("MISSION_QT_Beacon", "Balise de mission")]
+    [InlineData("PartyMemberMarker", "Membre du groupe")]
+    [InlineData("Nyx_Kaboos", "QV Logistics")]
     public void HumanizeDestination_NewCatalogEntries(string rawId, string expected)
     {
         Assert.Equal(expected, GameLogDestinations.HumanizeDestination(rawId));
@@ -228,6 +242,24 @@ public class GameLogDestinationsTests
         Assert.True(changed);
         Assert.Single(userAliases);
         Assert.True(userAliases.ContainsKey("ma station perso"));
+    }
+
+    [Fact]
+    public void PruneAliasesCoveredByCatalog_RemovesUneditedPatternEntriesButKeepsRenamedOnes()
+    {
+        var userAliases = new Dictionary<string, string>
+        {
+            ["nyx tsg qvextractionstation 019"] = "Nyx TSG QVExtractionStation 019",
+            ["mission qt distress beacon supportattackedship"] = "Distress Beacon SupportAttackedShip",
+            ["mission qt beacon"] = "Beacon",
+            ["partymembermarker"] = "PartyMemberMarker",
+            ["nyx tsg qvextractionstation 014"] = "Ma station QV préférée",
+        };
+
+        Assert.True(GameLogDestinations.PruneAliasesCoveredByCatalog(userAliases));
+
+        Assert.Single(userAliases);
+        Assert.Equal("Ma station QV préférée", userAliases["nyx tsg qvextractionstation 014"]);
     }
 
     [Fact]

@@ -74,6 +74,45 @@ public static partial class GameLogDestinations
     [GeneratedRegex(@"^stanton\d+[a-z]? rayarihydro (?<site>.+)$")]
     private static partial Regex RayariResearchIdRegex();
 
+    /// <summary>"nyx tsg qvextractionstation 019" : stations QV numérotées (ATC_Kaboos = "QV Logistics" dans le global.ini).</summary>
+    [GeneratedRegex(@"^(?<system>[a-z]+) tsg qvextractionstation (?<num>\d+)$")]
+    private static partial Regex QvExtractionStationIdRegex();
+
+    /// <summary>"stanton3b asd delve facility 007" : installations ASD numérotées, sur une lune ou une planète.</summary>
+    [GeneratedRegex(@"^(?<body>stanton\d+[a-z]?|pyro\d+[a-z]?|nyx\d+[a-z]?) asd (?<kind>[a-z]+) facility (?<num>\d+)$")]
+    private static partial Regex AsdFacilityIdRegex();
+
+    /// <summary>"mission qt distress beacon supportattackedship" : balises de mission (le reste précise le type de mission).</summary>
+    [GeneratedRegex(@"^mission qt (?:(?<kind>distress|quantum|bounty|patrol|rendezvous) )?beacon(?: (?<rest>.+))?$")]
+    private static partial Regex MissionBeaconIdRegex();
+
+    /// <summary>Noms des balises, d'après mission_items_QT*Beacon du global.ini (pas de texte pour bounty : "Balise de prime").</summary>
+    private static readonly IReadOnlyDictionary<string, string> BeaconKinds = new Dictionary<string, string>
+    {
+        [""] = "Balise de mission",
+        ["distress"] = "Balise de détresse",
+        ["quantum"] = "Balise quantique",
+        ["bounty"] = "Balise de prime",
+        ["patrol"] = "Balise de patrouille",
+        ["rendezvous"] = "Balise de rendez-vous",
+    };
+
+    /// <summary>Précision ajoutée au nom d'une balise selon la suite de l'identifiant ; une suite inconnue est ignorée.</summary>
+    private static readonly IReadOnlyDictionary<string, string> BeaconDetails = new Dictionary<string, string>
+    {
+        ["explorationrange"] = "d'exploration",
+        ["shortrange salvage"] = "de récupération (courte portée)",
+        ["shortrange"] = "(courte portée)",
+        ["longrange"] = "(longue portée)",
+        ["salvage"] = "de récupération",
+        ["supportattackedship"] = "(vaisseau attaqué)",
+        ["minningasteroidbase"] = "(base minière sur astéroïde)",
+        ["miningasteroidbase"] = "(base minière sur astéroïde)",
+        ["tsg"] = "TSG",
+    };
+
+    private static string SiteNumber(string digits) => int.TryParse(digits, out var n) ? n.ToString() : digits;
+
     /// <summary>Sites numérotés d'une même famille ("stanton4a shubin smca 6" -> "Mine Shubin SMCA6") : un seul motif plutôt qu'une entrée de catalogue par site.</summary>
     private static string? HumanizeNumberedSite(string normalized)
     {
@@ -101,6 +140,28 @@ public static partial class GameLogDestinations
         {
             var companyName = centre.Groups["company"].Value == "covalex" ? "Covalex " : "";
             return $"Centre de Distribution {companyName}{centre.Groups["site"].Value.Replace(" ", "").ToUpperInvariant()}";
+        }
+
+        var qv = QvExtractionStationIdRegex().Match(normalized);
+        if (qv.Success)
+        {
+            var name = $"Station d'extraction QV {SiteNumber(qv.Groups["num"].Value)}";
+            return SystemNames.TryGetValue(qv.Groups["system"].Value, out var system) ? $"{name} ({system})" : name;
+        }
+
+        var asd = AsdFacilityIdRegex().Match(normalized);
+        if (asd.Success)
+        {
+            var kind = asd.Groups["kind"].Value;
+            var name = $"Installation ASD {char.ToUpperInvariant(kind[0]) + kind[1..]} {SiteNumber(asd.Groups["num"].Value)}";
+            return LiveLocationNames.TryGetValue(asd.Groups["body"].Value, out var body) ? $"{name} ({body})" : name;
+        }
+
+        var beacon = MissionBeaconIdRegex().Match(normalized);
+        if (beacon.Success)
+        {
+            var name = BeaconKinds[beacon.Groups["kind"].Value];
+            return BeaconDetails.TryGetValue(beacon.Groups["rest"].Value, out var detail) ? $"{name} {detail}" : name;
         }
         return null;
     }
@@ -270,6 +331,8 @@ public static partial class GameLogDestinations
         ["nyxstar"] = "l'étoile Nyx",
         ["levski all 001"] = "Levski",
         ["nyx levski"] = "Levski",
+        ["partymembermarker"] = "Membre du groupe",
+        ["nyx kaboos"] = "QV Logistics",
     };
 
     /// <summary>
@@ -301,6 +364,8 @@ public static partial class GameLogDestinations
     /// <summary>Valeur vide, simple recopie de l'identifiant détecté, ou début du nom que le catalogue donne déjà (ex. "Mine Shubin" pour "Mine Shubin SMCA6").</summary>
     private static bool IsUneditedAlias(string key, string value) =>
         value.Trim().Length == 0 || NormalizeForAliasLookup(value) == key ||
+        // Nom proposé par défaut pour une balise : identifiant sans "MISSION_QT_".
+        "mission qt " + NormalizeForAliasLookup(value) == key ||
         (HumanizeNumberedSite(key) is { } site && site.StartsWith(value.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
