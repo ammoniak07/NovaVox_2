@@ -1,5 +1,7 @@
 NOVAVOX — Notes de mise à jour
 ==============================
+v0.2.6
+------
 v0.2.5
 ------
 - Destinations : Nova reconnaît d'elle-même les balises de mission et les sites numérotés, sans qu'il faille les nommer un par un dans « Alias de destinations ». Balises : « Balise de détresse (vaisseau attaqué) », « Balise quantique d'exploration », « Balise quantique de récupération (courte portée) », « Balise de prime », etc. Sites où seul le numéro change : « Station d'extraction QV 19 (Nyx) », « Installation ASD Delve 7 (Wala) ». Aussi « Membre du groupe » (route vers un équipier) et « QV Logistics » (Nyx). Les alias de ces destinations restés tels que détectés disparaissent de la liste ; ceux que tu as renommés sont gardés.
