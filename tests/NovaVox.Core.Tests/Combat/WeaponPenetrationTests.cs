@@ -428,4 +428,13 @@ public class PilotOnlyTests
         var solo = DefenseCalculator.AllStockAttackers(polaris, pilotOnly: true).Count(a => a.GunsPierce);
         Assert.True(solo < crew);
     }
+
+    [Fact]
+    public void DataVersionLabel_ShowsGameVersionAndBuild()
+    {
+        Assert.Equal("4.10.3", CombatDatabase.GameVersion);
+        Assert.Equal("13220821", CombatDatabase.GameBuild);
+        Assert.Equal("Données de la version 4.10.3 build 13220821", CombatDatabase.DataVersionLabel);
+        Assert.Equal("Données de la version 5.0", CombatDatabase.DataVersionText("5.0", null));
+    }
 }

@@ -155,7 +155,9 @@ public sealed record CombatData(
     [property: JsonPropertyName("gameVersion")] string GameVersion,
     [property: JsonPropertyName("ships")] IReadOnlyList<CombatShip> Ships,
     [property: JsonPropertyName("weapons")] IReadOnlyList<CombatWeapon> Weapons,
-    [property: JsonPropertyName("shields")] IReadOnlyList<CombatShield>? Shields = null);
+    [property: JsonPropertyName("shields")] IReadOnlyList<CombatShield>? Shields = null,
+    /// <summary>Numéro de build du jeu dont viennent les données (ex. "13220821"), si connu.</summary>
+    [property: JsonPropertyName("gameBuild")] string? GameBuild = null);
 
 /// <summary>
 /// Base locale (hors-ligne) des armes de vaisseau et du blindage/bouclier
@@ -169,6 +171,14 @@ public static class CombatDatabase
     private static readonly Lazy<CombatData> Data = new(Load);
 
     public static string GameVersion => Data.Value.GameVersion;
+
+    public static string? GameBuild => Data.Value.GameBuild;
+
+    /// <summary>"Données de la version 4.10.3 build 13220821" (sans le build s'il n'est pas connu).</summary>
+    public static string DataVersionLabel => DataVersionText(GameVersion, GameBuild);
+
+    public static string DataVersionText(string version, string? build) =>
+        string.IsNullOrWhiteSpace(build) ? $"Données de la version {version}" : $"Données de la version {version} build {build}";
 
     /// <summary>Vaisseaux, du plus blindé au moins blindé.</summary>
     public static IReadOnlyList<CombatShip> Ships => Data.Value.Ships;

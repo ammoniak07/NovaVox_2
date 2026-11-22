@@ -397,7 +397,7 @@ public sealed class WeaponPenetrationWindow : Window
             (NeutralBrush, "Distorsion : vise les composants")));
         help.Children.Add(Muted(
             "Le bouclier absorbe toute l'énergie et la distorsion, et 45 % du physique quand il est plein : ce qui passe doit encore dépasser la déflexion. " +
-            "« Détruit en » : bouclier, puis blindage, puis structure, avec le nombre d'armes choisi (tous les tirs touchent). Données du jeu " + CombatDatabase.GameVersion + ".",
+            "« Détruit en » : bouclier, puis blindage, puis structure, avec le nombre d'armes choisi (tous les tirs touchent). " + CombatDatabase.DataVersionLabel + ".",
             11, new Thickness(0, 4, 0, 0)));
         Grid.SetRow(help, 5);
         grid.Children.Add(help);

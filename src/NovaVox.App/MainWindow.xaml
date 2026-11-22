@@ -1529,7 +1529,7 @@
                         <Button Grid.Column="1" Content="✕" Width="28" Height="28" Padding="0" FontSize="13" Click="CloseSchemas_Click" />
                     </Grid>
 
-                    <TextBlock Grid.Row="1"
+                    <TextBlock Grid.Row="1" x:Name="SchemasIntroText"
                                Text="Schémas de fabrication (blueprints) reçus en jeu. Ajoutés automatiquement à la détection d'une notification « Schémas reçu : ... » dans le Game.log, ou manuellement ci-dessous. Fabricant/description (en anglais) complétés automatiquement quand le nom est reconnu dans la base locale."
                                Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,10" />
 

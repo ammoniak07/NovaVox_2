@@ -40,12 +40,14 @@ celles du patch.
 
 ```
 python tools/normaliser_fabricants.py <ancien> <nouveau>
-python tools/gen_combat_data.py <nouveau> <version du jeu> src/NovaVox.Core/Combat/CombatData.json
+python tools/gen_combat_data.py <nouveau> <version du jeu> src/NovaVox.Core/Combat/CombatData.json <build>
 python tools/maj_schemas.py <ancien> <nouveau>
 python tools/gen_tranches_qualite.py C:\scdata\import\Data\libs\foundry\records\crafting C:\scdata\export\resources
 dotnet test tests/NovaVox.Core.Tests
 ```
 
+- `<build>` : numéro de la ligne « Build(...) » au début du Game.log
+  (ex. 13220821), affiché avec la version dans 🎯 Pénétration et 📐 Schémas.
 - `normaliser_fabricants.py` garde les noms de fabricants de l'ancienne
   version (ScDataDumper écrit parfois « BEH » au lieu de « Behring Applied
   Technology »).

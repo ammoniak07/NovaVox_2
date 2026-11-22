@@ -2576,6 +2576,9 @@ public partial class MainWindow : Window
 
     private void InitializeSchemas()
     {
+        // Version du jeu dont viennent la base des schémas et les recettes (même extraction que 🎯 Pénétration).
+        if (!SchemasIntroText.Text.Contains("Données de la version", StringComparison.Ordinal))
+            SchemasIntroText.Text += " " + NovaVox.Core.Combat.CombatDatabase.DataVersionLabel + ".";
         // Les plus récents en haut : SchemasReceived est dans l'ordre de
         // réception (plus ancien d'abord), donc on le parcourt à l'envers, et
         // les schémas pas encore vus ("nouveau") passent avant tous les autres.

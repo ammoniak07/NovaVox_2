@@ -2,11 +2,13 @@
 Génère src/NovaVox.Core/Combat/CombatData.json (tableau « 🎯 Pénétration »)
 à partir de StarCitizenWiki/scunpacked-data (ships.json + ship-items.json).
 À relancer après un patch du jeu qui change les armes ou le blindage :
-  python tools/gen_combat_data.py ../scunpacked-data 4.10.2 src/NovaVox.Core/Combat/CombatData.json
+  python tools/gen_combat_data.py ../scunpacked-data 4.10.3 src/NovaVox.Core/Combat/CombatData.json 13220821
+(le dernier argument, facultatif, est le numéro de build du jeu : ligne
+« Build(...) » au début du Game.log)
 """
 import json, re, collections, sys
 if len(sys.argv)<4:
-    sys.exit('usage: gen_combat_data.py <dossier scunpacked-data> <version du jeu> <CombatData.json de sortie>')
+    sys.exit('usage: gen_combat_data.py <dossier scunpacked-data> <version du jeu> <CombatData.json de sortie> [build du jeu]')
 D=sys.argv[1]
 ships=json.load(open(D+'/ships.json',encoding='utf-8')); items=json.load(open(D+'/ship-items.json',encoding='utf-8'))
 T=['Physical','Energy','Distortion']
@@ -227,7 +229,7 @@ print('pilote seul : écarts',len(pilot_bad),pilot_bad[:25])
 if len(pilot_bad)>len(out_s)*0.1: problems.append(f'DPS pilote incohérent sur {len(pilot_bad)} vaisseaux')
 if problems:
     sys.exit('ARRET, données suspectes :\n- '+'\n- '.join(problems))
-data={'gameVersion':gv,'ships':sorted(out_s.values(),key=lambda e:-e['armorHp']),'weapons':sorted(out_w.values(),key=lambda e:(e['kind'],e['size'] or 0,e['name'])),'shields':sorted(out_sh.values(),key=lambda e:(e['size'],-e['hp'],e['name']))}
+data={'gameVersion':gv,**({'gameBuild':sys.argv[4]} if len(sys.argv)>4 else {}),'ships':sorted(out_s.values(),key=lambda e:-e['armorHp']),'weapons':sorted(out_w.values(),key=lambda e:(e['kind'],e['size'] or 0,e['name'])),'shields':sorted(out_sh.values(),key=lambda e:(e['size'],-e['hp'],e['name']))}
 json.dump(data,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
 print('ships',len(out_s),'weapons',len(out_w),collections.Counter(w['kind'] for w in out_w.values()))
 known=set(out_w); miss=collections.Counter(n for s in out_s.values() for n in s['stockWeapons'] if n not in known); print('armes de série inconnues',len(miss),list(miss)[:15])

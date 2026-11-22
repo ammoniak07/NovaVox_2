@@ -338,7 +338,7 @@ public sealed class DefensePanel : Grid
 
         var help = Ui.Muted(
             "Estimations : tous les tirs touchent, le bouclier ne régénère pas sous le feu, DPS en rafale. Détruire un vaisseau = vider son bouclier, " +
-            "puis son blindage, puis sa structure. La distorsion surcharge les composants sans faire de dégâts de coque. Données du jeu " + CombatDatabase.GameVersion + ".",
+            "puis son blindage, puis sa structure. La distorsion surcharge les composants sans faire de dégâts de coque. " + CombatDatabase.DataVersionLabel + ".",
             11, new Thickness(0, 6, 0, 0));
         SetRow(help, 7);
         grid.Children.Add(help);
