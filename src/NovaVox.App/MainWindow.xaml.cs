@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private readonly WindowConfigStore _windowConfigStore = new(NovaVoxPaths.BaseDirectory);
     private readonly AppState _state = new(NovaVoxPaths.BaseDirectory);
     private readonly DispatcherTimer _commandsSaveTimer;
+    private bool _savingCommands;
     // Journalisent (fichier Log/ seulement, jamais le panneau) un résumé
     // des réglages Audio/IA/Overlay après chaque modification — sur le
     // même principe de "temporisation" que _commandsSaveTimer : beaucoup
@@ -142,13 +143,36 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => DarkTitleBar.Apply(new WindowInteropHelper(this).Handle);
 
         _commandsSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
-        _commandsSaveTimer.Tick += (_, _) =>
+        _commandsSaveTimer.Tick += async (_, _) =>
         {
             _commandsSaveTimer.Stop();
-            _state.SaveCommands();
-            var count = _state.Commands.Count(r => !r.IsTitle);
-            var titles = _state.Commands.Count(r => r.IsTitle);
-            AppendLog($"[Réglages] Commandes enregistrées ({count} commande(s), {titles} titre(s)).", "diagnostic");
+            if (_savingCommands)
+            {
+                // Une sauvegarde est déjà en cours d'écriture sur le disque :
+                // on retente un peu plus tard plutôt que d'en lancer une
+                // deuxième en parallèle sur les mêmes fichiers.
+                _commandsSaveTimer.Start();
+                return;
+            }
+            _savingCommands = true;
+            try
+            {
+                // Écriture sur un thread de fond : avec beaucoup de commandes
+                // configurées, sérialiser + écrire commands.json et le profil
+                // prenait assez longtemps pour geler l'UI pendant la frappe.
+                await _state.SaveCommandsAsync();
+                var count = _state.Commands.Count(r => !r.IsTitle);
+                var titles = _state.Commands.Count(r => r.IsTitle);
+                AppendLog($"[Réglages] Commandes enregistrées ({count} commande(s), {titles} titre(s)).", "diagnostic");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[Réglages] Échec de l'enregistrement des commandes : {ex.Message}", "erreur");
+            }
+            finally
+            {
+                _savingCommands = false;
+            }
         };
 
         _audioSettingsLogTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };

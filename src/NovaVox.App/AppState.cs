@@ -78,7 +78,24 @@ public sealed class AppState
     /// <summary>Persiste la liste de commandes actuelle (après ajout/édition/réordonnancement/suppression).</summary>
     public void SaveCommands()
     {
-        CommandStore.SaveCommands(Commands.Select(r => r.ToModel()).ToList());
+        var active = Profiles.FirstOrDefault(p => p.Id == CommandStore.ActiveProfileId);
+        CommandStore.SaveCommands(Commands.Select(r => r.ToModel()).ToList(), profileName: active?.Name, profileGameMode: active?.GameMode);
+    }
+
+    /// <summary>
+    /// Même sauvegarde, mais l'écriture disque se fait hors du thread UI : à
+    /// utiliser pour la sauvegarde "à chaud" déclenchée par la frappe dans un
+    /// champ de commande (MainWindow._commandsSaveTimer), pour ne pas geler
+    /// l'interface le temps d'écrire commands.json + le profil (perceptible
+    /// avec beaucoup de commandes configurées).
+    /// </summary>
+    public Task SaveCommandsAsync()
+    {
+        var active = Profiles.FirstOrDefault(p => p.Id == CommandStore.ActiveProfileId);
+        var snapshot = Commands.Select(r => r.ToModel()).ToList();
+        var name = active?.Name;
+        var gameMode = active?.GameMode;
+        return Task.Run(() => CommandStore.SaveCommands(snapshot, profileName: name, profileGameMode: gameMode));
     }
 
     public void SaveAudio() => AudioConfigStore.Save(Audio);

@@ -182,7 +182,13 @@ public sealed class CommandStore
     /// profil actif (au démarrage, ou juste après un switch) : le fichier
     /// de profil est alors déjà identique, pas besoin de le réécrire.
     /// </param>
-    public void SaveCommands(List<VoiceCommand> commands, bool mirrorToProfile = true)
+    /// <param name="profileName">
+    /// Nom et mode de jeu du profil actif, déjà connus de l'appelant (évite de
+    /// relire et reparser tout le fichier de profil juste pour ces deux
+    /// champs à chaque sauvegarde). Si omis, relus depuis le disque comme
+    /// avant.
+    /// </param>
+    public void SaveCommands(List<VoiceCommand> commands, bool mirrorToProfile = true, string? profileName = null, string? profileGameMode = null)
     {
         Directory.CreateDirectory(_baseDir);
         File.WriteAllText(ConfigFile, CommandsToJson(commands).ToJsonString(WriteOptions));
@@ -197,8 +203,15 @@ public sealed class CommandStore
         }
         try
         {
-            var (name, _, gameMode) = ReadProfile(ActiveProfileId);
-            WriteProfile(ActiveProfileId, name, commands, gameMode);
+            var name = profileName;
+            var gameMode = profileGameMode;
+            if (name is null || gameMode is null)
+            {
+                var read = ReadProfile(ActiveProfileId);
+                name ??= read.Name;
+                gameMode ??= read.GameMode;
+            }
+            WriteProfile(ActiveProfileId, name ?? ActiveProfileId, commands, gameMode ?? GameModeConfig.StarCitizen);
         }
         catch
         {
