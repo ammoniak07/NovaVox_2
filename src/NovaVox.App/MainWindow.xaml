@@ -455,8 +455,13 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,3,0,0">
                         <TextBlock FontSize="11">
-                            <Run Text="Support : 💬 " Foreground="{DynamicResource MutedBrush}" />
-                            <Hyperlink NavigateUri="https://discord.gg/NhhhGKv7F" RequestNavigate="Hyperlink_RequestNavigate">Discord NovaVox</Hyperlink>
+                            <Run Text="🌐 " Foreground="{DynamicResource MutedBrush}" />
+                            <Hyperlink NavigateUri="https://appnovavox.com/" RequestNavigate="Hyperlink_RequestNavigate">appnovavox.com</Hyperlink>
+                        </TextBlock>
+                        <TextBlock Text="   ·   " Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                        <TextBlock FontSize="11">
+                            <Run Text="💬 " Foreground="{DynamicResource MutedBrush}" />
+                            <Hyperlink NavigateUri="https://discord.gg/2J32PMuFY9" RequestNavigate="Hyperlink_RequestNavigate">Discord NovaVox</Hyperlink>
                         </TextBlock>
                         <TextBlock Text="   ·   " Foreground="{DynamicResource MutedBrush}" FontSize="11" />
                         <TextBlock FontSize="11">
@@ -1022,8 +1027,9 @@
                             <StackPanel Margin="10">
                                 <TextBlock x:Name="VersionText" Text="NovaVox" FontSize="18" FontWeight="Bold" />
                                 <TextBlock Text="Développé par Ammoniak007" Margin="0,8,0,0" />
+                                <TextBlock Margin="0,4,0,0"><Run Text="Site : " /><Hyperlink NavigateUri="https://appnovavox.com/" RequestNavigate="Hyperlink_RequestNavigate">https://appnovavox.com/</Hyperlink></TextBlock>
                                 <TextBlock Text="Discord : NovaVox" Margin="0,4,0,0" />
-                                <TextBlock Margin="0,4,0,0"><Hyperlink NavigateUri="https://discord.gg/NhhhGKv7F" RequestNavigate="Hyperlink_RequestNavigate">https://discord.gg/NhhhGKv7F</Hyperlink></TextBlock>
+                                <TextBlock Margin="0,4,0,0"><Hyperlink NavigateUri="https://discord.gg/2J32PMuFY9" RequestNavigate="Hyperlink_RequestNavigate">https://discord.gg/2J32PMuFY9</Hyperlink></TextBlock>
 
                                 <TextBlock Text="Bibliothèques utilisées" FontWeight="Bold" Margin="0,24,0,6" />
                                 <TextBlock Text="Vosk — reconnaissance vocale hors-ligne" Margin="0,6,0,0" />
