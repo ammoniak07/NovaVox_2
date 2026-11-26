@@ -4,6 +4,7 @@ v0.2.6
 ------
 - Pénétration et Schémas : la version du jeu d'où viennent les données est affichée avec son numéro de build, ex. « Données de la version 4.10.3 build 13220821 ». Données vérifiées avec le correctif du 21/11 (build 13220821) : aucun changement par rapport à la 4.10.3 (dégâts, blindage, boucliers, recettes, qualité des minerais).
 - Correction : avec beaucoup de commandes configurées (une soixantaine ou plus), taper dans le champ d'une commande provoquait un petit gel de l'interface à chaque pause d'écriture (sauvegarde automatique). L'enregistrement se fait maintenant sans bloquer l'interface, quel que soit le nombre de commandes.
+- Lien du site (appnovavox.com) ajouté en pied de page et dans l'onglet Crédits. Correction du lien Discord expiré (il ne fonctionnait plus).
 
 v0.2.5
 ------
